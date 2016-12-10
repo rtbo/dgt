@@ -1,0 +1,9 @@
+{
+	"name": "dgt",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"description": "D GUI Toolkit",
+	"copyright": "Copyright © 2016, Rémi Thebault",
+	"license": "MIT"
+}
