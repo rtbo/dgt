@@ -24,6 +24,12 @@ import core.stdc.stdlib : free;
 alias Window = dgt.window.Window;
 alias Screen = dgt.screen.Screen;
 
+package
+{
+    __gshared Display *g_display;
+    __gshared xcb_connection_t *g_connection;
+}
+
 /// List of X atoms that are fetched automatically
 enum Atom
 {
@@ -57,8 +63,6 @@ class XcbPlatform : Platform
 {
     private
     {
-        Display *dpy_;
-        xcb_connection_t *connection_;
         xcb_atom_t[Atom] atoms_;
         XcbKeyboard kbd_;
         uint xkbFirstEv_;
@@ -70,29 +74,29 @@ class XcbPlatform : Platform
     /// Builds and initialize XcbPlatform
     this()
     {
-        dpy_ = XOpenDisplay(null);
-        enforce(dpy_, "can't open X display");
-        scope(failure) XCloseDisplay(dpy_);
+        g_display = XOpenDisplay(null);
+        enforce(g_display, "can't open X display");
+        scope(failure) XCloseDisplay(g_display);
 
-        connection_ = XGetXCBConnection(dpy_);
-        enforce(connection_, "could not connect to X server");
+        g_connection = XGetXCBConnection(g_display);
+        enforce(g_connection, "could not connect to X server");
 
         // setting event queue owner to XCB actually provoke bug.
         // see http://lists.freedesktop.org/archives/xcb/2015-November/010567.html
-        XSetEventQueueOwner(dpy_, XCBOwnsEventQueue);
+        XSetEventQueueOwner(g_display, XCBOwnsEventQueue);
 
         initializeAtoms();
         screens_ = fetchScreens();
-        kbd_ = new XcbKeyboard(connection_, xkbFirstEv_);
+        kbd_ = new XcbKeyboard(g_connection, xkbFirstEv_);
         initializeGLX();
     }
 
     /// Platform implementation
     override void shutdown()
     {
-        XCloseDisplay(dpy_);
-        dpy_ = null;
-        connection_ = null;
+        XCloseDisplay(g_display);
+        g_display = null;
+        g_connection = null;
     }
 
     /// ditto
@@ -107,20 +111,11 @@ class XcbPlatform : Platform
     /// ditto
     PlatformWindow createWindow(Window window)
     {
-        return new XcbWindow(window, this, connection_);
+        return new XcbWindow(window, this);
     }
 
     package
     {
-        @property inout(Display)* display() inout
-        {
-            return dpy_;
-        }
-
-        @property inout(xcb_connection_t)* connection() inout
-        {
-            return connection_;
-        }
 
         @property bool hasDRI2() const { return dri2FirstEv_ != uint.max; }
 
@@ -147,7 +142,7 @@ class XcbPlatform : Platform
             foreach(immutable atom; EnumMembers!Atom) // static foreach
             {
                 auto name = atom.to!string;
-                cookies ~= xcb_intern_atom(connection_, 1,
+                cookies ~= xcb_intern_atom(g_connection, 1,
                         cast(ushort)name.length, toStringz(name));
             }
 
@@ -155,7 +150,7 @@ class XcbPlatform : Platform
             {
                 immutable name = atom.to!string;
                 xcb_generic_error_t *err;
-                auto reply = xcb_intern_atom_reply(connection_, cookies[i], &err);
+                auto reply = xcb_intern_atom_reply(g_connection, cookies[i], &err);
                 if (err) {
                     throw new Exception("failed initializing atom " ~ name ~
                             ": ", (*err).to!string);
@@ -173,7 +168,7 @@ class XcbPlatform : Platform
             XcbScreen[] screens;
             xcb_screen_iterator_t iter;
             int num = 0;
-            for(iter = xcb_setup_roots_iterator(xcb_get_setup(connection_));
+            for(iter = xcb_setup_roots_iterator(xcb_get_setup(g_connection));
                     iter.rem; xcb_screen_next(&iter)) {
                 screens ~= new XcbScreen(num++, iter.data);
             }
@@ -184,9 +179,9 @@ class XcbPlatform : Platform
         {
             DerelictGL3.load();
 
-            xcb_prefetch_extension_data(connection_, &xcb_dri2_id);
+            xcb_prefetch_extension_data(g_connection, &xcb_dri2_id);
 
-            const reply = xcb_get_extension_data(connection_, &xcb_dri2_id);
+            const reply = xcb_get_extension_data(g_connection, &xcb_dri2_id);
             if (reply && reply.present) dri2FirstEv_ = reply.first_event;
         }
 
@@ -239,17 +234,15 @@ class XcbWindow : PlatformWindow
     {
         Window win_;
         XcbPlatform platform_;
-        xcb_connection_t *connection_;
         xcb_window_t xcbWin_;
         bool created_ = false;
         WindowState lastKnownState_ = WindowState.hidden;
     }
 
-    this(Window w, XcbPlatform platform, xcb_connection_t *connection)
+    this(Window w, XcbPlatform platform)
     {
         win_ = w;
         platform_ = platform;
-        connection_ = connection;
     }
 
     override bool created() const { return created_; }
@@ -262,30 +255,30 @@ class XcbWindow : PlatformWindow
         immutable pos = creationPos(screen, size);
 
         auto visualInfo = getVisualInfoFromAttribs(
-                platform_.display, screenNum, win_.attribs
+                g_display, screenNum, win_.attribs
         );
         if (!visualInfo) {
             throw new Exception("Clue-XCB: window could not get visual");
         }
         scope(exit) XFree(visualInfo);
 
-        immutable cmap = xcb_generate_id(connection_);
-        xcbWin_ = xcb_generate_id(connection_);
+        immutable cmap = xcb_generate_id(g_connection);
+        xcbWin_ = xcb_generate_id(g_connection);
 
-        xcb_create_colormap(connection_, XCB_COLORMAP_ALLOC_NONE,
+        xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE,
                 cmap, screen.root, visualInfo.visualid);
 
         immutable mask = XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP;
         uint[] values = [ screen.whitePixel, cmap, 0 ];
 
         auto cook = xcb_create_window_checked (
-                connection_, screen.rootDepth, xcbWin_,
+                g_connection, screen.rootDepth, xcbWin_,
                 screen.root, cast(short)pos.x, cast(short)pos.y,
                 cast(ushort)size.width, cast(ushort)size.height, 0,
                 XCB_WINDOW_CLASS_INPUT_OUTPUT,
                 screen.rootVisual, mask, &values[0]);
 
-        auto err = xcb_request_check(connection_, cook);
+        auto err = xcb_request_check(g_connection, cook);
         if (err) {
             import std.format : format;
             throw new Exception(format(
@@ -302,10 +295,9 @@ class XcbWindow : PlatformWindow
 
     override @property string title() const
     {
-        auto conn = cast(xcb_connection_t*)connection_;
-        auto c = xcb_get_property(conn, 0, xcbWin_, XCB_ATOM_WM_NAME,
+        auto c = xcb_get_property(g_connection, 0, xcbWin_, XCB_ATOM_WM_NAME,
             XCB_ATOM_STRING, 0, 1024);
-        auto r = xcb_get_property_reply(conn, c, null);
+        auto r = xcb_get_property_reply(g_connection, c, null);
         if (!r) return "";
         scope(exit) free(r);
         auto len = xcb_get_property_value_length(r);
@@ -314,11 +306,11 @@ class XcbWindow : PlatformWindow
 
     override @property void title(string title)
     {
-         xcb_change_property(connection_,
+         xcb_change_property(g_connection,
                 cast(ubyte)XCB_PROP_MODE_REPLACE, xcbWin_,
                 cast(xcb_atom_t)XCB_ATOM_WM_NAME, cast(xcb_atom_t)XCB_ATOM_STRING,
                 8, cast(uint)title.length, toStringz(title));
-        xcb_change_property(connection_,
+        xcb_change_property(g_connection,
                 cast(ubyte)XCB_PROP_MODE_REPLACE, xcbWin_,
                 cast(xcb_atom_t)XCB_ATOM_WM_ICON_NAME, cast(xcb_atom_t)XCB_ATOM_STRING,
                 8, cast(uint)title.length, toStringz(title));
@@ -327,10 +319,11 @@ class XcbWindow : PlatformWindow
     override @property WindowState state() const
     {
         auto cookie = xcb_get_property_unchecked(
-                conn, 0, xcbWin_, atom(Atom.WM_STATE),
-                             XCB_ATOM_ANY, 0, 1024);
+                g_connection, 0, xcbWin_, atom(Atom.WM_STATE),
+                XCB_ATOM_ANY, 0, 1024
+        );
 
-        auto reply = xcb_get_property_reply(conn, cookie, null);
+        auto reply = xcb_get_property_reply(g_connection, cookie, null);
         if (reply)
         {
             scope(exit) free(reply);
@@ -379,7 +372,7 @@ class XcbWindow : PlatformWindow
                 break;
             case WindowState.minimized:
             case WindowState.hidden:
-                xcb_map_window(connection_, xcbWin_);
+                xcb_map_window(g_connection, xcbWin_);
                 break;
             default:
                 break;
@@ -397,7 +390,7 @@ class XcbWindow : PlatformWindow
                 ev.window = xcbWin_;
                 ev.type = atom(Atom.WM_CHANGE_STATE);
                 ev.data.data32[0] = XCB_ICCCM_WM_STATE_ICONIC;
-                xcb_send_event(connection_, 0, screen.root,
+                xcb_send_event(g_connection, 0, screen.root,
                     XCB_EVENT_MASK_STRUCTURE_NOTIFY |
                     XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
                     cast(const char*)&ev);
@@ -412,21 +405,21 @@ class XcbWindow : PlatformWindow
                     atom(Atom._NET_WM_STATE_FULLSCREEN));
                 break;
             case WindowState.hidden:
-                xcb_unmap_window(connection_, xcbWin_);
+                xcb_unmap_window(g_connection, xcbWin_);
                 break;
             default:
                 break;
         }
 
-        xcb_flush(connection_);
+        xcb_flush(g_connection);
     }
 
     override @property IRect geometry() const
     {
         assert(created);
-        auto c = xcb_get_geometry(conn, xcbWin_);
+        auto c = xcb_get_geometry(g_connection, xcbWin_);
         xcb_generic_error_t *err;
-        auto r = xcb_get_geometry_reply(conn, c, &err);
+        auto r = xcb_get_geometry_reply(g_connection, c, &err);
         if (err)
         {
             warningf("DGT-xcb could not retrieve window geometry");
@@ -443,18 +436,18 @@ class XcbWindow : PlatformWindow
         uint[5] values = [
             pos.x, pos.y, pos.width, pos.height, 0
         ];
-        auto cookie = xcb_configure_window_checked (conn, xcbWin,
-            XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
-            XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
-            &values[0]
+        auto cookie = xcb_configure_window_checked (g_connection, xcbWin,
+                XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+                &values[0]
         );
-        auto err = xcb_request_check(conn, cookie);
+        auto err = xcb_request_check(g_connection, cookie);
         if (err)
         {
             warningf("DGT-XCB: error resizing window");
             free(err);
         }
-        xcb_flush(conn);
+        xcb_flush(g_connection);
     }
 
     package
@@ -467,16 +460,6 @@ class XcbWindow : PlatformWindow
 
     private
     {
-
-        // not very clean, but we need a non-const object to retrieve properties
-        @property xcb_connection_t *conn() const
-        {
-            return cast(xcb_connection_t*)connection_;
-        }
-        @property xcb_connection_t *conn()
-        {
-            return connection_;
-        }
 
         void prepareEvents()
         {
@@ -496,7 +479,7 @@ class XcbWindow : PlatformWindow
                     XCB_EVENT_MASK_PROPERTY_CHANGE,
                     0
                 ];
-                xcb_change_window_attributes(connection_, xcbWin_,
+                xcb_change_window_attributes(g_connection, xcbWin_,
                         XCB_CW_EVENT_MASK, &values[0]);
             }
             // register window close event
@@ -504,7 +487,7 @@ class XcbWindow : PlatformWindow
                 xcb_atom_t[] values = [
                     atom(Atom.WM_DELETE_WINDOW), 0
                 ];
-                xcb_change_property(connection_, XCB_PROP_MODE_REPLACE, xcbWin_,
+                xcb_change_property(g_connection, XCB_PROP_MODE_REPLACE, xcbWin_,
                         atom(Atom.WM_PROTOCOLS), XCB_ATOM_ATOM, 32, 1,
                         &values[0]);
             }
@@ -533,12 +516,11 @@ class XcbWindow : PlatformWindow
 
         @property NetWmStates netWmStates() const
         {
-            auto c = cast(xcb_connection_t*)connection_;
             auto cookie = xcb_get_property_unchecked(
-                    c, 0, xcbWin_, atom(Atom._NET_WM_STATE),
+                    g_connection, 0, xcbWin_, atom(Atom._NET_WM_STATE),
                                  XCB_ATOM_ATOM, 0, 1024);
 
-            auto reply = xcb_get_property_reply(c, cookie, null);
+            auto reply = xcb_get_property_reply(g_connection, cookie, null);
             if (!reply) return NetWmStates.None;
             scope(exit) free(reply);
 
@@ -594,7 +576,7 @@ class XcbWindow : PlatformWindow
             e.data.data32[1] = atom1;
             e.data.data32[2] = atom2;
 
-            xcb_send_event(connection_, 0, screen.root,
+            xcb_send_event(g_connection, 0, screen.root,
                 XCB_EVENT_MASK_STRUCTURE_NOTIFY |
                 XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
                 cast(const char*)&e);
