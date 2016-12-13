@@ -601,7 +601,7 @@ enum Sym : uint
     wakeUp,
     eject,
     screenSaver,
-    wWW,
+    www,
     memo,
     lightBulb,
     shop,
