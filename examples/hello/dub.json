@@ -1,22 +1,19 @@
 {
-	"name": "dgt",
+	"name": "hello",
 	"authors": [
 		"Rémi Thebault"
 	],
-	"description": "D GUI Toolkit",
+	"description": "A DGT example.",
 	"copyright": "Copyright © 2016, Rémi Thebault",
 	"license": "MIT",
-
-	"libs": ["xcb-xkb", "xcb-dri2"],
-
-    "dependencies":	{
+	"dependencies": {
+		"dgt": {
+			"path": "../../"
+		},
 		"xcb-d":			"~>2.1.0",
 		"xcb-util-wm-d":	"~>0.5.0",
         "xkbcommon-d":      "~>0.5.1",
         "xlib-d":           "~>0.1.1",
 		"derelict-gl3":		"~>1.0.19"
-    },
-	"subPackages": [
-		"examples/hello"
-	]
+	}
 }

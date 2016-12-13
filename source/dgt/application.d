@@ -20,6 +20,11 @@ class Application
         platform_ = platform;
     }
 
+    ~this()
+    {
+        platform_.shutdown();
+    }
+
     private Platform platform_;
 
 
@@ -30,6 +35,12 @@ class Application
         {
             assert(instance_, "Attempt to get unintialized DGT Application");
             return instance_;
+        }
+        /// Get the Platform singleton.
+        @property Platform platform()
+        {
+            assert(instance_ && instance_.platform_, "Attempt to get unintialized DGT Platform");
+            return instance_.platform_;
         }
 
         private @property void instance(Application inst)
@@ -45,5 +56,6 @@ class Application
 /// Get the default Platform for the running OS.
 @property Platform defaultPlatform()
 {
-    return null;
+    import dgt.platform.xcb : XcbPlatform;
+    return new XcbPlatform();
 }
