@@ -88,15 +88,63 @@ class Window : Surface
         return position_;
     }
 
+    @property void position(in IPoint position)
+    {
+        if (position != position_)
+        {
+            if (platformWindow_.created)
+            {
+                platformWindow_.geometry = IRect(position_, size_);
+            }
+            else
+            {
+                position_ = position;
+            }
+        }
+    }
+
     override @property ISize size() const
     {
         return size_;
     }
 
-    @property void size(ISize size)
+    @property void size(in ISize size)
     {
-        size_ = size;
+        if (size != size_)
+        {
+            if (platformWindow_.created)
+            {
+                platformWindow_.geometry = IRect(position_, size);
+            }
+            else
+            {
+                size_ = size;
+            }
+        }
     }
+
+    @property IRect geometry() const
+    {
+        return IRect(position_, size_);
+    }
+
+    @property void geometry(in IRect rect)
+    {
+        if (rect.size != size_ || rect.point != position_)
+        {
+            if (platformWindow_.created)
+            {
+                platformWindow_.geometry = IRect(position_, size);
+            }
+            else
+            {
+                position_ = rect.point;
+                size_ = rect.size;
+            }
+        }
+    }
+
+
 
     @property SurfaceAttribs attribs() const
     {
@@ -162,11 +210,34 @@ class Window : Surface
     mixin EventHandlerSignalMixin!("onClose", OnWindowCloseHandler);
     mixin SignalMixin!("onClosed", Window);
 
+
     void handleEvent(WindowEvent wEv)
     {
         assert(wEv.window is this);
         switch (wEv.type)
         {
+        case EventType.windowMove:
+            auto wmEv = cast(WindowMoveEvent)wEv;
+            position_ = wmEv.point;
+            onMove_.fire(cast(WindowMoveEvent)wEv);
+            break;
+        case EventType.windowResize:
+            auto rsEv = cast(WindowResizeEvent)wEv;
+            size_ = rsEv.size;
+            onResize_.fire(rsEv);
+            break;
+        case EventType.windowMouseDown:
+            onMouse_.fire(cast(WindowMouseEvent)wEv);
+            if (!wEv.consumed) {
+                onMouseDown_.fire(cast(WindowMouseEvent)wEv);
+            }
+            break;
+        case EventType.windowMouseUp:
+            onMouse_.fire(cast(WindowMouseEvent)wEv);
+            if (!wEv.consumed) {
+                onMouseUp_.fire(cast(WindowMouseEvent)wEv);
+            }
+            break;
         case EventType.windowKeyDown:
             auto kEv = cast(WindowKeyEvent)wEv;
             onKey_.fire(kEv);
@@ -181,6 +252,9 @@ class Window : Surface
                 onKeyUp_.fire(kEv);
             }
             break;
+        case EventType.windowStateChange:
+            onStateChange_.fire(cast(WindowStateChangeEvent)wEv);
+            break;
         case EventType.windowClose:
             auto cev = cast(WindowCloseEvent)wEv;
             onClose_.fire(cev);
@@ -189,7 +263,6 @@ class Window : Surface
         default:
             break;
         }
-
     }
 
 
