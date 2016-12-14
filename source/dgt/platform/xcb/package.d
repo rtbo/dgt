@@ -6,6 +6,8 @@ import dgt.platform;
 import dgt.window;
 import dgt.screen;
 import dgt.geometry;
+import dgt.enums;
+import dgt.event;
 
 import xcb.xcb;
 import xcb.xkb;
@@ -18,8 +20,10 @@ import derelict.opengl3.gl3;
 
 import std.exception : enforce;
 import std.string : toStringz;
+import std.typecons : scoped;
 import std.experimental.logger;
 import core.stdc.stdlib : free;
+import std.stdio;
 
 alias Window = dgt.window.Window;
 alias Screen = dgt.screen.Screen;
@@ -57,6 +61,11 @@ enum Atom
     _NET_WM_NAME,
 }
 
+/// get the response_type field masked for
+@property ubyte xcbEventType(EvT)(EvT *e)
+{
+    return (e.response_type & ~0x80);
+}
 
 /// Platform for XCB windowing system
 class XcbPlatform : Platform
@@ -100,18 +109,66 @@ class XcbPlatform : Platform
     }
 
     /// ditto
-    @property string name() const { return "xcb"; }
+    override @property string name() const { return "xcb"; }
 
     /// ditto
-    @property inout(Screen)[] screens() inout
+    override @property inout(Screen)[] screens() inout
     {
         return cast(inout(Screen)[])screens_;
     }
 
     /// ditto
-    PlatformWindow createWindow(Window window)
+    override PlatformWindow createWindow(Window window)
     {
         return new XcbWindow(window, this);
+    }
+
+    /// ditto
+    override void processNextEvent()
+    {
+        xcb_generic_event_t *e = xcb_wait_for_event(g_connection);
+        immutable xcbType = xcbEventType(e);
+        switch(xcbType)
+        {
+            case XCB_KEY_PRESS:
+            case XCB_KEY_RELEASE:
+                processKeyEvent(cast(xcb_key_press_event_t*)e);
+                break;
+            case XCB_BUTTON_PRESS:
+            case XCB_BUTTON_RELEASE:
+                processWindowEvent!(xcb_button_press_event_t,
+                                    "processButtonEvent")(e);
+                break;
+            case XCB_CLIENT_MESSAGE:
+                return processClientEvent(cast(xcb_client_message_event_t*)e);
+            default:
+                if (xcbType == xkbFirstEv_) {
+                    auto genKbd = cast(XkbGenericEvent*)e;
+                    if (genKbd.common.deviceID == kbd_.device) {
+                        switch (genKbd.common.xkbType) {
+                        case XCB_XKB_STATE_NOTIFY:
+                            kbd_.updateState(&genKbd.state);
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
+                if (xcbType == dri2FirstEv_ || xcbType == dri2FirstEv_+1) {
+                    // these are libGL DRI2 event that need special handling
+                    // see https://bugs.freedesktop.org/show_bug.cgi?id=35945#c4
+                    // and mailing thread starting here:
+                    // http://lists.freedesktop.org/archives/xcb/2015-November/010556.html
+                    WireToEventProc proc = XESetWireToEvent(g_display, xcbType, null);
+                    if (proc) {
+                        XESetWireToEvent(g_display, xcbType, proc);
+                        e.sequence = cast(ushort)XLastKnownRequestProcessed(g_display);
+                        XEvent dummy;
+                        proc(g_display, &dummy, cast(xEvent*)e);
+                    }
+                }
+                break;
+        }
     }
 
     package
@@ -122,6 +179,20 @@ class XcbPlatform : Platform
         @property inout(XcbScreen)[] xcbScreens() inout
         {
             return screens_;
+        }
+
+        inout(XcbWindow) xcbWindow(xcb_window_t xcbWin) inout
+        {
+            inout(XcbWindow)* w = xcbWin in windows_;
+            if (!w) return null;
+            return *w;
+        }
+
+        inout(Window) window(xcb_window_t xcbWin) inout
+        {
+            inout(XcbWindow) xcbW = xcbWindow(xcbWin);
+            if (!xcbW) return null;
+            return xcbW.window;
         }
 
         void registerWindow(XcbWindow w)
@@ -191,7 +262,99 @@ class XcbPlatform : Platform
             if (at) return *at;
             return XCB_ATOM_NONE;
         }
+
+        void processWindowEvent (SpecializedEvent, string processingMethod)
+                                (xcb_generic_event_t* xcbEv)
+        {
+            auto se = cast(SpecializedEvent*)xcbEv;
+            auto xcbWin = xcbWindow(se.event);
+            mixin("xcbWin."~processingMethod~"(se);");
+        }
+
+        void processKeyEvent(xcb_key_press_event_t *xcbEv)
+        {
+            auto xcbWin = xcbWindow(xcbEv.event);
+            kbd_.processEvent(xcbEv, xcbWin.window);
+        }
+
+        void processClientEvent(xcb_client_message_event_t* xcbEv)
+        {
+            if (xcbEv.data.data32[0] == atom(Atom.WM_DELETE_WINDOW))
+            {
+                auto w = window(xcbEv.window);
+                auto ev = scoped!WindowCloseEvent(w);
+                w.handleEvent(ev);
+            }
+        }
     }
+}
+
+
+
+key.Mods dgtKeyMods(in ushort xcbState) pure @nogc @safe nothrow
+{
+    key.Mods km;
+    if (xcbState & XCB_MOD_MASK_SHIFT) km |= key.Mods.shift;
+    if (xcbState & XCB_MOD_MASK_CONTROL) km |= key.Mods.ctrl;
+    if (xcbState & XCB_MOD_MASK_1) km |= key.Mods.alt;
+    if (xcbState & XCB_MOD_MASK_2) km |= key.Mods.super_;
+    return km;
+}
+
+
+MouseState dgtMouseState(in ushort xcbState) pure @nogc @safe nothrow
+{
+    MouseState state;
+    if (xcbState & XCB_BUTTON_MASK_1) state |= MouseState.left;
+    if (xcbState & XCB_BUTTON_MASK_2) state |= MouseState.middle;
+    if (xcbState & XCB_BUTTON_MASK_3) state |= MouseState.right;
+    return state;
+}
+
+MouseButton dgtMouseButton(in xcb_button_t xcbBut) pure @nogc @safe nothrow
+{
+    switch (xcbBut) {
+        case 1: return MouseButton.left;
+        case 2: return MouseButton.middle;
+        case 3: return MouseButton.right;
+        default: return MouseButton.none;
+    }
+}
+
+private {
+
+
+    union XkbGenericEvent {
+
+        struct CommonFields {
+            ubyte response_type;
+            ubyte xkbType;
+            ushort sequence;
+            xcb_timestamp_t time;
+            ubyte deviceID;
+        }
+
+        CommonFields common;
+        xcb_xkb_new_keyboard_notify_event_t newKbd;
+        xcb_xkb_map_notify_event_t map;
+        xcb_xkb_state_notify_event_t state;
+    }
+
+    extern(C) {
+        // necessary binding to xlib internals
+
+        struct xEvent;
+
+        alias WireToEventProc = Bool function (Display*, XEvent*, xEvent*);
+
+        WireToEventProc XESetWireToEvent (
+                Display* display,
+                int event_number,
+                WireToEventProc proc);
+
+
+    }
+
 }
 
 
@@ -237,6 +400,8 @@ class XcbWindow : PlatformWindow
         xcb_window_t xcbWin_;
         bool created_ = false;
         WindowState lastKnownState_ = WindowState.hidden;
+        IRect lastNormalRect_;
+        bool mapped_;
     }
 
     this(Window w, XcbPlatform platform)
@@ -291,6 +456,13 @@ class XcbWindow : PlatformWindow
 
         this.state = state; // actually show the window
         created_ = true;
+    }
+
+    override void close()
+    {
+        if (mapped_) xcb_unmap_window(g_connection, xcbWin_);
+        xcb_destroy_window(g_connection, xcbWin_);
+        xcb_flush(g_connection);
     }
 
     override @property string title() const
@@ -374,6 +546,9 @@ class XcbWindow : PlatformWindow
             case WindowState.hidden:
                 xcb_map_window(g_connection, xcbWin_);
                 break;
+            case WindowState.normal:
+                lastNormalRect_ = geometry;
+                break;
             default:
                 break;
         }
@@ -406,6 +581,9 @@ class XcbWindow : PlatformWindow
                 break;
             case WindowState.hidden:
                 xcb_unmap_window(g_connection, xcbWin_);
+                break;
+            case WindowState.normal:
+                geometry = lastNormalRect_;
                 break;
             default:
                 break;
@@ -450,11 +628,28 @@ class XcbWindow : PlatformWindow
         xcb_flush(g_connection);
     }
 
+    @property inout(Window) window() inout
+    {
+        return win_;
+    }
+
     package
     {
         @property xcb_window_t xcbWin() const
         {
             return xcbWin_;
+        }
+
+        void processButtonEvent(xcb_button_press_event_t* xcbEv)
+        {
+            auto ev = scoped!WindowMouseEvent (
+                (xcbEventType(xcbEv) == XCB_BUTTON_PRESS) ?
+                    EventType.windowMouseDown : EventType.windowMouseUp,
+                window, IPoint(xcbEv.event_x, xcbEv.event_y),
+                dgtMouseButton(xcbEv.detail), dgtMouseState(xcbEv.state),
+                dgtKeyMods(xcbEv.state)
+            );
+            win_.handleEvent(ev);
         }
     }
 

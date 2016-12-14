@@ -1,6 +1,9 @@
 module dgt.platform.xcb.keyboard;
 
+import dgt.platform.xcb : xcbEventType;
 import key = dgt.keys;
+import dgt.event;
+import dgt.window;
 
 import xkbcommon.xkbcommon;
 import xkbcommon.keysyms;
@@ -9,15 +12,18 @@ import xcb.xcb;
 import xcb.xkb;
 
 import std.experimental.logger;
+import std.exception : assumeUnique;
+
 
 class XcbKeyboard
 {
     private
     {
         xkb_context *context_;
-        uint kbdDevice_;
+        uint device_;
         xkb_keymap *keymap_;
         xkb_state *state_;
+        key.Mods mods_;
     }
 
     this(xcb_connection_t *connection, out uint xkbFirstEv)
@@ -72,16 +78,29 @@ class XcbKeyboard
         if (!context_) throw new Exception("could not alloc xkb context");
         scope(failure) xkb_context_unref(context_);
 
-        kbdDevice_ = xkb_x11_get_core_keyboard_device_id(connection);
-        if (kbdDevice_ == -1) throw new Exception("could not get X11 keyboard device id");
+        device_ = xkb_x11_get_core_keyboard_device_id(connection);
+        if (device_ == -1) throw new Exception("could not get X11 keyboard device id");
 
-        keymap_ = xkb_x11_keymap_new_from_device(context_, connection, kbdDevice_,
+        keymap_ = xkb_x11_keymap_new_from_device(context_, connection, device_,
                     XKB_KEYMAP_COMPILE_NO_FLAGS);
         if (!keymap_) throw new Exception("could not get keymap");
         scope(failure) xkb_keymap_unref(keymap_);
 
-        state_ = xkb_x11_state_new_from_device(keymap_, connection, kbdDevice_);
+        state_ = xkb_x11_state_new_from_device(keymap_, connection, device_);
         if (!state_) throw new Exception("could not alloc xkb state");
+    }
+
+    @property uint device() const
+    {
+        return device_;
+    }
+
+    void updateState(xcb_xkb_state_notify_event_t *e)
+    {
+        if (!state_) return;
+        xkb_state_update_mask(state_,
+                e.baseMods, e.latchedMods, e.lockedMods,
+                e.baseGroup, e.latchedGroup, e.lockedGroup);
     }
 
     void shutdown()
@@ -91,7 +110,57 @@ class XcbKeyboard
         xkb_context_unref(context_);
     }
 
+    void processEvent(xcb_key_press_event_t *xcbEv, Window w)
+    {
+        immutable keycode = xcbEv.detail;
+        immutable keysym = xkb_state_key_get_one_sym(state_, keycode);
 
+        immutable code = codeForKeycode(keycode);
+        immutable sym = symForKeysym(keysym);
+        immutable mods = modsForCode(code);
+        string text;
+        EventType et;
+
+        if (xcbEventType(xcbEv) == XCB_KEY_PRESS)
+        {
+            et = EventType.windowKeyDown;
+            mods_ |= mods;
+            auto size = xkb_state_key_get_utf8(state_, keycode, null, 0);
+            if (size > 0) {
+                char[] buf = new char[size+1];
+                xkb_state_key_get_utf8(state_, keycode, buf.ptr, size+1);
+                buf = buf[0 .. size];
+                text = assumeUnique(buf);
+            }
+        }
+        else
+        {
+            assert(xcbEventType(xcbEv) == XCB_KEY_RELEASE);
+            et = EventType.windowKeyUp;
+            mods_ &= ~mods;
+        }
+
+        import std.typecons : scoped;
+        auto ev = scoped!WindowKeyEvent(et, w, sym, code, mods_, text, keycode, keysym);
+        w.handleEvent(ev);
+    }
+
+}
+
+key.Mods modsForCode(in key.Code code)
+{
+    switch(code)
+    {
+        case key.Code.leftCtrl: return key.Mods.leftCtrl;
+        case key.Code.leftShift: return key.Mods.leftShift;
+        case key.Code.leftAlt: return key.Mods.leftAlt;
+        case key.Code.leftSuper: return key.Mods.leftSuper;
+        case key.Code.rightCtrl: return key.Mods.rightCtrl;
+        case key.Code.rightShift: return key.Mods.rightShift;
+        case key.Code.rightAlt: return key.Mods.rightAlt;
+        case key.Code.rightSuper: return key.Mods.rightSuper;
+        default: return key.Mods.none;
+    }
 }
 
 

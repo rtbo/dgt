@@ -5,10 +5,10 @@ import dgt.geometry : IPoint, ISize, IRect;
 import dgt.enums;
 import key = dgt.keys;
 
-interface EventHandler {
 
+interface EventHandler
+{
     void handleEvent(Event ev);
-
 }
 
 enum EventType
