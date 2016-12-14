@@ -127,6 +127,7 @@ class XcbPlatform : Platform
     {
         xcb_generic_event_t *e = xcb_wait_for_event(g_connection);
         immutable xcbType = xcbEventType(e);
+
         switch(xcbType)
         {
             case XCB_KEY_PRESS:
@@ -137,6 +138,31 @@ class XcbPlatform : Platform
             case XCB_BUTTON_RELEASE:
                 processWindowEvent!(xcb_button_press_event_t,
                                     "processButtonEvent")(e);
+                break;
+            case XCB_MOTION_NOTIFY:
+                processWindowEvent!(xcb_motion_notify_event_t,
+                                    "processMotionEvent")(e);
+                break;
+            case XCB_ENTER_NOTIFY:
+            case XCB_LEAVE_NOTIFY:
+                processWindowEvent!(xcb_enter_notify_event_t,
+                                    "processEnterLeaveEvent")(e);
+                break;
+            case XCB_UNMAP_NOTIFY:
+                processWindowEvent!(xcb_unmap_notify_event_t,
+                                    "processUnmapEvent")(e);
+                break;
+            case XCB_MAP_NOTIFY:
+                processWindowEvent!(xcb_map_notify_event_t,
+                                    "processMapEvent")(e);
+                break;
+            case XCB_CONFIGURE_NOTIFY:
+                processWindowEvent!(xcb_configure_notify_event_t,
+                                    "processConfigureEvent")(e);
+                break;
+            case XCB_PROPERTY_NOTIFY:
+                processWindowEvent!(xcb_property_notify_event_t,
+                                    "processPropertyEvent", "window")(e);
                 break;
             case XCB_CLIENT_MESSAGE:
                 return processClientEvent(cast(xcb_client_message_event_t*)e);
@@ -262,11 +288,12 @@ class XcbPlatform : Platform
             if (reply && reply.present) dri2FirstEv_ = reply.first_event;
         }
 
-        void processWindowEvent (SpecializedEvent, string processingMethod)
+        void processWindowEvent (SpecializedEvent, string processingMethod,
+                                 string seField="event")
                                 (xcb_generic_event_t* xcbEv)
         {
             auto se = cast(SpecializedEvent*)xcbEv;
-            auto xcbWin = xcbWindow(se.event);
+            auto xcbWin = xcbWindow(mixin("se."~seField));
             mixin("xcbWin."~processingMethod~"(se);");
         }
 

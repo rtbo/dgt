@@ -7,12 +7,16 @@ import dgt.platform;
 import dgt.window;
 import dgt.geometry;
 import dgt.event;
+import dgt.enums;
 
 import xcb.xcb;
 import xcb.xcb_icccm;
 import X11.Xlib;
 
 import std.experimental.logger;
+import std.typecons : scoped;
+import std.string : toStringz;
+import core.stdc.stdlib : free;
 
 alias Window = dgt.window.Window;
 alias Atom = dgt.platform.xcb.Atom;
@@ -28,7 +32,7 @@ class XcbWindow : PlatformWindow
         xcb_window_t xcbWin_;
         bool created_ = false;
         WindowState lastKnownState_ = WindowState.hidden;
-        IRect lastNormalRect_;
+        IRect rect_;
         bool mapped_;
     }
 
@@ -82,6 +86,8 @@ class XcbWindow : PlatformWindow
 
         platform_.registerWindow(this);
 
+        rect_ = IRect(pos, size);
+        lastKnownState_ = WindowState.hidden;
         this.state = state; // actually show the window
         created_ = true;
     }
@@ -174,9 +180,6 @@ class XcbWindow : PlatformWindow
             case WindowState.hidden:
                 xcb_map_window(g_connection, xcbWin_);
                 break;
-            case WindowState.normal:
-                lastNormalRect_ = geometry;
-                break;
             default:
                 break;
         }
@@ -210,9 +213,6 @@ class XcbWindow : PlatformWindow
             case WindowState.hidden:
                 xcb_unmap_window(g_connection, xcbWin_);
                 break;
-            case WindowState.normal:
-                geometry = lastNormalRect_;
-                break;
             default:
                 break;
         }
@@ -237,10 +237,11 @@ class XcbWindow : PlatformWindow
         return res;
     }
 
-    override @property void geometry(IRect pos)
+    override @property void geometry(IRect rect)
     {
+        if (rect.area == 0) return;
         uint[5] values = [
-            pos.x, pos.y, pos.width, pos.height, 0
+            rect.x, rect.y, rect.width, rect.height, 0
         ];
         auto cookie = xcb_configure_window_checked (g_connection, xcbWin,
                 XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
@@ -268,22 +269,105 @@ class XcbWindow : PlatformWindow
             return xcbWin_;
         }
 
-        void processButtonEvent(xcb_button_press_event_t* xcbEv)
-        {
+        void processButtonEvent(xcb_button_press_event_t* e)
+        in {
+            assert(e.event == xcbWin_);
+        }
+        body {
             auto ev = scoped!WindowMouseEvent (
-                (xcbEventType(xcbEv) == XCB_BUTTON_PRESS) ?
+                (xcbEventType(e) == XCB_BUTTON_PRESS) ?
                     EventType.windowMouseDown : EventType.windowMouseUp,
-                window, IPoint(xcbEv.event_x, xcbEv.event_y),
-                dgtMouseButton(xcbEv.detail), dgtMouseState(xcbEv.state),
-                dgtKeyMods(xcbEv.state)
+                win_, IPoint(e.event_x, e.event_y),
+                dgtMouseButton(e.detail), dgtMouseState(e.state),
+                dgtKeyMods(e.state)
             );
             win_.handleEvent(ev);
+        }
+
+        void processMotionEvent(xcb_motion_notify_event_t* e)
+        in {
+            assert(e.event == xcbWin_);
+        }
+        body {
+            auto ev = scoped!WindowMouseEvent (
+                EventType.windowMouseMove, win_,
+                IPoint(e.event_x, e.event_y),
+                MouseButton.none, dgtMouseState(e.state),
+                dgtKeyMods(e.state)
+            );
+            win_.handleEvent(ev);
+        }
+
+        void processEnterLeaveEvent(xcb_enter_notify_event_t* e)
+        in {
+            assert(e.event == xcbWin_);
+        }
+        body {
+            auto ev = scoped!WindowMouseEvent (
+                xcbEventType(e) == XCB_ENTER_NOTIFY ?
+                    EventType.windowMouseEnter : EventType.windowMouseLeave,
+                win_, IPoint(e.event_x, e.event_y),
+                MouseButton.none, dgtMouseState(e.state),
+                dgtKeyMods(e.state)
+            );
+            win_.handleEvent(ev);
+        }
+
+        void processConfigureEvent(xcb_configure_notify_event_t* e)
+        in {
+            assert(e.event == xcbWin_);
+        }
+        body {
+            if (e.x != rect_.x || e.y != rect_.y)
+            {
+                rect_.point = IPoint(e.x, e.y);
+                win_.handleEvent(scoped!WindowMoveEvent(win_, rect_.point));
+            }
+            if (e.width != rect_.width || e.height != rect_.height)
+            {
+                rect_.size = ISize(e.width, e.height);
+                win_.handleEvent(scoped!WindowResizeEvent(win_, rect_.size));
+            }
+        }
+
+        void processUnmapEvent(xcb_unmap_notify_event_t* e)
+        in {
+            assert(e.event == xcbWin_);
+        }
+        body {
+            mapped_ = false;
+            auto ev = scoped!WindowHideEvent(win_);
+            win_.handleEvent(ev);
+        }
+
+        void processMapEvent(xcb_map_notify_event_t* e)
+        in {
+            assert(e.event == xcbWin_);
+        }
+        body {
+            mapped_ = true;
+            auto ev = scoped!WindowShowEvent(win_);
+            win_.handleEvent(ev);
+        }
+
+        void processPropertyEvent(xcb_property_notify_event_t* e)
+        in {
+            assert(e.window == xcbWin_);
+        }
+        body {
+
+            if (e.atom == atom(Atom.WM_STATE) || e.atom == atom(Atom._NET_WM_STATE)) {
+                WindowState ws = state;
+                if (ws != lastKnownState_) {
+                    lastKnownState_ = ws;
+                    win_.handleEvent(scoped!WindowStateChangeEvent(win_, ws));
+                }
+            }
         }
     }
 
     private
     {
-
         void prepareEvents()
         {
             // register regular events
