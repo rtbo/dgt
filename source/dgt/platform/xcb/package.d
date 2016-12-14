@@ -258,7 +258,7 @@ class XcbWindow : PlatformWindow
                 g_display, screenNum, win_.attribs
         );
         if (!visualInfo) {
-            throw new Exception("Clue-XCB: window could not get visual");
+            throw new Exception("DGT-XCB: window could not get visual");
         }
         scope(exit) XFree(visualInfo);
 
@@ -282,7 +282,7 @@ class XcbWindow : PlatformWindow
         if (err) {
             import std.format : format;
             throw new Exception(format(
-                "Clue-XCB: could not create window: %s", err.error_code));
+                "DGT-XCB: could not create window: %s", err.error_code));
         }
 
         prepareEvents();

@@ -116,7 +116,7 @@ key.Sym symForKeysym(uint keysym)
 
 key.Code codeForKeycode(xkb_keycode_t keycode) {
     if (keycode >= keycodeTable.length) {
-        warningf("Clue-XCB: keycode 0x%x is out of bounds", keycode);
+        warningf("DGT-XCB: keycode 0x%x is out of bounds", keycode);
         return key.Code.unknown;
     }
     return keycodeTable[keycode];

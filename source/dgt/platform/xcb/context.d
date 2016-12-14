@@ -35,7 +35,7 @@ private GLXFBConfig getFBConfigFromAttribs(
     );
 
     if (!fbConfigs || !numConfigs) {
-        critical("Clue-XCB: could not get fb config");
+        critical("DGT-XCB: could not get fb config");
         return null;
     }
     scope(exit) XFree(fbConfigs);
