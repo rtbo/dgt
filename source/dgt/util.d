@@ -122,7 +122,7 @@ mixin template ValueProperty(string __name, T, T defaultVal=T.init) {
 ///
 mixin template SignalValueProperty(string __name, T, T defaultVal=T.init)
 {
-    import clue.core.signal;
+    import dgt.signal;
     import std.traits;
 
     // the present value type definition is "type without aliasing"
@@ -148,7 +148,7 @@ mixin template SignalValueProperty(string __name, T, T defaultVal=T.init)
 
 mixin template SmiSignalMixin(string __name, Iface)
 {
-    import clue.core.signal;
+    import dgt.signal;
 
     static assert (isSmi!Iface,
             "SmiSignalMixin must be used with 'Single Method Interface's");
@@ -161,7 +161,7 @@ mixin template SmiSignalMixin(string __name, Iface)
 
 mixin template SignalMixin(string __name, T...)
 {
-    import clue.core.signal;
+    import dgt.signal;
 
     mixin("private FireableSignal!T "~__name~"_ = new FireableSignal!T;");
 
@@ -170,7 +170,7 @@ mixin template SignalMixin(string __name, T...)
 
 mixin template EventHandlerSignalMixin(string __name, HandlerT)
 {
-    import clue.core.signal;
+    import dgt.signal;
 
     mixin("private FireableEventHandlerSignal!HandlerT "~__name~"_ =\n" ~
         "    new FireableEventHandlerSignal!HandlerT;");
