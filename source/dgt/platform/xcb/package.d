@@ -9,6 +9,7 @@ import dgt.screen;
 import dgt.geometry;
 import dgt.enums;
 import dgt.event;
+import key = dgt.keys;
 
 import xcb.xcb;
 import xcb.xkb;
