@@ -8,12 +8,12 @@ import xcb.xcb;
 class XcbScreen : Screen
 {
     private int num_;
-    private xcb_screen_t s_;
+    private xcb_screen_t *s_; // pointer invalidated after xcb connection shutdown
 
     this(int num, xcb_screen_t *s)
     {
         num_ = num;
-        s_ = *s;
+        s_ = s;
     }
 
     override @property int num() const { return num_; }
@@ -27,6 +27,7 @@ class XcbScreen : Screen
         return width / (s_.width_in_millimeters / 25.4);
     }
 
+    @property inout(xcb_screen_t*) xcbScreen() inout { return s_; }
     @property xcb_window_t root() const { return s_.root; }
     @property xcb_colormap_t defaultColormap() const { return s_.default_colormap; }
     @property uint whitePixel() const { return s_.white_pixel; }
