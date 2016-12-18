@@ -6,16 +6,16 @@ import std.traits : isNumeric;
 import std.algorithm : min, max;
 
 alias TPoint(T) = TVec2!T;
-alias Point = TPoint!double;
+alias Point = TPoint!float;
 alias IPoint = TPoint!int;
 
-alias Size = TSize!double;
+alias Size = TSize!float;
 alias ISize = TSize!int;
 
-alias Margins = TMargins!double;
+alias Margins = TMargins!float;
 alias IMargins = TMargins!int;
 
-alias Rect = TRect!double;
+alias Rect = TRect!float;
 alias IRect = TRect!int;
 
 
