@@ -14,20 +14,21 @@ import std.experimental.logger;
 
 
 /// Returned data should be freed with XFree.
-XVisualInfo *getVisualInfoFromAttribs(  Display *dpy,
-                                        int screenNum,
-                                        in SurfaceAttribs attribs)
+XVisualInfo *getXlibVisualInfo(  Display *dpy,
+                                int screenNum,
+                                in SurfaceAttribs attribs)
 {
-    auto fbc = getFBConfigFromAttribs(dpy, screenNum, attribs);
+    auto fbc = getGlxFBConfig(dpy, screenNum, attribs);
     if (!fbc) return null;
     return glXGetVisualFromFBConfig(dpy, fbc);
 }
 
 
-private GLXFBConfig getFBConfigFromAttribs(
-        Display *dpy, int screenNum, in SurfaceAttribs attribs)
+private GLXFBConfig getGlxFBConfig( Display *dpy,
+                                    int screenNum,
+                                    in SurfaceAttribs attribs)
 {
-    auto glxAttribs = chooseConfigAttribs(attribs);
+    auto glxAttribs = getGlxAttribs(attribs);
 
     int numConfigs;
     GLXFBConfig *fbConfigs = glXChooseFBConfig(
@@ -43,7 +44,7 @@ private GLXFBConfig getFBConfigFromAttribs(
     return fbConfigs[0];
 }
 
-private int[] chooseConfigAttribs(in SurfaceAttribs attribs) {
+private int[] getGlxAttribs(in SurfaceAttribs attribs) {
 
     int [] glxAttribs = [
         GLX_X_RENDERABLE    , 1,

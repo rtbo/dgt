@@ -51,7 +51,7 @@ class XcbWindow : PlatformWindow
         immutable size = creationSize();
         immutable pos = creationPos(screen, size);
 
-        auto visualInfo = getVisualInfoFromAttribs(
+        auto visualInfo = getXlibVisualInfo (
                 g_display, screenNum, win_.attribs
         );
         if (!visualInfo) {
