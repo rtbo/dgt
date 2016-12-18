@@ -36,6 +36,10 @@ struct Dash
 
 interface VgContext
 {
+    /// Release all resources in this context.
+    /// Context must not be used after this call.
+    void dispose();
+
     @property inout(Surface) surface() inout;
 
     void save();
