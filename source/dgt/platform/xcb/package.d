@@ -114,6 +114,17 @@ class XcbPlatform : Platform
     override @property string name() const { return "xcb"; }
 
     /// ditto
+    override @property PlatformCapsFlags caps() const
+    {
+        PlatformCapsFlags res = PlaformCaps.none;
+        if (hasDRI2 || hasDRI3)
+        {
+            res |= PlaformCaps.openGL;
+        }
+        return res;
+    }
+
+    /// ditto
     override @property inout(Screen)[] screens() inout
     {
         return cast(inout(Screen)[])screens_;
