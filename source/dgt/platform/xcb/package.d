@@ -14,6 +14,7 @@ import key = dgt.keys;
 import xcb.xcb;
 import xcb.xkb;
 import xcb.dri2;
+import xcb.dri3;
 import X11.Xlib;
 import X11.Xlib_xcb;
 import derelict.opengl3.gl3;
@@ -76,6 +77,7 @@ class XcbPlatform : Platform
         XcbKeyboard kbd_;
         uint xkbFirstEv_;
         uint dri2FirstEv_ = uint.max;
+        uint dri3FirstEv_ = uint.max;
         XcbScreen[] screens_;
         XcbWindow[xcb_window_t] windows_;
     }
@@ -97,7 +99,7 @@ class XcbPlatform : Platform
         initializeAtoms();
         screens_ = fetchScreens();
         kbd_ = new XcbKeyboard(g_connection, xkbFirstEv_);
-        initializeGLX();
+        initializeDRI();
     }
 
     /// Platform implementation
@@ -201,6 +203,7 @@ class XcbPlatform : Platform
     {
 
         @property bool hasDRI2() const { return dri2FirstEv_ != uint.max; }
+        @property bool hasDRI3() const { return dri3FirstEv_ != uint.max; }
 
         @property inout(XcbScreen)[] xcbScreens() inout
         {
@@ -279,14 +282,21 @@ class XcbPlatform : Platform
             return screens;
         }
 
-        void initializeGLX()
+        void initializeDRI()
         {
             DerelictGL3.load();
+            {
+                xcb_prefetch_extension_data(g_connection, &xcb_dri2_id);
 
-            xcb_prefetch_extension_data(g_connection, &xcb_dri2_id);
+                const reply = xcb_get_extension_data(g_connection, &xcb_dri2_id);
+                if (reply && reply.present) dri2FirstEv_ = reply.first_event;
+            }
+            {
+                xcb_prefetch_extension_data(g_connection, &xcb_dri3_id);
 
-            const reply = xcb_get_extension_data(g_connection, &xcb_dri2_id);
-            if (reply && reply.present) dri2FirstEv_ = reply.first_event;
+                const reply = xcb_get_extension_data(g_connection, &xcb_dri3_id);
+                if (reply && reply.present) dri3FirstEv_ = reply.first_event;
+            }
         }
 
         void processWindowEvent (SpecializedEvent, string processingMethod,

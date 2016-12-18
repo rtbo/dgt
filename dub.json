@@ -7,7 +7,7 @@
 	"copyright": "Copyright © 2016, Rémi Thebault",
 	"license": "MIT",
 
-	"libs": ["xcb-xkb", "xcb-dri2"],
+	"libs": ["xcb-xkb", "xcb-dri2", "xcb-dri3"],
 
     "dependencies":	{
 		"xcb-d":			"~>2.1.0",
