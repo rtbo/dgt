@@ -1,5 +1,7 @@
 module dgt.platform.xcb.context;
 
+import dgt.platform.xcb;
+import dgt.platform.xcb.screen;
 import dgt.surface;
 
 import X11.Xlib;
@@ -13,8 +15,33 @@ import std.format;
 import std.experimental.logger;
 
 
+
+xcb_visualtype_t *getXcbVisualForId(XcbScreen screen, xcb_visualid_t visualId)
+{
+    auto vt = findXcbVisualInScreen(screen, visualId);
+    if (!vt)
+        throw new Exception("getXcbVisualForId: visual not found for given screen");
+    return vt;
+}
+
+xcb_visualtype_t *getXcbVisualForId(XcbScreen[] screens, xcb_visualid_t visualId)
+{
+    foreach (s; screens)
+    {
+        auto vt = findXcbVisualInScreen(s, visualId);
+        if (vt) return vt;
+    }
+    throw new Exception("getXcbVisualForId: visual not found for given screens");
+}
+
+xcb_visualtype_t *getXcbDefaultVisualOfScreen(XcbScreen screen)
+{
+    return getXcbVisualForId(screen, screen.rootVisual);
+}
+
+
 /// Returned data should be freed with XFree.
-XVisualInfo *getXlibVisualInfo(  Display *dpy,
+XVisualInfo *getXlibVisualInfo( Display *dpy,
                                 int screenNum,
                                 in SurfaceAttribs attribs)
 {
@@ -42,6 +69,23 @@ private GLXFBConfig getGlxFBConfig( Display *dpy,
     scope(exit) XFree(fbConfigs);
 
     return fbConfigs[0];
+}
+
+private xcb_visualtype_t *findXcbVisualInScreen(XcbScreen screen, xcb_visualid_t visualId)
+{
+    auto depthIter = xcb_screen_allowed_depths_iterator(screen.xcbScreen);
+    while(depthIter.rem)
+    {
+        auto visualIter = xcb_depth_visuals_iterator(depthIter.data);
+        while(visualIter.rem)
+        {
+            if (visualId == visualIter.data.visual_id)
+                return visualIter.data;
+            xcb_visualtype_next(&visualIter);
+        }
+        xcb_depth_next(&depthIter);
+    }
+    return null;
 }
 
 private int[] getGlxAttribs(in SurfaceAttribs attribs) {
