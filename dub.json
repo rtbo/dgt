@@ -7,14 +7,17 @@
 	"copyright": "Copyright © 2016, Rémi Thebault",
 	"license": "MIT",
 
-	"libs": ["xcb-xkb", "xcb-dri2", "xcb-dri3"],
+	"libs": ["xcb-xkb", "xcb-dri2", "xcb-dri3", "cairo"],
+
+	"versions-linux": ["CairoXCBSurface"],
 
     "dependencies":	{
 		"xcb-d":			"~>2.1.0",
 		"xcb-util-wm-d":	"~>0.5.0",
         "xkbcommon-d":      "~>0.5.1",
         "xlib-d":           "~>0.1.1",
-		"derelict-gl3":		"~>1.0.19"
+		"derelict-gl3":		"~>1.0.19",
+		"cairod": 			"~>0.0.1-alpha.3+1.10.2"
     },
 	"subPackages": [
 		"examples/hello"

@@ -2,6 +2,7 @@ module dgt.platform.xcb.window;
 
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
+import dgt.vg.context;
 import dgt.screen;
 import dgt.platform;
 import dgt.window;
@@ -12,6 +13,8 @@ import dgt.enums;
 import xcb.xcb;
 import xcb.xcb_icccm;
 import X11.Xlib;
+import cairo.c.cairo;
+import cairo.c.xcb;
 
 import std.experimental.logger;
 import std.typecons : scoped;
@@ -30,10 +33,12 @@ class XcbWindow : PlatformWindow
         Window win_;
         XcbPlatform platform_;
         xcb_window_t xcbWin_;
+        xcb_visualid_t visualId_;
         bool created_ = false;
         WindowState lastKnownState_ = WindowState.hidden;
         IRect rect_;
         bool mapped_;
+        cairo_surface_t* cairoSurf_;
     }
 
     this(Window w, XcbPlatform platform)
@@ -57,13 +62,14 @@ class XcbWindow : PlatformWindow
         if (!visualInfo) {
             throw new Exception("DGT-XCB: window could not get visual");
         }
-        scope(exit) XFree(visualInfo);
+        visualId_ = visualInfo.visualid;
+        XFree(visualInfo);
 
         immutable cmap = xcb_generate_id(g_connection);
         xcbWin_ = xcb_generate_id(g_connection);
 
         xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE,
-                cmap, screen.root, visualInfo.visualid);
+                cmap, screen.root, visualId_);
 
         immutable mask = XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP;
         uint[] values = [ screen.whitePixel, cmap, 0 ];
@@ -94,9 +100,13 @@ class XcbWindow : PlatformWindow
 
     override void close()
     {
+        if (cairoSurf_) cairo_surface_destroy(cairoSurf_);
         if (mapped_) xcb_unmap_window(g_connection, xcbWin_);
         xcb_destroy_window(g_connection, xcbWin_);
         xcb_flush(g_connection);
+
+        cairoSurf_ = null;
+        xcbWin_ = 0;
     }
 
     override @property string title() const
@@ -262,6 +272,21 @@ class XcbWindow : PlatformWindow
         return win_;
     }
 
+    override VgContext createVgContext()
+    {
+        import dgt.vg.backend.cairo;
+        import cairo.c.xcb;
+
+        if (!cairoSurf_)
+        {
+            auto visual = getXcbVisualForId(platform_.xcbScreens, visualId_);
+            auto rect = geometry;
+            cairoSurf_ = cairo_xcb_surface_create(g_connection, xcbWin_, visual,
+                    rect.width, rect.height);
+        }
+        return new CairoVgContext(window, cairoSurf_);
+    }
+
     package
     {
         @property xcb_window_t xcbWin() const
@@ -325,6 +350,11 @@ class XcbWindow : PlatformWindow
             }
             if (e.width != rect_.width || e.height != rect_.height)
             {
+                if (cairoSurf_)
+                {
+                    import cairo.c.xcb;
+                    cairo_xcb_surface_set_size(cairoSurf_, e.width, e.height);
+                }
                 rect_.size = ISize(e.width, e.height);
                 win_.handleEvent(scoped!WindowResizeEvent(win_, rect_.size));
             }
