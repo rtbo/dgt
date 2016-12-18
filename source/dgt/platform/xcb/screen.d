@@ -28,9 +28,10 @@ class XcbScreen : Screen
     }
 
     @property xcb_window_t root() const { return s_.root; }
-    @property ubyte rootDepth() const { return s_.root_depth; }
-    @property xcb_visualid_t rootVisual() const { return s_.root_visual; }
+    @property xcb_colormap_t defaultColormap() const { return s_.default_colormap; }
     @property uint whitePixel() const { return s_.white_pixel; }
     @property uint blackPixel() const { return s_.black_pixel; }
+    @property xcb_visualid_t rootVisual() const { return s_.root_visual; }
+    @property ubyte rootDepth() const { return s_.root_depth; }
 
 }

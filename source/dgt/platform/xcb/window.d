@@ -46,7 +46,7 @@ class XcbWindow : PlatformWindow
 
     override void create(WindowState state)
     {
-        const screen = platform_.xcbScreens[0];
+        const screen = platform_.defaultXcbScreen;
         immutable screenNum = screen.num;
         immutable size = creationSize();
         immutable pos = creationPos(screen, size);
@@ -161,7 +161,7 @@ class XcbWindow : PlatformWindow
     {
         if (lastKnownState_ == ws) return;
 
-        const screen = platform_.xcbScreens[0];
+        const screen = platform_.defaultXcbScreen;
 
         // removing attribute that makes other than normal
 
@@ -472,7 +472,7 @@ class XcbWindow : PlatformWindow
         void changeNetWmState(bool yes, xcb_atom_t atom1,
                 xcb_atom_t atom2=XCB_ATOM_NONE)
         {
-            const screen = platform_.xcbScreens[0];
+            const screen = platform_.defaultXcbScreen;
             xcb_client_message_event_t e;
 
             e.response_type = XCB_CLIENT_MESSAGE;

@@ -19,6 +19,7 @@ interface Platform
 {
     @property string name() const;
     @property PlatformCapsFlags caps() const;
+    @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
     void processNextEvent();

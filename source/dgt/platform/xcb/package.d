@@ -78,7 +78,9 @@ class XcbPlatform : Platform
         uint xkbFirstEv_;
         uint dri2FirstEv_ = uint.max;
         uint dri3FirstEv_ = uint.max;
-        XcbScreen[] screens_;
+        int defaultScreen_;
+        Screen[] screens_;
+        XcbScreen[] xcbScreens_;
         XcbWindow[xcb_window_t] windows_;
     }
 
@@ -97,7 +99,7 @@ class XcbPlatform : Platform
         XSetEventQueueOwner(g_display, XCBOwnsEventQueue);
 
         initializeAtoms();
-        screens_ = fetchScreens();
+        initializeScreens();
         kbd_ = new XcbKeyboard(g_connection, xkbFirstEv_);
         initializeDRI();
     }
@@ -125,9 +127,15 @@ class XcbPlatform : Platform
     }
 
     /// ditto
+    override @property inout(Screen) defaultScreen() inout
+    {
+        return screens_[defaultScreen_];
+    }
+
+    /// ditto
     override @property inout(Screen)[] screens() inout
     {
-        return cast(inout(Screen)[])screens_;
+        return screens_;
     }
 
     /// ditto
@@ -216,9 +224,14 @@ class XcbPlatform : Platform
         @property bool hasDRI2() const { return dri2FirstEv_ != uint.max; }
         @property bool hasDRI3() const { return dri3FirstEv_ != uint.max; }
 
+        @property inout(XcbScreen) defaultXcbScreen() inout
+        {
+            return xcbScreens_[defaultScreen_];
+        }
+
         @property inout(XcbScreen)[] xcbScreens() inout
         {
-            return screens_;
+            return xcbScreens_;
         }
 
         inout(XcbWindow) xcbWindow(xcb_window_t xcbWin) inout
@@ -279,6 +292,16 @@ class XcbPlatform : Platform
                 atoms_[atom] = reply.atom;
                 free(reply);
             }
+        }
+
+        void initializeScreens()
+        {
+            import std.algorithm : map;
+            import std.array : array;
+            defaultScreen_ = XDefaultScreen(g_display);
+            xcbScreens_ = fetchScreens();
+            screens_ = xcbScreens_.map!(s => cast(Screen)s).array();
+            enforce(defaultScreen_ < screens_.length);
         }
 
         XcbScreen[] fetchScreens()
