@@ -28,12 +28,13 @@ class Application
     /// Enter main event processing loop
     int loop()
     {
-        while (!exitFlag_) platform_.processNextEvent();
+        while (!exitFlag_)
+            platform_.processNextEvent();
         return exitCode_;
     }
 
     /// Register an exit code and exit at end of current event loop
-    void exit(int code=0)
+    void exit(int code = 0)
     {
         exitCode_ = code;
         exitFlag_ = true;
@@ -42,7 +43,6 @@ class Application
     private Platform platform_;
     private bool exitFlag_;
     private int exitCode_;
-
 
     static
     {
@@ -73,5 +73,6 @@ class Application
 @property Platform defaultPlatform()
 {
     import dgt.platform.xcb : XcbPlatform;
+
     return new XcbPlatform();
 }

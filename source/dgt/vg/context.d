@@ -41,6 +41,7 @@ enum PaintMode
     fill = 1,
     stroke = 2,
 }
+
 alias PaintModeFlags = BitFlags!PaintMode;
 
 interface VgContext

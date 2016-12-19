@@ -7,4 +7,3 @@ interface Screen
     @property int height() const;
     @property double dpi() const;
 }
-

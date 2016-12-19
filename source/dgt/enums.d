@@ -1,12 +1,10 @@
 module dgt.enums;
 
-
 enum Orientation
 {
     horizontal,
     vertical
 }
-
 
 enum MouseButton
 {
@@ -19,11 +17,11 @@ enum MouseButton
 
 enum MouseState
 {
-    none    = 0,
+    none = 0,
 
-    left    = 1,
-    middle  = 1 << 1,
-    right   = 1 << 2
+    left = 1,
+    middle = 1 << 1,
+    right = 1 << 2
 }
 
 enum FocusMethod
@@ -32,4 +30,3 @@ enum FocusMethod
     mouse,
     keyboard
 }
-

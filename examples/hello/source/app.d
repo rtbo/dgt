@@ -33,7 +33,8 @@ int main()
     };
     win.onExpose += (WindowExposeEvent ev) {
         auto ctx = win.createVgContext();
-        scope (exit) ctx.dispose();
+        scope (exit)
+            ctx.dispose();
 
         ctx.lineWidth = 5f;
         auto p = new Path([10, 10]);

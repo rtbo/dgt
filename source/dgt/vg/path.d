@@ -20,20 +20,25 @@ enum PathSeg
 /// Tell how many components compose a segment
 size_t numComponents(in PathSeg seg)
 {
-    final switch(seg)
+    final switch (seg)
     {
-        case PathSeg.moveTo: return 2;
-        case PathSeg.lineTo: return 2;
-        case PathSeg.quadTo: return 4;
-        case PathSeg.cubicTo: return 6;
-        case PathSeg.shortCcwArcTo:
-        case PathSeg.shortCwArcTo:
-        case PathSeg.largeCcwArcTo:
-        case PathSeg.largeCwArcTo: return 5;
-        case PathSeg.close: return 0;
+    case PathSeg.moveTo:
+        return 2;
+    case PathSeg.lineTo:
+        return 2;
+    case PathSeg.quadTo:
+        return 4;
+    case PathSeg.cubicTo:
+        return 6;
+    case PathSeg.shortCcwArcTo:
+    case PathSeg.shortCwArcTo:
+    case PathSeg.largeCcwArcTo:
+    case PathSeg.largeCwArcTo:
+        return 5;
+    case PathSeg.close:
+        return 0;
     }
 }
-
 
 /// Vector graphics path
 class Path
@@ -43,19 +48,33 @@ class Path
     private float[2] lastControl_;
     private float[2] lastPoint_;
 
-
     this(in float[2] moveToPoint)
     {
-        segments_ = [ PathSeg.moveTo ];
+        segments_ = [PathSeg.moveTo];
         data_ = moveToPoint.dup;
         lastControl_[] = float.nan;
         lastPoint_ = moveToPoint;
     }
 
-    @property const(PathSeg)[] segments() const { return segments_; }
-    @property const(float)[] data() const { return data_; }
-    @property float[2] lastControl() const { return lastControl_; }
-    @property float[2] lastPoint() const { return lastPoint_; }
+    @property const(PathSeg)[] segments() const
+    {
+        return segments_;
+    }
+
+    @property const(float)[] data() const
+    {
+        return data_;
+    }
+
+    @property float[2] lastControl() const
+    {
+        return lastControl_;
+    }
+
+    @property float[2] lastPoint() const
+    {
+        return lastPoint_;
+    }
 
     @property auto segmentRange() const
     {
@@ -73,7 +92,7 @@ class Path
     void moveToRel(in float[2] vec)
     {
         enforce(hasLastPoint);
-        moveTo([lastPoint_[0]+vec[0], lastPoint_[1]+vec[1]]);
+        moveTo([lastPoint_[0] + vec[0], lastPoint_[1] + vec[1]]);
     }
 
     void lineTo(in float[2] point)
@@ -87,7 +106,7 @@ class Path
     void lineToRel(in float[2] vec)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0]+vec[0], lastPoint_[1]+vec[1]]);
+        lineTo([lastPoint_[0] + vec[0], lastPoint_[1] + vec[1]]);
     }
 
     void horLineTo(in float xPoint)
@@ -99,7 +118,7 @@ class Path
     void horLineToRel(in float xVec)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0]+xVec, lastPoint_[1]]);
+        lineTo([lastPoint_[0] + xVec, lastPoint_[1]]);
     }
 
     void verLineTo(in float yPoint)
@@ -111,13 +130,13 @@ class Path
     void verLineToRel(in float yVec)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0], lastPoint_[1]+yVec]);
+        lineTo([lastPoint_[0], lastPoint_[1] + yVec]);
     }
 
     void quadTo(in float[2] control, in float[2] point)
     {
         segments_ ~= PathSeg.quadTo;
-        data_ ~= [ control[0], control[1], point[0], point[1] ];
+        data_ ~= [control[0], control[1], point[0], point[1]];
         lastControl_ = control;
         lastPoint_ = point;
     }
@@ -125,9 +144,7 @@ class Path
     void cubicTo(float[2] control1, float[2] control2, float[2] point)
     {
         segments_ ~= PathSeg.cubicTo;
-        data_ ~= [ control1[0], control1[1],
-                    control2[0], control2[1],
-                    point[0], point[1] ];
+        data_ ~= [control1[0], control1[1], control2[0], control2[1], point[0], point[1]];
         lastControl_ = control2;
         lastPoint_ = point;
     }
@@ -136,23 +153,15 @@ class Path
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        quadTo(
-            [   2*lastPoint_[0] - lastControl_[0],
-                2*lastPoint_[1] - lastControl_[1]   ],
-            point
-        );
+        quadTo([2 * lastPoint_[0] - lastControl_[0], 2 * lastPoint_[1] - lastControl_[1]], point);
     }
 
     void smoothCubicTo(float[2] control2, float[2] point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        cubicTo(
-            [   2*lastPoint_[0] - lastControl_[0],
-                2*lastPoint_[1] - lastControl_[1]   ],
-            control2,
-            point
-        );
+        cubicTo([2 * lastPoint_[0] - lastControl_[0],
+                2 * lastPoint_[1] - lastControl_[1]], control2, point);
     }
 
     void shortCcwArcTo(float rh, float rv, float rot, float[2] point)
@@ -187,16 +196,17 @@ class Path
     private @property hasLastPoint() const
     {
         import std.math : isNaN;
+
         return !isNaN(lastPoint_[0]) && !isNaN(lastPoint_[1]);
     }
 
     private @property hasLastControl() const
     {
         import std.math : isNaN;
+
         return !isNaN(lastControl_[0]) && !isNaN(lastControl_[1]);
     }
 }
-
 
 /// Aggregates a the data of a Path segment
 struct SegmentData
@@ -211,7 +221,6 @@ struct SegmentData
     /// The end point of the previous segment.
     float[2] previousPoint;
 }
-
 
 /// Segment data forward range.
 /// Allow lazy iteration over the segments of a path.
@@ -229,7 +238,7 @@ struct SegmentDataRange
     }
 
     private this(const(PathSeg)[] segments, const(float)[] data,
-                in float[2] previousControl, in float[2] previousPoint)
+            in float[2] previousControl, in float[2] previousPoint)
     {
         this.segments = segments;
         this.data = data;
@@ -260,33 +269,33 @@ struct SegmentDataRange
         immutable numComps = seg.numComponents;
         assert(data.length >= numComps);
 
-        final switch(seg)
+        final switch (seg)
         {
-            case PathSeg.moveTo:
-                previousControl[] = float.nan;
-                previousPoint = data[0 .. 2];
-                break;
-            case PathSeg.lineTo:
-                previousControl[] = float.nan;
-                previousPoint = data[0 .. 2];
-                break;
-            case PathSeg.quadTo:
-                previousControl = data[0 .. 2];
-                previousPoint = data[2 .. 4];
-                break;
-            case PathSeg.cubicTo:
-                previousControl = data[2 .. 4];
-                previousPoint = data[4 .. 6];
-                break;
-            case PathSeg.shortCcwArcTo:
-            case PathSeg.shortCwArcTo:
-            case PathSeg.largeCcwArcTo:
-            case PathSeg.largeCwArcTo:
-                previousControl[] = float.nan;
-                previousPoint = data[3 .. 5];
-                break;
-            case PathSeg.close:
-                break;
+        case PathSeg.moveTo:
+            previousControl[] = float.nan;
+            previousPoint = data[0 .. 2];
+            break;
+        case PathSeg.lineTo:
+            previousControl[] = float.nan;
+            previousPoint = data[0 .. 2];
+            break;
+        case PathSeg.quadTo:
+            previousControl = data[0 .. 2];
+            previousPoint = data[2 .. 4];
+            break;
+        case PathSeg.cubicTo:
+            previousControl = data[2 .. 4];
+            previousPoint = data[4 .. 6];
+            break;
+        case PathSeg.shortCcwArcTo:
+        case PathSeg.shortCwArcTo:
+        case PathSeg.largeCcwArcTo:
+        case PathSeg.largeCwArcTo:
+            previousControl[] = float.nan;
+            previousPoint = data[3 .. 5];
+            break;
+        case PathSeg.close:
+            break;
         }
 
         segments = segments[1 .. $];

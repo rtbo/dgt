@@ -9,7 +9,6 @@ enum OpenGLProfile
     Core,
 }
 
-
 struct SurfaceAttribs
 {
     mixin ValueProperty!("majorVersion", int, 3);
@@ -30,28 +29,31 @@ struct SurfaceAttribs
 
     mixin ValueProperty!("debugContext", bool);
 
-
-    @property bool hasAlpha() const {
+    @property bool hasAlpha() const
+    {
         return alphaSize_ > 0;
     }
 
-    @property bool hasDepth() const {
+    @property bool hasDepth() const
+    {
         return depthSize_ > 0;
     }
 
-    @property bool hasStencil() const {
+    @property bool hasStencil() const
+    {
         return stencilSize_ > 0;
     }
 
-    @property bool hasSamples() const {
+    @property bool hasSamples() const
+    {
         return samples_ > 0;
     }
 
-    @property int decimalVersion() const {
-        return majorVersion_*10 + minorVersion_;
+    @property int decimalVersion() const
+    {
+        return majorVersion_ * 10 + minorVersion_;
     }
 }
-
 
 interface Surface
 {

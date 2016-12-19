@@ -9,11 +9,12 @@ import std.typecons : BitFlags;
 
 enum PlaformCaps
 {
-    none        = 0,
-    openGL      = 1,
-    openGLES    = 2,
-    openVG      = 4,
+    none = 0,
+    openGL = 1,
+    openGLES = 2,
+    openVG = 4,
 }
+
 alias PlatformCapsFlags = BitFlags!PlaformCaps;
 
 interface Platform
@@ -26,7 +27,6 @@ interface Platform
     void processNextEvent();
     void shutdown();
 }
-
 
 interface PlatformWindow
 {
