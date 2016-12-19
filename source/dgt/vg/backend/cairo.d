@@ -2,9 +2,12 @@ module dgt.vg.backend.cairo;
 
 import dgt.vg.context;
 import dgt.vg.path;
+import dgt.vg.paint;
 import dgt.surface;
 
 import cairo.c.cairo;
+
+import std.exception : enforce;
 
 pure @safe @nogc
 {
@@ -279,4 +282,174 @@ private float[4] quadToCubicControlPoints(in float[2] start, in float[2] control
     return [start[0] / 3f + control[0] * 2f / 3f,
         start[1] / 3f + control[1] * 2f / 3f, end[0] / 3f + control[0] * 2f / 3f,
         end[1] / 3f + control[1] * 2f / 3f,];
+}
+
+final class CairoPaint : Paint
+{
+    private cairo_pattern_t* pattern_;
+
+    private @property cairo_pattern_t* pattern() const
+    {
+        return cast(cairo_pattern_t*) pattern_;
+    }
+
+    private @property cairo_pattern_t* pattern()
+    {
+        return pattern_;
+    }
+
+    this()
+    {
+    }
+
+    void dispose()
+    {
+        if (pattern_)
+        {
+            cairo_pattern_destroy(pattern_);
+            pattern_ = null;
+        }
+    }
+
+    @property PaintType type() const
+    {
+        immutable cairoType = cairo_pattern_get_type(enforce(pattern));
+        final switch (cairoType)
+        {
+        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_SOLID:
+            return PaintType.color;
+        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_LINEAR:
+            return PaintType.linearGradient;
+        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_RADIAL:
+            return PaintType.radialGradient;
+        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_SURFACE:
+            assert(false, "unimplemented");
+        }
+    }
+
+    @property float[4] color() const
+    {
+        enforce(type == PaintType.color);
+        double r;
+        double g;
+        double b;
+        double a;
+        cairo_pattern_get_rgba(pattern, &r, &g, &b, &a);
+        return [cast(float) r, cast(float) g, cast(float) b, cast(float) a];
+    }
+
+    @property void color(in float[4] color)
+    {
+        enforce(!pattern_);
+        pattern_ = cairo_pattern_create_rgba(color[0], color[1], color[2], color[3]);
+    }
+
+    @property LinearGradient linearGradient() const
+    {
+        enforce(type == PaintType.linearGradient);
+        LinearGradient gradient;
+        double x0 = void, y0 = void, x1 = void, y1 = void;
+        cairo_pattern_get_linear_points(pattern, &x0, &y0, &x1, &y1);
+        gradient.p0 = [cast(float) x0, cast(float) y0];
+        gradient.p1 = [cast(float) x1, cast(float) y1];
+        gradient.stops = getStops();
+        return gradient;
+    }
+
+    @property void linearGradient(in LinearGradient gradient)
+    {
+        enforce(!pattern_);
+        pattern_ = cairo_pattern_create_linear(gradient.p0[0], gradient.p0[1],
+                gradient.p1[0], gradient.p1[1]);
+        addStops(gradient.stops);
+    }
+
+    // OpenVG radial gradients bind in the following way
+    // OpenVG       Cairo
+    // focal        start circle (start circle radius = 0)
+    // center       end circle
+    // radius       end circle radius
+    @property RadialGradient radialGradient() const
+    {
+        import dgt.math.approx : approx;
+
+        enforce(type == PaintType.radialGradient);
+        RadialGradient gradient;
+        double x0 = void, y0 = void, x1 = void, y1 = void;
+        double r0 = void, r1 = void;
+        cairo_pattern_get_radial_circles(pattern, &x0, &y0, &r0, &x1, &y1, &r1);
+        gradient.f = [cast(float) x0, cast(float) y0];
+        assert(approx(r0, 0f));
+        gradient.c = [cast(float) x1, cast(float) y1];
+        gradient.r = cast(float) r1;
+        gradient.stops = getStops();
+        return gradient;
+    }
+
+    @property void radialGradient(in RadialGradient gradient)
+    {
+        assert(!pattern_);
+        pattern_ = cairo_pattern_create_radial(gradient.f[0], gradient.f[1],
+                0.0, gradient.c[0], gradient.c[1], gradient.r);
+        addStops(gradient.stops);
+    }
+
+    @property SpreadMode speadMode() const
+    {
+        immutable extend = cairo_pattern_get_extend(pattern);
+        final switch (extend)
+        {
+        case cairo_extend_t.CAIRO_EXTEND_NONE:
+            return SpreadMode.none;
+        case cairo_extend_t.CAIRO_EXTEND_PAD:
+            return SpreadMode.pad;
+        case cairo_extend_t.CAIRO_EXTEND_REPEAT:
+            return SpreadMode.reflect;
+        case cairo_extend_t.CAIRO_EXTEND_REFLECT:
+            return SpreadMode.reflect;
+        }
+    }
+
+    @property void spreadMode(in SpreadMode spreadMode)
+    {
+        final switch (spreadMode)
+        {
+        case SpreadMode.none:
+            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_NONE);
+            break;
+        case SpreadMode.pad:
+            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_PAD);
+            break;
+        case SpreadMode.repeat:
+            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_REPEAT);
+            break;
+        case SpreadMode.reflect:
+            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_REFLECT);
+            break;
+        }
+    }
+
+    private GradientStop[] getStops() const
+    {
+        int stopCount = void;
+        cairo_pattern_get_color_stop_count(pattern, &stopCount);
+        auto stops = new GradientStop[stopCount];
+        foreach (i; 0 .. stopCount)
+        {
+            double offset = void, r = void, g = void, b = void, a = void;
+            cairo_pattern_get_color_stop_rgba(pattern, i, &offset, &r, &g, &b, &a);
+            stops[i] = GradientStop(cast(float) offset, [cast(float) r,
+                    cast(float) g, cast(float) b, cast(float) a]);
+        }
+        return stops;
+    }
+
+    private void addStops(in GradientStop[] stops)
+    {
+        foreach (stop; stops)
+        {
+            cairo_pattern_add_color_stop_rgba(pattern, stop.offset,
+                    stop.color[0], stop.color[1], stop.color[2], stop.color[3]);
+        }
+    }
 }
