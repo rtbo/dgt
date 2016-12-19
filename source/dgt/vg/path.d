@@ -43,6 +43,7 @@ size_t numComponents(in PathSeg seg)
 /// Vector graphics path
 class Path
 {
+    // FIXME: enforce path consistence
     private PathSeg[] segments_;
     private float[] data_;
     private float[2] lastControl_;
@@ -168,29 +169,39 @@ class Path
     {
         segments_ ~= PathSeg.shortCcwArcTo;
         data_ ~= [rh, rv, rot, point[0], point[1]];
+        lastControl_[] = float.nan;
+        lastPoint_ = point;
     }
 
     void shortCwArcTo(float rh, float rv, float rot, float[2] point)
     {
         segments_ ~= PathSeg.shortCwArcTo;
         data_ ~= [rh, rv, rot, point[0], point[1]];
+        lastControl_[] = float.nan;
+        lastPoint_ = point;
     }
 
     void largeCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
         segments_ ~= PathSeg.largeCcwArcTo;
         data_ ~= [rh, rv, rot, point[0], point[1]];
+        lastControl_[] = float.nan;
+        lastPoint_ = point;
     }
 
     void largeCwArcTo(float rh, float rv, float rot, float[2] point)
     {
         segments_ ~= PathSeg.largeCwArcTo;
         data_ ~= [rh, rv, rot, point[0], point[1]];
+        lastControl_[] = float.nan;
+        lastPoint_ = point;
     }
 
     void close()
     {
         segments_ ~= PathSeg.close;
+        lastControl_[] = float.nan;
+        // keep last point around for a relative moveTo
     }
 
     private @property hasLastPoint() const
@@ -295,6 +306,7 @@ struct SegmentDataRange
             previousPoint = data[3 .. 5];
             break;
         case PathSeg.close:
+            previousControl[] = float.nan;
             break;
         }
 
