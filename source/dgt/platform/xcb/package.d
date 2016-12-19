@@ -187,7 +187,12 @@ class XcbPlatform : Platform
                                     "processPropertyEvent", "window")(e);
                 break;
             case XCB_CLIENT_MESSAGE:
-                return processClientEvent(cast(xcb_client_message_event_t*)e);
+                processClientEvent(cast(xcb_client_message_event_t*)e);
+                break;
+            case XCB_EXPOSE:
+                processWindowEvent!(xcb_expose_event_t,
+                                    "processExposeEvent", "window")(e);
+                break;
             default:
                 if (xcbType == xkbFirstEv_) {
                     auto genKbd = cast(XkbGenericEvent*)e;

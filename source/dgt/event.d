@@ -155,21 +155,25 @@ class WindowShowEvent : WindowEvent {
 }
 
 
-class WindowHideEvent : WindowEvent {
-
+class WindowHideEvent : WindowEvent
+{
     this (Window window) {
         super(EventType.windowHide, window);
     }
-
 }
 
 
-class WindowExposeEvent : WindowEvent {
-
-    this (Window window) {
+class WindowExposeEvent : WindowEvent
+{
+    this (Window window, IRect exposedArea)
+    {
         super(EventType.windowExpose, window);
+        exposedArea_ = exposedArea;
     }
 
+    @property IRect exposedArea() const { return exposedArea_; }
+
+    private IRect exposedArea_;
 }
 
 

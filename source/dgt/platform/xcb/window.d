@@ -394,6 +394,17 @@ class XcbWindow : PlatformWindow
                 }
             }
         }
+
+        void processExposeEvent(xcb_expose_event_t* e)
+        in {
+            assert(e.window == xcbWin_);
+        }
+        body {
+            auto ev = scoped!WindowExposeEvent(
+                win_, IRect(e.x, e.y, e.width, e.height)
+            );
+            win_.handleEvent(ev);
+        }
     }
 
     private

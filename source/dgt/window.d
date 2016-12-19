@@ -7,6 +7,7 @@ import dgt.geometry;
 import dgt.event;
 import dgt.signal;
 import dgt.util;
+import dgt.vg.context;
 
 import std.exception : enforce;
 
@@ -216,6 +217,9 @@ class Window : Surface
         assert(wEv.window is this);
         switch (wEv.type)
         {
+        case EventType.windowExpose:
+            onExpose_.fire(cast(WindowExposeEvent)wEv);
+            break;
         case EventType.windowMove:
             auto wmEv = cast(WindowMoveEvent)wEv;
             position_ = wmEv.point;
@@ -265,6 +269,13 @@ class Window : Surface
         }
     }
 
+    /// Get a new VgContext for drawing onto the window.
+    /// This context must be released by calling the dispose() method
+    /// when no more needed.
+    VgContext createVgContext()
+    {
+        return platformWindow_.createVgContext();
+    }
 
     private
     {
