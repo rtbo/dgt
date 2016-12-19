@@ -30,6 +30,18 @@ int main()
                 break;
         }
     };
+    win.onExpose += (WindowExposeEvent ev) {
+        import dgt.vg.path;
+        import dgt.vg.context;
+        auto ctx = win.createVgContext();
+        scope(exit) ctx.dispose();
+
+        ctx.lineWidth = 5f;
+        auto p = new Path([10, 10]);
+        p.lineTo([10, 400]);
+        p.lineTo([400, 10]);
+        ctx.drawPath(p, PaintModeFlags(PaintMode.stroke));
+    };
     win.onClosed += (Window) {
         app.exit(0);
     };
