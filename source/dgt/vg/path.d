@@ -219,7 +219,7 @@ class Path
     }
 }
 
-/// Aggregates a the data of a Path segment
+/// Aggregates the data of a Path segment
 struct SegmentData
 {
     /// The segment type.
@@ -227,7 +227,6 @@ struct SegmentData
     /// The data of this segment.
     const(float)[] data;
     /// The last control point of the previous segment.
-    /// For lineTo segments, previousControl is the start point of the line.
     float[2] previousControl;
     /// The end point of the previous segment.
     float[2] previousPoint;
