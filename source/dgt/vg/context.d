@@ -3,6 +3,8 @@ module dgt.vg.context;
 import dgt.vg.path;
 import dgt.surface;
 
+import std.typecons : BitFlags, Flag, No;
+
 enum FillRule
 {
     NonZero,
@@ -34,6 +36,13 @@ struct Dash
     }
 }
 
+enum PaintMode
+{
+    fill = 1,
+    stroke = 2,
+}
+alias PaintModeFlags = BitFlags!PaintMode;
+
 interface VgContext
 {
     /// Release all resources in this context.
@@ -44,9 +53,6 @@ interface VgContext
 
     void save();
     void restore();
-
-    @property inout(Path) clipPath() inout;
-    @property void clipPath(Path path);
 
     @property FillRule fillRule() const;
     @property void fillRule(in FillRule fillRule);
@@ -66,5 +72,7 @@ interface VgContext
     @property const(float)[] pathTransform() const;
     @property void pathTransform(in float[] pathTransform);
 
+    void clipWithPath(in Path path);
 
+    void drawPath(in Path path, in PaintModeFlags paintMode);
 }

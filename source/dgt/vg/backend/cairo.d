@@ -13,8 +13,10 @@ pure @safe @nogc
     {
         final switch (fillRule)
         {
-            case FillRule.NonZero: return cairo_fill_rule_t.CAIRO_FILL_RULE_WINDING;
-            case FillRule.EvenOdd: return cairo_fill_rule_t.CAIRO_FILL_RULE_EVEN_ODD;
+            case FillRule.NonZero:
+                return cairo_fill_rule_t.CAIRO_FILL_RULE_WINDING;
+            case FillRule.EvenOdd:
+                return cairo_fill_rule_t.CAIRO_FILL_RULE_EVEN_ODD;
         }
     }
 
@@ -22,8 +24,10 @@ pure @safe @nogc
     {
         final switch (fillRule)
         {
-            case cairo_fill_rule_t.CAIRO_FILL_RULE_WINDING: return FillRule.NonZero;
-            case cairo_fill_rule_t.CAIRO_FILL_RULE_EVEN_ODD: return FillRule.EvenOdd;
+            case cairo_fill_rule_t.CAIRO_FILL_RULE_WINDING:
+                return FillRule.NonZero;
+            case cairo_fill_rule_t.CAIRO_FILL_RULE_EVEN_ODD:
+                return FillRule.EvenOdd;
         }
     }
 
@@ -112,13 +116,6 @@ class CairoVgContext : VgContext
         cairo_restore(cairo);
     }
 
-    override @property inout(Path) clipPath() inout
-    {
-        return null;
-    }
-    override @property void clipPath(Path path)
-    {}
-
     override @property FillRule fillRule() const
     {
         return dgtFillRule(cairo_get_fill_rule(cairo));
@@ -169,7 +166,9 @@ class CairoVgContext : VgContext
         import std.algorithm : map;
         import std.array : array;
         auto values = dash.values.map!(v => double(v)).array;
-        cairo_set_dash(cairo, &values[0], cast(int)values.length, cast(float)dash.offset);
+        cairo_set_dash(cairo,
+            &values[0], cast(int)values.length, cast(float)dash.offset
+        );
     }
 
     override @property const(float)[] pathTransform() const
@@ -200,4 +199,77 @@ class CairoVgContext : VgContext
         );
         cairo_set_matrix(cairo, &cairoMat);
     }
+
+    override void clipWithPath(in Path path)
+    {
+        bindPath(path);
+        cairo_clip(cairo);
+    }
+
+    override void drawPath(in Path path, in PaintModeFlags paintMode)
+    {
+        bindPath(path);
+        if (paintMode & PaintMode.fill)
+        {
+            cairo_fill_preserve(cairo);
+        }
+        if (paintMode & PaintMode.stroke)
+        {
+            cairo_stroke_preserve(cairo);
+        }
+    }
+
+    private void bindPath(in Path path)
+    {
+        cairo_new_path(cairo);
+        foreach(seg; path.segmentRange)
+        {
+            final switch(seg.seg)
+            {
+                case PathSeg.moveTo:
+                    cairo_move_to(cairo, seg.data[0], seg.data[1]);
+                    break;
+                case PathSeg.lineTo:
+                    cairo_line_to(cairo, seg.data[0], seg.data[1]);
+                    break;
+                case PathSeg.quadTo:
+                    immutable cps = quadToCubicControlPoints(
+                        seg.previousPoint, seg.data[0 .. 2], seg.data[2 .. 4]
+                    );
+                    cairo_curve_to( cairo,
+                        cps[0], cps[1], cps[2], cps[3], seg.data[2], seg.data[3]
+                    );
+                    break;
+                case PathSeg.cubicTo:
+                    cairo_curve_to( cairo,
+                        seg.data[0], seg.data[1], seg.data[2], seg.data[3],
+                        seg.data[4], seg.data[5]
+                    );
+                    break;
+                case PathSeg.shortCcwArcTo:
+                case PathSeg.shortCwArcTo:
+                case PathSeg.largeCcwArcTo:
+                case PathSeg.largeCwArcTo:
+                    // FIXME: impl with transforms and cairo_arc
+                    assert(false, "implemented");
+                case PathSeg.close:
+                    cairo_close_path(cairo);
+                    break;
+            }
+        }
+    }
+}
+
+
+private
+float[4] quadToCubicControlPoints( in float[2] start,
+                                   in float[2] control,
+                                   in float[2] end) pure nothrow @safe @nogc
+{
+    return [
+        start[0]/3f + control[0]*2f/3f,
+        start[1]/3f + control[1]*2f/3f,
+        end[0]/3f + control[0]*2f/3f,
+        end[1]/3f + control[1]*2f/3f,
+    ];
 }
