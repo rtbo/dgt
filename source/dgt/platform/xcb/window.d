@@ -272,6 +272,11 @@ class XcbWindow : PlatformWindow
 
     override @property IRect geometry() const
     {
+        return rect_;
+    }
+
+    private @property IRect geometrySys() const
+    {
         assert(created);
         auto c = xcb_get_geometry(g_connection, xcbWin_);
         xcb_generic_error_t* err;
