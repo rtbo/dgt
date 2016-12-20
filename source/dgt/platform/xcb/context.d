@@ -14,7 +14,7 @@ import std.typecons;
 import std.format;
 import std.experimental.logger;
 
-xcb_visualtype_t* getXcbVisualForId(XcbScreen screen, xcb_visualid_t visualId)
+xcb_visualtype_t* getXcbVisualForId(in XcbScreen screen, xcb_visualid_t visualId)
 {
     auto vt = findXcbVisualInScreen(screen, visualId);
     if (!vt)
@@ -22,7 +22,7 @@ xcb_visualtype_t* getXcbVisualForId(XcbScreen screen, xcb_visualid_t visualId)
     return vt;
 }
 
-xcb_visualtype_t* getXcbVisualForId(XcbScreen[] screens, xcb_visualid_t visualId)
+xcb_visualtype_t* getXcbVisualForId(in XcbScreen[] screens, xcb_visualid_t visualId)
 {
     foreach (s; screens)
     {
@@ -33,7 +33,7 @@ xcb_visualtype_t* getXcbVisualForId(XcbScreen[] screens, xcb_visualid_t visualId
     throw new Exception("getXcbVisualForId: visual not found for given screens");
 }
 
-xcb_visualtype_t* getXcbDefaultVisualOfScreen(XcbScreen screen)
+xcb_visualtype_t* getXcbDefaultVisualOfScreen(in XcbScreen screen)
 {
     return getXcbVisualForId(screen, screen.rootVisual);
 }
@@ -65,7 +65,7 @@ private GLXFBConfig getGlxFBConfig(Display* dpy, int screenNum, in SurfaceAttrib
     return fbConfigs[0];
 }
 
-private xcb_visualtype_t* findXcbVisualInScreen(XcbScreen screen, xcb_visualid_t visualId)
+private xcb_visualtype_t* findXcbVisualInScreen(in XcbScreen screen, xcb_visualid_t visualId)
 {
     auto depthIter = xcb_screen_allowed_depths_iterator(screen.xcbScreen);
     while (depthIter.rem)
