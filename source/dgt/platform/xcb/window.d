@@ -133,7 +133,6 @@ class XcbWindow : PlatformWindow
 
         platform_.registerWindow(this);
 
-        rect_ = IRect(pos, size);
         lastKnownState_ = WindowState.hidden;
         this.state = state; // actually show the window
         created_ = true;
