@@ -30,10 +30,9 @@ class XcbVgFactory : VgFactory
     import cairo.c.xcb;
 
     private Surface surf_;
-    cairo_surface_t* cairoSurf_;
+    private cairo_surface_t* cairoSurf_;
 
-    this(Surface surface, xcb_drawable_t drawable,
-            xcb_visualtype_t* visual,
+    this(Surface surface, xcb_drawable_t drawable, xcb_visualtype_t* visual,
             int width, int height)
     {
         surf_ = surface;
