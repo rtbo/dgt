@@ -153,6 +153,11 @@ class XcbPlatform : Platform
     {
         xcb_generic_event_t* e = xcb_wait_for_event(g_connection);
         immutable xcbType = xcbEventType(e);
+        scope(exit)
+        {
+            free(e);
+            xcb_flush(g_connection);
+        }
 
         switch (xcbType)
         {
