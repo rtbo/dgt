@@ -1,6 +1,7 @@
 module dgt.vg.context;
 
 import dgt.vg.path;
+import dgt.vg.paint;
 import dgt.surface;
 
 import std.typecons : BitFlags, Flag, No;
@@ -73,7 +74,12 @@ interface VgContext
     @property const(float)[] pathTransform() const;
     @property void pathTransform(in float[] pathTransform);
 
-    void clipWithPath(in Path path);
+    @property inout(Paint) fillPaint() inout;
+    @property void fillPaint(Paint paint);
 
+    @property inout(Paint) strokePaint() inout;
+    @property void strokePaint(Paint paint);
+
+    void clipWithPath(in Path path);
     void drawPath(in Path path, in PaintModeFlags paintMode);
 }

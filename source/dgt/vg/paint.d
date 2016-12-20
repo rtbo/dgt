@@ -54,6 +54,6 @@ interface Paint
     @property RadialGradient radialGradient() const;
     @property void radialGradient(in RadialGradient gradient);
 
-    @property SpreadMode speadMode() const;
+    @property SpreadMode spreadMode() const;
     @property void spreadMode(in SpreadMode spreadMode);
 }

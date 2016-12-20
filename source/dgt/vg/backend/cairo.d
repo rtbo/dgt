@@ -86,18 +86,36 @@ pure @safe @nogc
     }
 }
 
+/// Context state tracked explicitely, that is not handled by cairo,
+/// or just easier to track that way.
+private struct State
+{
+    Paint fill;
+    Paint stroke;
+}
+
 /// VgContext implementation for cairo graphics library
 class CairoVgContext : VgContext
 {
+    import dgt.util : GrowableStack;
+
     private Surface surface_;
     private cairo_surface_t* cairoSurface_;
     private cairo_t* cairo_;
+    private cairo_pattern_t* defaultSrc_;
+    private State currentState_;
+    private GrowableStack!State stateStack_;
 
     this(Surface surface, cairo_surface_t* cairoSurface)
     {
         surface_ = surface;
         cairoSurface_ = cairo_surface_reference(cairoSurface);
         cairo_ = cairo_create(cairoSurface_);
+        defaultSrc_ = cairo_get_source(cairo_);
+        if (defaultSrc_)
+        {
+            cairo_pattern_reference(defaultSrc_);
+        }
     }
 
     private @property cairo_t* cairo() const
@@ -112,6 +130,10 @@ class CairoVgContext : VgContext
 
     override void dispose()
     {
+        if (defaultSrc_)
+        {
+            cairo_pattern_destroy(defaultSrc_);
+        }
         cairo_destroy(cairo_);
         cairo_surface_destroy(cairoSurface_);
     }
@@ -123,12 +145,14 @@ class CairoVgContext : VgContext
 
     override void save()
     {
+        stateStack_.push(currentState_);
         cairo_save(cairo);
     }
 
     override void restore()
     {
         cairo_restore(cairo);
+        currentState_ = stateStack_.pop();
     }
 
     override @property FillRule fillRule() const
@@ -222,22 +246,57 @@ class CairoVgContext : VgContext
         cairo_set_matrix(cairo, &cairoMat);
     }
 
+    override @property inout(Paint) fillPaint() inout
+    {
+        return currentState_.fill;
+    }
+
+    override @property void fillPaint(Paint paint)
+    {
+        currentState_.fill = paint;
+    }
+
+    override @property inout(Paint) strokePaint() inout
+    {
+        return currentState_.stroke;
+    }
+
+    override @property void strokePaint(Paint paint)
+    {
+        currentState_.stroke = paint;
+    }
+
     override void clipWithPath(in Path path)
     {
-        bindPath(path);
-        cairo_clip(cairo);
+        if (path)
+        {
+            bindPath(path);
+            cairo_clip(cairo);
+        }
+        else
+        {
+            cairo_reset_clip(cairo);
+        }
     }
 
     override void drawPath(in Path path, in PaintModeFlags paintMode)
     {
         bindPath(path);
-        if (paintMode & PaintMode.fill)
+        immutable fill = paintMode & PaintMode.fill;
+        immutable stroke = paintMode & PaintMode.stroke;
+        // FIXME: pattern transform at cairo_set_source time
+        if (fill)
         {
-            cairo_fill_preserve(cairo);
+            setSource(cast(CairoPaint) currentState_.fill);
+            if (stroke)
+                cairo_fill_preserve(cairo);
+            else
+                cairo_fill(cairo);
         }
-        if (paintMode & PaintMode.stroke)
+        if (stroke)
         {
-            cairo_stroke_preserve(cairo);
+            setSource(cast(CairoPaint) currentState_.stroke);
+            cairo_stroke(cairo);
         }
     }
 
@@ -275,6 +334,18 @@ class CairoVgContext : VgContext
             }
         }
     }
+
+    private void setSource(CairoPaint paint)
+    {
+        if (paint)
+        {
+            cairo_set_source(cairo, paint.pattern);
+        }
+        else
+        {
+            cairo_set_source(cairo, defaultSrc_);
+        }
+    }
 }
 
 private float[4] quadToCubicControlPoints(in float[2] start, in float[2] control, in float[2] end) pure nothrow @safe @nogc
@@ -288,21 +359,11 @@ final class CairoPaint : Paint
 {
     private cairo_pattern_t* pattern_;
 
-    private @property cairo_pattern_t* pattern() const
-    {
-        return cast(cairo_pattern_t*) pattern_;
-    }
-
-    private @property cairo_pattern_t* pattern()
-    {
-        return pattern_;
-    }
-
     this()
     {
     }
 
-    void dispose()
+    override void dispose()
     {
         if (pattern_)
         {
@@ -311,7 +372,7 @@ final class CairoPaint : Paint
         }
     }
 
-    @property PaintType type() const
+    override @property PaintType type() const
     {
         immutable cairoType = cairo_pattern_get_type(enforce(pattern));
         final switch (cairoType)
@@ -327,7 +388,7 @@ final class CairoPaint : Paint
         }
     }
 
-    @property float[4] color() const
+    override @property float[4] color() const
     {
         enforce(type == PaintType.color);
         double r;
@@ -338,13 +399,13 @@ final class CairoPaint : Paint
         return [cast(float) r, cast(float) g, cast(float) b, cast(float) a];
     }
 
-    @property void color(in float[4] color)
+    override @property void color(in float[4] color)
     {
         enforce(!pattern_);
         pattern_ = cairo_pattern_create_rgba(color[0], color[1], color[2], color[3]);
     }
 
-    @property LinearGradient linearGradient() const
+    override @property LinearGradient linearGradient() const
     {
         enforce(type == PaintType.linearGradient);
         LinearGradient gradient;
@@ -356,7 +417,7 @@ final class CairoPaint : Paint
         return gradient;
     }
 
-    @property void linearGradient(in LinearGradient gradient)
+    override @property void linearGradient(in LinearGradient gradient)
     {
         enforce(!pattern_);
         pattern_ = cairo_pattern_create_linear(gradient.p0[0], gradient.p0[1],
@@ -369,7 +430,7 @@ final class CairoPaint : Paint
     // focal        start circle (start circle radius = 0)
     // center       end circle
     // radius       end circle radius
-    @property RadialGradient radialGradient() const
+    override @property RadialGradient radialGradient() const
     {
         import dgt.math.approx : approx;
 
@@ -386,7 +447,7 @@ final class CairoPaint : Paint
         return gradient;
     }
 
-    @property void radialGradient(in RadialGradient gradient)
+    override @property void radialGradient(in RadialGradient gradient)
     {
         assert(!pattern_);
         pattern_ = cairo_pattern_create_radial(gradient.f[0], gradient.f[1],
@@ -394,7 +455,7 @@ final class CairoPaint : Paint
         addStops(gradient.stops);
     }
 
-    @property SpreadMode speadMode() const
+    override @property SpreadMode spreadMode() const
     {
         immutable extend = cairo_pattern_get_extend(pattern);
         final switch (extend)
@@ -410,7 +471,7 @@ final class CairoPaint : Paint
         }
     }
 
-    @property void spreadMode(in SpreadMode spreadMode)
+    override @property void spreadMode(in SpreadMode spreadMode)
     {
         final switch (spreadMode)
         {
@@ -421,12 +482,24 @@ final class CairoPaint : Paint
             cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_PAD);
             break;
         case SpreadMode.repeat:
-            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_REPEAT);
+            cairo_pattern_set_extend(pattern,
+                    cairo_extend_t.CAIRO_EXTEND_REPEAT);
             break;
         case SpreadMode.reflect:
-            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_REFLECT);
+            cairo_pattern_set_extend(pattern,
+                    cairo_extend_t.CAIRO_EXTEND_REFLECT);
             break;
         }
+    }
+
+    private @property cairo_pattern_t* pattern() const
+    {
+        return cast(cairo_pattern_t*) pattern_;
+    }
+
+    private @property cairo_pattern_t* pattern()
+    {
+        return pattern_;
     }
 
     private GradientStop[] getStops() const
