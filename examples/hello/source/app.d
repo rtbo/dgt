@@ -44,15 +44,16 @@ int main()
             ctx.dispose();
         }
 
-        fillPaint.color = [0.8, 0.8, 0.2, 1.0];
+        immutable width = win.size.width;
+        fillPaint.color = [width/1300f, 0.8, 0.2, 1.0];
         strokePaint.color = [0.8, 0.2, 0.2, 1.0];
         ctx.fillPaint = fillPaint;
         ctx.strokePaint = strokePaint;
 
         ctx.lineWidth = 5f;
-        auto p = new Path([10, 10]);
-        p.lineTo([10, 400]);
-        p.lineTo([400, 10]);
+        auto p = new Path([width-10, 10]);
+        p.lineTo([width-10, 400]);
+        p.lineTo([width-400, 10]);
         ctx.drawPath(p, PaintMode.fill | PaintMode.stroke);
     };
     win.onClosed += (Window) { app.exit(0); };
