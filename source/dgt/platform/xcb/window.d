@@ -2,9 +2,10 @@ module dgt.platform.xcb.window;
 
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
-import dgt.vg.context;
+import dgt.vg;
 import dgt.screen;
 import dgt.platform;
+import dgt.surface;
 import dgt.window;
 import dgt.geometry;
 import dgt.event;
@@ -14,7 +15,6 @@ import xcb.xcb;
 import xcb.xcb_icccm;
 import X11.Xlib;
 import cairo.c.cairo;
-import cairo.c.xcb;
 
 import std.experimental.logger;
 import std.typecons : scoped;
@@ -24,6 +24,48 @@ import core.stdc.stdlib : free;
 alias Window = dgt.window.Window;
 alias Atom = dgt.platform.xcb.Atom;
 alias Screen = dgt.screen.Screen;
+
+class XcbVgFactory : VgFactory
+{
+    import cairo.c.xcb;
+
+    private Surface surf_;
+    cairo_surface_t* cairoSurf_;
+
+    this(Surface surface, xcb_drawable_t drawable,
+            xcb_visualtype_t* visual,
+            int width, int height)
+    {
+        surf_ = surface;
+        cairoSurf_ = cairo_xcb_surface_create(g_connection, drawable,
+                visual, width, height);
+    }
+
+    void dispose()
+    {
+        cairo_surface_destroy(cairoSurf_);
+    }
+
+    override @property inout(Surface) surface() inout
+    {
+        return surf_;
+    }
+    override VgContext createContext()
+    {
+        import dgt.vg.backend.cairo : CairoVgContext;
+        return new CairoVgContext(surf_, cairoSurf_);
+    }
+    override Paint createPaint()
+    {
+        import dgt.vg.backend.cairo : CairoPaint;
+        return new CairoPaint();
+    }
+
+    private void resizeNotfiy(in int width, in int height)
+    {
+        cairo_xcb_surface_set_size(cairoSurf_, width, height);
+    }
+}
 
 /// Xcb implementation of PlatformWindow
 class XcbWindow : PlatformWindow
@@ -38,7 +80,7 @@ class XcbWindow : PlatformWindow
         WindowState lastKnownState_ = WindowState.hidden;
         IRect rect_;
         bool mapped_;
-        cairo_surface_t* cairoSurf_;
+        XcbVgFactory vgFactory_;
     }
 
     this(Window w, XcbPlatform platform)
@@ -100,14 +142,14 @@ class XcbWindow : PlatformWindow
 
     override void close()
     {
-        if (cairoSurf_)
-            cairo_surface_destroy(cairoSurf_);
+        if (vgFactory_)
+            vgFactory_.dispose();
         if (mapped_)
             xcb_unmap_window(g_connection, xcbWin_);
         xcb_destroy_window(g_connection, xcbWin_);
         xcb_flush(g_connection);
 
-        cairoSurf_ = null;
+        vgFactory_ = null;
         xcbWin_ = 0;
     }
 
@@ -267,19 +309,17 @@ class XcbWindow : PlatformWindow
         return win_;
     }
 
-    override VgContext createVgContext()
+    override VgFactory vgFactory()
     {
-        import dgt.vg.backend.cairo;
         import cairo.c.xcb;
 
-        if (!cairoSurf_)
+        if (!vgFactory_)
         {
             auto visual = getXcbVisualForId(platform_.xcbScreens, visualId_);
             auto rect = geometry;
-            cairoSurf_ = cairo_xcb_surface_create(g_connection, xcbWin_,
-                    visual, rect.width, rect.height);
+            vgFactory_ = new XcbVgFactory(win_, xcbWin_, visual, rect.width, rect.height);
         }
-        return new CairoVgContext(window, cairoSurf_);
+        return vgFactory_;
     }
 
     package
@@ -341,11 +381,9 @@ class XcbWindow : PlatformWindow
             }
             if (e.width != rect_.width || e.height != rect_.height)
             {
-                if (cairoSurf_)
+                if (vgFactory_)
                 {
-                    import cairo.c.xcb;
-
-                    cairo_xcb_surface_set_size(cairoSurf_, e.width, e.height);
+                    vgFactory_.resizeNotfiy(e.width, e.height);
                 }
                 rect_.size = ISize(e.width, e.height);
                 win_.handleEvent(scoped!WindowResizeEvent(win_, rect_.size));

@@ -1,8 +1,6 @@
 module dgt.vg.backend.cairo;
 
-import dgt.vg.context;
-import dgt.vg.path;
-import dgt.vg.paint;
+import dgt.vg;
 import dgt.surface;
 
 import cairo.c.cairo;
@@ -279,7 +277,7 @@ class CairoVgContext : VgContext
         }
     }
 
-    override void drawPath(in Path path, in PaintModeFlags paintMode)
+    override void drawPath(in Path path, in PaintMode paintMode)
     {
         bindPath(path);
         immutable fill = paintMode & PaintMode.fill;

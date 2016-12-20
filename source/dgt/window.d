@@ -7,7 +7,7 @@ import dgt.geometry;
 import dgt.event;
 import dgt.signal;
 import dgt.util;
-import dgt.vg.context;
+import dgt.vg;
 
 import std.exception : enforce;
 
@@ -268,12 +268,9 @@ class Window : Surface
         }
     }
 
-    /// Get a new VgContext for drawing onto the window.
-    /// This context must be released by calling the dispose() method
-    /// when no more needed.
-    VgContext createVgContext()
+    @property VgFactory vgFactory()
     {
-        return platformWindow_.createVgContext();
+        return platformWindow_.vgFactory;
     }
 
     private

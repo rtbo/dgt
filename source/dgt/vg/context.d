@@ -81,5 +81,5 @@ interface VgContext
     @property void strokePaint(Paint paint);
 
     void clipWithPath(in Path path);
-    void drawPath(in Path path, in PaintModeFlags paintMode);
+    void drawPath(in Path path, in PaintMode paintMode);
 }

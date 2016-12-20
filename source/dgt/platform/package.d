@@ -3,7 +3,7 @@ module dgt.platform;
 import dgt.geometry;
 import dgt.screen;
 import dgt.window;
-import dgt.vg.context;
+import dgt.vg;
 
 import std.typecons : BitFlags;
 
@@ -43,5 +43,5 @@ interface PlatformWindow
     @property IRect geometry() const;
     @property void geometry(IRect pos);
 
-    VgContext createVgContext();
+    @property VgFactory vgFactory();
 }
