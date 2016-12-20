@@ -75,7 +75,7 @@ interface OnWindowExposeHandler
     void onWindowExpose(WindowExposeEvent ev);
 }
 
-class Window : Surface
+class Window : Surface, VgSurface
 {
     this()
     {
@@ -268,7 +268,7 @@ class Window : Surface
         }
     }
 
-    @property VgFactory vgFactory()
+    override @property VgFactory vgFactory()
     {
         return platformWindow_.vgFactory;
     }

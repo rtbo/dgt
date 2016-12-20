@@ -74,12 +74,21 @@ interface VgContext
     @property const(float)[] pathTransform() const;
     @property void pathTransform(in float[] pathTransform);
 
+    /// Intersects the current clip path with path
+    void clip(in Path path);
+    /// Resets the clip region to the whole surface
+    void resetClip();
+
     @property inout(Paint) fillPaint() inout;
     @property void fillPaint(Paint paint);
 
     @property inout(Paint) strokePaint() inout;
     @property void strokePaint(Paint paint);
 
-    void clipWithPath(in Path path);
+    /// Clear the whole clipping area with the provided color.
+    /// This is equivalent has filling the clip path with a color Paint,
+    /// but can possibly be faster.
+    void clear(in float[4] color);
     void drawPath(in Path path, in PaintMode paintMode);
+    void flush();
 }

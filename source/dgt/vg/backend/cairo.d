@@ -264,17 +264,22 @@ class CairoVgContext : VgContext
         currentState_.stroke = paint;
     }
 
-    override void clipWithPath(in Path path)
+    override void clip(in Path path)
     {
-        if (path)
-        {
-            bindPath(path);
-            cairo_clip(cairo);
-        }
-        else
-        {
-            cairo_reset_clip(cairo);
-        }
+        assert(path !is null);
+        bindPath(path);
+        cairo_clip(cairo);
+    }
+
+    override void resetClip()
+    {
+        cairo_reset_clip(cairo);
+    }
+
+    override void clear(in float[4] color)
+    {
+        cairo_set_source_rgba(cairo, color[0], color[1], color[2], color[3]);
+        cairo_paint(cairo);
     }
 
     override void drawPath(in Path path, in PaintMode paintMode)
@@ -296,6 +301,11 @@ class CairoVgContext : VgContext
             setSource(cast(CairoPaint) currentState_.stroke);
             cairo_stroke(cairo);
         }
+    }
+
+    override void flush()
+    {
+        cairo_surface_flush(cairoSurface_);
     }
 
     private void bindPath(in Path path)

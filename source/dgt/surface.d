@@ -2,6 +2,12 @@ module dgt.surface;
 
 import dgt.util : ValueProperty;
 import dgt.geometry : ISize;
+import dgt.vg : VgFactory;
+
+interface VgSurface
+{
+    @property VgFactory vgFactory();
+}
 
 enum OpenGLProfile
 {
