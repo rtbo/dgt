@@ -2,8 +2,7 @@ module dgt.vg.backend.cairo;
 
 import dgt.vg;
 import dgt.surface;
-
-import cairo.c.cairo;
+import dgt.bindings.cairo;
 
 import std.exception : enforce;
 
@@ -356,11 +355,16 @@ class CairoVgContext : VgContext
     }
 }
 
-private float[4] quadToCubicControlPoints(in float[2] start, in float[2] control, in float[2] end) pure nothrow @safe @nogc
+private float[4] quadToCubicControlPoints(in float[2] start,
+                                          in float[2] control,
+                                          in float[2] end) pure nothrow @safe @nogc
 {
-    return [start[0] / 3f + control[0] * 2f / 3f,
-        start[1] / 3f + control[1] * 2f / 3f, end[0] / 3f + control[0] * 2f / 3f,
-        end[1] / 3f + control[1] * 2f / 3f,];
+    return [
+        start[0] / 3f + control[0] * 2f / 3f,
+        start[1] / 3f + control[1] * 2f / 3f,
+        end[0] / 3f + control[0] * 2f / 3f,
+        end[1] / 3f + control[1] * 2f / 3f
+    ];
 }
 
 final class CairoPaint : Paint
@@ -393,6 +397,10 @@ final class CairoPaint : Paint
             return PaintType.radialGradient;
         case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_SURFACE:
             assert(false, "unimplemented");
+        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_MESH:
+            assert(false, "unsupported");
+        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_RASTER_SOURCE:
+            assert(false, "unsupported");
         }
     }
 

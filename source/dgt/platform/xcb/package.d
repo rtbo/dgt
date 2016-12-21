@@ -103,6 +103,7 @@ class XcbPlatform : Platform
         initializeScreens();
         kbd_ = new XcbKeyboard(g_connection, xkbFirstEv_);
         initializeDRI();
+        initializeVG();
     }
 
     /// Platform implementation
@@ -358,6 +359,13 @@ class XcbPlatform : Platform
                 if (reply && reply.present)
                     dri3FirstEv_ = reply.first_event;
             }
+        }
+
+        void initializeVG()
+        {
+            import dgt.bindings.cairo;
+            loadCairoSymbols();
+            enforce(cairoHasXcb);
         }
 
         void processWindowEvent(SpecializedEvent, string processingMethod, string seField = "event")(

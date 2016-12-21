@@ -10,11 +10,11 @@ import dgt.window;
 import dgt.geometry;
 import dgt.event;
 import dgt.enums;
+import dgt.bindings.cairo;
 
 import xcb.xcb;
 import xcb.xcb_icccm;
 import X11.Xlib;
-import cairo.c.cairo;
 
 import std.experimental.logger;
 import std.typecons : scoped;
@@ -27,8 +27,6 @@ alias Screen = dgt.screen.Screen;
 
 class XcbVgFactory : VgFactory
 {
-    import cairo.c.xcb;
-
     private Surface surf_;
     private cairo_surface_t* cairoSurf_;
 
@@ -314,8 +312,6 @@ class XcbWindow : PlatformWindow
 
     override VgFactory vgFactory()
     {
-        import cairo.c.xcb;
-
         if (!vgFactory_)
         {
             auto visual = getXcbVisualForId(platform_.xcbScreens, visualId_);
