@@ -207,12 +207,13 @@ struct SymbolLoader(SymbolSpecs...)
 @property string globalEnumsAliasesCode(Enums...)()
 {
     import std.traits : EnumMembers;
+    import std.meta : NoDuplicates;
     import std.conv : to;
 
     string code;
     foreach(Enum; Enums)
     {
-        foreach(immutable memb; EnumMembers!Enum)
+        foreach(immutable memb; NoDuplicates!(EnumMembers!Enum))
         {
             auto name = memb.to!string;
             code ~= "alias "~name~" = "~Enum.stringof~"."~name~";\n";
