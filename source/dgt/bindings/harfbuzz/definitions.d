@@ -777,9 +777,9 @@ enum HB_UNICODE_MAX_DECOMPOSITION_LEN = 18 + 1;
 
 enum HB_VERSION_MAJOR = 1;
 enum HB_VERSION_MINOR = 3;
-enum HB_VERSION_MICRO = 2;
+enum HB_VERSION_MICRO = 4;
 
-enum HB_VERSION_STRING = "1.3.2";
+enum HB_VERSION_STRING = "1.3.4";
 
 auto HB_VERSION_ATLEAST(U, V, W)(U major, V minor, W micro)
 {
