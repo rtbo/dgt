@@ -246,7 +246,7 @@ class XcbWindow : PlatformWindow
             ev.data.data32[0] = XCB_ICCCM_WM_STATE_ICONIC;
             xcb_send_event(g_connection, 0, screen.root,
                     XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
-                    cast(const char*)&ev);
+                    cast(const(char)*)&ev);
             break;
         case WindowState.maximized:
             changeNetWmState(true,
@@ -551,7 +551,7 @@ class XcbWindow : PlatformWindow
 
             xcb_send_event(g_connection, 0, screen.root,
                     XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
-                    cast(const char*)&e);
+                    cast(const(char)*)&e);
         }
 
         xcb_atom_t atom(Atom atom) const

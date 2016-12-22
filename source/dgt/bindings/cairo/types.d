@@ -6,7 +6,6 @@ import core.stdc.config : c_long, c_ulong;
 
 extern (C) nothrow @nogc:
 
-
 alias cairo_bool_t = int;
 
 struct cairo_t;
@@ -37,7 +36,6 @@ struct cairo_user_data_key_t
 alias cairo_write_func_t = cairo_status_t function(void* closure, const(ubyte)* data, uint length);
 
 alias cairo_read_func_t = cairo_status_t function(void* closure, ubyte* data, uint length);
-
 
 struct cairo_rectangle_int_t
 {
@@ -103,8 +101,8 @@ alias cairo_user_scaled_font_render_glyph_func_t = cairo_status_t function(
         cairo_text_extents_t* extents);
 
 alias cairo_user_scaled_font_text_to_glyphs_func_t = cairo_status_t function(
-        cairo_scaled_font_t* scaled_font, const char* utf8, int utf8_len,
-        cairo_glyph_t** glyphs, int* num_glyphs, cairo_text_cluster_t** clusters,
+        cairo_scaled_font_t* scaled_font, const(char)* utf8,
+        int utf8_len, cairo_glyph_t** glyphs, int* num_glyphs, cairo_text_cluster_t** clusters,
         int* num_clusters, cairo_text_cluster_flags_t* cluster_flags);
 
 alias cairo_user_scaled_font_unicode_to_glyph_func_t = cairo_status_t function(
@@ -138,7 +136,7 @@ alias cairo_surface_observer_callback_t = void function(cairo_surface_t* observe
         cairo_surface_t* target, void* data);
 
 alias cairo_raster_source_acquire_func_t = cairo_surface_t* function(cairo_pattern_t* pattern,
-        void* callback_data, cairo_surface_t* target, const cairo_rectangle_int_t* extents);
+        void* callback_data, cairo_surface_t* target, const(cairo_rectangle_int_t)* extents);
 
 alias cairo_raster_source_release_func_t = void function(cairo_pattern_t* pattern,
         void* callback_data, cairo_surface_t* surface);
@@ -147,7 +145,7 @@ alias cairo_raster_source_snapshot_func_t = cairo_status_t function(
         cairo_pattern_t* pattern, void* callback_data);
 
 alias cairo_raster_source_copy_func_t = cairo_status_t function(
-        cairo_pattern_t* pattern, void* callback_data, const cairo_pattern_t* other);
+        cairo_pattern_t* pattern, void* callback_data, const(cairo_pattern_t)* other);
 
 alias cairo_raster_source_finish_func_t = void function(cairo_pattern_t* pattern,
         void* callback_data);

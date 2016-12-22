@@ -492,7 +492,7 @@ __gshared Symbol!(uint, cairo_t*) cairo_get_reference_count;
 
 __gshared Symbol!(void*, cairo_t*) cairo_get_user_data;
 
-__gshared Symbol!(cairo_status_t, cairo_t*, const cairo_user_data_key_t*, void*, cairo_destroy_func_t) cairo_set_user_data;
+__gshared Symbol!(cairo_status_t, cairo_t*, const(cairo_user_data_key_t)*, void*, cairo_destroy_func_t) cairo_set_user_data;
 
 __gshared Symbol!(void, cairo_t*) cairo_save;
 
@@ -528,7 +528,7 @@ __gshared Symbol!(void, cairo_t*, cairo_line_cap_t) cairo_set_line_cap;
 
 __gshared Symbol!(void, cairo_t*, cairo_line_join_t) cairo_set_line_join;
 
-__gshared Symbol!(void, cairo_t*, const double*, int, double) cairo_set_dash;
+__gshared Symbol!(void, cairo_t*, const(double)*, int, double) cairo_set_dash;
 
 __gshared Symbol!(void, cairo_t*, double) cairo_set_miter_limit;
 
@@ -538,9 +538,9 @@ __gshared Symbol!(void, cairo_t*, double, double) cairo_scale;
 
 __gshared Symbol!(void, cairo_t*, double) cairo_rotate;
 
-__gshared Symbol!(void, cairo_t*, const cairo_matrix_t*) cairo_transform;
+__gshared Symbol!(void, cairo_t*, const(cairo_matrix_t)*) cairo_transform;
 
-__gshared Symbol!(void, cairo_t*, const cairo_matrix_t*) cairo_set_matrix;
+__gshared Symbol!(void, cairo_t*, const(cairo_matrix_t)*) cairo_set_matrix;
 
 __gshared Symbol!(void, cairo_t*) cairo_identity_matrix;
 
@@ -641,38 +641,38 @@ __gshared Symbol!(void, cairo_text_cluster_t*) cairo_text_cluster_free;
 
 __gshared Symbol!(cairo_font_options_t*) cairo_font_options_create;
 
-__gshared Symbol!(cairo_font_options_t*, const cairo_font_options_t*) cairo_font_options_copy;
+__gshared Symbol!(cairo_font_options_t*, const(cairo_font_options_t)*) cairo_font_options_copy;
 
 __gshared Symbol!(void, cairo_font_options_t*) cairo_font_options_destroy;
 
 __gshared Symbol!(cairo_status_t, cairo_font_options_t*) cairo_font_options_status;
 
-__gshared Symbol!(void, cairo_font_options_t*, const cairo_font_options_t*) cairo_font_options_merge;
-__gshared Symbol!(cairo_bool_t, const cairo_font_options_t*, const cairo_font_options_t*) cairo_font_options_equal;
+__gshared Symbol!(void, cairo_font_options_t*, const(cairo_font_options_t)*) cairo_font_options_merge;
+__gshared Symbol!(cairo_bool_t, const(cairo_font_options_t)*, const(cairo_font_options_t)*) cairo_font_options_equal;
 
-__gshared Symbol!(uint, const cairo_font_options_t*) cairo_font_options_hash;
+__gshared Symbol!(uint, const(cairo_font_options_t)*) cairo_font_options_hash;
 
 __gshared Symbol!(void, cairo_font_options_t*, cairo_antialias_t) cairo_font_options_set_antialias;
-__gshared Symbol!(cairo_antialias_t, const cairo_font_options_t*) cairo_font_options_get_antialias;
+__gshared Symbol!(cairo_antialias_t, const(cairo_font_options_t)*) cairo_font_options_get_antialias;
 
 __gshared Symbol!(void, cairo_font_options_t*, cairo_subpixel_order_t) cairo_font_options_set_subpixel_order;
-__gshared Symbol!(cairo_subpixel_order_t, const cairo_font_options_t*) cairo_font_options_get_subpixel_order;
+__gshared Symbol!(cairo_subpixel_order_t, const(cairo_font_options_t)*) cairo_font_options_get_subpixel_order;
 
 __gshared Symbol!(void, cairo_font_options_t*, cairo_hint_style_t) cairo_font_options_set_hint_style;
-__gshared Symbol!(cairo_hint_style_t, const cairo_font_options_t*) cairo_font_options_get_hint_style;
+__gshared Symbol!(cairo_hint_style_t, const(cairo_font_options_t)*) cairo_font_options_get_hint_style;
 
 __gshared Symbol!(void, cairo_font_options_t*, cairo_hint_metrics_t) cairo_font_options_set_hint_metrics;
-__gshared Symbol!(cairo_hint_metrics_t, const cairo_font_options_t*) cairo_font_options_get_hint_metrics;
+__gshared Symbol!(cairo_hint_metrics_t, const(cairo_font_options_t)*) cairo_font_options_get_hint_metrics;
 
-__gshared Symbol!(void, cairo_t*, const char*, cairo_font_slant_t, cairo_font_weight_t) cairo_select_font_face;
+__gshared Symbol!(void, cairo_t*, const(char)*, cairo_font_slant_t, cairo_font_weight_t) cairo_select_font_face;
 
 __gshared Symbol!(void, cairo_t*, double) cairo_set_font_size;
 
-__gshared Symbol!(void, cairo_t*, const cairo_matrix_t*) cairo_set_font_matrix;
+__gshared Symbol!(void, cairo_t*, const(cairo_matrix_t)*) cairo_set_font_matrix;
 
 __gshared Symbol!(void, cairo_t*, cairo_matrix_t*) cairo_get_font_matrix;
 
-__gshared Symbol!(void, cairo_t*, const cairo_font_options_t*) cairo_set_font_options;
+__gshared Symbol!(void, cairo_t*, const(cairo_font_options_t)*) cairo_set_font_options;
 
 __gshared Symbol!(void, cairo_t*, cairo_font_options_t*) cairo_get_font_options;
 
@@ -680,24 +680,24 @@ __gshared Symbol!(void, cairo_t*, cairo_font_face_t*) cairo_set_font_face;
 
 __gshared Symbol!(cairo_font_face_t*, cairo_t*) cairo_get_font_face;
 
-__gshared Symbol!(void, cairo_t*, const cairo_scaled_font_t*) cairo_set_scaled_font;
+__gshared Symbol!(void, cairo_t*, const(cairo_scaled_font_t)*) cairo_set_scaled_font;
 
 __gshared Symbol!(cairo_scaled_font_t*, cairo_t*) cairo_get_scaled_font;
 
-__gshared Symbol!(void, cairo_t*, const char*) cairo_show_text;
+__gshared Symbol!(void, cairo_t*, const(char)*) cairo_show_text;
 
-__gshared Symbol!(void, cairo_t*, const cairo_glyph_t*, int) cairo_show_glyphs;
+__gshared Symbol!(void, cairo_t*, const(cairo_glyph_t)*, int) cairo_show_glyphs;
 
-__gshared Symbol!(void, cairo_t*, const char*, int, const cairo_glyph_t*, int,
-        const cairo_text_cluster_t*, int, cairo_text_cluster_flags_t) cairo_show_text_glyphs;
+__gshared Symbol!(void, cairo_t*, const(char)*, int, const(cairo_glyph_t)*, int,
+        const(cairo_text_cluster_t)*, int, cairo_text_cluster_flags_t) cairo_show_text_glyphs;
 
-__gshared Symbol!(void, cairo_t*, const char*) cairo_text_path;
+__gshared Symbol!(void, cairo_t*, const(char)*) cairo_text_path;
 
-__gshared Symbol!(void, cairo_t*, const cairo_glyph_t*, int) cairo_glyph_path;
+__gshared Symbol!(void, cairo_t*, const(cairo_glyph_t)*, int) cairo_glyph_path;
 
-__gshared Symbol!(void, cairo_t*, const char*, cairo_text_extents_t*) cairo_text_extents;
+__gshared Symbol!(void, cairo_t*, const(char)*, cairo_text_extents_t*) cairo_text_extents;
 
-__gshared Symbol!(void, cairo_t*, const cairo_glyph_t*, int, cairo_text_extents_t*) cairo_glyph_extents;
+__gshared Symbol!(void, cairo_t*, const(cairo_glyph_t)*, int, cairo_text_extents_t*) cairo_glyph_extents;
 
 __gshared Symbol!(void, cairo_t*, cairo_font_extents_t*) cairo_font_extents;
 
@@ -711,13 +711,13 @@ __gshared Symbol!(cairo_status_t, cairo_font_face_t*) cairo_font_face_status;
 
 __gshared Symbol!(cairo_font_type_t, cairo_font_face_t*) cairo_font_face_get_type;
 
-__gshared Symbol!(void*, cairo_font_face_t*, const cairo_user_data_key_t*) cairo_font_face_get_user_data;
+__gshared Symbol!(void*, cairo_font_face_t*, const(cairo_user_data_key_t)*) cairo_font_face_get_user_data;
 
-__gshared Symbol!(cairo_status_t, cairo_font_face_t*, const cairo_user_data_key_t*,
+__gshared Symbol!(cairo_status_t, cairo_font_face_t*, const(cairo_user_data_key_t)*,
         void*, cairo_destroy_func_t) cairo_font_face_set_user_data;
 
-__gshared Symbol!(cairo_scaled_font_t*, cairo_font_face_t*, const cairo_matrix_t*,
-        const cairo_matrix_t*, const cairo_font_options_t*) cairo_scaled_font_create;
+__gshared Symbol!(cairo_scaled_font_t*, cairo_font_face_t*, const(cairo_matrix_t)*,
+        const(cairo_matrix_t)*, const(cairo_font_options_t)*) cairo_scaled_font_create;
 
 __gshared Symbol!(cairo_scaled_font_t*, cairo_scaled_font_t*) cairo_scaled_font_reference;
 
@@ -729,18 +729,18 @@ __gshared Symbol!(cairo_status_t, cairo_scaled_font_t*) cairo_scaled_font_status
 
 __gshared Symbol!(cairo_font_type_t, cairo_scaled_font_t*) cairo_scaled_font_get_type;
 
-__gshared Symbol!(void*, cairo_scaled_font_t*, const cairo_user_data_key_t*) cairo_scaled_font_get_user_data;
+__gshared Symbol!(void*, cairo_scaled_font_t*, const(cairo_user_data_key_t)*) cairo_scaled_font_get_user_data;
 
-__gshared Symbol!(cairo_status_t, cairo_scaled_font_t*, const cairo_user_data_key_t*,
+__gshared Symbol!(cairo_status_t, cairo_scaled_font_t*, const(cairo_user_data_key_t)*,
         void*, cairo_destroy_func_t) cairo_scaled_font_set_user_data;
 
 __gshared Symbol!(void, cairo_scaled_font_t*, cairo_font_extents_t*) cairo_scaled_font_extents;
 
-__gshared Symbol!(void, cairo_scaled_font_t*, const char*, cairo_text_extents_t*) cairo_scaled_font_text_extents;
+__gshared Symbol!(void, cairo_scaled_font_t*, const(char)*, cairo_text_extents_t*) cairo_scaled_font_text_extents;
 
-__gshared Symbol!(void, cairo_scaled_font_t*, const cairo_glyph_t*, int, cairo_text_extents_t*) cairo_scaled_font_glyph_extents;
+__gshared Symbol!(void, cairo_scaled_font_t*, const(cairo_glyph_t)*, int, cairo_text_extents_t*) cairo_scaled_font_glyph_extents;
 
-__gshared Symbol!(cairo_status_t, cairo_scaled_font_t*, double, double, const char*, int,
+__gshared Symbol!(cairo_status_t, cairo_scaled_font_t*, double, double, const(char)*, int,
         cairo_glyph_t**, int*, cairo_text_cluster_t**, int*, cairo_text_cluster_flags_t*) cairo_scaled_font_text_to_glyphs;
 
 __gshared Symbol!(cairo_font_face_t*, cairo_scaled_font_t*) cairo_scaled_font_get_font_face;
@@ -753,9 +753,9 @@ __gshared Symbol!(void, cairo_scaled_font_t*, cairo_matrix_t*) cairo_scaled_font
 
 __gshared Symbol!(void, cairo_scaled_font_t*, cairo_font_options_t*) cairo_scaled_font_get_font_options;
 
-__gshared Symbol!(cairo_font_face_t*, const char*, cairo_font_slant_t, cairo_font_weight_t) cairo_toy_font_face_create;
+__gshared Symbol!(cairo_font_face_t*, const(char)*, cairo_font_slant_t, cairo_font_weight_t) cairo_toy_font_face_create;
 
-__gshared Symbol!(const char*, cairo_font_face_t*) cairo_toy_font_face_get_family;
+__gshared Symbol!(const(char)*, cairo_font_face_t*) cairo_toy_font_face_get_family;
 
 __gshared Symbol!(cairo_font_slant_t, cairo_font_face_t*) cairo_toy_font_face_get_slant;
 
@@ -815,13 +815,13 @@ __gshared Symbol!(cairo_path_t*, cairo_t*) cairo_copy_path;
 
 __gshared Symbol!(cairo_path_t*, cairo_t*) cairo_copy_path_flat;
 
-__gshared Symbol!(void, cairo_t*, const cairo_path_t*) cairo_append_path;
+__gshared Symbol!(void, cairo_t*, const(cairo_path_t)*) cairo_append_path;
 
 __gshared Symbol!(void, cairo_path_t*) cairo_path_destroy;
 
 __gshared Symbol!(cairo_status_t, cairo_t*) cairo_status;
 
-__gshared Symbol!(const char*, cairo_status_t) cairo_status_to_string;
+__gshared Symbol!(const(char)*, cairo_status_t) cairo_status_to_string;
 
 __gshared Symbol!(cairo_device_t*, cairo_device_t*) cairo_device_reference;
 
@@ -841,16 +841,16 @@ __gshared Symbol!(void, cairo_device_t*) cairo_device_destroy;
 
 __gshared Symbol!(uint, cairo_device_t*) cairo_device_get_reference_count;
 
-__gshared Symbol!(void*, cairo_device_t*, const cairo_user_data_key_t*) cairo_device_get_user_data;
+__gshared Symbol!(void*, cairo_device_t*, const(cairo_user_data_key_t)*) cairo_device_get_user_data;
 
-__gshared Symbol!(cairo_status_t, cairo_device_t*, const cairo_user_data_key_t*, void*,
+__gshared Symbol!(cairo_status_t, cairo_device_t*, const(cairo_user_data_key_t)*, void*,
         cairo_destroy_func_t) cairo_device_set_user_data;
 
 __gshared Symbol!(cairo_surface_t*, cairo_surface_t*, cairo_content_t, int, int) cairo_surface_create_similar;
 
 __gshared Symbol!(cairo_surface_t*, cairo_surface_t*, cairo_format_t, int, int) cairo_surface_create_similar_image;
 
-__gshared Symbol!(cairo_surface_t*, cairo_surface_t*, const cairo_rectangle_int_t*) cairo_surface_map_to_image;
+__gshared Symbol!(cairo_surface_t*, cairo_surface_t*, const(cairo_rectangle_int_t)*) cairo_surface_map_to_image;
 
 __gshared Symbol!(void, cairo_surface_t*, cairo_surface_t*) cairo_surface_unmap_image;
 
@@ -905,17 +905,17 @@ __gshared Symbol!(cairo_surface_type_t, cairo_surface_t*) cairo_surface_get_type
 
 __gshared Symbol!(cairo_content_t, cairo_surface_t*) cairo_surface_get_content;
 
-__gshared Symbol!(void*, cairo_surface_t*, const cairo_user_data_key_t*) cairo_surface_get_user_data;
+__gshared Symbol!(void*, cairo_surface_t*, const(cairo_user_data_key_t)*) cairo_surface_get_user_data;
 
-__gshared Symbol!(cairo_status_t, cairo_surface_t*, const cairo_user_data_key_t*,
+__gshared Symbol!(cairo_status_t, cairo_surface_t*, const(cairo_user_data_key_t)*,
         void*, cairo_destroy_func_t) cairo_surface_set_user_data;
 
-__gshared Symbol!(void, cairo_surface_t*, const char*, const ubyte**, c_ulong*) cairo_surface_get_mime_data;
+__gshared Symbol!(void, cairo_surface_t*, const(char)*, const(ubyte)**, c_ulong*) cairo_surface_get_mime_data;
 
-__gshared Symbol!(cairo_status_t, cairo_surface_t*, const char*, const ubyte*, c_ulong,
+__gshared Symbol!(cairo_status_t, cairo_surface_t*, const(char)*, const(ubyte)*, c_ulong,
         cairo_destroy_func_t, void*) cairo_surface_set_mime_data;
 
-__gshared Symbol!(cairo_bool_t, cairo_surface_t*, const char*) cairo_surface_supports_mime_type;
+__gshared Symbol!(cairo_bool_t, cairo_surface_t*, const(char)*) cairo_surface_supports_mime_type;
 
 __gshared Symbol!(void, cairo_surface_t*, cairo_font_options_t*) cairo_surface_get_font_options;
 
@@ -959,7 +959,7 @@ __gshared Symbol!(int, cairo_surface_t*) cairo_image_surface_get_height;
 
 __gshared Symbol!(int, cairo_surface_t*) cairo_image_surface_get_stride;
 
-__gshared Symbol!(cairo_surface_t*, cairo_content_t, const cairo_rectangle_t*) cairo_recording_surface_create;
+__gshared Symbol!(cairo_surface_t*, cairo_content_t, const(cairo_rectangle_t)*) cairo_recording_surface_create;
 
 __gshared Symbol!(void, cairo_surface_t*, double*, double*, double*, double*) cairo_recording_surface_ink_extents;
 
@@ -1008,9 +1008,9 @@ __gshared Symbol!(uint, cairo_pattern_t*) cairo_pattern_get_reference_count;
 
 __gshared Symbol!(cairo_status_t, cairo_pattern_t*) cairo_pattern_status;
 
-__gshared Symbol!(void*, cairo_pattern_t*, const cairo_user_data_key_t*) cairo_pattern_get_user_data;
+__gshared Symbol!(void*, cairo_pattern_t*, const(cairo_user_data_key_t)*) cairo_pattern_get_user_data;
 
-__gshared Symbol!(cairo_status_t, cairo_pattern_t*, const cairo_user_data_key_t*,
+__gshared Symbol!(cairo_status_t, cairo_pattern_t*, const(cairo_user_data_key_t)*,
         void*, cairo_destroy_func_t) cairo_pattern_set_user_data;
 
 __gshared Symbol!(cairo_pattern_type_t, cairo_pattern_t*) cairo_pattern_get_type;
@@ -1035,7 +1035,7 @@ __gshared Symbol!(void, cairo_pattern_t*, uint, double, double, double) cairo_me
 
 __gshared Symbol!(void, cairo_pattern_t*, uint, double, double, double, double) cairo_mesh_pattern_set_corner_color_rgba;
 
-__gshared Symbol!(void, cairo_pattern_t*, const cairo_matrix_t*) cairo_pattern_set_matrix;
+__gshared Symbol!(void, cairo_pattern_t*, const(cairo_matrix_t)*) cairo_pattern_set_matrix;
 
 __gshared Symbol!(void, cairo_pattern_t*, cairo_matrix_t*) cairo_pattern_get_matrix;
 
@@ -1086,56 +1086,56 @@ __gshared Symbol!(void, cairo_matrix_t*, double) cairo_matrix_rotate;
 
 __gshared Symbol!(cairo_status_t, cairo_matrix_t*) cairo_matrix_invert;
 
-__gshared Symbol!(void, cairo_matrix_t*, const cairo_matrix_t*, const cairo_matrix_t*) cairo_matrix_multiply;
+__gshared Symbol!(void, cairo_matrix_t*, const(cairo_matrix_t)*, const(cairo_matrix_t)*) cairo_matrix_multiply;
 
-__gshared Symbol!(void, const cairo_matrix_t*, double*, double*) cairo_matrix_transform_distance;
+__gshared Symbol!(void, const(cairo_matrix_t)*, double*, double*) cairo_matrix_transform_distance;
 
-__gshared Symbol!(void, const cairo_matrix_t*, double*, double*) cairo_matrix_transform_point;
+__gshared Symbol!(void, const(cairo_matrix_t)*, double*, double*) cairo_matrix_transform_point;
 
 __gshared Symbol!(cairo_region_t*) cairo_region_create;
 
-__gshared Symbol!(cairo_region_t*, const cairo_rectangle_int_t*) cairo_region_create_rectangle;
+__gshared Symbol!(cairo_region_t*, const(cairo_rectangle_int_t)*) cairo_region_create_rectangle;
 
-__gshared Symbol!(cairo_region_t*, const cairo_rectangle_int_t*, int) cairo_region_create_rectangles;
+__gshared Symbol!(cairo_region_t*, const(cairo_rectangle_int_t)*, int) cairo_region_create_rectangles;
 
-__gshared Symbol!(cairo_region_t*, const cairo_region_t*) cairo_region_copy;
+__gshared Symbol!(cairo_region_t*, const(cairo_region_t)*) cairo_region_copy;
 
 __gshared Symbol!(cairo_region_t*, cairo_region_t*) cairo_region_reference;
 
 __gshared Symbol!(void, cairo_region_t*) cairo_region_destroy;
 
-__gshared Symbol!(cairo_bool_t, const cairo_region_t*, const cairo_region_t*) cairo_region_equal;
+__gshared Symbol!(cairo_bool_t, const(cairo_region_t)*, const(cairo_region_t)*) cairo_region_equal;
 
-__gshared Symbol!(cairo_status_t, const cairo_region_t*) cairo_region_status;
+__gshared Symbol!(cairo_status_t, const(cairo_region_t)*) cairo_region_status;
 
-__gshared Symbol!(void, const cairo_region_t*, cairo_rectangle_int_t*) cairo_region_get_extents;
+__gshared Symbol!(void, const(cairo_region_t)*, cairo_rectangle_int_t*) cairo_region_get_extents;
 
-__gshared Symbol!(int, const cairo_region_t*) cairo_region_num_rectangles;
+__gshared Symbol!(int, const(cairo_region_t)*) cairo_region_num_rectangles;
 
-__gshared Symbol!(void, const cairo_region_t*, int, cairo_rectangle_int_t*) cairo_region_get_rectangle;
+__gshared Symbol!(void, const(cairo_region_t)*, int, cairo_rectangle_int_t*) cairo_region_get_rectangle;
 
-__gshared Symbol!(cairo_bool_t, const cairo_region_t*) cairo_region_is_empty;
+__gshared Symbol!(cairo_bool_t, const(cairo_region_t)*) cairo_region_is_empty;
 
-__gshared Symbol!(cairo_region_overlap_t, const cairo_region_t*, const cairo_rectangle_int_t*) cairo_region_contains_rectangle;
+__gshared Symbol!(cairo_region_overlap_t, const(cairo_region_t)*, const(cairo_rectangle_int_t)*) cairo_region_contains_rectangle;
 
-__gshared Symbol!(cairo_bool_t, const cairo_region_t*, int, int) cairo_region_contains_point;
+__gshared Symbol!(cairo_bool_t, const(cairo_region_t)*, int, int) cairo_region_contains_point;
 
 __gshared Symbol!(void, cairo_region_t*, int, int) cairo_region_translate;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_region_t*) cairo_region_subtract;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_region_t)*) cairo_region_subtract;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_rectangle_int_t*) cairo_region_subtract_rectangle;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_rectangle_int_t)*) cairo_region_subtract_rectangle;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_region_t*) cairo_region_intersect;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_region_t)*) cairo_region_intersect;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_rectangle_int_t*) cairo_region_intersect_rectangle;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_rectangle_int_t)*) cairo_region_intersect_rectangle;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_region_t*) cairo_region_union;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_region_t)*) cairo_region_union;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_rectangle_int_t*) cairo_region_union_rectangle;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_rectangle_int_t)*) cairo_region_union_rectangle;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_region_t*) cairo_region_xor;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_region_t)*) cairo_region_xor;
 
-__gshared Symbol!(cairo_status_t, cairo_region_t*, const cairo_rectangle_int_t*) cairo_region_xor_rectangle;
+__gshared Symbol!(cairo_status_t, cairo_region_t*, const(cairo_rectangle_int_t)*) cairo_region_xor_rectangle;
 
 __gshared Symbol!(void) cairo_debug_reset_static_data;

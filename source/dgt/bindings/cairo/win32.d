@@ -1,6 +1,6 @@
 module dgt.bindings.cairo.win32;
 
-version(Windows):
+version (Windows):
 
 import dgt.bindings.cairo.types;
 import dgt.bindings.cairo.enums;
