@@ -27,7 +27,7 @@ struct Symbol(RetT, Args...)
     private Fn fn_;
 
     /// Bind the symbol to the loaded function
-    public void bind(SharedSym sym)
+    public void bindTo(SharedSym sym)
     in
     {
         assert(!bound, "rebinding of already bound symbol");
@@ -71,7 +71,7 @@ unittest
 
     Symbol!(int, int) mul2;
     static assert(is(mul2.Fn == typeof(&symbolTestMul2)));
-    mul2.set(&symbolTestMul2);
+    mul2.bindTo(&symbolTestMul2);
     assert(mul2(42) == 84);
 }
 
@@ -167,7 +167,7 @@ struct SymbolLoader(SymbolSpecs...)
             {
                 throw new Exception("Cannot load symbol "~name~" from "~libName_~".");
             }
-            ss.symbol.bind(cast(ss.symbol.Fn) sym);
+            ss.symbol.bindTo(cast(ss.symbol.Fn) sym);
         }
     }
 
