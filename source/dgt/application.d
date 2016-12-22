@@ -8,16 +8,13 @@ class Application
     /// Build an application. This will initialize underlying platform.
     this()
     {
-        instance = this;
-        platform_ = defaultPlatform;
+        initialize(makeDefaultPlatform());
     }
 
     /// Build an application with the provided platform.
     this(Platform platform)
     {
-        assert(platform !is null);
-        instance = this;
-        platform_ = platform;
+        initialize(platform);
     }
 
     ~this()
@@ -40,6 +37,14 @@ class Application
         exitFlag_ = true;
     }
 
+    private void initialize(Platform platform)
+    {
+        assert(!instance_, "Attempt to initialize twice DGT Application singleton");
+        instance_ = this;
+        assert(platform !is null);
+        platform_ = platform;
+    }
+
     private Platform platform_;
     private bool exitFlag_;
     private int exitCode_;
@@ -59,18 +64,12 @@ class Application
             return instance_.platform_;
         }
 
-        private @property void instance(Application inst)
-        {
-            assert(!instance_, "Attempt to initialize twice DGT Application singleton");
-            instance_ = inst;
-        }
-
         private Application instance_;
     }
 }
 
-/// Get the default Platform for the running OS.
-@property Platform defaultPlatform()
+/// Make the default Platform for the running OS.
+Platform makeDefaultPlatform()
 {
     import dgt.platform.xcb : XcbPlatform;
 
