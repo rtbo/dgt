@@ -5,6 +5,7 @@ public import dgt.bindings.harfbuzz.symbols;
 import dgt.bindings;
 
 import std.meta : AliasSeq;
+import std.typecons : Yes;
 
 /// Load the harfbuzz library symbols.
 /// Must be called before any use of hb_* functions.
@@ -212,7 +213,7 @@ alias HarfbuzzFontSymbols = AliasSeq!(
     hb_font_get_scale,
     hb_font_set_ppem,
     hb_font_get_ppem,
-    hb_font_set_var_coords_normalized,
+    hb_font_set_var_coords_normalized,              Yes.optional,
 );
 alias HarfbuzzSetSymbols = AliasSeq!(
     hb_set_create,
@@ -252,8 +253,8 @@ alias HarfbuzzShapeSymbols = AliasSeq!(
 alias HarfbuzzShapePlanSymbols = AliasSeq!(
     hb_shape_plan_create,
     hb_shape_plan_create_cached,
-    hb_shape_plan_create2,
-    hb_shape_plan_create_cached2,
+    hb_shape_plan_create2,                          Yes.optional,
+    hb_shape_plan_create_cached2,                   Yes.optional,
     hb_shape_plan_get_empty,
     hb_shape_plan_reference,
     hb_shape_plan_destroy,
