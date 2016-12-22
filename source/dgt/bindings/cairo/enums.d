@@ -4,6 +4,34 @@ import dgt.bindings;
 
 extern (C):
 
+
+mixin(globalEnumsAliasesCode!(
+    cairo_status_t,
+    cairo_content_t,
+    cairo_format_t,
+    cairo_operator_t,
+    cairo_antialias_t,
+    cairo_fill_rule_t,
+    cairo_line_cap_t,
+    cairo_line_join_t,
+    cairo_text_cluster_flags_t,
+    cairo_font_slant_t,
+    cairo_font_weight_t,
+    cairo_subpixel_order_t,
+    cairo_hint_style_t,
+    cairo_hint_metrics_t,
+    cairo_font_type_t,
+    cairo_path_data_type_t,
+    cairo_device_type_t,
+    cairo_surface_observer_mode_t,
+    cairo_surface_type_t,
+    cairo_pattern_type_t,
+    cairo_extend_t,
+    cairo_filter_t,
+    cairo_region_overlap_t,
+));
+
+
 enum cairo_status_t
 {
     CAIRO_STATUS_SUCCESS = 0,

@@ -15,9 +15,9 @@ pure @safe @nogc
         final switch (fillRule)
         {
         case FillRule.NonZero:
-            return cairo_fill_rule_t.CAIRO_FILL_RULE_WINDING;
+            return CAIRO_FILL_RULE_WINDING;
         case FillRule.EvenOdd:
-            return cairo_fill_rule_t.CAIRO_FILL_RULE_EVEN_ODD;
+            return CAIRO_FILL_RULE_EVEN_ODD;
         }
     }
 
@@ -25,9 +25,9 @@ pure @safe @nogc
     {
         final switch (fillRule)
         {
-        case cairo_fill_rule_t.CAIRO_FILL_RULE_WINDING:
+        case CAIRO_FILL_RULE_WINDING:
             return FillRule.NonZero;
-        case cairo_fill_rule_t.CAIRO_FILL_RULE_EVEN_ODD:
+        case CAIRO_FILL_RULE_EVEN_ODD:
             return FillRule.EvenOdd;
         }
     }
@@ -37,11 +37,11 @@ pure @safe @nogc
         final switch (cap)
         {
         case LineCap.butt:
-            return cairo_line_cap_t.CAIRO_LINE_CAP_BUTT;
+            return CAIRO_LINE_CAP_BUTT;
         case LineCap.round:
-            return cairo_line_cap_t.CAIRO_LINE_CAP_ROUND;
+            return CAIRO_LINE_CAP_ROUND;
         case LineCap.square:
-            return cairo_line_cap_t.CAIRO_LINE_CAP_SQUARE;
+            return CAIRO_LINE_CAP_SQUARE;
         }
     }
 
@@ -49,11 +49,11 @@ pure @safe @nogc
     {
         final switch (cap)
         {
-        case cairo_line_cap_t.CAIRO_LINE_CAP_BUTT:
+        case CAIRO_LINE_CAP_BUTT:
             return LineCap.butt;
-        case cairo_line_cap_t.CAIRO_LINE_CAP_ROUND:
+        case CAIRO_LINE_CAP_ROUND:
             return LineCap.round;
-        case cairo_line_cap_t.CAIRO_LINE_CAP_SQUARE:
+        case CAIRO_LINE_CAP_SQUARE:
             return LineCap.square;
         }
     }
@@ -63,11 +63,11 @@ pure @safe @nogc
         final switch (val)
         {
         case LineJoin.miter:
-            return cairo_line_join_t.CAIRO_LINE_JOIN_MITER;
+            return CAIRO_LINE_JOIN_MITER;
         case LineJoin.round:
-            return cairo_line_join_t.CAIRO_LINE_JOIN_ROUND;
+            return CAIRO_LINE_JOIN_ROUND;
         case LineJoin.bevel:
-            return cairo_line_join_t.CAIRO_LINE_JOIN_BEVEL;
+            return CAIRO_LINE_JOIN_BEVEL;
         }
     }
 
@@ -75,11 +75,11 @@ pure @safe @nogc
     {
         final switch (val)
         {
-        case cairo_line_join_t.CAIRO_LINE_JOIN_MITER:
+        case CAIRO_LINE_JOIN_MITER:
             return LineJoin.miter;
-        case cairo_line_join_t.CAIRO_LINE_JOIN_ROUND:
+        case CAIRO_LINE_JOIN_ROUND:
             return LineJoin.round;
-        case cairo_line_join_t.CAIRO_LINE_JOIN_BEVEL:
+        case CAIRO_LINE_JOIN_BEVEL:
             return LineJoin.bevel;
         }
     }
@@ -403,17 +403,17 @@ final class CairoPaint : Paint
         immutable cairoType = cairo_pattern_get_type(enforce(pattern));
         final switch (cairoType)
         {
-        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_SOLID:
+        case CAIRO_PATTERN_TYPE_SOLID:
             return PaintType.color;
-        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_LINEAR:
+        case CAIRO_PATTERN_TYPE_LINEAR:
             return PaintType.linearGradient;
-        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_RADIAL:
+        case CAIRO_PATTERN_TYPE_RADIAL:
             return PaintType.radialGradient;
-        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_SURFACE:
+        case CAIRO_PATTERN_TYPE_SURFACE:
             assert(false, "unimplemented");
-        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_MESH:
+        case CAIRO_PATTERN_TYPE_MESH:
             assert(false, "unsupported");
-        case cairo_pattern_type_t.CAIRO_PATTERN_TYPE_RASTER_SOURCE:
+        case CAIRO_PATTERN_TYPE_RASTER_SOURCE:
             assert(false, "unsupported");
         }
     }
