@@ -43,6 +43,13 @@ class Application
         instance_ = this;
         assert(platform !is null);
         platform_ = platform;
+
+        // initialize used external bindings
+        import dgt.bindings.harfbuzz;
+        import derelict.freetype.ft;
+
+        DerelictFT.load();
+        loadHarfbuzzSymbols();
     }
 
     private Platform platform_;
