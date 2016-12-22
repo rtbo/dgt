@@ -27,7 +27,7 @@ public void loadCairoSymbols(string[] libNames = [])
     cairoLoader.load(libNames);
 }
 
-/// Checks weither cairo is loaded
+/// Checks whether cairo is loaded
 public @property bool cairoLoaded()
 {
     return cairoLoader.loaded;
@@ -35,7 +35,7 @@ public @property bool cairoLoaded()
 
 version(linux)
 {
-    /// Checks weither cairo has XCB surface symbols loaded
+    /// Checks whether cairo has XCB surface symbols loaded
     public @property bool cairoHasXcb()
     in
     {

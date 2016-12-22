@@ -43,7 +43,7 @@ struct Symbol(RetT, Args...)
         fn_ = null;
     }
 
-    /// Check weither the symbol is already bound.
+    /// Check whether the symbol is already bound.
     public @property bool bound()
     {
         return fn_ !is null;
@@ -171,7 +171,7 @@ struct SymbolLoader(SymbolSpecs...)
         }
     }
 
-    /// Returns weither the shared library is open.
+    /// Returns whether the shared library is open.
     public @property bool loaded() const
     {
         return lib_ !is null;
