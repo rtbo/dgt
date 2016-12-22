@@ -1,5 +1,6 @@
 module dgt.vg.context;
 
+import dgt.rc;
 import dgt.vg.path;
 import dgt.vg.paint;
 import dgt.surface;
@@ -45,12 +46,8 @@ enum PaintMode
 
 alias PaintModeFlags = BitFlags!PaintMode;
 
-interface VgContext
+interface VgContext : RefCounted
 {
-    /// Release all resources in this context.
-    /// Context must not be used after this call.
-    void dispose();
-
     @property inout(Surface) surface() inout;
 
     void save();

@@ -1,10 +1,12 @@
 module dgt.vg.backend.cairo;
 
+import dgt.rc;
 import dgt.vg;
 import dgt.surface;
 import dgt.bindings.cairo;
 
 import std.exception : enforce;
+import std.experimental.logger;
 
 pure @safe @nogc
 {
@@ -87,14 +89,16 @@ pure @safe @nogc
 /// or just easier to track that way.
 private struct State
 {
-    Paint fill;
-    Paint stroke;
+    Rc!Paint fill;
+    Rc!Paint stroke;
 }
 
 /// VgContext implementation for cairo graphics library
 class CairoVgContext : VgContext
 {
     import dgt.util : GrowableStack;
+
+    mixin(rcCode);
 
     private Surface surface_;
     private cairo_surface_t* cairoSurface_;
@@ -127,6 +131,15 @@ class CairoVgContext : VgContext
 
     override void dispose()
     {
+        if (!stateStack_.empty)
+        {
+            warning("CairoContext disposed with state stack not empty");
+            while (!stateStack_.empty)
+            {
+                stateStack_.pop();
+            }
+        }
+        currentState_ = State.init; // release the state
         if (defaultSrc_)
         {
             cairo_pattern_destroy(defaultSrc_);
@@ -289,7 +302,7 @@ class CairoVgContext : VgContext
         // FIXME: pattern transform at cairo_set_source time
         if (fill)
         {
-            setSource(cast(CairoPaint) currentState_.fill);
+            setSource(cast(CairoPaint) currentState_.fill.obj);
             if (stroke)
                 cairo_fill_preserve(cairo);
             else
@@ -297,7 +310,7 @@ class CairoVgContext : VgContext
         }
         if (stroke)
         {
-            setSource(cast(CairoPaint) currentState_.stroke);
+            setSource(cast(CairoPaint) currentState_.stroke.obj);
             cairo_stroke(cairo);
         }
     }
@@ -367,13 +380,14 @@ private float[4] quadToCubicControlPoints(in float[2] start,
     ];
 }
 
+/// Paint implementation of Cairo
 final class CairoPaint : Paint
 {
+    mixin(rcCode);
+
     private cairo_pattern_t* pattern_;
 
-    this()
-    {
-    }
+    this() {}
 
     override void dispose()
     {

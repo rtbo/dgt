@@ -3,6 +3,7 @@ import dgt.window;
 import dgt.event;
 import key = dgt.keys;
 import dgt.vg;
+import dgt.rc;
 
 import std.typecons : scoped;
 import std.stdio;
@@ -33,16 +34,9 @@ int main()
     win.onExpose += (WindowExposeEvent ev)
     {
         auto factory = win.vgFactory;
-        auto ctx = factory.createContext();
-        auto fillPaint = factory.createPaint();
-        auto strokePaint = factory.createPaint();
-
-        scope (exit)
-        {
-            strokePaint.dispose();
-            fillPaint.dispose();
-            ctx.dispose();
-        }
+        auto ctx = factory.createContext().rc();
+        auto fillPaint = factory.createPaint().rc();
+        auto strokePaint = factory.createPaint().rc();
 
         immutable width = win.size.width;
         fillPaint.color = [width/1300f, 0.8, 0.2, 1.0];

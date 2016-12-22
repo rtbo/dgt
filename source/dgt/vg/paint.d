@@ -1,5 +1,7 @@
 module dgt.vg.paint;
 
+import dgt.rc;
+
 enum PaintType
 {
     color,
@@ -39,10 +41,8 @@ enum SpreadMode
 
 /// Paint defines the material that fills and strokes pathes.
 /// It can hold one of the different paint types.
-interface Paint
+interface Paint : RefCounted
 {
-    void dispose();
-
     @property PaintType type() const;
 
     @property float[4] color() const;
