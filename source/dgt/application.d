@@ -44,12 +44,15 @@ class Application
         assert(platform !is null);
         platform_ = platform;
 
-        // initialize used external bindings
+        // initialize bindings and singletons
+        import dgt.fontcache;
         import dgt.bindings.harfbuzz;
         import derelict.freetype.ft;
 
         DerelictFT.load();
         loadHarfbuzzSymbols();
+
+        FontCache.instance.discover();
     }
 
     private Platform platform_;
