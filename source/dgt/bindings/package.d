@@ -50,7 +50,7 @@ struct Symbol(RetT, Args...)
     }
 
     /// Call the symbol with the provided args.
-    public RetT opCall(Args...)(Args args)
+    public RetT opCall(Args args)
     in
     {
         assert(bound, "call to unbound function pointer");
