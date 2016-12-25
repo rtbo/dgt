@@ -1,6 +1,7 @@
 module dgt.application;
 
 import dgt.platform;
+import dgt.fontcache;
 
 /// Singleton class that must be built by the client application
 class Application
@@ -20,6 +21,7 @@ class Application
     ~this()
     {
         platform_.shutdown();
+        FontCache.instance.dispose();
     }
 
     /// Enter main event processing loop
@@ -44,15 +46,8 @@ class Application
         assert(platform !is null);
         platform_ = platform;
 
-        // initialize bindings and singletons
-        import dgt.fontcache;
-        import dgt.bindings.harfbuzz;
-        import derelict.freetype.ft;
-
-        DerelictFT.load();
-        loadHarfbuzzSymbols();
-
-        FontCache.instance.discover();
+        // initialize other singletons
+        FontCache.initialize();
     }
 
     private Platform platform_;

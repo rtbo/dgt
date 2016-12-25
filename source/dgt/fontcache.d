@@ -1,103 +1,73 @@
 module dgt.fontcache;
 
-enum FontLocation
-{
-    system,
-    user,
-    application
-}
+import dgt.bindings.fontconfig;
+import dgt.rc;
 
-struct FontFile
-{
-    FontLocation location;
-    string path;
-}
+import std.exception;
+import std.string;
 
-class FontCache
-{
-    private FontFile[] fontFiles_;
+private __gshared FontCache instance_;
 
-    private string[] appFolders_;
+/// Singleton that acts like a system font database and that perform
+/// font files queries given structured requests
+/// Tightly coupled to fontconfig, but this might (should) change.
+class FontCache : Disposable
+{
+    // called by Application.initialize
+    package static FontCache initialize()
+    in
+    {
+        assert(instance_ is null);
+    }
+    body
+    {
+        instance_ = new FontCache();
+        return instance_;
+    }
+
+    /// Returns the singleton instance.
+    /// Should not be called before Application is created.
+    public static FontCache instance()
+    in
+    {
+        assert(instance_ !is null);
+    }
+    body
+    {
+        return instance_;
+    }
+
+    private FcConfig* config_;
+    private string[] appFontFiles_;
 
     private this()
-    {}
-
-    static @property FontCache instance()
     {
-        static FontCache inst;
-        if (inst is null)
-        {
-            inst = new FontCache();
-        }
-        return inst;
+        loadFontconfigSymbols();
+        enforce(FcInit());
+        config_ = enforce(FcConfigGetCurrent());
     }
 
-    @property const(FontFile[]) fontFiles() const
+    override void dispose()
     {
-        return fontFiles_;
+        FcFini();
     }
 
-    @property const(string[]) appFolders() const
+    /// Returns the font files add by the application
+    @property const(string[]) appFontFiles() const
     {
-        return appFolders_;
-    }
-    @property void appFolders(string[] folders)
-    {
-        appFolders_ = folders;
+        return appFontFiles_;
     }
 
-    void discover()
+    /// Sets the font files added by the application
+    @property void appFontFiles(string[] files)
     {
-        fontFiles_ = [];
-
-        foreach (f; appFolders)
-        {
-            fontFiles_ ~= discoverFolder(f, FontLocation.application);
-        }
-        foreach (f; userFolders)
-        {
-            fontFiles_ ~= discoverFolder(f, FontLocation.user);
-        }
-        foreach (f; systemFolders)
-        {
-            fontFiles_ ~= discoverFolder(f, FontLocation.system);
-        }
+        import std.algorithm : each;
+        files.each!(f => addAppFontFile(f));
     }
 
-    private FontFile[] discoverFolder(string path, FontLocation location)
+    void addAppFontFile(string file)
     {
-        import std.file;
-        FontFile[] res;
-        if (exists(path) && isDir(path))
-        {
-            foreach (DirEntry de; dirEntries(path, SpanMode.depth))
-            {
-                if (de.isFile)
-                {
-                    res ~= FontFile(location, de.name);
-                }
-            }
-        }
-        return res;
-    }
-}
-
-
-private:
-
-version(linux)
-{
-    @property string[] userFolders()
-    {
-        return [
-            "~/.fonts",
-        ];
-    }
-    @property string[] systemFolders()
-    {
-        return [
-            "/usr/local/share/fonts",
-            "/usr/share/fonts",
-        ];
+        enforce(FcConfigAppFontAddFile(config_, toStringz(file)));
+        appFontFiles_ ~= file;
     }
 }
