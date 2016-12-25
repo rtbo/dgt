@@ -1,7 +1,7 @@
 module dgt.application;
 
 import dgt.platform;
-import dgt.fontcache;
+import dgt.text.fontcache;
 
 /// Singleton class that must be built by the client application
 class Application

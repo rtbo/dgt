@@ -1,4 +1,4 @@
-module dgt.fontcache;
+module dgt.text.fontcache;
 
 import dgt.bindings.fontconfig;
 import dgt.rc;
@@ -14,7 +14,7 @@ private __gshared FontCache instance_;
 class FontCache : Disposable
 {
     // called by Application.initialize
-    package static FontCache initialize()
+    package(dgt) static FontCache initialize()
     in
     {
         assert(instance_ is null);
