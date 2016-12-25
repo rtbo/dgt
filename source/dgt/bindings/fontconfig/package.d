@@ -147,7 +147,7 @@ alias FontconfigLoader = SymbolLoader!(
     FcObjectSetAdd,
     FcObjectSetDestroy,
 //    FcObjectSetVaBuild,
-//    FcObjectSetBuild, // FC_ATTRIBUTE_SENTINEL()
+    FcObjectSetBuild, // FC_ATTRIBUTE_SENTINEL()
     FcFontSetList,
     FcFontList,
 /* fcatomic.c */

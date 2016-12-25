@@ -230,8 +230,10 @@ __gshared Symbol!(void, FcObjectSet*) FcObjectSetDestroy;
 
 //__gshared Symbol!(FcObjectSet * , const(char) *, va_list ) FcObjectSetVaBuild;
 
-//__gshared Symbol!(FcObjectSet *, const(char) *, ...) FcObjectSetBuild; // FC_ATTRIBUTE_SENTINEL()
-
+extern(C) nothrow @nogc
+{
+    __gshared VarArgSymbol!(FcObjectSet * , const(char) *) FcObjectSetBuild;
+}
 __gshared Symbol!(FcFontSet*, FcConfig*, FcFontSet**, int, FcPattern*, FcObjectSet*) FcFontSetList;
 
 __gshared Symbol!(FcFontSet*, FcConfig*, FcPattern*, FcObjectSet*) FcFontList;
