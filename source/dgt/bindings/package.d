@@ -61,6 +61,48 @@ struct Symbol(RetT, Args...)
     }
 }
 
+/// Similar as Symbol but the function signature has additional var args
+/// (C ellipsis arguments) after the arguments provided to the template.
+struct VarArgSymbol(RetT, Args...)
+{
+    /// Alias to the foreign function type
+    public alias Fn = extern(C) RetT function (Args, ...) nothrow @nogc;
+    private Fn fn_;
+
+    /// Bind the symbol to the loaded function
+    public void bindTo(SharedSym sym)
+    in
+    {
+        assert(!bound, "rebinding of already bound symbol");
+    }
+    body
+    {
+        fn_ = cast(Fn) sym;
+    }
+
+    /// Unbind the symbol
+    public void unbind()
+    {
+        fn_ = null;
+    }
+
+    /// Check whether the symbol is already bound.
+    public @property bool bound()
+    {
+        return fn_ !is null;
+    }
+
+    /// Call the symbol with the provided args.
+    public RetT opCall(VarArgs ...)(Args args, VarArgs varArgs)
+    in
+    {
+        assert(bound, "call to unbound function pointer");
+    }
+    body
+    {
+        return fn_(args, varArgs);
+    }
+}
 
 unittest
 {
@@ -92,7 +134,8 @@ struct SymbolLoader(SymbolSpecs...)
 
     private template SymSpec(alias s, Flag!"optional" o)
     {
-        static assert(isInstanceOf!(Symbol, typeof(symbol)));
+        static assert(isInstanceOf!(Symbol, typeof(symbol)) ||
+                    isInstanceOf!(VarArgSymbol, typeof(symbol)));
         alias symbol = s;
         enum optional = o;
     }
