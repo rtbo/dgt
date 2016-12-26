@@ -1,6 +1,6 @@
 module dgt.vg.backend.cairo;
 
-import dgt.rc;
+import dgt.resource;
 import dgt.vg;
 import dgt.surface;
 import dgt.bindings.cairo;

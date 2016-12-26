@@ -1,7 +1,7 @@
 module dgt.text.font;
 
 import dgt.text.fontcache;
-import dgt.rc;
+import dgt.resource;
 import dgt.util;
 
 /// Font size (expressed in pts or px)

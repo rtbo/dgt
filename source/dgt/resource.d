@@ -1,4 +1,5 @@
-module dgt.rc;
+/// Resource management module
+module dgt.resource;
 
 /// A resource that can be disposed
 interface Disposable

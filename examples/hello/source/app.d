@@ -3,7 +3,7 @@ import dgt.window;
 import dgt.event;
 import key = dgt.keys;
 import dgt.vg;
-import dgt.rc;
+import dgt.resource;
 
 import std.typecons : scoped;
 import std.stdio;
