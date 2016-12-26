@@ -7,6 +7,173 @@ interface Disposable
     void dispose();
 }
 
+
+/// Creates a new instance of $(D T) and returns it under a $(D Uniq!T).
+template makeUniq(T)
+if (is(T : Disposable))
+{
+    Uniq!T makeUniq(Args...)(Args args)
+    {
+        return Uniq!T(new T (args));
+    }
+}
+
+
+/// A helper struct that manage the lifetime of a Disposable using RAII.
+/// Note: dlang has capability to enforce a parameter be a lvalue (ref param)
+/// but has no mechanism such as c++ rvalue reference which would enforce
+/// true uniqueness by the compiler. Uniq gives additional robustness, but it is
+/// up to the programmer to make sure that the values passed by rvalue in are
+/// not referenced somewhere else in the code
+struct Uniq(T)
+if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
+{
+    private T _obj;
+
+    // prevent using Uniq with Refcounted
+    // (invariant handles runtime polymorphism)
+    static assert(!is(T : RefCounted), "Use Rc helper for RefCounted objects");
+    invariant()
+    {
+        // if obj is assigned, it must not cast to a RefCounted
+        assert(!_obj || !(cast(RefCounted)_obj));
+    }
+
+    /// Constructor taking rvalue. Uniqueness is achieve only if there is no
+    /// aliases of the passed reference.
+    this(T obj)
+    {
+        _obj = obj;
+    }
+
+    /// Constructor taking lvalue. Uniqueness is achieve only if there is no
+    /// other copies of the passed reference.
+    this(ref T obj)
+    {
+        _obj = obj;
+        obj = null;
+    }
+
+    /// Constructor that take a rvalue.
+    /// $(D u) can only be a rvalue because postblit is disabled.
+    this(U)(Uniq!U u)
+    {
+        _obj = u._obj;
+    }
+
+    /// Transfer ownership from a Uniq of a type that is convertible to our type.
+    /// $(D u) can only be a rvalue because postblit is disabled.
+    void opAssign(U)(Uniq!U u)
+    {
+        if (_obj)
+        {
+            _obj.dispose();
+        }
+        _obj = u._obj;
+    }
+
+    /// Destructor that disposes the resource.
+    ~this()
+    {
+        dispose();
+    }
+
+    /// A view on the underlying object.
+    @property inout(T) obj() inout
+    {
+        return _obj;
+    }
+
+    /// Forwarding method calls and member access to the underlying object.
+    alias obj this;
+
+    /// Transfer the ownership.
+    Uniq release()
+    {
+        auto u = Uniq(_obj);
+        assert(_obj is null);
+        return u;
+    }
+
+    /// Dispose the underlying resource.
+    void dispose()
+    {
+        // Same method than Disposeable on purpose as it disables alias this.
+        // One cannot shortcut Uniq to dispose the resource.
+        if (_obj)
+        {
+            _obj.dispose();
+            _obj = null;
+        }
+    }
+
+    /// Checks whether a resource is assigned.
+    bool assigned() const
+    {
+        return _obj !is null;
+    }
+
+    // disable copying
+    @disable this(this);
+}
+
+version(unittest)
+{
+    private int disposeCount;
+
+    private class UniqTest : Disposable
+    {
+        override void dispose()
+        {
+            disposeCount += 1;
+        }
+    }
+
+    private Uniq!UniqTest produce1()
+    {
+        auto u = makeUniq!UniqTest();
+        // Returning without release is fine?
+        // It compiles and passes the test, but not recommended.
+        // return u;
+        return u.release();
+    }
+
+    private Uniq!UniqTest produce2()
+    {
+        return makeUniq!UniqTest();
+    }
+
+    private void consume(Uniq!UniqTest u)
+    {
+    }
+
+    unittest
+    {
+        disposeCount = 0;
+        auto u = makeUniq!UniqTest();
+        assert(disposeCount == 0);
+        static assert (!__traits(compiles, consume(u)));
+        consume(u.release());
+        assert(disposeCount == 1);
+
+        {
+            auto v = makeUniq!UniqTest();
+        }
+        assert(disposeCount == 2);
+
+        consume(produce1());
+        assert(disposeCount == 3);
+
+        consume(produce2());
+        assert(disposeCount == 4);
+
+        auto w = makeUniq!UniqTest();
+        w.dispose();
+        assert(disposeCount == 5);
+    }
+}
+
+
 /// A reference counted resource
 interface RefCounted : Disposable
 {
@@ -292,3 +459,17 @@ template isRuntimeRc(T)
 }
 
 static assert(isRuntimeRc!RefCounted);
+
+private template hasMemberFunc(T, string fun)
+{
+    enum bool hasMemberFunc = is(typeof(
+    (inout int = 0)
+    {
+        T t = T.init;
+        mixin("t."~fun~"();");
+    }));
+}
+
+static assert(hasMemberFunc!(RefCounted, "retain"));
+static assert(hasMemberFunc!(Disposable, "dispose"));
+static assert(!hasMemberFunc!(Disposable, "release"));
