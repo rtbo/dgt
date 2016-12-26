@@ -98,7 +98,12 @@ mixin template ValueProperty(string __name, T, T defaultVal = T.init)
 
     mixin("public @property T " ~ __name ~ "() const { return _" ~ __name ~ "; }");
     mixin("public @property void " ~ __name ~ "(T value) { _" ~ __name ~ " = value; }");
+}
+mixin template ReadOnlyValueProperty(string __name, T, T defaultVal = T.init)
+{
+    mixin("private T _" ~ __name ~ " = defaultVal;");
 
+    mixin("public @property T " ~ __name ~ "() const { return _" ~ __name ~ "; }");
 }
 
 /// the expression:
