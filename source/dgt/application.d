@@ -1,10 +1,11 @@
 module dgt.application;
 
+import dgt.resource;
 import dgt.platform;
 import dgt.text.fontcache;
 
 /// Singleton class that must be built by the client application
-class Application
+class Application : Disposable
 {
     /// Build an application. This will initialize underlying platform.
     this()
@@ -13,14 +14,13 @@ class Application
     }
 
     /// Build an application with the provided platform.
-    this(Platform platform)
+    this(Uniq!Platform platform)
     {
-        initialize(platform);
+        initialize(platform.release());
     }
 
-    ~this()
+    override void dispose()
     {
-        platform_.shutdown();
         FontCache.instance.dispose();
     }
 
@@ -39,18 +39,18 @@ class Application
         exitFlag_ = true;
     }
 
-    private void initialize(Platform platform)
+    private void initialize(Uniq!Platform platform)
     {
         assert(!instance_, "Attempt to initialize twice DGT Application singleton");
         instance_ = this;
-        assert(platform !is null);
-        platform_ = platform;
+        assert(platform.assigned);
+        platform_ = platform.release();
 
         // initialize other singletons
         FontCache.initialize();
     }
 
-    private Platform platform_;
+    private Uniq!Platform platform_;
     private bool exitFlag_;
     private int exitCode_;
 
@@ -66,7 +66,7 @@ class Application
         @property Platform platform()
         {
             assert(instance_ && instance_.platform_, "Attempt to get unintialized DGT Platform");
-            return instance_.platform_;
+            return instance_.platform_.obj;
         }
 
         private Application instance_;
@@ -74,9 +74,9 @@ class Application
 }
 
 /// Make the default Platform for the running OS.
-Platform makeDefaultPlatform()
+Uniq!Platform makeDefaultPlatform()
 {
     import dgt.platform.xcb : XcbPlatform;
 
-    return new XcbPlatform();
+    return Uniq!Platform(new XcbPlatform);
 }

@@ -10,7 +10,7 @@ import std.stdio;
 
 int main()
 {
-    auto app = new Application();
+    auto app = makeUniq!Application();
     auto win = new Window();
     win.onKeyDown += (WindowKeyEvent ev) {
         switch (ev.sym)

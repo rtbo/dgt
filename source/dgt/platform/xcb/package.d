@@ -107,7 +107,7 @@ class XcbPlatform : Platform
     }
 
     /// Platform implementation
-    override void shutdown()
+    override void dispose()
     {
         XCloseDisplay(g_display);
         g_display = null;

@@ -8,7 +8,6 @@ interface Disposable
     void dispose();
 }
 
-
 /// Creates a new instance of $(D T) and returns it under a $(D Uniq!T).
 template makeUniq(T)
 if (is(T : Disposable))
@@ -19,6 +18,10 @@ if (is(T : Disposable))
     }
 }
 
+debug(Uniq)
+{
+    import std.stdio;
+}
 
 /// A helper struct that manage the lifetime of a Disposable using RAII.
 /// Note: dlang has capability to enforce a parameter be a lvalue (ref param)
@@ -30,6 +33,7 @@ struct Uniq(T)
 if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
 {
     private T _obj;
+    alias Resource = T;
 
     // prevent using Uniq with Refcounted
     // (invariant handles runtime polymorphism)
@@ -37,13 +41,17 @@ if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
     invariant()
     {
         // if obj is assigned, it must not cast to a RefCounted
-        assert(!_obj || !(cast(RefCounted)_obj));
+        assert(!_obj || !(cast(RefCounted)_obj), "Use Rc helper for RefCounted objects");
     }
 
     /// Constructor taking rvalue. Uniqueness is achieve only if there is no
     /// aliases of the passed reference.
     this(T obj)
     {
+        debug(Uniq)
+        {
+            writefln("build a Uniq!%s from rvalue", T.stringof);
+        }
         _obj = obj;
     }
 
@@ -51,6 +59,10 @@ if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
     /// other copies of the passed reference.
     this(ref T obj)
     {
+        debug(Uniq)
+        {
+            writefln("build a Uniq!%s from lvalue", T.stringof);
+        }
         _obj = obj;
         obj = null;
     }
@@ -58,24 +70,49 @@ if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
     /// Constructor that take a rvalue.
     /// $(D u) can only be a rvalue because postblit is disabled.
     this(U)(Uniq!U u)
+    if (is(U : T))
     {
+        debug(Uniq)
+        {
+            writefln("cast building a Uniq from rvalue from %s to %s",
+                U.stringof, T.stringof
+            );
+        }
         _obj = u._obj;
     }
 
     /// Transfer ownership from a Uniq of a type that is convertible to our type.
     /// $(D u) can only be a rvalue because postblit is disabled.
     void opAssign(U)(Uniq!U u)
+    if (is(U : T))
     {
+        debug(Uniq)
+        {
+            writefln("opAssign a Uniq from rvalue from %s to %s",
+                U.stringof, T.stringof
+            );
+        }
         if (_obj)
         {
             _obj.dispose();
         }
         _obj = u._obj;
+        u._obj = null;
+    }
+
+    /// Shortcut to assigned
+    bool opCast(U : bool)() const
+    {
+        return assigned;
     }
 
     /// Destructor that disposes the resource.
     ~this()
     {
+        debug(Uniq)
+        {
+            writefln("dtor of Uniq!%s", T.stringof);
+        }
         dispose();
     }
 
@@ -91,18 +128,26 @@ if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
     /// Transfer the ownership.
     Uniq release()
     {
+        debug(Uniq)
+        {
+            writefln("release of Uniq!%s", T.stringof);
+        }
         auto u = Uniq(_obj);
         assert(_obj is null);
         return u;
     }
 
-    /// Dispose the underlying resource.
+    /// Explicitely ispose the underlying resource.
     void dispose()
     {
         // Same method than Disposeable on purpose as it disables alias this.
         // One cannot shortcut Uniq to dispose the resource.
         if (_obj)
         {
+            debug(Uniq)
+            {
+                writefln("dispose of Uniq!%s", T.stringof);
+            }
             _obj.dispose();
             _obj = null;
         }

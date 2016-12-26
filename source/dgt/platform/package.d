@@ -1,5 +1,6 @@
 module dgt.platform;
 
+import dgt.resource;
 import dgt.geometry;
 import dgt.screen;
 import dgt.window;
@@ -17,7 +18,7 @@ enum PlaformCaps
 
 alias PlatformCapsFlags = BitFlags!PlaformCaps;
 
-interface Platform
+interface Platform : Disposable
 {
     @property string name() const;
     @property PlatformCapsFlags caps() const;
@@ -25,7 +26,6 @@ interface Platform
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
     void processNextEvent();
-    void shutdown();
 }
 
 interface PlatformWindow
