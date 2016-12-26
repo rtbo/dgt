@@ -1,5 +1,6 @@
 module dgt.text.fontcache;
 
+import dgt.text.font;
 import dgt.bindings.fontconfig;
 import dgt.rc;
 
@@ -7,55 +8,6 @@ import std.exception;
 import std.string;
 import std.experimental.logger;
 
-/// Font size (expressed in pts or px)
-struct FontSize
-{
-    /// Unit of the size value
-    enum Unit
-    {
-        pts,
-        px
-    }
-
-    Unit unit;
-    double value;
-
-    /// Returns a FontSize with value expressed in pts
-    static FontSize pts(double pts)
-    {
-        return FontSize(Unit.pts, pts);
-    }
-    /// Returns a FontSize with value expressed in px
-    static FontSize px(double px)
-    {
-        return FontSize(Unit.px, px);
-    }
-}
-
-/// Font style as defined by the CSS specification
-enum FontStyle
-{
-    normal,
-    italic,
-    oblique,
-}
-
-/// Font weight as defined by the CSS specification.
-/// An integer is typically expected for the weight. Either a value of this enum
-/// or a number between 100 and 900 can be provided in place.
-enum FontWeight : int
-{
-    normal = 400,
-    bold = 700,
-}
-
-/// Font variant as defined by the CSS specification.
-/// Unsupported at the moment.
-enum FontVariant
-{
-    normal,
-    smallCaps,
-}
 
 /// A structured font request.
 /// Although taking parameters as defined by the CSS specification,
