@@ -24,7 +24,7 @@ struct Symbol(RetT, Args...)
 {
     /// Alias to the foreign function type
     public alias Fn = extern(C) RetT function (Args) nothrow @nogc;
-    private Fn fn_;
+    private Fn _fn;
 
     /// Bind the symbol to the loaded function
     public void bindTo(SharedSym sym)
@@ -34,19 +34,19 @@ struct Symbol(RetT, Args...)
     }
     body
     {
-        fn_ = cast(Fn) sym;
+        _fn = cast(Fn) sym;
     }
 
     /// Unbind the symbol
     public void unbind()
     {
-        fn_ = null;
+        _fn = null;
     }
 
     /// Check whether the symbol is already bound.
     public @property bool bound()
     {
-        return fn_ !is null;
+        return _fn !is null;
     }
 
     /// Call the symbol with the provided args.
@@ -57,7 +57,7 @@ struct Symbol(RetT, Args...)
     }
     body
     {
-        return fn_(args);
+        return _fn(args);
     }
 }
 
@@ -67,7 +67,7 @@ struct VarArgSymbol(RetT, Args...)
 {
     /// Alias to the foreign function type
     public alias Fn = extern(C) RetT function (Args, ...) nothrow @nogc;
-    private Fn fn_;
+    private Fn _fn;
 
     /// Bind the symbol to the loaded function
     public void bindTo(SharedSym sym)
@@ -77,19 +77,19 @@ struct VarArgSymbol(RetT, Args...)
     }
     body
     {
-        fn_ = cast(Fn) sym;
+        _fn = cast(Fn) sym;
     }
 
     /// Unbind the symbol
     public void unbind()
     {
-        fn_ = null;
+        _fn = null;
     }
 
     /// Check whether the symbol is already bound.
     public @property bool bound()
     {
-        return fn_ !is null;
+        return _fn !is null;
     }
 
     /// Call the symbol with the provided args.
@@ -100,7 +100,7 @@ struct VarArgSymbol(RetT, Args...)
     }
     body
     {
-        return fn_(args, varArgs);
+        return _fn(args, varArgs);
     }
 }
 
@@ -127,8 +127,8 @@ struct SymbolLoader(SymbolSpecs...)
     import std.traits : isInstanceOf;
     import std.typecons : Flag, Yes, No;
 
-    private SharedLib lib_;
-    private string libName_;
+    private SharedLib _lib;
+    private string _libName;
 
     private enum defaultSpec = No.optional;
 
@@ -183,11 +183,11 @@ struct SymbolLoader(SymbolSpecs...)
     {
         foreach(n; libNames)
         {
-            lib_ = openSharedLib(n);
-            libName_ = n;
+            _lib = openSharedLib(n);
+            _libName = n;
             break;
         }
-        if (!lib_)
+        if (!_lib)
         {
             import std.conv : to;
             throw new Exception(
@@ -205,10 +205,10 @@ struct SymbolLoader(SymbolSpecs...)
             {
                 throw new Exception("Tentative to bind already bound symbol "~ name);
             }
-            auto sym = loadSharedSym(lib_, name);
+            auto sym = loadSharedSym(_lib, name);
             if (!sym && !ss.optional)
             {
-                throw new Exception("Cannot load symbol "~name~" from "~libName_~".");
+                throw new Exception("Cannot load symbol "~name~" from "~_libName~".");
             }
             ss.symbol.bindTo(cast(ss.symbol.Fn) sym);
         }
@@ -217,14 +217,14 @@ struct SymbolLoader(SymbolSpecs...)
     /// Returns whether the shared library is open.
     public @property bool loaded() const
     {
-        return lib_ !is null;
+        return _lib !is null;
     }
 
     /// Returns the name of the shared library that was open.
     /// Empty string if not loaded.
     public @property string libName() const
     {
-        return libName_;
+        return _libName;
     }
 
     /// Unload
@@ -236,9 +236,9 @@ struct SymbolLoader(SymbolSpecs...)
         {
             sd.symbol.unbind();
         }
-        closeSharedLib(lib_);
-        lib_ = null;
-        libName_ = [];
+        closeSharedLib(_lib);
+        _lib = null;
+        _libName = [];
     }
 
 }

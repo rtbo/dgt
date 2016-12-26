@@ -19,11 +19,11 @@ class XcbKeyboard
 {
     private
     {
-        xkb_context *context_;
-        uint device_;
-        xkb_keymap *keymap_;
-        xkb_state *state_;
-        key.Mods mods_;
+        xkb_context *_context;
+        uint _device;
+        xkb_keymap *_keymap;
+        xkb_state *_state;
+        key.Mods _mods;
     }
 
     this(xcb_connection_t *connection, out uint xkbFirstEv)
@@ -74,46 +74,46 @@ class XcbKeyboard
             throw new Exception("failed to select notify events from xcb xkb");
         }
 
-        context_ = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-        if (!context_) throw new Exception("could not alloc xkb context");
-        scope(failure) xkb_context_unref(context_);
+        _context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+        if (!_context) throw new Exception("could not alloc xkb context");
+        scope(failure) xkb_context_unref(_context);
 
-        device_ = xkb_x11_get_core_keyboard_device_id(connection);
-        if (device_ == -1) throw new Exception("could not get X11 keyboard device id");
+        _device = xkb_x11_get_core_keyboard_device_id(connection);
+        if (_device == -1) throw new Exception("could not get X11 keyboard device id");
 
-        keymap_ = xkb_x11_keymap_new_from_device(context_, connection, device_,
+        _keymap = xkb_x11_keymap_new_from_device(_context, connection, _device,
                     XKB_KEYMAP_COMPILE_NO_FLAGS);
-        if (!keymap_) throw new Exception("could not get keymap");
-        scope(failure) xkb_keymap_unref(keymap_);
+        if (!_keymap) throw new Exception("could not get keymap");
+        scope(failure) xkb_keymap_unref(_keymap);
 
-        state_ = xkb_x11_state_new_from_device(keymap_, connection, device_);
-        if (!state_) throw new Exception("could not alloc xkb state");
+        _state = xkb_x11_state_new_from_device(_keymap, connection, _device);
+        if (!_state) throw new Exception("could not alloc xkb state");
     }
 
     @property uint device() const
     {
-        return device_;
+        return _device;
     }
 
     void updateState(xcb_xkb_state_notify_event_t *e)
     {
-        if (!state_) return;
-        xkb_state_update_mask(state_,
+        if (!_state) return;
+        xkb_state_update_mask(_state,
                 e.baseMods, e.latchedMods, e.lockedMods,
                 e.baseGroup, e.latchedGroup, e.lockedGroup);
     }
 
     void shutdown()
     {
-        xkb_state_unref(state_);
-        xkb_keymap_unref(keymap_);
-        xkb_context_unref(context_);
+        xkb_state_unref(_state);
+        xkb_keymap_unref(_keymap);
+        xkb_context_unref(_context);
     }
 
     void processEvent(xcb_key_press_event_t *xcbEv, Window w)
     {
         immutable keycode = xcbEv.detail;
-        immutable keysym = xkb_state_key_get_one_sym(state_, keycode);
+        immutable keysym = xkb_state_key_get_one_sym(_state, keycode);
 
         immutable code = codeForKeycode(keycode);
         immutable sym = symForKeysym(keysym);
@@ -124,11 +124,11 @@ class XcbKeyboard
         if (xcbEventType(xcbEv) == XCB_KEY_PRESS)
         {
             et = EventType.windowKeyDown;
-            mods_ |= mods;
-            auto size = xkb_state_key_get_utf8(state_, keycode, null, 0);
+            _mods |= mods;
+            auto size = xkb_state_key_get_utf8(_state, keycode, null, 0);
             if (size > 0) {
                 char[] buf = new char[size+1];
-                xkb_state_key_get_utf8(state_, keycode, buf.ptr, size+1);
+                xkb_state_key_get_utf8(_state, keycode, buf.ptr, size+1);
                 buf = buf[0 .. size];
                 text = assumeUnique(buf);
             }
@@ -137,11 +137,11 @@ class XcbKeyboard
         {
             assert(xcbEventType(xcbEv) == XCB_KEY_RELEASE);
             et = EventType.windowKeyUp;
-            mods_ &= ~mods;
+            _mods &= ~mods;
         }
 
         import std.typecons : scoped;
-        auto ev = scoped!WindowKeyEvent(et, w, sym, code, mods_, text, keycode, keysym);
+        auto ev = scoped!WindowKeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
         w.handleEvent(ev);
     }
 

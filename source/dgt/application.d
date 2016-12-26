@@ -27,49 +27,49 @@ class Application : Disposable
     /// Enter main event processing loop
     int loop()
     {
-        while (!exitFlag_)
-            platform_.processNextEvent();
-        return exitCode_;
+        while (!_exitFlag)
+            _platform.processNextEvent();
+        return _exitCode;
     }
 
     /// Register an exit code and exit at end of current event loop
     void exit(int code = 0)
     {
-        exitCode_ = code;
-        exitFlag_ = true;
+        _exitCode = code;
+        _exitFlag = true;
     }
 
     private void initialize(Uniq!Platform platform)
     {
-        assert(!instance_, "Attempt to initialize twice DGT Application singleton");
-        instance_ = this;
+        assert(!_instance, "Attempt to initialize twice DGT Application singleton");
+        _instance = this;
         assert(platform.assigned);
-        platform_ = platform.release();
+        _platform = platform.release();
 
         // initialize other singletons
         FontCache.initialize();
     }
 
-    private Uniq!Platform platform_;
-    private bool exitFlag_;
-    private int exitCode_;
+    private Uniq!Platform _platform;
+    private bool _exitFlag;
+    private int _exitCode;
 
     static
     {
         /// Get the Application singleton.
         @property Application instance()
         {
-            assert(instance_, "Attempt to get unintialized DGT Application");
-            return instance_;
+            assert(_instance, "Attempt to get unintialized DGT Application");
+            return _instance;
         }
         /// Get the Platform singleton.
         @property Platform platform()
         {
-            assert(instance_ && instance_.platform_, "Attempt to get unintialized DGT Platform");
-            return instance_.platform_.obj;
+            assert(_instance && _instance._platform, "Attempt to get unintialized DGT Platform");
+            return _instance._platform.obj;
         }
 
-        private Application instance_;
+        private Application _instance;
     }
 }
 

@@ -27,30 +27,30 @@ alias Screen = dgt.screen.Screen;
 
 class XcbVgFactory : VgFactory
 {
-    private Surface surf_;
-    private cairo_surface_t* cairoSurf_;
+    private Surface _surf;
+    private cairo_surface_t* _cairoSurf;
 
     this(Surface surface, xcb_drawable_t drawable, xcb_visualtype_t* visual,
             int width, int height)
     {
-        surf_ = surface;
-        cairoSurf_ = cairo_xcb_surface_create(g_connection, drawable,
+        _surf = surface;
+        _cairoSurf = cairo_xcb_surface_create(g_connection, drawable,
                 visual, width, height);
     }
 
     void dispose()
     {
-        cairo_surface_destroy(cairoSurf_);
+        cairo_surface_destroy(_cairoSurf);
     }
 
     override @property inout(Surface) surface() inout
     {
-        return surf_;
+        return _surf;
     }
     override VgContext createContext()
     {
         import dgt.vg.backend.cairo : CairoVgContext;
-        return new CairoVgContext(surf_, cairoSurf_);
+        return new CairoVgContext(_surf, _cairoSurf);
     }
     override Paint createPaint()
     {
@@ -60,7 +60,7 @@ class XcbVgFactory : VgFactory
 
     private void resizeNotfiy(in int width, in int height)
     {
-        cairo_xcb_surface_set_size(cairoSurf_, width, height);
+        cairo_xcb_surface_set_size(_cairoSurf, width, height);
     }
 }
 
@@ -69,53 +69,53 @@ class XcbWindow : PlatformWindow
 {
     private
     {
-        Window win_;
-        XcbPlatform platform_;
-        xcb_window_t xcbWin_;
-        xcb_visualid_t visualId_;
-        bool created_ = false;
-        WindowState lastKnownState_ = WindowState.hidden;
-        IRect rect_;
-        bool mapped_;
-        XcbVgFactory vgFactory_;
+        Window _win;
+        XcbPlatform _platform;
+        xcb_window_t _xcbWin;
+        xcb_visualid_t _visualId;
+        bool _created = false;
+        WindowState _lastKnownState = WindowState.hidden;
+        IRect _rect;
+        bool _mapped;
+        XcbVgFactory _vgFactory;
     }
 
     this(Window w, XcbPlatform platform)
     {
-        win_ = w;
-        platform_ = platform;
+        _win = w;
+        _platform = platform;
     }
 
     override bool created() const
     {
-        return created_;
+        return _created;
     }
 
     override void create(WindowState state)
     {
-        const screen = platform_.defaultXcbScreen;
+        const screen = _platform.defaultXcbScreen;
         immutable screenNum = screen.num;
         immutable size = creationSize();
         immutable pos = creationPos(screen, size);
 
-        auto visualInfo = getXlibVisualInfo(g_display, screenNum, win_.attribs);
+        auto visualInfo = getXlibVisualInfo(g_display, screenNum, _win.attribs);
         if (!visualInfo)
         {
             throw new Exception("DGT-XCB: window could not get visual");
         }
-        visualId_ = visualInfo.visualid;
+        _visualId = visualInfo.visualid;
         XFree(visualInfo);
 
         immutable cmap = xcb_generate_id(g_connection);
-        xcbWin_ = xcb_generate_id(g_connection);
+        _xcbWin = xcb_generate_id(g_connection);
 
-        xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen.root, visualId_);
+        xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen.root, _visualId);
 
         immutable mask = XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP;
         uint[] values = [screen.whitePixel, cmap, 0];
 
         auto cook = xcb_create_window_checked(g_connection, screen.rootDepth,
-                xcbWin_, screen.root, cast(short) pos.x, cast(short) pos.y,
+                _xcbWin, screen.root, cast(short) pos.x, cast(short) pos.y,
                 cast(ushort) size.width, cast(ushort) size.height, 0,
                 XCB_WINDOW_CLASS_INPUT_OUTPUT, screen.rootVisual, mask, &values[0]);
 
@@ -129,29 +129,29 @@ class XcbWindow : PlatformWindow
 
         prepareEvents();
 
-        platform_.registerWindow(this);
+        _platform.registerWindow(this);
 
-        lastKnownState_ = WindowState.hidden;
+        _lastKnownState = WindowState.hidden;
         this.state = state; // actually show the window
-        created_ = true;
+        _created = true;
     }
 
     override void close()
     {
-        if (vgFactory_)
-            vgFactory_.dispose();
-        if (mapped_)
-            xcb_unmap_window(g_connection, xcbWin_);
-        xcb_destroy_window(g_connection, xcbWin_);
+        if (_vgFactory)
+            _vgFactory.dispose();
+        if (_mapped)
+            xcb_unmap_window(g_connection, _xcbWin);
+        xcb_destroy_window(g_connection, _xcbWin);
         xcb_flush(g_connection);
 
-        vgFactory_ = null;
-        xcbWin_ = 0;
+        _vgFactory = null;
+        _xcbWin = 0;
     }
 
     override @property string title() const
     {
-        auto c = xcb_get_property(g_connection, 0, xcbWin_, XCB_ATOM_WM_NAME,
+        auto c = xcb_get_property(g_connection, 0, _xcbWin, XCB_ATOM_WM_NAME,
                 XCB_ATOM_STRING, 0, 1024);
         auto r = xcb_get_property_reply(g_connection, c, null);
         if (!r)
@@ -164,17 +164,17 @@ class XcbWindow : PlatformWindow
 
     override @property void title(string title)
     {
-        xcb_change_property(g_connection, cast(ubyte) XCB_PROP_MODE_REPLACE, xcbWin_,
+        xcb_change_property(g_connection, cast(ubyte) XCB_PROP_MODE_REPLACE, _xcbWin,
                 cast(xcb_atom_t) XCB_ATOM_WM_NAME, cast(xcb_atom_t) XCB_ATOM_STRING,
                 8, cast(uint) title.length, toStringz(title));
-        xcb_change_property(g_connection, cast(ubyte) XCB_PROP_MODE_REPLACE, xcbWin_,
+        xcb_change_property(g_connection, cast(ubyte) XCB_PROP_MODE_REPLACE, _xcbWin,
                 cast(xcb_atom_t) XCB_ATOM_WM_ICON_NAME, cast(xcb_atom_t) XCB_ATOM_STRING,
                 8, cast(uint) title.length, toStringz(title));
     }
 
     override @property WindowState state() const
     {
-        auto cookie = xcb_get_property_unchecked(g_connection, 0, xcbWin_,
+        auto cookie = xcb_get_property_unchecked(g_connection, 0, _xcbWin,
                 atom(Atom.WM_STATE), XCB_ATOM_ANY, 0, 1024);
 
         auto reply = xcb_get_property_reply(g_connection, cookie, null);
@@ -207,14 +207,14 @@ class XcbWindow : PlatformWindow
 
     override @property void state(WindowState ws)
     {
-        if (lastKnownState_ == ws)
+        if (_lastKnownState == ws)
             return;
 
-        const screen = platform_.defaultXcbScreen;
+        const screen = _platform.defaultXcbScreen;
 
         // removing attribute that makes other than normal
 
-        switch (lastKnownState_)
+        switch (_lastKnownState)
         {
         case WindowState.maximized:
             changeNetWmState(false,
@@ -226,7 +226,7 @@ class XcbWindow : PlatformWindow
             break;
         case WindowState.minimized:
         case WindowState.hidden:
-            xcb_map_window(g_connection, xcbWin_);
+            xcb_map_window(g_connection, _xcbWin);
             break;
         default:
             break;
@@ -241,7 +241,7 @@ class XcbWindow : PlatformWindow
 
             ev.response_type = XCB_CLIENT_MESSAGE;
             ev.format = 32;
-            ev.window = xcbWin_;
+            ev.window = _xcbWin;
             ev.type = atom(Atom.WM_CHANGE_STATE);
             ev.data.data32[0] = XCB_ICCCM_WM_STATE_ICONIC;
             xcb_send_event(g_connection, 0, screen.root,
@@ -257,7 +257,7 @@ class XcbWindow : PlatformWindow
             changeNetWmState(true, atom(Atom._NET_WM_STATE_FULLSCREEN));
             break;
         case WindowState.hidden:
-            xcb_unmap_window(g_connection, xcbWin_);
+            xcb_unmap_window(g_connection, _xcbWin);
             break;
         default:
             break;
@@ -268,13 +268,13 @@ class XcbWindow : PlatformWindow
 
     override @property IRect geometry() const
     {
-        return rect_;
+        return _rect;
     }
 
     private @property IRect geometrySys() const
     {
         assert(created);
-        auto c = xcb_get_geometry(g_connection, xcbWin_);
+        auto c = xcb_get_geometry(g_connection, _xcbWin);
         xcb_generic_error_t* err;
         auto r = xcb_get_geometry_reply(g_connection, c, &err);
         if (err)
@@ -307,116 +307,116 @@ class XcbWindow : PlatformWindow
 
     @property inout(Window) window() inout
     {
-        return win_;
+        return _win;
     }
 
     override VgFactory vgFactory()
     {
-        if (!vgFactory_)
+        if (!_vgFactory)
         {
-            auto visual = getXcbVisualForId(platform_.xcbScreens, visualId_);
+            auto visual = getXcbVisualForId(_platform.xcbScreens, _visualId);
             auto rect = geometry;
-            vgFactory_ = new XcbVgFactory(win_, xcbWin_, visual, rect.width, rect.height);
+            _vgFactory = new XcbVgFactory(_win, _xcbWin, visual, rect.width, rect.height);
         }
-        return vgFactory_;
+        return _vgFactory;
     }
 
     package
     {
         @property xcb_window_t xcbWin() const
         {
-            return xcbWin_;
+            return _xcbWin;
         }
 
         void processButtonEvent(xcb_button_press_event_t* e)
         in
         {
-            assert(e.event == xcbWin_);
+            assert(e.event == _xcbWin);
         }
         body
         {
             auto ev = scoped!WindowMouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? EventType.windowMouseDown
-                    : EventType.windowMouseUp, win_, IPoint(e.event_x, e.event_y),
+                    : EventType.windowMouseUp, _win, IPoint(e.event_x, e.event_y),
                     dgtMouseButton(e.detail), dgtMouseState(e.state), dgtKeyMods(e.state));
-            win_.handleEvent(ev);
+            _win.handleEvent(ev);
         }
 
         void processMotionEvent(xcb_motion_notify_event_t* e)
         in
         {
-            assert(e.event == xcbWin_);
+            assert(e.event == _xcbWin);
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent(EventType.windowMouseMove, win_, IPoint(e.event_x,
+            auto ev = scoped!WindowMouseEvent(EventType.windowMouseMove, _win, IPoint(e.event_x,
                     e.event_y), MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
-            win_.handleEvent(ev);
+            _win.handleEvent(ev);
         }
 
         void processEnterLeaveEvent(xcb_enter_notify_event_t* e)
         in
         {
-            assert(e.event == xcbWin_);
+            assert(e.event == _xcbWin);
         }
         body
         {
             auto ev = scoped!WindowMouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? EventType.windowMouseEnter
-                    : EventType.windowMouseLeave, win_, IPoint(e.event_x, e.event_y),
+                    : EventType.windowMouseLeave, _win, IPoint(e.event_x, e.event_y),
                     MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
-            win_.handleEvent(ev);
+            _win.handleEvent(ev);
         }
 
         void processConfigureEvent(xcb_configure_notify_event_t* e)
         in
         {
-            assert(e.event == xcbWin_);
+            assert(e.event == _xcbWin);
         }
         body
         {
-            if (e.x != rect_.x || e.y != rect_.y)
+            if (e.x != _rect.x || e.y != _rect.y)
             {
-                rect_.point = IPoint(e.x, e.y);
-                win_.handleEvent(scoped!WindowMoveEvent(win_, rect_.point));
+                _rect.point = IPoint(e.x, e.y);
+                _win.handleEvent(scoped!WindowMoveEvent(_win, _rect.point));
             }
-            if (e.width != rect_.width || e.height != rect_.height)
+            if (e.width != _rect.width || e.height != _rect.height)
             {
-                if (vgFactory_)
+                if (_vgFactory)
                 {
-                    vgFactory_.resizeNotfiy(e.width, e.height);
+                    _vgFactory.resizeNotfiy(e.width, e.height);
                 }
-                rect_.size = ISize(e.width, e.height);
-                win_.handleEvent(scoped!WindowResizeEvent(win_, rect_.size));
+                _rect.size = ISize(e.width, e.height);
+                _win.handleEvent(scoped!WindowResizeEvent(_win, _rect.size));
             }
         }
 
         void processUnmapEvent(xcb_unmap_notify_event_t* e)
         in
         {
-            assert(e.event == xcbWin_);
+            assert(e.event == _xcbWin);
         }
         body
         {
-            mapped_ = false;
-            auto ev = scoped!WindowHideEvent(win_);
-            win_.handleEvent(ev);
+            _mapped = false;
+            auto ev = scoped!WindowHideEvent(_win);
+            _win.handleEvent(ev);
         }
 
         void processMapEvent(xcb_map_notify_event_t* e)
         in
         {
-            assert(e.event == xcbWin_);
+            assert(e.event == _xcbWin);
         }
         body
         {
-            mapped_ = true;
-            auto ev = scoped!WindowShowEvent(win_);
-            win_.handleEvent(ev);
+            _mapped = true;
+            auto ev = scoped!WindowShowEvent(_win);
+            _win.handleEvent(ev);
         }
 
         void processPropertyEvent(xcb_property_notify_event_t* e)
         in
         {
-            assert(e.window == xcbWin_);
+            assert(e.window == _xcbWin);
         }
         body
         {
@@ -424,10 +424,10 @@ class XcbWindow : PlatformWindow
             if (e.atom == atom(Atom.WM_STATE) || e.atom == atom(Atom._NET_WM_STATE))
             {
                 WindowState ws = state;
-                if (ws != lastKnownState_)
+                if (ws != _lastKnownState)
                 {
-                    lastKnownState_ = ws;
-                    win_.handleEvent(scoped!WindowStateChangeEvent(win_, ws));
+                    _lastKnownState = ws;
+                    _win.handleEvent(scoped!WindowStateChangeEvent(_win, ws));
                 }
             }
         }
@@ -435,12 +435,12 @@ class XcbWindow : PlatformWindow
         void processExposeEvent(xcb_expose_event_t* e)
         in
         {
-            assert(e.window == xcbWin_);
+            assert(e.window == _xcbWin);
         }
         body
         {
-            auto ev = scoped!WindowExposeEvent(win_, IRect(e.x, e.y, e.width, e.height));
-            win_.handleEvent(ev);
+            auto ev = scoped!WindowExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
+            _win.handleEvent(ev);
         }
     }
 
@@ -457,13 +457,13 @@ class XcbWindow : PlatformWindow
                     | XCB_EVENT_MASK_BUTTON_MOTION | XCB_EVENT_MASK_EXPOSURE
                     | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE, 0
                 ];
-                xcb_change_window_attributes(g_connection, xcbWin_,
+                xcb_change_window_attributes(g_connection, _xcbWin,
                         XCB_CW_EVENT_MASK, &values[0]);
             }
             // register window close event
             {
                 xcb_atom_t[] values = [atom(Atom.WM_DELETE_WINDOW), 0];
-                xcb_change_property(g_connection, XCB_PROP_MODE_REPLACE, xcbWin_,
+                xcb_change_property(g_connection, XCB_PROP_MODE_REPLACE, _xcbWin,
                         atom(Atom.WM_PROTOCOLS), XCB_ATOM_ATOM, 32, 1, &values[0]);
             }
         }
@@ -489,7 +489,7 @@ class XcbWindow : PlatformWindow
 
         @property NetWmStates netWmStates() const
         {
-            auto cookie = xcb_get_property_unchecked(g_connection, 0, xcbWin_,
+            auto cookie = xcb_get_property_unchecked(g_connection, 0, _xcbWin,
                     atom(Atom._NET_WM_STATE), XCB_ATOM_ATOM, 0, 1024);
 
             auto reply = xcb_get_property_reply(g_connection, cookie, null);
@@ -538,11 +538,11 @@ class XcbWindow : PlatformWindow
 
         void changeNetWmState(bool yes, xcb_atom_t atom1, xcb_atom_t atom2 = XCB_ATOM_NONE)
         {
-            const screen = platform_.defaultXcbScreen;
+            const screen = _platform.defaultXcbScreen;
             xcb_client_message_event_t e;
 
             e.response_type = XCB_CLIENT_MESSAGE;
-            e.window = xcbWin_;
+            e.window = _xcbWin;
             e.type = atom(Atom._NET_WM_STATE);
             e.format = 32;
             e.data.data32[0] = yes ? 1 : 0;
@@ -556,12 +556,12 @@ class XcbWindow : PlatformWindow
 
         xcb_atom_t atom(Atom atom) const
         {
-            return platform_.atom(atom);
+            return _platform.atom(atom);
         }
 
         ISize creationSize() const
         {
-            auto size = win_.size;
+            auto size = _win.size;
             if (size.area == 0)
             {
                 size.width = 640;
@@ -572,7 +572,7 @@ class XcbWindow : PlatformWindow
 
         IPoint creationPos(in Screen screen, in ISize size) const
         {
-            auto pos = win_.position;
+            auto pos = _win.position;
             if (pos.x < 0)
             {
                 // center horizontally

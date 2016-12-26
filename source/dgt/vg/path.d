@@ -44,163 +44,163 @@ size_t numComponents(in PathSeg seg)
 class Path
 {
     // FIXME: enforce path consistence
-    private PathSeg[] segments_;
-    private float[] data_;
-    private float[2] lastControl_;
-    private float[2] lastPoint_;
+    private PathSeg[] _segments;
+    private float[] _data;
+    private float[2] _lastControl;
+    private float[2] _lastPoint;
 
     this(in float[2] moveToPoint)
     {
-        segments_ = [PathSeg.moveTo];
-        data_ = moveToPoint.dup;
-        lastControl_[] = float.nan;
-        lastPoint_ = moveToPoint;
+        _segments = [PathSeg.moveTo];
+        _data = moveToPoint.dup;
+        _lastControl[] = float.nan;
+        _lastPoint = moveToPoint;
     }
 
     @property const(PathSeg)[] segments() const
     {
-        return segments_;
+        return _segments;
     }
 
     @property const(float)[] data() const
     {
-        return data_;
+        return _data;
     }
 
     @property float[2] lastControl() const
     {
-        return lastControl_;
+        return _lastControl;
     }
 
     @property float[2] lastPoint() const
     {
-        return lastPoint_;
+        return _lastPoint;
     }
 
     @property auto segmentRange() const
     {
-        return SegmentDataRange(segments_, data_);
+        return SegmentDataRange(_segments, _data);
     }
 
     void moveTo(in float[2] point)
     {
-        segments_ ~= PathSeg.moveTo;
-        data_ ~= point.dup;
-        lastControl_[] = float.nan;
-        lastPoint_ = point;
+        _segments ~= PathSeg.moveTo;
+        _data ~= point.dup;
+        _lastControl[] = float.nan;
+        _lastPoint = point;
     }
 
     void moveToRel(in float[2] vec)
     {
         enforce(hasLastPoint);
-        moveTo([lastPoint_[0] + vec[0], lastPoint_[1] + vec[1]]);
+        moveTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
     }
 
     void lineTo(in float[2] point)
     {
-        segments_ ~= PathSeg.lineTo;
-        data_ ~= point.dup;
-        lastControl_[] = float.nan;
-        lastPoint_ = point;
+        _segments ~= PathSeg.lineTo;
+        _data ~= point.dup;
+        _lastControl[] = float.nan;
+        _lastPoint = point;
     }
 
     void lineToRel(in float[2] vec)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0] + vec[0], lastPoint_[1] + vec[1]]);
+        lineTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
     }
 
     void horLineTo(in float xPoint)
     {
         enforce(hasLastPoint);
-        lineTo([xPoint, lastPoint_[1]]);
+        lineTo([xPoint, _lastPoint[1]]);
     }
 
     void horLineToRel(in float xVec)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0] + xVec, lastPoint_[1]]);
+        lineTo([_lastPoint[0] + xVec, _lastPoint[1]]);
     }
 
     void verLineTo(in float yPoint)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0], yPoint]);
+        lineTo([_lastPoint[0], yPoint]);
     }
 
     void verLineToRel(in float yVec)
     {
         enforce(hasLastPoint);
-        lineTo([lastPoint_[0], lastPoint_[1] + yVec]);
+        lineTo([_lastPoint[0], _lastPoint[1] + yVec]);
     }
 
     void quadTo(in float[2] control, in float[2] point)
     {
-        segments_ ~= PathSeg.quadTo;
-        data_ ~= [control[0], control[1], point[0], point[1]];
-        lastControl_ = control;
-        lastPoint_ = point;
+        _segments ~= PathSeg.quadTo;
+        _data ~= [control[0], control[1], point[0], point[1]];
+        _lastControl = control;
+        _lastPoint = point;
     }
 
     void cubicTo(float[2] control1, float[2] control2, float[2] point)
     {
-        segments_ ~= PathSeg.cubicTo;
-        data_ ~= [control1[0], control1[1], control2[0], control2[1], point[0], point[1]];
-        lastControl_ = control2;
-        lastPoint_ = point;
+        _segments ~= PathSeg.cubicTo;
+        _data ~= [control1[0], control1[1], control2[0], control2[1], point[0], point[1]];
+        _lastControl = control2;
+        _lastPoint = point;
     }
 
     void smoothQuadTo(float[2] point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        quadTo([2 * lastPoint_[0] - lastControl_[0], 2 * lastPoint_[1] - lastControl_[1]], point);
+        quadTo([2 * _lastPoint[0] - _lastControl[0], 2 * _lastPoint[1] - _lastControl[1]], point);
     }
 
     void smoothCubicTo(float[2] control2, float[2] point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        cubicTo([2 * lastPoint_[0] - lastControl_[0],
-                2 * lastPoint_[1] - lastControl_[1]], control2, point);
+        cubicTo([2 * _lastPoint[0] - _lastControl[0],
+                2 * _lastPoint[1] - _lastControl[1]], control2, point);
     }
 
     void shortCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        segments_ ~= PathSeg.shortCcwArcTo;
-        data_ ~= [rh, rv, rot, point[0], point[1]];
-        lastControl_[] = float.nan;
-        lastPoint_ = point;
+        _segments ~= PathSeg.shortCcwArcTo;
+        _data ~= [rh, rv, rot, point[0], point[1]];
+        _lastControl[] = float.nan;
+        _lastPoint = point;
     }
 
     void shortCwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        segments_ ~= PathSeg.shortCwArcTo;
-        data_ ~= [rh, rv, rot, point[0], point[1]];
-        lastControl_[] = float.nan;
-        lastPoint_ = point;
+        _segments ~= PathSeg.shortCwArcTo;
+        _data ~= [rh, rv, rot, point[0], point[1]];
+        _lastControl[] = float.nan;
+        _lastPoint = point;
     }
 
     void largeCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        segments_ ~= PathSeg.largeCcwArcTo;
-        data_ ~= [rh, rv, rot, point[0], point[1]];
-        lastControl_[] = float.nan;
-        lastPoint_ = point;
+        _segments ~= PathSeg.largeCcwArcTo;
+        _data ~= [rh, rv, rot, point[0], point[1]];
+        _lastControl[] = float.nan;
+        _lastPoint = point;
     }
 
     void largeCwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        segments_ ~= PathSeg.largeCwArcTo;
-        data_ ~= [rh, rv, rot, point[0], point[1]];
-        lastControl_[] = float.nan;
-        lastPoint_ = point;
+        _segments ~= PathSeg.largeCwArcTo;
+        _data ~= [rh, rv, rot, point[0], point[1]];
+        _lastControl[] = float.nan;
+        _lastPoint = point;
     }
 
     void close()
     {
-        segments_ ~= PathSeg.close;
-        lastControl_[] = float.nan;
+        _segments ~= PathSeg.close;
+        _lastControl[] = float.nan;
         // keep last point around for a relative moveTo
     }
 
@@ -208,14 +208,14 @@ class Path
     {
         import std.math : isNaN;
 
-        return !isNaN(lastPoint_[0]) && !isNaN(lastPoint_[1]);
+        return !isNaN(_lastPoint[0]) && !isNaN(_lastPoint[1]);
     }
 
     private @property hasLastControl() const
     {
         import std.math : isNaN;
 
-        return !isNaN(lastControl_[0]) && !isNaN(lastControl_[1]);
+        return !isNaN(_lastControl[0]) && !isNaN(_lastControl[1]);
     }
 }
 

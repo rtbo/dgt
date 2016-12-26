@@ -73,15 +73,15 @@ class XcbPlatform : Platform
 {
     private
     {
-        xcb_atom_t[Atom] atoms_;
-        XcbKeyboard kbd_;
-        uint xkbFirstEv_;
-        uint dri2FirstEv_ = uint.max;
-        uint dri3FirstEv_ = uint.max;
-        int defaultScreen_;
-        Screen[] screens_;
-        XcbScreen[] xcbScreens_;
-        XcbWindow[xcb_window_t] windows_;
+        xcb_atom_t[Atom] _atoms;
+        XcbKeyboard _kbd;
+        uint _xkbFirstEv;
+        uint _dri2FirstEv = uint.max;
+        uint _dri3FirstEv = uint.max;
+        int _defaultScreen;
+        Screen[] _screens;
+        XcbScreen[] _xcbScreens;
+        XcbWindow[xcb_window_t] _windows;
     }
 
     /// Builds and initialize XcbPlatform
@@ -101,7 +101,7 @@ class XcbPlatform : Platform
 
         initializeAtoms();
         initializeScreens();
-        kbd_ = new XcbKeyboard(g_connection, xkbFirstEv_);
+        _kbd = new XcbKeyboard(g_connection, _xkbFirstEv);
         initializeDRI();
         initializeVG();
     }
@@ -134,13 +134,13 @@ class XcbPlatform : Platform
     /// ditto
     override @property inout(Screen) defaultScreen() inout
     {
-        return screens_[defaultScreen_];
+        return _screens[_defaultScreen];
     }
 
     /// ditto
     override @property inout(Screen)[] screens() inout
     {
-        return screens_;
+        return _screens;
     }
 
     /// ditto
@@ -196,22 +196,22 @@ class XcbPlatform : Platform
             processWindowEvent!(xcb_expose_event_t, "processExposeEvent", "window")(e);
             break;
         default:
-            if (xcbType == xkbFirstEv_)
+            if (xcbType == _xkbFirstEv)
             {
                 auto genKbd = cast(XkbGenericEvent*)e;
-                if (genKbd.common.deviceID == kbd_.device)
+                if (genKbd.common.deviceID == _kbd.device)
                 {
                     switch (genKbd.common.xkbType)
                     {
                     case XCB_XKB_STATE_NOTIFY:
-                        kbd_.updateState(&genKbd.state);
+                        _kbd.updateState(&genKbd.state);
                         break;
                     default:
                         break;
                     }
                 }
             }
-            if (xcbType == dri2FirstEv_ || xcbType == dri2FirstEv_ + 1)
+            if (xcbType == _dri2FirstEv || xcbType == _dri2FirstEv + 1)
             {
                 // these are libGL DRI2 event that need special handling
                 // see https://bugs.freedesktop.org/show_bug.cgi?id=35945#c4
@@ -235,27 +235,27 @@ class XcbPlatform : Platform
 
         @property bool hasDRI2() const
         {
-            return dri2FirstEv_ != uint.max;
+            return _dri2FirstEv != uint.max;
         }
 
         @property bool hasDRI3() const
         {
-            return dri3FirstEv_ != uint.max;
+            return _dri3FirstEv != uint.max;
         }
 
         @property inout(XcbScreen) defaultXcbScreen() inout
         {
-            return xcbScreens_[defaultScreen_];
+            return _xcbScreens[_defaultScreen];
         }
 
         @property inout(XcbScreen)[] xcbScreens() inout
         {
-            return xcbScreens_;
+            return _xcbScreens;
         }
 
         inout(XcbWindow) xcbWindow(xcb_window_t xcbWin) inout
         {
-            inout(XcbWindow)* w = xcbWin in windows_;
+            inout(XcbWindow)* w = xcbWin in _windows;
             if (!w)
                 return null;
             return *w;
@@ -271,12 +271,12 @@ class XcbPlatform : Platform
 
         void registerWindow(XcbWindow w)
         {
-            windows_[w.xcbWin] = w;
+            _windows[w.xcbWin] = w;
         }
 
         xcb_atom_t atom(Atom atom) const
         {
-            auto at = (atom in atoms_);
+            auto at = (atom in _atoms);
             if (at)
                 return *at;
             return XCB_ATOM_NONE;
@@ -313,7 +313,7 @@ class XcbPlatform : Platform
                 {
                     throw new Exception("could not retrieve atom " ~ name);
                 }
-                atoms_[atom] = reply.atom;
+                _atoms[atom] = reply.atom;
                 free(reply);
             }
         }
@@ -323,10 +323,10 @@ class XcbPlatform : Platform
             import std.algorithm : map;
             import std.array : array;
 
-            defaultScreen_ = XDefaultScreen(g_display);
-            xcbScreens_ = fetchScreens();
-            screens_ = xcbScreens_.map!(s => cast(Screen)s).array();
-            enforce(defaultScreen_ < screens_.length);
+            _defaultScreen = XDefaultScreen(g_display);
+            _xcbScreens = fetchScreens();
+            _screens = _xcbScreens.map!(s => cast(Screen)s).array();
+            enforce(_defaultScreen < _screens.length);
         }
 
         XcbScreen[] fetchScreens()
@@ -350,14 +350,14 @@ class XcbPlatform : Platform
 
                 const reply = xcb_get_extension_data(g_connection, &xcb_dri2_id);
                 if (reply && reply.present)
-                    dri2FirstEv_ = reply.first_event;
+                    _dri2FirstEv = reply.first_event;
             }
             {
                 xcb_prefetch_extension_data(g_connection, &xcb_dri3_id);
 
                 const reply = xcb_get_extension_data(g_connection, &xcb_dri3_id);
                 if (reply && reply.present)
-                    dri3FirstEv_ = reply.first_event;
+                    _dri3FirstEv = reply.first_event;
             }
         }
 
@@ -379,7 +379,7 @@ class XcbPlatform : Platform
         void processKeyEvent(xcb_key_press_event_t* xcbEv)
         {
             auto xcbWin = xcbWindow(xcbEv.event);
-            kbd_.processEvent(xcbEv, xcbWin.window);
+            _kbd.processEvent(xcbEv, xcbWin.window);
         }
 
         void processClientEvent(xcb_client_message_event_t* xcbEv)

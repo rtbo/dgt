@@ -94,98 +94,98 @@ struct TRect(T) if (isNumeric!T)
 {
     private
     {
-        T x_;
-        T y_;
-        T w_;
-        T h_;
+        T _x;
+        T _y;
+        T _w;
+        T _h;
     }
 
     invariant()
     {
-        assert(w_ >= 0 && h_ >= 0);
+        assert(_w >= 0 && _h >= 0);
     }
 
     this(TPoint!T p, TSize!T s)
     {
-        x_ = p.x;
-        y_ = p.y;
-        w_ = s.width;
-        h_ = s.height;
+        _x = p.x;
+        _y = p.y;
+        _w = s.width;
+        _h = s.height;
     }
 
     this(T x, T y, T w, T h)
     {
-        x_ = x;
-        y_ = y;
-        w_ = w;
-        h_ = h;
+        _x = x;
+        _y = y;
+        _w = w;
+        _h = h;
     }
 
     this(TPoint!T p, T w, T h)
     {
-        x_ = p.x;
-        y_ = p.y;
-        w_ = w;
-        h_ = h;
+        _x = p.x;
+        _y = p.y;
+        _w = w;
+        _h = h;
     }
 
     this(T x, T y, TSize!T s)
     {
-        x_ = x;
-        y_ = y;
-        w_ = s.width;
-        h_ = s.height;
+        _x = x;
+        _y = y;
+        _w = s.width;
+        _h = s.height;
     }
 
     @property T x() const
     {
-        return x_;
+        return _x;
     }
 
     @property void x(T val)
     {
-        x_ = val;
+        _x = val;
     }
 
     @property T y() const
     {
-        return y_;
+        return _y;
     }
 
     @property void y(T val)
     {
-        y_ = val;
+        _y = val;
     }
 
     @property T width() const
     {
-        return w_;
+        return _w;
     }
 
     @property void width(T val)
     {
-        w_ = max(0, val);
+        _w = max(0, val);
     }
 
     @property T height() const
     {
-        return h_;
+        return _h;
     }
 
     @property void height(T val)
     {
-        h_ = max(0, val);
+        _h = max(0, val);
     }
 
     @property TPoint!T point() const
     {
-        return TPoint!T(x_, y_);
+        return TPoint!T(_x, _y);
     }
 
     @property void point(TPoint!T p)
     {
-        x_ = p.x;
-        y_ = p.y;
+        _x = p.x;
+        _y = p.y;
     }
 
     @property TSize!T size() const
@@ -201,44 +201,44 @@ struct TRect(T) if (isNumeric!T)
 
     @property T left() const
     {
-        return x_;
+        return _x;
     }
 
     @property void left(T val)
     {
-        w_ = max(0, w_ - (val - x_));
-        x_ = val;
+        _w = max(0, _w - (val - _x));
+        _x = val;
     }
 
     @property T top() const
     {
-        return y_;
+        return _y;
     }
 
     @property void top(T val)
     {
-        h_ = max(0, h_ - (val - y_));
-        y_ = val;
+        _h = max(0, _h - (val - _y));
+        _y = val;
     }
 
     @property T right() const
     {
-        return x_ + w_;
+        return _x + _w;
     }
 
     @property void right(T val)
     {
-        w_ = max(0, val - x_);
+        _w = max(0, val - _x);
     }
 
     @property T bottom() const
     {
-        return y_ + h_;
+        return _y + _h;
     }
 
     @property void bottom(T val)
     {
-        h_ = max(0, val - y_);
+        _h = max(0, val - _y);
     }
 
     @property TPoint!T topLeft() const

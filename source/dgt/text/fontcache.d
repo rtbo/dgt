@@ -42,7 +42,7 @@ struct FontResult
 }
 
 
-private __gshared FontCache instance_;
+private __gshared FontCache _instance;
 
 /// Singleton that acts like a system font database and that perform
 /// font files queries given structured requests
@@ -53,12 +53,12 @@ class FontCache : Disposable
     package(dgt) static FontCache initialize()
     in
     {
-        assert(instance_ is null);
+        assert(_instance is null);
     }
     body
     {
-        instance_ = new FontCache();
-        return instance_;
+        _instance = new FontCache();
+        return _instance;
     }
 
     /// Returns the singleton instance.
@@ -66,21 +66,21 @@ class FontCache : Disposable
     public static FontCache instance()
     in
     {
-        assert(instance_ !is null);
+        assert(_instance !is null);
     }
     body
     {
-        return instance_;
+        return _instance;
     }
 
-    private FcConfig* config_;
-    private string[] appFontFiles_;
+    private FcConfig* _config;
+    private string[] _appFontFiles;
 
     private this()
     {
         loadFontconfigSymbols();
         enforce(FcInit());
-        config_ = enforce(FcConfigGetCurrent());
+        _config = enforce(FcConfigGetCurrent());
     }
 
     override void dispose()
@@ -91,7 +91,7 @@ class FontCache : Disposable
     /// Returns the font files add by the application
     @property const(string[]) appFontFiles() const
     {
-        return appFontFiles_;
+        return _appFontFiles;
     }
 
     /// Sets the font files added by the application
@@ -103,9 +103,9 @@ class FontCache : Disposable
 
     void addAppFontFile(string file)
     {
-        FcConfigAppFontClear(config_);
-        enforce(FcConfigAppFontAddFile(config_, toStringz(file)));
-        appFontFiles_ ~= file;
+        FcConfigAppFontClear(_config);
+        enforce(FcConfigAppFontAddFile(_config, toStringz(file)));
+        _appFontFiles ~= file;
     }
 
     FontResult[] requestFont(in FontRequest req)
@@ -131,11 +131,11 @@ class FontCache : Disposable
             FcPatternAddString(pat, FC_FOUNDRY, toStringz(req.foundry));
         }
 
-        FcConfigSubstitute(config_, pat, FcMatchPattern);
+        FcConfigSubstitute(_config, pat, FcMatchPattern);
         FcDefaultSubstitute(pat);
 
         FcResult dummy;
-        auto patterns = FcFontSort(config_, pat, FcTrue, null, &dummy);
+        auto patterns = FcFontSort(_config, pat, FcTrue, null, &dummy);
         if (!patterns)
         {
             errorf("could not match any font.");
@@ -147,7 +147,7 @@ class FontCache : Disposable
         FontResult[] res;
         foreach (i; 0 .. patterns.nfont)
         {
-            auto p = FcFontRenderPrepare(config_, pat, patterns.fonts[i]);
+            auto p = FcFontRenderPrepare(_config, pat, patterns.fonts[i]);
             if (p)
             {
                 scope(exit)

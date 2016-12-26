@@ -79,73 +79,73 @@ class Window : Surface, VgSurface
 {
     this()
     {
-        platformWindow_ = Application.platform.createWindow(this);
+        _platformWindow = Application.platform.createWindow(this);
     }
 
     @property IPoint position() const
     {
-        return position_;
+        return _position;
     }
 
     @property void position(in IPoint position)
     {
-        if (position != position_)
+        if (position != _position)
         {
-            if (platformWindow_.created)
+            if (_platformWindow.created)
             {
-                platformWindow_.geometry = IRect(position_, size_);
+                _platformWindow.geometry = IRect(_position, _size);
             }
             else
             {
-                position_ = position;
+                _position = position;
             }
         }
     }
 
     override @property ISize size() const
     {
-        return size_;
+        return _size;
     }
 
     @property void size(in ISize size)
     {
-        if (size != size_)
+        if (size != _size)
         {
-            if (platformWindow_.created)
+            if (_platformWindow.created)
             {
-                platformWindow_.geometry = IRect(position_, size);
+                _platformWindow.geometry = IRect(_position, size);
             }
             else
             {
-                size_ = size;
+                _size = size;
             }
         }
     }
 
     @property IRect geometry() const
     {
-        return IRect(position_, size_);
+        return IRect(_position, _size);
     }
 
     @property void geometry(in IRect rect)
     {
-        if (rect.size != size_ || rect.point != position_)
+        if (rect.size != _size || rect.point != _position)
         {
-            if (platformWindow_.created)
+            if (_platformWindow.created)
             {
-                platformWindow_.geometry = IRect(position_, size);
+                _platformWindow.geometry = IRect(_position, size);
             }
             else
             {
-                position_ = rect.point;
-                size_ = rect.size;
+                _position = rect.point;
+                _size = rect.size;
             }
         }
     }
 
     @property SurfaceAttribs attribs() const
     {
-        return attribs_;
+        return _attribs;
     }
 
     void showMaximized()
@@ -175,21 +175,21 @@ class Window : Surface, VgSurface
 
     void show(WindowState state = WindowState.normal)
     {
-        if (!platformWindow_.created)
+        if (!_platformWindow.created)
         {
-            platformWindow_.create(state);
+            _platformWindow.create(state);
         }
         else
         {
-            platformWindow_.state = state;
+            _platformWindow.state = state;
         }
     }
 
     void close()
     {
-        enforce(platformWindow_.created, "attempt to close a non-created window");
-        platformWindow_.close();
-        onClosed_.fire(this);
+        enforce(_platformWindow.created, "attempt to close a non-created window");
+        _platformWindow.close();
+        _onClosed.fire(this);
     }
 
     mixin SignalMixin!("onTitleChange", string);
@@ -212,54 +212,54 @@ class Window : Surface, VgSurface
         switch (wEv.type)
         {
         case EventType.windowExpose:
-            onExpose_.fire(cast(WindowExposeEvent) wEv);
+            _onExpose.fire(cast(WindowExposeEvent) wEv);
             break;
         case EventType.windowMove:
             auto wmEv = cast(WindowMoveEvent) wEv;
-            position_ = wmEv.point;
-            onMove_.fire(cast(WindowMoveEvent) wEv);
+            _position = wmEv.point;
+            _onMove.fire(cast(WindowMoveEvent) wEv);
             break;
         case EventType.windowResize:
             auto rsEv = cast(WindowResizeEvent) wEv;
-            size_ = rsEv.size;
-            onResize_.fire(rsEv);
+            _size = rsEv.size;
+            _onResize.fire(rsEv);
             break;
         case EventType.windowMouseDown:
-            onMouse_.fire(cast(WindowMouseEvent) wEv);
+            _onMouse.fire(cast(WindowMouseEvent) wEv);
             if (!wEv.consumed)
             {
-                onMouseDown_.fire(cast(WindowMouseEvent) wEv);
+                _onMouseDown.fire(cast(WindowMouseEvent) wEv);
             }
             break;
         case EventType.windowMouseUp:
-            onMouse_.fire(cast(WindowMouseEvent) wEv);
+            _onMouse.fire(cast(WindowMouseEvent) wEv);
             if (!wEv.consumed)
             {
-                onMouseUp_.fire(cast(WindowMouseEvent) wEv);
+                _onMouseUp.fire(cast(WindowMouseEvent) wEv);
             }
             break;
         case EventType.windowKeyDown:
             auto kEv = cast(WindowKeyEvent) wEv;
-            onKey_.fire(kEv);
+            _onKey.fire(kEv);
             if (!kEv.consumed)
             {
-                onKeyDown_.fire(kEv);
+                _onKeyDown.fire(kEv);
             }
             break;
         case EventType.windowKeyUp:
             auto kEv = cast(WindowKeyEvent) wEv;
-            onKey_.fire(kEv);
+            _onKey.fire(kEv);
             if (!kEv.consumed)
             {
-                onKeyUp_.fire(kEv);
+                _onKeyUp.fire(kEv);
             }
             break;
         case EventType.windowStateChange:
-            onStateChange_.fire(cast(WindowStateChangeEvent) wEv);
+            _onStateChange.fire(cast(WindowStateChangeEvent) wEv);
             break;
         case EventType.windowClose:
             auto cev = cast(WindowCloseEvent) wEv;
-            onClose_.fire(cev);
+            _onClose.fire(cev);
             if (!cev.declined)
                 close();
             break;
@@ -270,14 +270,14 @@ class Window : Surface, VgSurface
 
     override @property VgFactory vgFactory()
     {
-        return platformWindow_.vgFactory;
+        return _platformWindow.vgFactory;
     }
 
     private
     {
-        IPoint position_ = IPoint(-1, -1);
-        ISize size_;
-        SurfaceAttribs attribs_;
-        PlatformWindow platformWindow_;
+        IPoint _position = IPoint(-1, -1);
+        ISize _size;
+        SurfaceAttribs _attribs;
+        PlatformWindow _platformWindow;
     }
 }

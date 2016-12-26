@@ -101,27 +101,27 @@ abstract class SmiSignal(Iface) if (isSmi!Iface && is(smiRetType!Iface == void))
     alias ParamsType = smiParamsType!Iface;
     alias SlotType = void delegate(ParamsType);
 
-    private SlotType[] slots_;
+    private SlotType[] _slots;
 
     void opOpAssign(string op : "+")(SlotType slot)
     {
-        slots_ ~= slot;
+        _slots ~= slot;
     }
 
     bool opOpAssign(string op : "-")(SlotType slot)
     {
         import std.algorithm : countUntil, remove;
 
-        auto index = slots_.countUntil(slot);
+        auto index = _slots.countUntil(slot);
         if (index == -1)
             return false;
-        slots_ = slots_.remove(index);
+        _slots = _slots.remove(index);
         return true;
     }
 
     void opOpAssign(string op : "+")(Iface slotObj)
     {
-        slots_ ~= &(__traits(getMember, slotObj, theMethod));
+        _slots ~= &(__traits(getMember, slotObj, theMethod));
     }
 
     bool opOpAssign(string op : "-")(Iface slotObj)
@@ -132,7 +132,7 @@ abstract class SmiSignal(Iface) if (isSmi!Iface && is(smiRetType!Iface == void))
 
     @property bool engaged() const
     {
-        return slots_.length != 0;
+        return _slots.length != 0;
     }
 
 }
@@ -142,7 +142,7 @@ final class FireableSmiSignal(Iface) if (isSmi!Iface && is(smiRetType!Iface == v
 {
     void fire(ParamsType params)
     {
-        foreach (slot; slots_)
+        foreach (slot; _slots)
         {
             slot(params);
         }
@@ -194,16 +194,16 @@ unittest
     // testing signal manipulation as rvalue
     class C
     {
-        auto s_ = new FireableSmiSignal!I1;
+        auto _s = new FireableSmiSignal!I1;
 
         void fireSig(int v)
         {
-            s_.fire(v);
+            _s.fire(v);
         }
 
         @property SmiSignal!I1 s()
         {
-            return s_;
+            return _s;
         }
     }
 
@@ -225,25 +225,25 @@ abstract class Signal(P...)
     alias ParamsType = P;
     alias SlotType = void delegate(ParamsType);
 
-    private SlotType[] slots_;
+    private SlotType[] _slots;
 
     void opOpAssign(string op : "+")(SlotType slot)
     {
-        slots_ ~= slot;
+        _slots ~= slot;
     }
 
     bool opOpAssign(string op : "-")(SlotType slot)
     {
-        auto found = slots_.find(slot);
+        auto found = _slots.find(slot);
         if (found.empty)
             return false;
-        slots_ = slots_.remove(slots_.length - found.length);
+        _slots = _slots.remove(_slots.length - found.length);
         return true;
     }
 
     @property bool engaged() const
     {
-        return slots_.length != 0;
+        return _slots.length != 0;
     }
 
 }
@@ -253,7 +253,7 @@ final class FireableSignal(P...) : Signal!(P)
 
     void fire(ParamsType params)
     {
-        foreach (slot; slots_)
+        foreach (slot; _slots)
         {
             slot(params);
         }
@@ -269,25 +269,25 @@ abstract class EventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
 
     static assert(is(EventType : Event));
 
-    private SlotType[] slots_;
+    private SlotType[] _slots;
 
     void opOpAssign(string op : "+")(SlotType slot)
     {
-        slots_ ~= slot;
+        _slots ~= slot;
     }
 
     bool opOpAssign(string op : "-")(SlotType slot)
     {
-        auto found = slots_.find(slot);
+        auto found = _slots.find(slot);
         if (found.empty)
             return false;
-        slots_ = slots_.remove(slots_.length - found.length);
+        _slots = _slots.remove(_slots.length - found.length);
         return true;
     }
 
     @property bool engaged() const
     {
-        return slots_.length != 0;
+        return _slots.length != 0;
     }
 
 }
@@ -298,7 +298,7 @@ final class FireableEventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
 
     void fire(EventType event)
     {
-        foreach (slot; slots_)
+        foreach (slot; _slots)
         {
             slot(event);
             if (event.consumed)

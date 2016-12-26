@@ -100,69 +100,69 @@ class CairoVgContext : VgContext
 
     mixin(rcCode);
 
-    private Surface surface_;
-    private cairo_surface_t* cairoSurface_;
-    private cairo_t* cairo_;
-    private cairo_pattern_t* defaultSrc_;
-    private State currentState_;
-    private GrowableStack!State stateStack_;
+    private Surface _surface;
+    private cairo_surface_t* _cairoSurface;
+    private cairo_t* _cairo;
+    private cairo_pattern_t* _defaultSrc;
+    private State _currentState;
+    private GrowableStack!State _stateStack;
 
     this(Surface surface, cairo_surface_t* cairoSurface)
     {
-        surface_ = surface;
-        cairoSurface_ = cairo_surface_reference(cairoSurface);
-        cairo_ = cairo_create(cairoSurface_);
-        defaultSrc_ = cairo_get_source(cairo_);
-        if (defaultSrc_)
+        _surface = surface;
+        _cairoSurface = cairo_surface_reference(cairoSurface);
+        _cairo = cairo_create(_cairoSurface);
+        _defaultSrc = cairo_get_source(_cairo);
+        if (_defaultSrc)
         {
-            cairo_pattern_reference(defaultSrc_);
+            cairo_pattern_reference(_defaultSrc);
         }
     }
 
     private @property cairo_t* cairo() const
     {
-        return cast(cairo_t*) cairo_;
+        return cast(cairo_t*) _cairo;
     }
 
     private @property cairo_t* cairo()
     {
-        return cairo_;
+        return _cairo;
     }
 
     override void dispose()
     {
-        if (!stateStack_.empty)
+        if (!_stateStack.empty)
         {
             warning("CairoContext disposed with state stack not empty");
-            while (!stateStack_.empty)
+            while (!_stateStack.empty)
             {
-                stateStack_.pop();
+                _stateStack.pop();
             }
         }
-        currentState_ = State.init; // release the state
-        if (defaultSrc_)
+        _currentState = State.init; // release the state
+        if (_defaultSrc)
         {
-            cairo_pattern_destroy(defaultSrc_);
+            cairo_pattern_destroy(_defaultSrc);
         }
-        cairo_destroy(cairo_);
-        cairo_surface_destroy(cairoSurface_);
+        cairo_destroy(_cairo);
+        cairo_surface_destroy(_cairoSurface);
     }
 
     override @property inout(Surface) surface() inout
     {
-        return surface_;
+        return _surface;
     }
 
     override void save()
     {
-        stateStack_.push(currentState_);
+        _stateStack.push(_currentState);
         cairo_save(cairo);
     }
 
     override void restore()
     {
         cairo_restore(cairo);
-        currentState_ = stateStack_.pop();
+        _currentState = _stateStack.pop();
     }
 
     override @property FillRule fillRule() const
@@ -258,22 +258,22 @@ class CairoVgContext : VgContext
 
     override @property inout(Paint) fillPaint() inout
     {
-        return currentState_.fill;
+        return _currentState.fill;
     }
 
     override @property void fillPaint(Paint paint)
     {
-        currentState_.fill = paint;
+        _currentState.fill = paint;
     }
 
     override @property inout(Paint) strokePaint() inout
     {
-        return currentState_.stroke;
+        return _currentState.stroke;
     }
 
     override @property void strokePaint(Paint paint)
     {
-        currentState_.stroke = paint;
+        _currentState.stroke = paint;
     }
 
     override void clip(in Path path)
@@ -302,7 +302,7 @@ class CairoVgContext : VgContext
         // FIXME: pattern transform at cairo_set_source time
         if (fill)
         {
-            setSource(cast(CairoPaint) currentState_.fill.obj);
+            setSource(cast(CairoPaint) _currentState.fill.obj);
             if (stroke)
                 cairo_fill_preserve(cairo);
             else
@@ -310,14 +310,14 @@ class CairoVgContext : VgContext
         }
         if (stroke)
         {
-            setSource(cast(CairoPaint) currentState_.stroke.obj);
+            setSource(cast(CairoPaint) _currentState.stroke.obj);
             cairo_stroke(cairo);
         }
     }
 
     override void flush()
     {
-        cairo_surface_flush(cairoSurface_);
+        cairo_surface_flush(_cairoSurface);
     }
 
     private void bindPath(in Path path)
@@ -363,7 +363,7 @@ class CairoVgContext : VgContext
         }
         else
         {
-            cairo_set_source(cairo, defaultSrc_);
+            cairo_set_source(cairo, _defaultSrc);
         }
     }
 }
@@ -385,16 +385,16 @@ final class CairoPaint : Paint
 {
     mixin(rcCode);
 
-    private cairo_pattern_t* pattern_;
+    private cairo_pattern_t* _pattern;
 
     this() {}
 
     override void dispose()
     {
-        if (pattern_)
+        if (_pattern)
         {
-            cairo_pattern_destroy(pattern_);
-            pattern_ = null;
+            cairo_pattern_destroy(_pattern);
+            _pattern = null;
         }
     }
 
@@ -431,8 +431,8 @@ final class CairoPaint : Paint
 
     override @property void color(in float[4] color)
     {
-        enforce(!pattern_);
-        pattern_ = cairo_pattern_create_rgba(color[0], color[1], color[2], color[3]);
+        enforce(!_pattern);
+        _pattern = cairo_pattern_create_rgba(color[0], color[1], color[2], color[3]);
     }
 
     override @property LinearGradient linearGradient() const
@@ -449,8 +449,8 @@ final class CairoPaint : Paint
 
     override @property void linearGradient(in LinearGradient gradient)
     {
-        enforce(!pattern_);
-        pattern_ = cairo_pattern_create_linear(gradient.p0[0], gradient.p0[1],
+        enforce(!_pattern);
+        _pattern = cairo_pattern_create_linear(gradient.p0[0], gradient.p0[1],
                 gradient.p1[0], gradient.p1[1]);
         addStops(gradient.stops);
     }
@@ -479,8 +479,8 @@ final class CairoPaint : Paint
 
     override @property void radialGradient(in RadialGradient gradient)
     {
-        assert(!pattern_);
-        pattern_ = cairo_pattern_create_radial(gradient.f[0], gradient.f[1],
+        assert(!_pattern);
+        _pattern = cairo_pattern_create_radial(gradient.f[0], gradient.f[1],
                 0.0, gradient.c[0], gradient.c[1], gradient.r);
         addStops(gradient.stops);
     }
@@ -524,12 +524,12 @@ final class CairoPaint : Paint
 
     private @property cairo_pattern_t* pattern() const
     {
-        return cast(cairo_pattern_t*) pattern_;
+        return cast(cairo_pattern_t*) _pattern;
     }
 
     private @property cairo_pattern_t* pattern()
     {
-        return pattern_;
+        return _pattern;
     }
 
     private GradientStop[] getStops() const

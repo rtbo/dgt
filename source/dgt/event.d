@@ -69,33 +69,33 @@ abstract class Event
 {
     this(EventType type)
     {
-        type_ = type;
+        _type = type;
     }
 
     @property EventType type() const
     {
-        return type_;
+        return _type;
     }
 
     @property bool consumed() const
     {
-        return consumed_;
+        return _consumed;
     }
 
     void consume()
     {
-        consumed_ = true;
+        _consumed = true;
     }
 
     override string toString()
     {
         import std.conv : to;
 
-        return "Event [ type:" ~ type_.to!string ~ " ]";
+        return "Event [ type:" ~ _type.to!string ~ " ]";
     }
 
-    private EventType type_;
-    private bool consumed_;
+    private EventType _type;
+    private bool _consumed;
 }
 
 abstract class AppEvent : Event
@@ -116,28 +116,28 @@ class AppQuitEvent : AppEvent
 
     @property bool declined() const
     {
-        return declined_;
+        return _declined;
     }
 
     void decline()
     {
-        declined_ = true;
+        _declined = true;
         consume();
     }
 
     @property int code() const
     {
-        return code_;
+        return _code;
     }
 
     @property void code(int code)
     {
-        code_ = code;
+        _code = code;
         consume();
     }
 
-    private bool declined_;
-    private int code_;
+    private bool _declined;
+    private int _code;
 }
 
 class AppUserEvent : AppEvent
@@ -154,15 +154,15 @@ abstract class WindowEvent : Event
     {
         super(type);
         assert(isWindowEventType(type));
-        window_ = window;
+        _window = window;
     }
 
     @property inout(Window) window() inout
     {
-        return window_;
+        return _window;
     }
 
-    private Window window_;
+    private Window _window;
 }
 
 class WindowShowEvent : WindowEvent
@@ -186,15 +186,15 @@ class WindowExposeEvent : WindowEvent
     this(Window window, IRect exposedArea)
     {
         super(EventType.windowExpose, window);
-        exposedArea_ = exposedArea;
+        _exposedArea = exposedArea;
     }
 
     @property IRect exposedArea() const
     {
-        return exposedArea_;
+        return _exposedArea;
     }
 
-    private IRect exposedArea_;
+    private IRect _exposedArea;
 }
 
 class WindowResizeEvent : WindowEvent
@@ -202,15 +202,15 @@ class WindowResizeEvent : WindowEvent
     this(Window window, ISize size)
     {
         super(EventType.windowResize, window);
-        size_ = size;
+        _size = size;
     }
 
     @property ISize size() const
     {
-        return size_;
+        return _size;
     }
 
-    private ISize size_;
+    private ISize _size;
 }
 
 class WindowMoveEvent : WindowEvent
@@ -222,10 +222,10 @@ class WindowMoveEvent : WindowEvent
 
     @property IPoint point() const
     {
-        return point_;
+        return _point;
     }
 
-    private IPoint point_;
+    private IPoint _point;
 }
 
 class WindowCloseEvent : WindowEvent
@@ -237,16 +237,16 @@ class WindowCloseEvent : WindowEvent
 
     @property bool declined() const
     {
-        return declined_;
+        return _declined;
     }
 
     void decline()
     {
-        declined_ = true;
+        _declined = true;
         consume();
     }
 
-    private bool declined_;
+    private bool _declined;
 }
 
 class WindowStateChangeEvent : WindowEvent
@@ -254,15 +254,15 @@ class WindowStateChangeEvent : WindowEvent
     this(Window window, WindowState state)
     {
         super(EventType.windowStateChange, window);
-        state_ = state;
+        _state = state;
     }
 
     @property WindowState state() const
     {
-        return state_;
+        return _state;
     }
 
-    private WindowState state_;
+    private WindowState _state;
 }
 
 class WindowFocusEvent : WindowEvent
@@ -275,15 +275,15 @@ class WindowFocusEvent : WindowEvent
     body
     {
         super(type, window);
-        method_ = method;
+        _method = method;
     }
 
     @property FocusMethod method() const
     {
-        return method_;
+        return _method;
     }
 
-    private FocusMethod method_;
+    private FocusMethod _method;
 }
 
 class WindowMouseEvent : WindowEvent
@@ -298,38 +298,38 @@ class WindowMouseEvent : WindowEvent
     body
     {
         super(type, window);
-        point_ = point;
-        button_ = button;
-        state_ = state;
-        modifiers_ = modifiers;
+        _point = point;
+        _button = button;
+        _state = state;
+        _modifiers = modifiers;
     }
 
     @property IPoint point() const
     {
-        return point_;
+        return _point;
     }
 
     @property MouseButton button() const
     {
-        return button_;
+        return _button;
     }
 
     @property MouseState state() const
     {
-        return state_;
+        return _state;
     }
 
     @property key.Mods modifiers() const
     {
-        return modifiers_;
+        return _modifiers;
     }
 
     private
     {
-        IPoint point_;
-        MouseButton button_;
-        MouseState state_;
-        key.Mods modifiers_;
+        IPoint _point;
+        MouseButton _button;
+        MouseState _state;
+        key.Mods _modifiers;
     }
 }
 
@@ -345,67 +345,67 @@ class WindowKeyEvent : WindowEvent
     body
     {
         super(type, window);
-        sym_ = sym;
-        code_ = code;
-        modifiers_ = modifiers;
-        text_ = text;
-        nativeCode_ = nativeCode;
-        nativeSymbol_ = nativeSymbol;
+        _sym = sym;
+        _code = code;
+        _modifiers = modifiers;
+        _text = text;
+        _nativeCode = nativeCode;
+        _nativeSymbol = nativeSymbol;
 
-        repeat_ = repeat;
-        repeatCount_ = repeatCount;
+        _repeat = repeat;
+        _repeatCount = repeatCount;
     }
 
     @property key.Sym sym() const
     {
-        return sym_;
+        return _sym;
     }
 
     @property key.Code code() const
     {
-        return code_;
+        return _code;
     }
 
     @property key.Mods modifiers() const
     {
-        return modifiers_;
+        return _modifiers;
     }
 
     @property string text() const
     {
-        return text_;
+        return _text;
     }
 
     @property uint nativeCode() const
     {
-        return nativeCode_;
+        return _nativeCode;
     }
 
     @property uint nativeSymbol() const
     {
-        return nativeSymbol_;
+        return _nativeSymbol;
     }
 
     @property bool repeat() const
     {
-        return repeat_;
+        return _repeat;
     }
 
     @property int repeatCount() const
     {
-        return repeatCount_;
+        return _repeatCount;
     }
 
     private
     {
-        key.Sym sym_;
-        key.Code code_;
-        key.Mods modifiers_;
-        string text_;
-        uint nativeCode_;
-        uint nativeSymbol_;
+        key.Sym _sym;
+        key.Code _code;
+        key.Mods _modifiers;
+        string _text;
+        uint _nativeCode;
+        uint _nativeSymbol;
 
-        bool repeat_;
-        int repeatCount_;
+        bool _repeat;
+        int _repeatCount;
     }
 }
