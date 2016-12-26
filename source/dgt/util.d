@@ -94,11 +94,10 @@ void exposeToGC(void* location)
 
 mixin template ValueProperty(string __name, T, T defaultVal = T.init)
 {
+    mixin("private T _" ~ __name ~ " = defaultVal;");
 
-    mixin("private T " ~ __name ~ "_ = defaultVal;");
-
-    mixin("public @property T " ~ __name ~ "() const { return " ~ __name ~ "_; }");
-    mixin("public @property void " ~ __name ~ "(T value) { " ~ __name ~ "_ = value; }");
+    mixin("public @property T " ~ __name ~ "() const { return _" ~ __name ~ "; }");
+    mixin("public @property void " ~ __name ~ "(T value) { _" ~ __name ~ " = value; }");
 
 }
 

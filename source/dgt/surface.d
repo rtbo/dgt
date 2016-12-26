@@ -37,27 +37,27 @@ struct SurfaceAttribs
 
     @property bool hasAlpha() const
     {
-        return alphaSize_ > 0;
+        return alphaSize > 0;
     }
 
     @property bool hasDepth() const
     {
-        return depthSize_ > 0;
+        return depthSize > 0;
     }
 
     @property bool hasStencil() const
     {
-        return stencilSize_ > 0;
+        return stencilSize > 0;
     }
 
     @property bool hasSamples() const
     {
-        return samples_ > 0;
+        return samples > 0;
     }
 
     @property int decimalVersion() const
     {
-        return majorVersion_ * 10 + minorVersion_;
+        return majorVersion * 10 + minorVersion;
     }
 }
 
