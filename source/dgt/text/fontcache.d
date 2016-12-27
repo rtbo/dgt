@@ -130,6 +130,8 @@ class FontCache : Disposable
         {
             FcPatternAddString(pat, FC_FOUNDRY, toStringz(req.foundry));
         }
+        FcPatternAddBool(pat, FC_OUTLINE, FcTrue);
+        FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
 
         FcConfigSubstitute(_config, pat, FcMatchPattern);
         FcDefaultSubstitute(pat);
