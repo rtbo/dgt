@@ -49,6 +49,20 @@ int main()
         p.lineTo([width-10, 400]);
         p.lineTo([width-400, 10]);
         ctx.drawPath(p, PaintMode.fill | PaintMode.stroke);
+
+        import dgt.text.font;
+        import dgt.text.fontcache;
+        import dgt.text.layout;
+        import dgt.text.shaper;
+
+        FontRequest font;
+        font.family = "Courier";
+        font.size = FontSize.pts(100);
+        auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
+        layout.layout();
+        auto shape = TextShaper.instance.shape(layout.items()[0]);
+        auto glyph = shape.font.renderGlyph(shape.glyphs[0].index);
+        ctx.mask(glyph.bitmap);
     };
     win.onClosed += (Window) { app.exit(0); };
     win.show();

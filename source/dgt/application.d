@@ -3,6 +3,7 @@ module dgt.application;
 import dgt.resource;
 import dgt.platform;
 import dgt.text.fontcache;
+import dgt.text.shaper;
 
 /// Singleton class that must be built by the client application
 class Application : Disposable
@@ -21,6 +22,7 @@ class Application : Disposable
 
     override void dispose()
     {
+        TextShaper.instance.dispose();
         FontCache.instance.dispose();
     }
 
@@ -48,6 +50,7 @@ class Application : Disposable
 
         // initialize other singletons
         FontCache.initialize();
+        TextShaper.initialize();
     }
 
     private Uniq!Platform _platform;
