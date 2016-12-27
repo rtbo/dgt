@@ -33,17 +33,17 @@ private __gshared HarfbuzzLoader harfbuzzLoader;
 
 alias HarfbuzzLoader = SymbolLoader!(
     // HarfbuzzBlobSymbols,
-    // HarfbuzzBufferSymbols,
+    HarfbuzzBufferSymbols,
     // HarfbuzzCommonSymbols,
     // HarfbuzzDebugSymbols,
     // HarfbuzzFaceSymbols,
-    // HarfbuzzFontSymbols,
+    HarfbuzzFontSymbols,
     // HarfbuzzSetSymbols,
-    // HarfbuzzShapeSymbols,
+    HarfbuzzShapeSymbols,
     // HarfbuzzShapePlanSymbols,
     // HarfbuzzUnicodeSymbols,
     // HarfbuzzVersionSymbols,
-    // HarfbuzzFreetypeSymbols
+    HarfbuzzFreetypeSymbols
 );
 
 // alias HarfbuzzBlobSymbols = AliasSeq!(
@@ -60,13 +60,13 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_blob_get_data,
 //     hb_blob_get_data_writable,
 // );
-// alias HarfbuzzBufferSymbols = AliasSeq!(
+alias HarfbuzzBufferSymbols = AliasSeq!(
 //     hb_segment_properties_equal,
 //     hb_segment_properties_hash,
-//     hb_buffer_create,
+    hb_buffer_create,
 //     hb_buffer_get_empty,
 //     hb_buffer_reference,
-//     hb_buffer_destroy,
+    hb_buffer_destroy,
 //     hb_buffer_set_user_data,
 //     hb_buffer_get_user_data,
 //     hb_buffer_set_content_type,
@@ -74,14 +74,14 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_buffer_set_unicode_funcs,
 //     hb_buffer_get_unicode_funcs,
 //     hb_buffer_set_direction,
-//     hb_buffer_get_direction,
+    hb_buffer_get_direction,
 //     hb_buffer_set_script,
 //     hb_buffer_get_script,
 //     hb_buffer_set_language,
 //     hb_buffer_get_language,
 //     hb_buffer_set_segment_properties,
 //     hb_buffer_get_segment_properties,
-//     hb_buffer_guess_segment_properties,
+    hb_buffer_guess_segment_properties,
 //     hb_buffer_set_flags,
 //     hb_buffer_get_flags,
 //     hb_buffer_set_cluster_level,
@@ -96,22 +96,22 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_buffer_reverse_range,
 //     hb_buffer_reverse_clusters,
 //     hb_buffer_add,
-//     hb_buffer_add_utf8,
+    hb_buffer_add_utf8,
 //     hb_buffer_add_utf16,
 //     hb_buffer_add_utf32,
 //     hb_buffer_add_latin1,
 //     hb_buffer_add_codepoints,
 //     hb_buffer_set_length,
-//     hb_buffer_get_length,
-//     hb_buffer_get_glyph_infos,
-//     hb_buffer_get_glyph_positions,
+    hb_buffer_get_length,
+    hb_buffer_get_glyph_infos,
+    hb_buffer_get_glyph_positions,
 //     hb_buffer_normalize_glyphs,
 //     hb_buffer_serialize_format_from_string,
 //     hb_buffer_serialize_format_to_string,
 //     hb_buffer_serialize_list_formats,
 //     hb_buffer_serialize_glyphs,
 //     hb_buffer_deserialize_glyphs,
-// );
+);
 // alias HarfbuzzDebugSymbols = AliasSeq!(
 //     hb_buffer_set_message_func,
 // );
@@ -147,7 +147,7 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_face_set_glyph_count,
 //     hb_face_get_glyph_count,
 // );
-// alias HarfbuzzFontSymbols = AliasSeq!(
+alias HarfbuzzFontSymbols = AliasSeq!(
 //     hb_font_funcs_create,
 //     hb_font_funcs_get_empty,
 //     hb_font_funcs_reference,
@@ -199,7 +199,7 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_font_create_sub_font,
 //     hb_font_get_empty,
 //     hb_font_reference,
-//     hb_font_destroy,
+    hb_font_destroy,
 //     hb_font_set_user_data,
 //     hb_font_get_user_data,
 //     hb_font_make_immutable,
@@ -214,7 +214,7 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_font_set_ppem,
 //     hb_font_get_ppem,
 //     hb_font_set_var_coords_normalized,              Yes.optional,
-// );
+);
 // alias HarfbuzzSetSymbols = AliasSeq!(
 //     hb_set_create,
 //     hb_set_get_empty,
@@ -243,13 +243,13 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_set_next,
 //     hb_set_next_range,
 // );
-// alias HarfbuzzShapeSymbols = AliasSeq!(
+alias HarfbuzzShapeSymbols = AliasSeq!(
 //     hb_feature_from_string,
 //     hb_feature_to_string,
-//     hb_shape,
+    hb_shape,
 //     hb_shape_full,
 //     hb_shape_list_shapers,
-// );
+);
 // alias HarfbuzzShapePlanSymbols = AliasSeq!(
 //     hb_shape_plan_create,
 //     hb_shape_plan_create_cached,
@@ -296,14 +296,14 @@ alias HarfbuzzLoader = SymbolLoader!(
 //     hb_version_string,
 //     hb_version_atleast,
 // );
-// alias HarfbuzzFreetypeSymbols = AliasSeq!(
+alias HarfbuzzFreetypeSymbols = AliasSeq!(
 //     hb_ft_face_create,
 //     hb_ft_face_create_cached,
 //     hb_ft_face_create_referenced,
-//     hb_ft_font_create,
+    hb_ft_font_create,
 //     hb_ft_font_create_referenced,
 //     hb_ft_font_get_face,
 //     hb_ft_font_set_load_flags,
 //     hb_ft_font_get_load_flags,
 //     hb_ft_font_set_funcs,
-// );
+);

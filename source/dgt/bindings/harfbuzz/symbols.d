@@ -38,13 +38,13 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(uint, const(hb_segment_properties_t)*) hb_segment_properties_hash;
 
-// __gshared Symbol!(hb_buffer_t*) hb_buffer_create;
+__gshared Symbol!(hb_buffer_t*) hb_buffer_create;
 
 // __gshared Symbol!(hb_buffer_t*) hb_buffer_get_empty;
 
 // __gshared Symbol!(hb_buffer_t*, hb_buffer_t*) hb_buffer_reference;
 
-// __gshared Symbol!(void, hb_buffer_t*) hb_buffer_destroy;
+__gshared Symbol!(void, hb_buffer_t*) hb_buffer_destroy;
 
 // __gshared Symbol!(hb_bool_t, hb_buffer_t*, hb_user_data_key_t*, void*,
 //         hb_destroy_func_t, hb_bool_t) hb_buffer_set_user_data;
@@ -61,7 +61,7 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(void, hb_buffer_t*, hb_direction_t) hb_buffer_set_direction;
 
-// __gshared Symbol!(hb_direction_t, hb_buffer_t*) hb_buffer_get_direction;
+__gshared Symbol!(hb_direction_t, hb_buffer_t*) hb_buffer_get_direction;
 
 // __gshared Symbol!(void, hb_buffer_t*, hb_script_t) hb_buffer_set_script;
 
@@ -75,7 +75,7 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(void, hb_buffer_t*, hb_segment_properties_t*) hb_buffer_get_segment_properties;
 
-// __gshared Symbol!(void, hb_buffer_t*) hb_buffer_guess_segment_properties;
+__gshared Symbol!(void, hb_buffer_t*) hb_buffer_guess_segment_properties;
 
 // __gshared Symbol!(void, hb_buffer_t*, hb_buffer_flags_t) hb_buffer_set_flags;
 
@@ -105,7 +105,7 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(void, hb_buffer_t*, hb_codepoint_t, uint) hb_buffer_add;
 
-// __gshared Symbol!(void, hb_buffer_t*, const(char)*, int, uint, int) hb_buffer_add_utf8;
+__gshared Symbol!(void, hb_buffer_t*, const(char)*, int, uint, int) hb_buffer_add_utf8;
 
 // __gshared Symbol!(void, hb_buffer_t*, const(ushort)*, int, uint, int) hb_buffer_add_utf16;
 
@@ -117,11 +117,11 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(hb_bool_t, hb_buffer_t*, uint) hb_buffer_set_length;
 
-// __gshared Symbol!(uint, hb_buffer_t*) hb_buffer_get_length;
+__gshared Symbol!(uint, hb_buffer_t*) hb_buffer_get_length;
 
-// __gshared Symbol!(hb_glyph_info_t*, hb_buffer_t*, uint*) hb_buffer_get_glyph_infos;
+__gshared Symbol!(hb_glyph_info_t*, hb_buffer_t*, uint*) hb_buffer_get_glyph_infos;
 
-// __gshared Symbol!(hb_glyph_position_t*, hb_buffer_t*, uint*) hb_buffer_get_glyph_positions;
+__gshared Symbol!(hb_glyph_position_t*, hb_buffer_t*, uint*) hb_buffer_get_glyph_positions;
 
 // __gshared Symbol!(void, hb_buffer_t*) hb_buffer_normalize_glyphs;
 
@@ -327,7 +327,7 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(hb_font_t*, hb_font_t*) hb_font_reference;
 
-// __gshared Symbol!(void, hb_font_t*) hb_font_destroy;
+__gshared Symbol!(void, hb_font_t*) hb_font_destroy;
 
 // __gshared Symbol!(hb_bool_t, hb_font_t*, hb_user_data_key_t*, void*,
 //         hb_destroy_func_t, hb_bool_t) hb_font_set_user_data;
@@ -425,7 +425,7 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(void, hb_feature_t*, char*, uint) hb_feature_to_string;
 
-// __gshared Symbol!(void, hb_font_t*, hb_buffer_t*, const hb_feature_t*, uint) hb_shape;
+__gshared Symbol!(void, hb_font_t*, hb_buffer_t*, const hb_feature_t*, uint) hb_shape;
 
 // __gshared Symbol!(hb_bool_t, hb_font_t*, hb_buffer_t*, const(hb_feature_t)*,
 //         uint, const(char*)*) hb_shape_full;
@@ -542,7 +542,7 @@ import derelict.freetype.ft;
 
 // __gshared Symbol!(hb_face_t*, FT_Face) hb_ft_face_create_referenced;
 
-// __gshared Symbol!(hb_font_t*, FT_Face, hb_destroy_func_t) hb_ft_font_create;
+__gshared Symbol!(hb_font_t*, FT_Face, hb_destroy_func_t) hb_ft_font_create;
 
 // __gshared Symbol!(hb_font_t*, FT_Face) hb_ft_font_create_referenced;
 

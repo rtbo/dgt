@@ -60,11 +60,11 @@ private CairoLoader cairoLoader;
 private alias CairoLoader = SymbolLoader!(
     CairoContextSymbols,
     CairoPathSymbols,
-    // CairoTransformSymbols,
+    CairoTransformSymbols,
     // CairoTextSymbols,
     // CairoDeviceSymbols,
     CairoSurfaceSymbols,
-    // CairoImageSymbols,
+    CairoImageSymbols,
     // CairoRasterSourceSymbols,
     // CairoRecordingSymbols,
     CairoPatternSymbols,
@@ -104,7 +104,7 @@ alias CairoContextSymbols = AliasSeq!(
     cairo_set_miter_limit,
     cairo_paint,
     // cairo_paint_with_alpha,
-    // cairo_mask,
+    cairo_mask,
     // cairo_mask_surface,
     cairo_stroke,
     // cairo_stroke_preserve,
@@ -163,7 +163,7 @@ alias CairoPathSymbols = AliasSeq!(
 );
 
 alias CairoTransformSymbols = AliasSeq!(
-//     cairo_translate,
+    cairo_translate,
 //     cairo_scale,
 //     cairo_rotate,
 //     cairo_transform,
@@ -318,16 +318,16 @@ alias CairoSurfaceSymbols = AliasSeq!(
 //     cairo_surface_observer_elapsed,
 );
 
-// alias CairoImageSymbols = AliasSeq!(
+alias CairoImageSymbols = AliasSeq!(
 //     cairo_image_surface_create,
 //     cairo_format_stride_for_width,
-//     cairo_image_surface_create_for_data,
+    cairo_image_surface_create_for_data,
 //     cairo_image_surface_get_data,
 //     cairo_image_surface_get_format,
 //     cairo_image_surface_get_width,
 //     cairo_image_surface_get_height,
 //     cairo_image_surface_get_stride,
-// );
+);
 
 // alias CairoRecordingSymbols = AliasSeq!(
 //     cairo_recording_surface_create,
@@ -352,7 +352,7 @@ alias CairoSurfaceSymbols = AliasSeq!(
 alias CairoPatternSymbols = AliasSeq!(
 //     cairo_pattern_create_rgb,
     cairo_pattern_create_rgba,
-//     cairo_pattern_create_for_surface,
+    cairo_pattern_create_for_surface,
     cairo_pattern_create_linear,
     cairo_pattern_create_radial,
 //     cairo_pattern_create_mesh,
@@ -380,7 +380,7 @@ alias CairoPatternSymbols = AliasSeq!(
 //     cairo_pattern_set_filter,
 //     cairo_pattern_get_filter,
     cairo_pattern_get_rgba,
-//     cairo_pattern_get_surface,
+    cairo_pattern_get_surface,
     cairo_pattern_get_color_stop_rgba,
     cairo_pattern_get_color_stop_count,
     cairo_pattern_get_linear_points,
@@ -532,7 +532,7 @@ __gshared Symbol!(void, cairo_t*, const(double)*, int, double) cairo_set_dash;
 
 __gshared Symbol!(void, cairo_t*, double) cairo_set_miter_limit;
 
-// __gshared Symbol!(void, cairo_t*, double, double) cairo_translate;
+__gshared Symbol!(void, cairo_t*, double, double) cairo_translate;
 
 // __gshared Symbol!(void, cairo_t*, double, double) cairo_scale;
 
@@ -593,7 +593,7 @@ __gshared Symbol!(void, cairo_t*) cairo_paint;
 
 // __gshared Symbol!(void, cairo_t*, double) cairo_paint_with_alpha;
 
-// __gshared Symbol!(void, cairo_t*, cairo_pattern_t*) cairo_mask;
+__gshared Symbol!(void, cairo_t*, cairo_pattern_t*) cairo_mask;
 
 // __gshared Symbol!(void, cairo_t*, cairo_surface_t*, double, double) cairo_mask_surface;
 
@@ -947,7 +947,7 @@ __gshared Symbol!(void, cairo_surface_t*) cairo_surface_flush;
 
 // __gshared Symbol!(int, cairo_format_t, int) cairo_format_stride_for_width;
 
-// __gshared Symbol!(cairo_surface_t*, ubyte*, cairo_format_t, int, int, int) cairo_image_surface_create_for_data;
+__gshared Symbol!(cairo_surface_t*, ubyte*, cairo_format_t, int, int, int) cairo_image_surface_create_for_data;
 
 // __gshared Symbol!(ubyte*, cairo_surface_t*) cairo_image_surface_get_data;
 
@@ -992,7 +992,7 @@ __gshared Symbol!(void, cairo_surface_t*) cairo_surface_flush;
 
 __gshared Symbol!(cairo_pattern_t*, double, double, double, double) cairo_pattern_create_rgba;
 
-// __gshared Symbol!(cairo_pattern_t*, cairo_surface_t*) cairo_pattern_create_for_surface;
+__gshared Symbol!(cairo_pattern_t*, cairo_surface_t*) cairo_pattern_create_for_surface;
 
 __gshared Symbol!(cairo_pattern_t*, double, double, double, double) cairo_pattern_create_linear;
 
@@ -1049,7 +1049,7 @@ __gshared Symbol!(cairo_extend_t, cairo_pattern_t*) cairo_pattern_get_extend;
 
 __gshared Symbol!(cairo_status_t, cairo_pattern_t*, double*, double*, double*, double*) cairo_pattern_get_rgba;
 
-// __gshared Symbol!(cairo_status_t, cairo_pattern_t*, cairo_surface_t**) cairo_pattern_get_surface;
+__gshared Symbol!(cairo_status_t, cairo_pattern_t*, cairo_surface_t**) cairo_pattern_get_surface;
 
 __gshared Symbol!(cairo_status_t, cairo_pattern_t*, int, double*, double*, double*, double*, double*) cairo_pattern_get_color_stop_rgba;
 
