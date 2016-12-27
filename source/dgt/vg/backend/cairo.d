@@ -3,6 +3,7 @@ module dgt.vg.backend.cairo;
 import dgt.resource;
 import dgt.vg;
 import dgt.surface;
+import dgt.image;
 import dgt.bindings.cairo;
 
 import std.exception : enforce;
@@ -286,6 +287,24 @@ class CairoVgContext : VgContext
     override void resetClip()
     {
         cairo_reset_clip(cairo);
+    }
+
+    override void mask(Image img)
+    {
+        auto imgSurf = cairo_image_surface_create_for_data(img.data.ptr,
+            CAIRO_FORMAT_A8, img.width, img.height, cast(int)img.stride
+        );
+        scope(exit)
+            cairo_surface_destroy(imgSurf);
+
+        auto imgPatt = cairo_pattern_create_for_surface(imgSurf);
+        scope(exit)
+            cairo_pattern_destroy(imgPatt);
+
+        cairo_save(cairo);
+        cairo_translate(cairo, 50, 50);
+        cairo_mask(cairo, imgPatt);
+        cairo_restore(cairo);
     }
 
     override void clear(in float[4] color)

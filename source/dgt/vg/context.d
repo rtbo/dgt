@@ -4,6 +4,7 @@ import dgt.resource;
 import dgt.vg.path;
 import dgt.vg.paint;
 import dgt.surface;
+import dgt.image;
 
 import std.typecons : BitFlags, Flag, No;
 
@@ -81,6 +82,11 @@ interface VgContext : RefCounted
 
     @property inout(Paint) strokePaint() inout;
     @property void strokePaint(Paint paint);
+
+    /// Paint the surface with the current fill paint and mask it with the
+    /// alpha plane of the image. Format must be either ImageFormat.a1 or
+    /// ImageFormat.a8.
+    void mask(Image img);
 
     /// Clear the whole clipping area with the provided color.
     /// This is equivalent has filling the clip path with a color Paint,
