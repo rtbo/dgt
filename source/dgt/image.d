@@ -112,17 +112,23 @@ class Image
     ///   - the $(D height) is computed as $(D data.length / stride)
     ///
     /// Stride can be used to pass in a slice of a bigger image.
-    this(ubyte[] data, in ImageFormat format, in size_t width, in size_t stride)
+    this(ubyte[] data, in ImageFormat fmt, in size_t width, in size_t stride)
     {
-        immutable minStride = format.bytesForWidth(width);
+        import std.format : format;
+        immutable minStride = fmt.bytesForWidth(width);
         immutable height = data.length / stride;
-        enforce(stride >= minStride);
-        enforce(isValidImageSize(size));
+        enforce(
+            stride >= minStride,
+            format("provided stride is %s, minimum requested is %s",
+                stride, minStride)
+        );
+        enforce(isValidImageSize(size(this)));
 
         _width = cast(ushort)width;
         _height = cast(ushort)height;
         _stride = stride;
         _minStride = minStride;
+        _format = fmt;
         _data = data;
     }
 
@@ -151,10 +157,16 @@ class Image
         return _format;
     }
 
-    /// The size of the image
-    @property ISize size() const
+    /// The width of the image
+    @property ushort width() const
     {
-        return ISize(_width, _height);
+        return _width;
+    }
+
+    /// The height of the image
+    @property ushort height() const
+    {
+        return _height;
     }
 
     /// Get the number of bytes between two rows
@@ -162,6 +174,13 @@ class Image
     {
         return _stride;
     }
+}
+
+
+/// The size of the image
+@property ISize size(const(Image) img)
+{
+    return ISize(img.width, img.height);
 }
 
 // pixel access helpers
