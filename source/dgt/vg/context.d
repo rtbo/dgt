@@ -1,6 +1,6 @@
 module dgt.vg.context;
 
-import dgt.resource;
+import dgt.core.resource;
 import dgt.vg.path;
 import dgt.vg.paint;
 import dgt.surface;

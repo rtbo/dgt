@@ -1,5 +1,5 @@
 /// Resource management module
-module dgt.resource;
+module dgt.core.resource;
 
 /// A resource that can be disposed
 interface Disposable
@@ -22,7 +22,7 @@ interface RefCounted : Disposable
     in { assert(refCount > 0); }
 
     override void dispose()
-    in { assert(refCount == 0); } // add additional contract condition
+    in { assert(refCount == 0); } // add this additional contract
 }
 
 /// Dispose GC allocated array of resources

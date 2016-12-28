@@ -1,6 +1,6 @@
 module dgt.application;
 
-import dgt.resource;
+import dgt.core.resource;
 import dgt.platform;
 import dgt.text.fontcache;
 import dgt.text.shaper;

@@ -1,14 +1,11 @@
 module dgt.event;
 
+import dgt.core.signal;
 import dgt.window : Window, WindowState;
 import dgt.geometry : IPoint, ISize, IRect;
 import dgt.enums;
 import key = dgt.keys;
 
-interface EventHandler
-{
-    void handleEvent(Event ev);
-}
 
 enum EventType
 {
@@ -408,4 +405,91 @@ class WindowKeyEvent : WindowEvent
         bool _repeat;
         int _repeatCount;
     }
+}
+
+interface EventHandler
+{
+    void handleEvent(Event ev);
+}
+
+template isEventHandler(Iface)
+{
+    static if (isSmi!Iface)
+    {
+        enum bool isEventHandler = smiParamsType!(Iface).length == 1
+                && is(smiParamsType!(Iface)[0] : Event);
+    }
+    else
+    {
+        enum bool isEventHandler = false;
+    }
+}
+
+template HandlerEventType(Iface) if (isEventHandler!Iface)
+{
+    alias HandlerEventType = smiParamsType!(Iface)[0];
+}
+
+version(unittest)
+{
+    interface EventHandlerTestIface
+    {
+        void method(Event ev);
+    }
+
+    interface CloseEventHandlerTestIface
+    {
+        void onClose(WindowCloseEvent ev);
+    }
+    static assert(isSmi!(EventHandlerTestIface));
+    static assert(!isEventHandler!SmiTestIface);
+    static assert(isEventHandler!EventHandlerTestIface);
+    static assert(is(HandlerEventType!CloseEventHandlerTestIface == WindowCloseEvent));
+}
+abstract class EventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
+{
+    alias RetType = void;
+    alias EventType = HandlerEventType!HandlerT;
+    alias SlotType = void delegate(EventType ev);
+
+    static assert(is(EventType : Event));
+
+    private SlotType[] _slots;
+
+    void opOpAssign(string op : "+")(SlotType slot)
+    {
+        _slots ~= slot;
+    }
+
+    bool opOpAssign(string op : "-")(SlotType slot)
+    {
+        auto found = _slots.find(slot);
+        if (found.empty)
+            return false;
+        _slots = _slots.remove(_slots.length - found.length);
+        return true;
+    }
+
+    @property bool engaged() const
+    {
+        return _slots.length != 0;
+    }
+
+}
+
+
+final class FireableEventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
+    : EventHandlerSignal!HandlerT
+{
+
+    void fire(EventType event)
+    {
+        foreach (slot; _slots)
+        {
+            slot(event);
+            if (event.consumed)
+                break;
+        }
+    }
+
 }

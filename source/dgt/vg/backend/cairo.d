@@ -1,6 +1,6 @@
 module dgt.vg.backend.cairo;
 
-import dgt.resource;
+import dgt.core.resource;
 import dgt.vg;
 import dgt.surface;
 import dgt.image;
@@ -97,7 +97,7 @@ private struct State
 /// VgContext implementation for cairo graphics library
 class CairoVgContext : VgContext
 {
-    import dgt.util : GrowableStack;
+    import dgt.core.typecons : GrowableStack;
 
     mixin(rcCode);
 

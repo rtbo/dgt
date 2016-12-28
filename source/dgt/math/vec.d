@@ -1,6 +1,6 @@
 module dgt.math.vec;
 
-import dgt.util : StaticRange;
+import dgt.core.typecons : StaticRange;
 
 import std.traits;
 

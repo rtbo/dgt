@@ -27,7 +27,7 @@ template approx(T, int N) if (isFloatingPoint!T && N > 0)
 {
     bool approx(in T[N] v1, in T[N] v2, in int maxUlps = 4)
     {
-        import dgt.util : StaticRange;
+        import dgt.core.typecons : StaticRange;
 
         foreach (i; StaticRange!(0, N))
         {
@@ -54,7 +54,7 @@ template approx(T, int M, int N) if (isFloatingPoint!T && M > 0 && N > 0)
 {
     bool approx(in T[M][N] v1, in T[M][N] v2, in int maxUlps = 4)
     {
-        import dgt.util : StaticRange;
+        import dgt.core.typecons : StaticRange;
 
         foreach (n; StaticRange!(0, N))
         {

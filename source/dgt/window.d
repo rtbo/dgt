@@ -5,8 +5,8 @@ import dgt.application;
 import dgt.surface;
 import dgt.geometry;
 import dgt.event;
-import dgt.signal;
-import dgt.util;
+import dgt.core.signal;
+import dgt.core.util;
 import dgt.vg;
 
 import std.exception : enforce;

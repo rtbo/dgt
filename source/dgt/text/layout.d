@@ -2,7 +2,7 @@ module dgt.text.layout;
 
 import dgt.text.fontcache;
 import dgt.text.font;
-import dgt.resource;
+import dgt.core.resource;
 import dgt.image;
 
 import std.exception;

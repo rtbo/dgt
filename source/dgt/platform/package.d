@@ -1,6 +1,6 @@
 module dgt.platform;
 
-import dgt.resource;
+import dgt.core.resource;
 import dgt.geometry;
 import dgt.screen;
 import dgt.window;

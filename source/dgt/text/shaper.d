@@ -2,7 +2,7 @@ module dgt.text.shaper;
 
 import dgt.text.layout;
 import dgt.text.font;
-import dgt.resource;
+import dgt.core.resource;
 import dgt.bindings.harfbuzz;
 import dgt.math.vec;
 

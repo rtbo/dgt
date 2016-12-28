@@ -1,4 +1,4 @@
-module dgt.signal;
+module dgt.core.signal;
 
 import dgt.event : Event;
 
@@ -44,27 +44,8 @@ template smiParamsType(Iface) if (isSmi!Iface)
     alias smiParamsType = Parameters!(__traits(getMember, Iface, smiMethodName!Iface));
 }
 
-template isEventHandler(Iface)
-{
-    static if (isSmi!Iface)
-    {
-        enum bool isEventHandler = smiParamsType!(Iface).length == 1
-                && is(smiParamsType!(Iface)[0] : Event);
-    }
-    else
-    {
-        enum bool isEventHandler = false;
-    }
-}
 
-template HandlerEventType(Iface) if (isEventHandler!Iface)
-{
-
-    alias HandlerEventType = smiParamsType!(Iface)[0];
-
-}
-
-private
+version(unittest)
 {
     import dgt.event : WindowCloseEvent;
     import std.meta : AliasSeq;
@@ -74,25 +55,11 @@ private
         void method(string arg1, int arg2);
     }
 
-    interface EventHandlerTestIface
-    {
-        void method(Event ev);
-    }
-
-    interface CloseEventHandlerTestIface
-    {
-        void onClose(WindowCloseEvent ev);
-    }
-
     static assert(isSmi!(SmiTestIface));
-    static assert(isSmi!(EventHandlerTestIface));
     static assert(smiMethodName!(SmiTestIface) == "method");
     static assert(is(smiRetType!(SmiTestIface) == void));
     static assert((smiParamsType!(SmiTestIface)).length == 2);
     static assert(is(smiParamsType!(SmiTestIface) == AliasSeq!(string, int)));
-    static assert(!isEventHandler!SmiTestIface);
-    static assert(isEventHandler!EventHandlerTestIface);
-    static assert(is(HandlerEventType!CloseEventHandlerTestIface == WindowCloseEvent));
 }
 
 abstract class SmiSignal(Iface) if (isSmi!Iface && is(smiRetType!Iface == void))
@@ -256,53 +223,6 @@ final class FireableSignal(P...) : Signal!(P)
         foreach (slot; _slots)
         {
             slot(params);
-        }
-    }
-
-}
-
-abstract class EventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
-{
-    alias RetType = void;
-    alias EventType = HandlerEventType!HandlerT;
-    alias SlotType = void delegate(EventType ev);
-
-    static assert(is(EventType : Event));
-
-    private SlotType[] _slots;
-
-    void opOpAssign(string op : "+")(SlotType slot)
-    {
-        _slots ~= slot;
-    }
-
-    bool opOpAssign(string op : "-")(SlotType slot)
-    {
-        auto found = _slots.find(slot);
-        if (found.empty)
-            return false;
-        _slots = _slots.remove(_slots.length - found.length);
-        return true;
-    }
-
-    @property bool engaged() const
-    {
-        return _slots.length != 0;
-    }
-
-}
-
-final class FireableEventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
-    : EventHandlerSignal!HandlerT
-{
-
-    void fire(EventType event)
-    {
-        foreach (slot; _slots)
-        {
-            slot(event);
-            if (event.consumed)
-                break;
         }
     }
 

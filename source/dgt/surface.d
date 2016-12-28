@@ -1,6 +1,6 @@
 module dgt.surface;
 
-import dgt.util : ValueProperty;
+import dgt.core.util : ValueProperty;
 import dgt.geometry : ISize;
 import dgt.vg : VgFactory;
 

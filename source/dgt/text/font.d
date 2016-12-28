@@ -2,8 +2,8 @@ module dgt.text.font;
 
 import dgt.text.fontcache;
 import dgt.image;
-import dgt.resource;
-import dgt.util;
+import dgt.core.resource;
+import dgt.core.util;
 
 import derelict.freetype.ft;
 

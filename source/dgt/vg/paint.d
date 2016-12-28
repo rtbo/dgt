@@ -1,6 +1,6 @@
 module dgt.vg.paint;
 
-import dgt.resource;
+import dgt.core.resource;
 
 enum PaintType
 {
