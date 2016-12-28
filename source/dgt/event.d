@@ -407,11 +407,16 @@ class WindowKeyEvent : WindowEvent
     }
 }
 
+/// Interface for handling generic events.
 interface EventHandler
 {
+    /// Handles event $(D ev)
     void handleEvent(Event ev);
 }
 
+/// Checks whether the interface is a specialized event handler
+/// That is a SMI with method that have one parameter that is convertible to Event.
+/// The method can have any name.
 template isEventHandler(Iface)
 {
     static if (isSmi!Iface)
@@ -425,6 +430,7 @@ template isEventHandler(Iface)
     }
 }
 
+/// Alias to the type of event a handler handles
 template HandlerEventType(Iface) if (isEventHandler!Iface)
 {
     alias HandlerEventType = smiParamsType!(Iface)[0];
@@ -446,6 +452,8 @@ version(unittest)
     static assert(isEventHandler!EventHandlerTestIface);
     static assert(is(HandlerEventType!CloseEventHandlerTestIface == WindowCloseEvent));
 }
+
+/// Signal defined by a EventHander
 abstract class EventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
 {
     alias RetType = void;
@@ -477,11 +485,10 @@ abstract class EventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
 
 }
 
-
+/// Fireable signal that accept a EventHandler interface
 final class FireableEventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
     : EventHandlerSignal!HandlerT
 {
-
     void fire(EventType event)
     {
         foreach (slot; _slots)
@@ -492,4 +499,17 @@ final class FireableEventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
         }
     }
 
+}
+
+/// Mixin template that defines a FireableEventHandlerSignal and access
+/// property in the current scope
+mixin template EventHandlerSignalMixin(string __name, HandlerT)
+{
+    import dgt.core.signal;
+
+    mixin("private FireableEventHandlerSignal!HandlerT _" ~ __name ~ " =\n"
+            ~ "    new FireableEventHandlerSignal!HandlerT;");
+
+    mixin("public @property EventHandlerSignal!HandlerT " ~ __name ~ "() { return _" ~ __name
+            ~ "; }");
 }

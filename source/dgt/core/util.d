@@ -97,17 +97,6 @@ mixin template SignalMixin(string __name, T...)
     mixin("public @property Signal!T " ~ __name ~ "() { return _" ~ __name ~ "; }");
 }
 
-mixin template EventHandlerSignalMixin(string __name, HandlerT)
-{
-    import dgt.core.signal;
-
-    mixin("private FireableEventHandlerSignal!HandlerT _" ~ __name ~ " =\n"
-            ~ "    new FireableEventHandlerSignal!HandlerT;");
-
-    mixin("public @property EventHandlerSignal!HandlerT " ~ __name ~ "() { return _" ~ __name
-            ~ "; }");
-}
-
 // some utility to compose mixin templates
 
 /// capitalize first letter and leave others untouched

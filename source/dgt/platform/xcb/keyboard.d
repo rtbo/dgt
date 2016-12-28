@@ -574,7 +574,7 @@ private {
         //// Japanese keyboard support
         //map[XKB_KEY_Kanji] =                    key.Sym.kanji;
         //map[XKB_KEY_Muhenkan] =                 key.Sym.muhenkan;
-        ////map[XKB_KEY_Henkan_Mode] =            key.Sym.henkan_Mode;
+        //map[XKB_KEY_Henkan_Mode] =            key.Sym.henkan_Mode;
         //map[XKB_KEY_Henkan_Mode] =              key.Sym.henkan;
         //map[XKB_KEY_Henkan] =                   key.Sym.henkan;
         //map[XKB_KEY_Romaji] =                   key.Sym.romaji;
@@ -590,9 +590,9 @@ private {
         //map[XKB_KEY_Kana_Shift] =               key.Sym.kana_Shift;
         //map[XKB_KEY_Eisu_Shift] =               key.Sym.eisu_Shift;
         //map[XKB_KEY_Eisu_toggle] =              key.Sym.eisu_toggle;
-        ////map[XKB_KEY_Kanji_Bangou] =           key.Sym.kanji_Bangou;
-        ////map[XKB_KEY_Zen_Koho] =               key.Sym.zen_Koho;
-        ////map[XKB_KEY_Mae_Koho] =               key.Sym.mae_Koho;
+        //map[XKB_KEY_Kanji_Bangou] =           key.Sym.kanji_Bangou;
+        //map[XKB_KEY_Zen_Koho] =               key.Sym.zen_Koho;
+        //map[XKB_KEY_Mae_Koho] =               key.Sym.mae_Koho;
         //map[XKB_KEY_Kanji_Bangou] =             key.Sym.codeinput;
         //map[XKB_KEY_Zen_Koho] =                 key.Sym.multipleCandidate;
         //map[XKB_KEY_Mae_Koho] =                 key.Sym.previousCandidate;
@@ -604,7 +604,7 @@ private {
         //map[XKB_KEY_HANGul_Hanja] =             key.Sym.hangul_Hanja;
         //map[XKB_KEY_HANGul_Jamo] =              key.Sym.hangul_Jamo;
         //map[XKB_KEY_HANGul_Romaja] =            key.Sym.hangul_Romaja;
-        ////map[XKB_KEY_HANGul_Codeinput] =       key.Sym.hangul_Codeinput;
+        //map[XKB_KEY_HANGul_Codeinput] =       key.Sym.hangul_Codeinput;
         //map[XKB_KEY_HANGul_Codeinput] =         key.Sym.codeinput;
         //map[XKB_KEY_HANGul_Jeonja] =            key.Sym.hangul_Jeonja;
         //map[XKB_KEY_HANGul_Banja] =             key.Sym.hangul_Banja;
@@ -617,7 +617,7 @@ private {
         //map[XKB_KEY_HANGul_MultipleCandidate] = key.Sym.multipleCandidate;
         //map[XKB_KEY_HANGul_PreviousCandidate] = key.Sym.previousCandidate;
         //map[XKB_KEY_HANGul_Special] =           key.Sym.hangul_Special;
-        ////map[XKB_KEY_HANGul_switch] =          key.Sym.hangul_switch;
+        //map[XKB_KEY_HANGul_switch] =          key.Sym.hangul_switch;
         //map[XKB_KEY_HANGul_switch] =            key.Sym.Mode_switch;
 
 
