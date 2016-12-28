@@ -31,9 +31,7 @@ enum IndexedBidiClass : uint
 
 struct TrieEntry(T...)
 {
-    size_t[] offsets;import std.uni;
-
-
+    size_t[] offsets;
     size_t[] sizes;
     size_t[] data;
 }
