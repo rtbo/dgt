@@ -150,10 +150,10 @@ enum HB_TAG_MAX_SIGNED = HB_TAG(0x7f, 0xff, 0xff, 0xff);
 enum hb_direction_t
 {
     HB_DIRECTION_INVALID = 0,
-    HB_DIRECTION_LTR = 4,
-    HB_DIRECTION_RTL,
-    HB_DIRECTION_TTB,
-    HB_DIRECTION_BTT
+    HB_DIRECTION_LTR = 4,               // 100
+    HB_DIRECTION_RTL,                   // 101
+    HB_DIRECTION_TTB,                   // 110
+    HB_DIRECTION_BTT                    // 111
 }
 
 bool HB_DIRECTION_IS_VALID(in hb_direction_t dir)
@@ -183,7 +183,7 @@ bool HB_DIRECTION_IS_FORWARD(in hb_direction_t dir)
 bool HB_DIRECTION_IS_BACKWARD(in hb_direction_t dir)
 {
     immutable idir = cast(uint) dir;
-    return (idir & ~2U) == 6;
+    return (idir & ~2U) == 5;
 }
 
 hb_direction_t HB_DIRECTION_REVERSE(in hb_direction_t dir)
