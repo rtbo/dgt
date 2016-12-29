@@ -1,6 +1,6 @@
 module dgt.math.approx;
 
-import dgt.math.vec : TVecN;
+import dgt.math.vec : Vec;
 
 import std.traits : isFloatingPoint;
 
@@ -41,11 +41,9 @@ template approx(T, int N) if (isFloatingPoint!T && N > 0)
 /// ditto
 template approx(T, int N) if (isFloatingPoint!T)
 {
-    bool approx(in TVecN!(T, N) v1, in TVecN!(T, N) v2)
+    bool approx(in Vec!(T, N) v1, in Vec!(T, N) v2)
     {
-        import dgt.math.approx : approx;
-
-        return approx(v1.rep, v2.rep);
+        return approx(v1.data, v2.data);
     }
 }
 

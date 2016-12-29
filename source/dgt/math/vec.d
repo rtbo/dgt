@@ -4,99 +4,124 @@ import dgt.core.typecons : StaticRange;
 
 import std.traits;
 
-alias TVec2(T) = TVecN!(T, 2);
-alias TVec3(T) = TVecN!(T, 3);
-alias TVec4(T) = TVecN!(T, 4);
+alias TVec2(T) = Vec!(T, 2);
+alias TVec3(T) = Vec!(T, 3);
+alias TVec4(T) = Vec!(T, 4);
 
-alias DVecN(int N) = TVecN!(double, N);
-alias FVecN(int N) = TVecN!(float, N);
-alias IVecN(int N) = TVecN!(int, N);
+alias DVecN(int N) = Vec!(double, N);
+alias FVecN(int N) = Vec!(float, N);
+alias IVecN(int N) = Vec!(int, N);
 
-alias DVec2 = TVecN!(double, 2);
-alias DVec3 = TVecN!(double, 3);
-alias DVec4 = TVecN!(double, 4);
+alias DVec2 = Vec!(double, 2);
+alias DVec3 = Vec!(double, 3);
+alias DVec4 = Vec!(double, 4);
 
-alias FVec2 = TVecN!(float, 2);
-alias FVec3 = TVecN!(float, 3);
-alias FVec4 = TVecN!(float, 4);
+alias FVec2 = Vec!(float, 2);
+alias FVec3 = Vec!(float, 3);
+alias FVec4 = Vec!(float, 4);
 
-alias IVec2 = TVecN!(int, 2);
-alias IVec3 = TVecN!(int, 3);
-alias IVec4 = TVecN!(int, 4);
+alias IVec2 = Vec!(int, 2);
+alias IVec3 = Vec!(int, 3);
+alias IVec4 = Vec!(int, 4);
 
-struct TVecN(T, int N) if (N >= 0 && N <= 4 && __traits(isArithmetic, T))
+struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
 {
-    T[N] rep = 0;
+    private T[N] _rep = 0;
 
-    this(T...)(in T vals) if (T.length == N)
+    /// The length of the vector.
+    enum length = N;
+    /// The vector components type.
+    alias Component = T;
+
+    /// Build a vector from its components
+    this(Comps...)(in Comps comps)
+    if (Comps.length == length)
     {
-        foreach (i, v; vals)
+        foreach(C; Comps)
         {
-            rep[i] = v;
+            static assert(is(C : T), "Component must convert to "~T.stringof);
         }
+        _rep = [ comps ];
     }
 
-    this(in T[N] vec)
+    /// Build a vector from an array.
+    this(V)(in V vec)
+    if (isArray!V)
     {
-        rep = vec;
+        static if (isStaticArray!(typeof(vec)))
+        {
+            static assert(vec.length == length);
+        }
+        else
+        {
+            assert(vec.length == length);
+        }
+        _rep[] = vec;
     }
 
-    this(in T s)
+    /// Build a vector with all components assigned to one value
+    this(in T comp)
     {
-        foreach (ref v; rep)
-        {
-            v = s;
-        }
+        _rep = comp;
+    }
+
+    /// Return the data of the array
+    @property T[length] data() const
+    {
+        return _rep;
     }
 
     static if (N >= 2 && N <= 4)
     {
-
+        /// Access the X component of the vector.
         @property T x() const
         {
-            return rep[0];
+            return _rep[0];
         }
-
+        /// Assign the X component of the vector.
         @property void x(in T val)
         {
-            rep[0] = val;
+            _rep[0] = val;
         }
 
+        /// Access the Y component of the vector.
         @property T y() const
         {
-            return rep[1];
+            return _rep[1];
         }
-
+        /// Assign the Y component of the vector.
         @property void y(in T val)
         {
-            rep[1] = val;
+            _rep[1] = val;
         }
 
     }
 
     static if (N >= 3 && N <= 4)
     {
+        /// Access the Z component of the vector.
         @property T z() const
         {
-            return rep[2];
+            return _rep[2];
         }
-
+        /// Assign the Z component of the vector.
         @property void z(in T val)
         {
-            rep[2] = val;
+            _rep[2] = val;
         }
     }
 
     static if (N == 4)
     {
+        /// Access the W component of the vector.
         @property T w() const
         {
-            return rep[3];
+            return _rep[3];
         }
-
+        /// Assign the W component of the vector.
         @property void w(in T val)
         {
-            rep[3] = val;
+            _rep[3] = val;
         }
     }
 
@@ -128,7 +153,6 @@ struct TVecN(T, int N) if (N >= 0 && N <= 4 && __traits(isArithmetic, T))
         static if (N == 4)
         {
             alias a = w;
-
             alias p = z;
             alias q = w;
         }
@@ -136,14 +160,15 @@ struct TVecN(T, int N) if (N >= 0 && N <= 4 && __traits(isArithmetic, T))
         // TODO: swizzling properties
     }
 
-    TVecN!(T, N) opUnary(string op : "+")() const
+    /// Unary "+" operation.
+    Vec!(T, N) opUnary(string op : "+")() const
     {
         return this;
     }
-
-    TVecN!(T, N) opUnary(string op : "-")() const
+    /// Unary "-" operation.
+    Vec!(T, N) opUnary(string op : "-")() const
     {
-        TVecN!(T, N) res = this;
+        Vec!(T, N) res = this;
         foreach (ref v; res)
         {
             v = -v;
@@ -151,74 +176,78 @@ struct TVecN(T, int N) if (N >= 0 && N <= 4 && __traits(isArithmetic, T))
         return res;
     }
 
-    // term by term operator
-    ref TVecN!(T, N) opOpAssign(string op, U)(in TVecN!(U, N) oth)
+    /// Perform a term by term assignment operation on the vector.
+    ref Vec!(T, N) opOpAssign(string op, U)(in Vec!(U, N) oth)
             if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
     {
-        foreach (i, ref v; rep)
+        foreach (i, ref v; _rep)
         {
             mixin("v " ~ op ~ "= oth[i];");
         }
         return this;
     }
 
-    ref TVecN!(T, N) opOpAssign(string op, U)(in U val)
+    /// Perform a scalar assignment operation on the vector.
+    ref Vec!(T, N) opOpAssign(string op, U)(in U val)
             if ((op == "+" || op == "-" || op == "*" || op == "/" || (op == "%"
                 && __traits(isIntegral, U))) && isNumeric!U)
     {
-        foreach (ref v; rep)
+        foreach (ref v; _rep)
         {
             mixin("v " ~ op ~ "= val;");
         }
         return this;
     }
 
-    // term by term operator
-    TVecN!(T, N) opBinary(string op, U)(in TVecN!(T, U) oth) const
+    /// Perform a term by term operation on the vector.
+    Vec!(T, N) opBinary(string op, U)(in Vec!(T, U) oth) const
             if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
     {
-        TVecN!(T, N) res = this;
+        Vec!(T, N) res = this;
         mixin("res " ~ op ~ "= oth;");
         return res;
     }
 
-    TVecN!(T, N) opBinary(string op, U)(in U val) const
+    /// Perform a scalar operation on the vector.
+    Vec!(T, N) opBinary(string op, U)(in U val) const
             if ((op == "+" || op == "-" || op == "*" || op == "/" || (op == "%"
                 && __traits(isIntegral, U))) && isNumeric!U)
     {
-        TVecN!(T, N) res = this;
+        Vec!(T, N) res = this;
         mixin("res " ~ op ~ "= val;");
         return res;
     }
 
-    // term by term operator
-    TVecN!(T, N) opBinaryRight(string op, U)(in TVecN!(U, N) oth) const
+    /// Perform a term by term operation on the vector.
+    Vec!(T, N) opBinaryRight(string op, U)(in Vec!(U, N) oth) const
             if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
     {
-        TVecN!(T, N) res = void;
+        Vec!(T, N) res = void;
         foreach (i, ref r; res)
         {
-            mixin("r = oth[i] " ~ op ~ " rep[i];");
+            mixin("r = oth[i] " ~ op ~ " _rep[i];");
         }
         return res;
     }
 
-    TVecN!(T, N) opBinaryRight(string op, U)(in U val) const
+    /// Perform a scalar operation on the vector.
+    Vec!(T, N) opBinaryRight(string op, U)(in U val) const
             if ((op == "+" || op == "-" || op == "*" || op == "/" || (op == "%"
                 && __traits(isIntegral, U))) && isNumeric!U)
     {
-        TVecN!(T, N) res = void;
+        Vec!(T, N) res = void;
         foreach (i, ref r; res)
         {
-            mixin("r = val " ~ op ~ " rep[i];");
+            mixin("r = val " ~ op ~ " _rep[i];");
         }
         return res;
     }
 
+    /// Foreach support.
     int opApply(int delegate(size_t i, ref T) dg)
     {
         int res;
-        foreach (i, ref v; rep)
+        foreach (i, ref v; _rep)
         {
             res = dg(i, v);
             if (res)
@@ -227,10 +256,11 @@ struct TVecN(T, int N) if (N >= 0 && N <= 4 && __traits(isArithmetic, T))
         return res;
     }
 
+    /// Foreach support.
     int opApply(int delegate(ref T) dg)
     {
         int res;
-        foreach (ref v; rep)
+        foreach (ref v; _rep)
         {
             res = dg(v);
             if (res)
@@ -239,36 +269,129 @@ struct TVecN(T, int N) if (N >= 0 && N <= 4 && __traits(isArithmetic, T))
         return res;
     }
 
-    ref inout(T) opIndex(in size_t index) inout
+    // TODO: const opApply and foreach_reverse
+
+    /// Index a vector component.
+    T opIndex(in size_t index) const
     in
     {
         assert(index < N);
     }
     body
     {
-        return rep[index];
+        return _rep[index];
     }
 
-    int opDollar()
+    /// Assign a vector component.
+    void opIndexAssign(in T val, in size_t index)
+    in
     {
-        return N;
+        assert(index < N);
+    }
+    body
+    {
+        _rep[index] = val;
+    }
+
+    /// Assign a vector component.
+    void opIndexOpAssign(string op)(in T val, in size_t index)
+    if (op == "+" || op == "-" || op == "*" || op == "/")
+    in
+    {
+        assert(index < N);
+    }
+    body
+    {
+        mixin("_rep[index] "~op~"= val;");
+    }
+
+    /// Slicing support
+    size_t[2] opSlice(in size_t start, in size_t end) const
+    {
+        assert(start <= end && end <= length);
+        return [ start, end ];
+    }
+
+    /// ditto
+    inout(T)[] opIndex(in size_t[2] slice) inout
+    {
+        return _rep[slice[0] .. slice[1]];
+    }
+
+    /// ditto
+    void opIndexAssign(U)(in U val, in size_t[2] slice)
+    {
+        assert(correctSlice(slice));
+        _rep[slice[0] .. slice[1]] = val;
+    }
+
+    /// ditto
+    void opIndexAssign(U)(in U[] val, in size_t[2] slice)
+    {
+        assert(val.length == slice[1]-slice[0] && correctSlice(slice));
+        _rep[slice[0] .. slice[1]] = val;
+    }
+
+    /// ditto
+    void opIndexOpAssign(string op, U)(in U val, in size_t[2] slice)
+    if (op == "+" || op == "-" || op == "*" || op == "/")
+    {
+        foreach (i; slice[0]..slice[1])
+        {
+            mixin("_rep[i] "~op~"= val;");
+        }
+    }
+
+    /// Term by term sliced assignement operation.
+    void opIndexOpAssign(string op, U)(in U val, in size_t[2] slice)
+    if (op == "+" || op == "-" || op == "*" || op == "/")
+    {
+        foreach (i; slice[0]..slice[1])
+        {
+            mixin("_rep[i] "~op~"= val;");
+        }
+    }
+
+    /// End of the vector.
+    size_t opDollar()
+    {
+        return length;
+    }
+
+    private static bool correctSlice(size_t[2] slice)
+    {
+        return slice[0] <= slice[1] && slice[1] <= length;
     }
 }
+
+template isVec(VecT)
+{
+    import std.traits : TemplateOf;
+    enum isVec = __traits(isSame, TemplateOf!VecT, Vec);
+}
+
+template isVec(size_t N, VecT)
+{
+    import std.traits : TemplateOf;
+    enum isVec = isVec!VecT && VecT.length == N;
+}
+
+static assert(isVec!FVec3);
 
 unittest
 {
 
     DVec3 v;
 
-    assert(v.rep[0] == 0);
-    assert(v.rep[1] == 0);
-    assert(v.rep[2] == 0);
+    assert(v._rep[0] == 0);
+    assert(v._rep[1] == 0);
+    assert(v._rep[2] == 0);
 
     v = DVec3(4, 5, 6);
 
-    assert(v.rep[0] == 4);
-    assert(v.rep[1] == 5);
-    assert(v.rep[2] == 6);
+    assert(v._rep[0] == 4);
+    assert(v._rep[1] == 5);
+    assert(v._rep[2] == 6);
     assert(v[1] == 5);
     assert(v.z == 6);
     assert(v[$ - 1] == 6);
@@ -287,10 +410,10 @@ unittest
     assert(c.a == 0.9);
 }
 
-template dot(T, int N)
+/// Compute the dot product of two vectors.
+template dot(T, size_t N)
 {
-
-    T dot(in TVecN!(T, N) v1, in TVecN!(T, N) v2)
+    T dot(in Vec!(T, N) v1, in Vec!(T, N) v2)
     {
         T sum = 0;
         foreach (i; StaticRange!(0, N))
@@ -299,20 +422,23 @@ template dot(T, int N)
         }
         return sum;
     }
-
 }
 
-template magnitude(T, int N)
+/// Compute the magnitude of a vector.
+/// This is not to be confused with length which gives the number of components.
+template magnitude(T, size_t N)
 {
-    T magnitude(in TVecN!(T, N) v)
+    T magnitude(in Vec!(T, N) v)
     {
+        import std.math : sqrt;
         return sqrt(squaredMag(v));
     }
 }
 
-template squaredMag(T, int N)
+/// Compute the squared magnitude of a vector.
+template squaredMag(T, size_t N)
 {
-    T squaredMag(in TVecN!(T, N) v)
+    T squaredMag(in Vec!(T, N) v)
     {
         T sum = 0;
         foreach (i; StaticRange!(0, N))
@@ -323,13 +449,23 @@ template squaredMag(T, int N)
     }
 }
 
-template normalize(T, int N) if (isFloatingPoint!T)
+/// Compute the normalization of a vector.
+template normalize(T, size_t N) if (isFloatingPoint!T)
 {
-    TVecN!(T, N) normalize(in TVecN!(T, N) v)
+    import dgt.math.approx : approx;
+    Vec!(T, N) normalize(in Vec!(T, N) v)
+    in
+    {
+        assert(!approx(magnitude(v), 0), "Cannot normalize a null vector.");
+    }
+    out (res)
+    {
+        assert(approx(magnitude(res), 1));
+    }
+    body
     {
         import std.math : sqrt;
-
-        return v / sqrt(dot(v, v));
+        return v / magnitude(v);
     }
 }
 
