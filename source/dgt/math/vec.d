@@ -452,15 +452,15 @@ template squaredMag(T, size_t N)
 /// Compute the normalization of a vector.
 template normalize(T, size_t N) if (isFloatingPoint!T)
 {
-    import dgt.math.approx : approx;
+    import dgt.math.approx : approxUlp;
     Vec!(T, N) normalize(in Vec!(T, N) v)
     in
     {
-        assert(!approx(magnitude(v), 0), "Cannot normalize a null vector.");
+        assert(!approxUlp(magnitude(v), 0), "Cannot normalize a null vector.");
     }
     out (res)
     {
-        assert(approx(magnitude(res), 1));
+        assert(approxUlp(magnitude(res), 1));
     }
     body
     {
@@ -476,15 +476,15 @@ static assert(DVec4.sizeof == 32);
 ///
 unittest
 {
-    import dgt.math.approx : approx;
+    import dgt.math.approx : approxUlp;
 
     auto v1 = DVec3(12, 4, 3);
     auto v2 = DVec3(-5, 3, 7);
 
-    assert(approx(dot(v1, v2), -27));
+    assert(approxUlp(dot(v1, v2), -27));
 
     auto v = DVec3(3, 4, 5);
-    assert(approx(squaredMag(v), 50));
+    assert(approxUlp(squaredMag(v), 50));
 
-    assert(approx(normalize(FVec3(4, 0, 0)), FVec3(1, 0, 0)));
+    assert(approxUlp(normalize(FVec3(4, 0, 0)), FVec3(1, 0, 0)));
 }

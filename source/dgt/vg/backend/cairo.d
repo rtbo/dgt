@@ -245,13 +245,13 @@ class CairoVgContext : VgContext
 
     override @property void pathTransform(in float[] pathTransform)
     {
-        import dgt.math.approx : approx;
+        import dgt.math.approx : approxUlp;
         import std.exception : enforce;
 
         enforce(pathTransform.length == 9, "incorrect matrix size");
-        enforce(approx(pathTransform[6], 0), "not affine matrix");
-        enforce(approx(pathTransform[7], 0), "not affine matrix");
-        enforce(approx(pathTransform[8], 1), "not affine matrix");
+        enforce(approxUlp(pathTransform[6], 0), "not affine matrix");
+        enforce(approxUlp(pathTransform[7], 0), "not affine matrix");
+        enforce(approxUlp(pathTransform[8], 1), "not affine matrix");
         auto cairoMat = cairo_matrix_t(pathTransform[0], pathTransform[1],
                 pathTransform[2], pathTransform[3], pathTransform[4], pathTransform[5]);
         cairo_set_matrix(cairo, &cairoMat);
@@ -481,7 +481,7 @@ final class CairoPaint : Paint
     // radius       end circle radius
     override @property RadialGradient radialGradient() const
     {
-        import dgt.math.approx : approx;
+        import dgt.math.approx : approxUlp;
 
         enforce(type == PaintType.radialGradient);
         RadialGradient gradient;
@@ -489,7 +489,7 @@ final class CairoPaint : Paint
         double r0 = void, r1 = void;
         cairo_pattern_get_radial_circles(pattern, &x0, &y0, &r0, &x1, &y1, &r1);
         gradient.f = [cast(float) x0, cast(float) y0];
-        assert(approx(r0, 0f));
+        assert(approxUlp(r0, 0f));
         gradient.c = [cast(float) x1, cast(float) y1];
         gradient.r = cast(float) r1;
         gradient.stops = getStops();
