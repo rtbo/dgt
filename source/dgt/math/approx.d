@@ -1,34 +1,94 @@
+/// This module is about comparison of floating point arithmetics.
+/// Supported by this very informative article:
+/// https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/
 module dgt.math.approx;
 
 import dgt.math.vec : Vec;
+import dgt.math.mat : Mat;
+import dgt.core.typecons : StaticRange;
 
 import std.traits : isFloatingPoint;
 
-// this module is about comparison of floating arithmetics
 
-/// Determines if two floating point scalars are maxUlps close to each other
+/// Compute the ULPS difference between two floating point numbers
+/// Negative result indicates that b has higher ULPS value than a.
+template ulpsDiff(T) if (isFloatingPoint!T)
+{
+    int ulpsDiff(in T a, in T b)
+    {
+        immutable fnA = FloatNum!T(a);
+        immutable fnB = FloatNum!T(b);
+
+        return (fnA.i - fnB.i);
+    }
+}
+
+/// Determines if two floating point scalars are maxUlps close to each other.
 template approx(T) if (isFloatingPoint!T)
 {
     bool approx(in T a, in T b, in int maxUlps = 4)
     {
         import std.math : abs;
 
-        if (a == b)
-            return true;
+        immutable fnA = FloatNum!T(a);
+        immutable fnB = FloatNum!T(b);
 
-        immutable FloatNum!T fnA = {f: a};
-        immutable FloatNum!T fnB = {f: b};
+        if (fnA.negative != fnB.negative)
+        {
+            return a == b; // check for +0 / -0
+        }
+
         return (abs(fnA.i - fnB.i) <= maxUlps);
     }
 }
+
+/// Check whether the relative error between a and b is smaller than maxEps
+template approxEps(T) if (isFloatingPoint!T)
+{
+    bool approx (in T a, in T b, in T maxEps=4*T.epsilon)
+    {
+        import std.math : abs;
+        import std.algorithm : max;
+        immutable diff = abs(b-a);
+        immutable absA = abs(a);
+        immutable absB = abs(b);
+        immutable largest = max(absA, absB);
+        return diff <= eps*largest;
+    }
+}
+
+/// Determines if two floating point scalars are maxUlps close to each other.
+/// If the absolute error is less than maxAbs, the test succeeds however.
+/// This is useful when comparing against zero the result of a subtraction.
+template approxUlpsAndAbs(T) if (isFloatingPoint!T)
+{
+    bool approxUlpsAndAbs(in T a, in T b, in T maxAbs, in size_t maxUlps=4)
+    {
+        import std.math : abs;
+        if (diff(b-a) <= maxAbs) return true;
+        return approx(a, b, maxUlps);
+    }
+}
+
+/// Check whether the relative error between a and b is smaller than maxEps.
+/// If the absolute error is less than maxAbs, the test succeeds however.
+/// This is useful when comparing against zero the result of a subtraction.
+template approxEpsAndAbs(T) if (isFloatingPoint!T)
+{
+    bool approxEpsAndAbs(in T a, in T b, in T maxAbs, in T maxEps=4*T.epsilon)
+    {
+        import std.math : abs;
+        if (diff(b-a) <= maxAbs) return true;
+        return approxEps(a, b, maxEps);
+    }
+}
+
 
 /// Determines if two floating point vectors are maxUlps close to each other
 template approx(T, int N) if (isFloatingPoint!T && N > 0)
 {
     bool approx(in T[N] v1, in T[N] v2, in int maxUlps = 4)
     {
-        import dgt.core.typecons : StaticRange;
-
         foreach (i; StaticRange!(0, N))
         {
             if (!approx(v1[i], v2[i]))
@@ -48,17 +108,27 @@ template approx(T, int N) if (isFloatingPoint!T)
 }
 
 /// Determines if two floating point matrices are maxUlps close to each other
-template approx(T, int M, int N) if (isFloatingPoint!T && M > 0 && N > 0)
+template approx(T, size_t R, size_t C) if (isFloatingPoint!T && R > 0 && C > 0)
 {
-    bool approx(in T[M][N] v1, in T[M][N] v2, in int maxUlps = 4)
+    bool approx(in T[R][C] m1, in T[R][C] m2, in int maxUlps=4)
     {
-        import dgt.core.typecons : StaticRange;
-
-        foreach (n; StaticRange!(0, N))
+        foreach (r; StaticRange!(0, R))
         {
-            foreach (m; StaticRange!(0, M))
+            foreach (c; StaticRange!(0, C))
             {
-                if (!approx(v1[m][n], v2[m][n]))
+                if (!approx(m1[r][c], m2[r][c]))
+                    return false;
+            }
+        }
+        return true;
+    }
+    bool approx(in Mat!(T, R, C) m1, in Mat!(T, R, C) m2, in int maxUlps=4)
+    {
+        foreach (r; StaticRange!(0, R))
+        {
+            foreach (c; StaticRange!(0, C))
+            {
+                if (!approx(m1[r, c], m2[r, c]))
                     return false;
             }
         }
@@ -78,14 +148,12 @@ private
     template FloatTraits(T : float)
     {
         alias IntType = int;
-        enum MantissaLen = 23;
         enum ExponentMask = 0x7f80_0000;
     }
 
     template FloatTraits(T : double)
     {
         alias IntType = long;
-        enum MantissaLen = 52;
         enum ExponentMask = 0x7ff0_0000_0000_0000;
     }
 
@@ -98,6 +166,11 @@ private
             alias FloatType = T;
             alias IntType = F.IntType;
 
+            this (FloatType f)
+            {
+                this.f = f;
+            }
+
             FloatType f;
             IntType i;
 
@@ -106,15 +179,15 @@ private
                 return i < 0;
             }
 
-            @property IntType mantissa() const
+            debug @property IntType mantissa() const
             {
                 enum IntType one = 1;
-                return i & ((one << F.MantissaLen) - one);
+                return i & ((one << T.mant_dig) - one);
             }
 
-            @property IntType exponent() const
+            debug @property IntType exponent() const
             {
-                return ((i & F.ExponentMask) >> F.MantissaLen);
+                return ((i & F.ExponentMask) >> T.mant_dig);
             }
         }
     }
