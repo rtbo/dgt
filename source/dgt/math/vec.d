@@ -26,7 +26,7 @@ alias IVec4 = Vec!(int, 4);
 
 struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
 {
-    private T[N] _rep = 0;
+    package T[N] _rep = 0; // accessible from dgt.math.mat
 
     /// The length of the vector.
     enum length = N;
@@ -69,6 +69,39 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     @property T[length] data() const
     {
         return _rep;
+    }
+
+    // compile time addressing
+
+    /// Index a vector component at compile time
+    @property T ctComp(size_t i)() const
+    if (i < length)
+    {
+        return _rep[i];
+    }
+
+    /// Assign a vector component with index known at compile time
+    @property void ctComp(size_t i, U)(in U val)
+    if (i < length && isImplicitlyConvertible!(U, T))
+    {
+        _rep[i] = val;
+    }
+
+    /// Slice a vector at compile time
+    /// ---
+    /// FVec2 v = FVec4.init.ctSlice!(1, 3);
+    /// ---
+    @property auto ctSlice(size_t istart, size_t iend)() const
+    if (istart < iend && iend <= length)
+    {
+        return Vec!(T, iend-istart)(_rep[istart .. iend]);
+    }
+
+    /// Assign a vector slice with indices known at compile time
+    @property void ctSlice(size_t istart, U, size_t UN)(in Vec!(U, UN) val)
+    if (istart+UN <= length && isImplicitlyConvertible!(U, T))
+    {
+        _rep[istart .. istart+UN] = val._rep;
     }
 
     static if (N >= 2 && N <= 4)
@@ -200,7 +233,7 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     }
 
     /// Perform a term by term operation on the vector.
-    Vec!(T, N) opBinary(string op, U)(in Vec!(T, U) oth) const
+    Vec!(T, N) opBinary(string op, U)(in Vec!(U, N) oth) const
             if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
     {
         Vec!(T, N) res = this;
@@ -211,24 +244,24 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     /// Perform a scalar operation on the vector.
     Vec!(T, N) opBinary(string op, U)(in U val) const
             if ((op == "+" || op == "-" || op == "*" || op == "/" || (op == "%"
-                && __traits(isIntegral, U))) && isNumeric!U)
+                && isIntegral!U)) && isNumeric!U)
     {
         Vec!(T, N) res = this;
         mixin("res " ~ op ~ "= val;");
         return res;
     }
 
-    /// Perform a term by term operation on the vector.
-    Vec!(T, N) opBinaryRight(string op, U)(in Vec!(U, N) oth) const
-            if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
-    {
-        Vec!(T, N) res = void;
-        foreach (i, ref r; res)
-        {
-            mixin("r = oth[i] " ~ op ~ " _rep[i];");
-        }
-        return res;
-    }
+    // /// Perform a term by term operation on the vector.
+    // Vec!(T, N) opBinaryRight(string op, U)(in Vec!(U, N) oth) const
+    //         if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
+    // {
+    //     Vec!(T, N) res = void;
+    //     foreach (i, ref r; res)
+    //     {
+    //         mixin("r = oth[i] " ~ op ~ " _rep[i];");
+    //     }
+    //     return res;
+    // }
 
     /// Perform a scalar operation on the vector.
     Vec!(T, N) opBinaryRight(string op, U)(in U val) const
@@ -358,18 +391,32 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         return length;
     }
 
+    string toString() const
+    {
+        string res = "[ ";
+        foreach(i, c; _rep)
+        {
+            import std.format : format;
+            immutable fmt = i == length-1 ? "%s " : "%s, ";
+            res ~= format(fmt, c);
+        }
+        return res ~ "]";
+    }
+
     private static bool correctSlice(size_t[2] slice)
     {
         return slice[0] <= slice[1] && slice[1] <= length;
     }
 }
 
+/// Check whether VecT is a Vec
 template isVec(VecT)
 {
     import std.traits : TemplateOf;
     enum isVec = __traits(isSame, TemplateOf!VecT, Vec);
 }
 
+/// Check whether VecT is a Vec of size N
 template isVec(size_t N, VecT)
 {
     import std.traits : TemplateOf;
@@ -380,7 +427,6 @@ static assert(isVec!FVec3);
 
 unittest
 {
-
     DVec3 v;
 
     assert(v._rep[0] == 0);
@@ -466,6 +512,31 @@ template normalize(T, size_t N) if (isFloatingPoint!T)
     {
         import std.math : sqrt;
         return v / magnitude(v);
+    }
+}
+
+/// Vector cross product
+template cross(T)
+{
+    Vec!(T, 3) cross(in Vec!(T, 3) lhs, in Vec!(T, 3) rhs)
+    {
+        return Vec!(T, 3)(
+            lhs[1]*rhs[2] - lhs[2]*rhs[1],
+            lhs[2]*rhs[0] - lhs[0]*rhs[2],
+            lhs[0]*rhs[1] - lhs[1]*rhs[0],
+        );
+    }
+    Vec!(T, 7) cross(in Vec!(T, 7) lhs, in Vec!(T, 7) rhs)
+    {
+        return Vec!(T, 7)(
+            lhs[1]*rhs[3] - lhs[3]*rhs[1] + lhs[2]*rhs[6] - lhs[6]*rhs[2] + lhs[4]*rhs[5] - lhs[5]*rhs[4],
+            lhs[2]*rhs[4] - lhs[4]*rhs[2] + lhs[3]*rhs[0] - lhs[0]*rhs[3] + lhs[5]*rhs[6] - lhs[6]*rhs[5],
+            lhs[3]*rhs[5] - lhs[5]*rhs[3] + lhs[4]*rhs[1] - lhs[1]*rhs[4] + lhs[6]*rhs[0] - lhs[0]*rhs[6],
+            lhs[4]*rhs[6] - lhs[6]*rhs[4] + lhs[5]*rhs[2] - lhs[2]*rhs[5] + lhs[0]*rhs[1] - lhs[1]*rhs[0],
+            lhs[5]*rhs[0] - lhs[0]*rhs[5] + lhs[6]*rhs[3] - lhs[3]*rhs[6] + lhs[1]*rhs[2] - lhs[2]*rhs[1],
+            lhs[6]*rhs[1] - lhs[1]*rhs[6] + lhs[0]*rhs[4] - lhs[4]*rhs[0] + lhs[2]*rhs[3] - lhs[3]*rhs[2],
+            lhs[0]*rhs[2] - lhs[2]*rhs[0] + lhs[1]*rhs[5] - lhs[5]*rhs[1] + lhs[3]*rhs[4] - lhs[4]*rhs[3],
+        );
     }
 }
 
