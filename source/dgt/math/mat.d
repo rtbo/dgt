@@ -6,6 +6,7 @@ import dgt.core.typecons : staticRange;
 
 import std.traits;
 import std.meta : allSatisfy;
+import std.exception : enforce;
 
 alias FMat(size_t R, size_t C) = Mat!(float, R, C);
 alias DMat(size_t R, size_t C) = Mat!(double, R, C);
@@ -135,7 +136,7 @@ if (isNumeric!T && R > 0 && C > 0)
     /// data.length must be rows*columns.
     this (in T[] data)
     {
-        assert(data.length == rows*columns);
+        enforce(data.length == rows*columns);
         _rep[] = data;
     }
 
@@ -356,9 +357,15 @@ if (isNumeric!T && R > 0 && C > 0)
     }
 
     /// Multiply a matrix by a vector to its right.
-    auto opBinary(string op, U, size_t N)(in Vec!(U, N) vec)
+    auto opBinary(string op, U, size_t N)(in Vec!(U, N) vec) const
     if (op == "*" && N == columns && !is(CommonType!(T, U) == void))
     {
+        // import std.conv : to;
+        // pragma(msg, op);
+        // pragma(msg, rows.to!string);
+        // pragma(msg, columns.to!string);
+        // pragma(msg, N.to!string);
+        // pragma(msg, "");
         // same as matrix with one column
         alias ResVec = Vec!(CommonType!(T, U), rows);
         ResVec res = void;
@@ -375,7 +382,7 @@ if (isNumeric!T && R > 0 && C > 0)
     }
 
     /// Multiply a matrix by a vector to its left.
-    auto opBinaryRight(string op, U, size_t N)(in Vec!(U, N) vec)
+    auto opBinaryRight(string op, U, size_t N)(in Vec!(U, N) vec) const
     if (op == "*" && N == rows && !is(CommonType!(T, U) == void))
     {
         // same as matrix with one row
@@ -395,7 +402,7 @@ if (isNumeric!T && R > 0 && C > 0)
 
 
     /// Operation of a matrix with a scalar on its right.
-    auto opBinary(string op, U)(in U val)
+    auto opBinary(string op, U)(in U val) const
     if ((op == "+" || op == "-" || op == "*" || op == "/") &&
         !is(CommonType!(T, U) == void))
     {
@@ -412,7 +419,7 @@ if (isNumeric!T && R > 0 && C > 0)
     }
 
     /// Operation of a matrix with a scalar on its left.
-    auto opBinaryRight(string op, U)(in U val)
+    auto opBinaryRight(string op, U)(in U val) const
     if ((op == "+" || op == "-" || op == "*" || op == "/") &&
         !is(CommonType!(T, U) == void))
     {
@@ -544,13 +551,16 @@ template determinant(T)
     }
 }
 
+/// Compute the inverse of a matrix.
+/// Complexity O(n3).
 template inverse (T, size_t N)
 if (isFloatingPoint!T)
 {
     @property Mat!(T, N, N) inverse(in Mat!(T, N, N) mat)
     {
         // Gaussian elimination method
-        auto pivot = cast(Mat!(real, N, N)) mat ~ Mat!(real, N, N).identity;
+        auto pivot = mat ~ Mat!(real, N, N).identity;
+        static assert(is(pivot.Component == real));
         ptrdiff_t pivotR = -1;
         foreach (c; staticRange!(0, N))
         {

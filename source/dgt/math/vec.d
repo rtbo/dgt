@@ -3,6 +3,8 @@ module dgt.math.vec;
 import dgt.core.typecons : staticRange;
 
 import std.traits;
+import std.meta;
+import std.typecons : Tuple, tuple;
 
 alias TVec2(T) = Vec!(T, 2);
 alias TVec3(T) = Vec!(T, 3);
@@ -24,6 +26,7 @@ alias IVec2 = Vec!(int, 2);
 alias IVec3 = Vec!(int, 3);
 alias IVec4 = Vec!(int, 4);
 
+/// A vector type with size known at compile time.
 struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
 {
     package T[N] _rep = 0; // accessible from dgt.math.mat
@@ -34,14 +37,16 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     alias Component = T;
 
     /// Build a vector from its components
+    /// It can be given any combination of scalars or vecs in any order as long
+    /// as the total number of components fit the size of the vector.
     this(Comps...)(in Comps comps)
-    if (Comps.length == length)
     {
-        foreach(C; Comps)
-        {
-            static assert(is(C : T), "Component must convert to "~T.stringof);
-        }
-        _rep = [ comps ];
+        import std.conv : to;
+        enum numComps = numComponents!Comps;
+        static assert(numComponents!Comps == N,
+            "type sequence "~Comps.stringof~" (size "~numComps.to!string~
+            ") do not fit the size of "~Vec!(T, N).stringof~" (size "~N.to!string~").");
+        _rep = [ componentTuple(comps).expand ];
     }
 
     /// Build a vector from an array.
@@ -63,6 +68,17 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     this(in T comp)
     {
         _rep = comp;
+    }
+
+    // Tuple representation
+
+    /// Alias to a type sequence holding all components
+    alias TypeSeq = Repeat!(N, T);
+
+    /// All components in a tuple
+    @property Tuple!(TypeSeq) tup() const
+    {
+        return Tuple!(TypeSeq)(_rep);
     }
 
     /// Return the data of the array
@@ -104,93 +120,69 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         _rep[istart .. istart+UN] = val._rep;
     }
 
-    static if (N >= 2 && N <= 4)
+    // access by component name and swizzling
+
+    private template compNameIndex(char c)
     {
-        /// Access the X component of the vector.
-        @property T x() const
+        static if (c == 'x' || c == 'r' || c == 's' || c == 'u')
         {
-            return _rep[0];
+            enum compNameIndex = 0;
         }
-        /// Assign the X component of the vector.
-        @property void x(in T val)
+        else static if (c == 'y' || c == 'g' || c == 't' || c == 'v')
         {
-            _rep[0] = val;
+            enum compNameIndex =  1;
         }
-
-        /// Access the Y component of the vector.
-        @property T y() const
+        else static if (c == 'z' || c == 'b' || c == 'p')
         {
-            return _rep[1];
+            static assert (N >= 3, "component "~c~" is only accessible with 3 or more components vectors");
+            enum compNameIndex =  2;
         }
-        /// Assign the Y component of the vector.
-        @property void y(in T val)
+        else static if (c == 'w' || c == 'a' || c == 'q')
         {
-            _rep[1] = val;
+            static assert (N >= 4, "component "~c~" is only accessible with 4 or more components vectors");
+            enum compNameIndex =  3;
         }
-
-    }
-
-    static if (N >= 3 && N <= 4)
-    {
-        /// Access the Z component of the vector.
-        @property T z() const
+        else
         {
-            return _rep[2];
-        }
-        /// Assign the Z component of the vector.
-        @property void z(in T val)
-        {
-            _rep[2] = val;
+            static assert (false, "component "~c~" is not recognized");
         }
     }
 
-    static if (N == 4)
+    /// Access the component by name.
+    @property T opDispatch(string name)() const
+    if (name.length == 1)
     {
-        /// Access the W component of the vector.
-        @property T w() const
-        {
-            return _rep[3];
-        }
-        /// Assign the W component of the vector.
-        @property void w(in T val)
-        {
-            _rep[3] = val;
-        }
+        return _rep[compNameIndex!(name[0])];
     }
 
-    static if (isFloatingPoint!T)
+    /// Assign the component by name.
+    @property void opDispatch(string name)(in T val)
+    if (name.length == 1)
     {
-        // aliases for color and texture mapping
+        _rep[compNameIndex!(name[0])] = val;
+    }
 
-        // uv defined for Vec2
-        // st defined for Vec2 and Vec4
-        // stpq defined Vec4
-        // rgb defined for Vec3 and Vec4
-        // rgba defined for Vec4
-        static if (N == 2)
+    /// Access the components by swizzling.
+    @property auto opDispatch(string name)() const
+    if (name.length > 1)
+    {
+        Vec!(T, name.length) res;
+        foreach (i; staticRange!(0, name.length))
         {
-            alias u = x;
-            alias v = y;
+            res[i] = _rep[compNameIndex!(name[i])];
         }
-        static if (N == 2 || N == 4)
-        {
-            alias s = x;
-            alias t = y;
-        }
-        static if (N == 3 || N == 4)
-        {
-            alias r = x;
-            alias g = y;
-            alias b = z;
-        }
-        static if (N == 4)
-        {
-            alias a = w;
-            alias p = z;
-            alias q = w;
-        }
+        return res;
+    }
 
-        // TODO: swizzling properties
+    /// Assign the components by swizzling.
+    @property void opDispatch(string name, U, size_t num)(in Vec!(U, num) v)
+    if (isImplicitlyConvertible!(U, T))
+    {
+        static assert(name.length == num, name~" number of components do not match with type "~(Vec!(U, num).stringof));
+        foreach (i; staticRange!(0, name.length))
+        {
+            _rep[compNameIndex!(name[i])] = v[i];
+        }
     }
 
     /// Unary "+" operation.
@@ -250,18 +242,6 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         mixin("res " ~ op ~ "= val;");
         return res;
     }
-
-    // /// Perform a term by term operation on the vector.
-    // Vec!(T, N) opBinaryRight(string op, U)(in Vec!(U, N) oth) const
-    //         if ((op == "+" || op == "-" || op == "*" || op == "/") && isNumeric!U)
-    // {
-    //     Vec!(T, N) res = void;
-    //     foreach (i, ref r; res)
-    //     {
-    //         mixin("r = oth[i] " ~ op ~ " _rep[i];");
-    //     }
-    //     return res;
-    // }
 
     /// Perform a scalar operation on the vector.
     Vec!(T, N) opBinaryRight(string op, U)(in U val) const
@@ -423,6 +403,78 @@ template isVec(size_t N, VecT)
     enum isVec = isVec!VecT && VecT.length == N;
 }
 
+/// Check whether a char is a vector component name.
+template isCompName(char c)
+{
+    import std.algorithm : canFind;
+    enum isCompName = "xyzwrgbastpquv".canFind(c);
+}
+
+/// Check whether a string only contains vector component names.
+template areCompNames(string s)
+if (s.length != 0)
+{
+    static if (s.length == 1)
+    {
+        enum areCompNames = isCompName!(s[0]);
+    }
+    else
+    {
+        enum areCompNames = isCompName!(s[0]) && areCompNames!(s[1 .. $]);
+    }
+}
+
+/// Build a tuple with one entry per component in the type sequence.
+/// Each T can be a scalar type (hold 1 component) or a vector type.
+template componentTuple(T...)
+{
+    auto componentTuple(T vals)
+    {
+        static if (T.length == 0)
+        {
+            return tuple();
+        }
+        else static if (T.length == 1)
+        {
+            static if (isNumeric!(T[0]))
+            {
+                return tuple(vals[0]);
+            }
+            else static if (isVec!(T[0]))
+            {
+                return vals[0].tup;
+            }
+            else
+            {
+                static assert(false,
+                    "componentTuple only works with scalars and vecs, not with "~T.stringof);
+            }
+        }
+        else
+        {
+            return tuple(componentTuple(vals[0]).expand, componentTuple(vals[1 .. $]).expand);
+        }
+    }
+}
+
+/// Alias to the type of component tuple
+template ComponentTuple(T...)
+{
+    alias ComponentTuple = typeof(componentTuple(T.init));
+}
+
+/// Get the number of component a type sequence can hold.
+/// Each T can be a scalar type (hold 1 component) or a vector type.
+template numComponents(T...)
+{
+    enum numComponents = ComponentTuple!(T).length;
+}
+
+static assert (numComponents!DVec3 == 3);
+static assert (is(ComponentTuple!DVec3 == Tuple!(double, double, double)));
+static assert (is(ComponentTuple!(DVec2, int, float) == Tuple!(double, double, int, float)));
+
+
 static assert(isVec!FVec3);
 
 unittest
@@ -454,6 +506,10 @@ unittest
     assert(c.g == 1);
     assert(c.b == 0.6);
     assert(c.a == 0.9);
+
+    assert(c.rrwuzy == DVecN!6(0.2, 0.2, 0.9, 0.2, 0.6, 1));
+    c.bgra = DVec4(0.3, 0.4, 0.5, 0.6);
+    assert(c.data == [0.5, 0.4, 0.3, 0.6]);
 }
 
 /// Compute the dot product of two vectors.
