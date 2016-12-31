@@ -1,6 +1,6 @@
 module dgt.math.vec;
 
-import dgt.core.typecons : StaticRange;
+import dgt.core.typecons : staticRange;
 
 import std.traits;
 
@@ -462,7 +462,7 @@ template dot(T, size_t N)
     T dot(in Vec!(T, N) v1, in Vec!(T, N) v2)
     {
         T sum = 0;
-        foreach (i; StaticRange!(0, N))
+        foreach (i; staticRange!(0, N))
         {
             sum += v1[i] * v2[i];
         }
@@ -487,7 +487,7 @@ template squaredMag(T, size_t N)
     T squaredMag(in Vec!(T, N) v)
     {
         T sum = 0;
-        foreach (i; StaticRange!(0, N))
+        foreach (i; staticRange!(0, N))
         {
             sum += v[i] * v[i];
         }

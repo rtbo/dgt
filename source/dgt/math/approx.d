@@ -5,7 +5,7 @@ module dgt.math.approx;
 
 import dgt.math.vec : Vec;
 import dgt.math.mat : Mat;
-import dgt.core.typecons : StaticRange;
+import dgt.core.typecons : staticRange;
 
 import std.traits : isFloatingPoint;
 
@@ -154,7 +154,7 @@ template approx(ApproxMethod method)
     bool approx(T, size_t N, Args...)(in T[N] v1, in T[N] v2, Args args)
     if (isFloatingPoint!T)
     {
-        foreach (i; StaticRange!(0, N))
+        foreach (i; staticRange!(0, N))
         {
             if (!approx(v1[i], v2[i], args))
                 return false;
@@ -183,9 +183,9 @@ template approx(ApproxMethod method)
     bool approx(T, size_t R, size_t C, Args...)(in T[R][C] m1, in T[R][C] m2, Args args)
     if (isFloatingPoint!T)
     {
-        foreach (r; StaticRange!(0, R))
+        foreach (r; staticRange!(0, R))
         {
-            foreach (c; StaticRange!(0, C))
+            foreach (c; staticRange!(0, C))
             {
                 if (!approx(m1[r][c], m2[r][c], args))
                     return false;
@@ -197,9 +197,9 @@ template approx(ApproxMethod method)
     bool approx(T, size_t R, size_t C, Args...)(in Mat!(T, R, C) m1, in Mat!(T, R, C) m2, Args args)
     if (isFloatingPoint!T)
     {
-        foreach (r; StaticRange!(0, R))
+        foreach (r; staticRange!(0, R))
         {
-            foreach (c; StaticRange!(0, C))
+            foreach (c; staticRange!(0, C))
             {
                 if (!approx(m1.ctComp!(r, c), m2.ctComp!(r, c), args))
                     return false;
