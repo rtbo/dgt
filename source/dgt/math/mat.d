@@ -102,64 +102,6 @@ unittest
     static assert( !__traits(compiles, mat(r1, dvec(1, 2))) );
 }
 
-/// Return a sequence of vectors and matrices as a flat tuple of rows.
-template rowTuple(Rows...)
-{
-    auto rowTuple(Rows rows)
-    {
-        static if (Rows.length == 0)
-        {
-            return tuple();
-        }
-        else static if (Rows.length == 1)
-        {
-            static if (isVec!(Rows[0]))
-            {
-                return tuple(rows[0]);
-            }
-            else static if (isMat!(Rows[0]))
-            {
-                return rows[0].rowTup;
-            }
-            else
-            {
-                static assert(false, "only vectors and matrices allowed in rowTuple");
-            }
-        }
-        else
-        {
-            return tuple(
-                rowTuple(rows[0]).expand,
-                rowTuple(rows[1 .. $]).expand
-            );
-        }
-    }
-}
-
-/// The type of row tuple from a sequence of vectors and tuples
-template RowTuple (Rows...)
-{
-    alias RowTuple = typeof(rowTuple(Rows.init));
-}
-
-/// The number of rows in a row sequence
-template rowLength (Rows...)
-{
-    enum rowLength = RowTuple!(Rows).length;
-}
-
-/// Check whether a row sequence has a consistent length.
-/// (i.e. all rows have the same length).
-template hasConsistentLength (Rows...)
-{
-    alias Tup = RowTuple!Rows;
-    template lengthOK(R)
-    {
-        enum lengthOK = R.length == Tup[0].length;
-    }
-    enum hasConsistentLength = allSatisfy!(lengthOK, Tup.Types[1 .. $]);
-}
-
 /// Row major matrix type.
 /// Mat.init is a null matrix.
 struct Mat(T, size_t R, size_t C)
@@ -168,17 +110,17 @@ if (isNumeric!T && R > 0 && C > 0)
     private T[R * C] _rep = 0;
 
     /// The amount of rows in the matrix.
-    enum rows = R;
+    enum rowLength = R;
     /// The amount of columns in the matrix.
-    enum columns = C;
+    enum columnLength = C;
     /// The matrix rows type.
-    alias Row = Vec!(T, columns);
+    alias Row = Vec!(T, columnLength);
     /// The matrix columns type.
-    alias Column = Vec!(T, rows);
+    alias Column = Vec!(T, rowLength);
     /// The type of the componetypeof(rt.expand)nts.
     alias Component = T;
 
-    static if (rows == columns)
+    static if (rowLength == columnLength)
     {
         /// The identity matrix.
         enum identity = mixin(identityCode);
@@ -198,53 +140,53 @@ if (isNumeric!T && R > 0 && C > 0)
     /// Each row must be an array (static or dynamic) and have the correct number
     /// of elements.
     this (Args...)(in Args args)
-    if (Args.length == rows && allSatisfy!(isArray, Args))
+    if (Args.length == rowLength && allSatisfy!(isArray, Args))
     {
         foreach (r, arg; args)
         {
             static if (isStaticArray!(typeof(arg)))
             {
-                static assert(arg.length == columns);
+                static assert(arg.length == columnLength);
             }
             else
             {
-                assert(arg.length == columns);
+                assert(arg.length == columnLength);
             }
-            _rep[r*columns .. (r+1)*columns] = arg;
+            _rep[r*columnLength .. (r+1)*columnLength] = arg;
         }
     }
 
     /// ditto
     this (Args...)(in Args args)
-    if (Args.length == rows &&
+    if (Args.length == rowLength &&
         allSatisfy!(isVec, Args))
     {
         foreach(r, arg; args)
         {
-            static assert(arg.length == columns, "incorrect row size");
-            _rep[r*columns .. (r+1)*columns] = arg._rep;
+            static assert(arg.length == columnLength, "incorrect row size");
+            _rep[r*columnLength .. (r+1)*columnLength] = arg._rep;
         }
     }
 
     /// Build a matrix from the provided data.
-    /// data.length must be rows*columns.
+    /// data.length must be rowLength*columns.
     this (in T[] data)
     {
-        enforce(data.length == rows*columns);
+        enforce(data.length == rowLength*columnLength);
         _rep[] = data;
     }
 
     // representation in tuple
 
     /// Alias to a type sequence holding all rows
-    alias RowSeq = Repeat!(rows, Row);
+    alias RowSeq = Repeat!(rowLength, Row);
     /// Alias to a type sequence holding all components
-    alias CompSeq = Repeat!(rows*columns, T);
+    alias CompSeq = Repeat!(rowLength*columnLength, T);
 
     /// All rows in a tuple
     @property Tuple!RowSeq rowTup() const
     {
-        return Tuple!RowSeq(cast(Row[rows])_rep);
+        return Tuple!RowSeq(cast(Row[rowLength])_rep);
     }
     /// All components in a tuple
     @property Tuple!CompSeq compTup() const
@@ -262,11 +204,11 @@ if (isNumeric!T && R > 0 && C > 0)
     }
 
     /// Cast a matrix to another type
-    Mat!(U, rows, columns) opCast(V : Mat!(U, rows, columns), U)() const
+    Mat!(U, rowLength, columnLength) opCast(V : Mat!(U, rowLength, columnLength), U)() const
     if (__traits(compiles, cast(U)T.init))
     {
-         Mat!(U, rows, columns) res = void;
-         foreach (i; staticRange!(0, rows*columns))
+         Mat!(U, rowLength, columnLength) res = void;
+         foreach (i; staticRange!(0, rowLength*columnLength))
          {
              res._rep[i] = cast(U)_rep[i];
          }
@@ -277,57 +219,57 @@ if (isNumeric!T && R > 0 && C > 0)
 
     /// Index a matrix component at compile time
     @property T ctComp(size_t r, size_t c)() const
-    if (r < rows && c < columns)
+    if (r < rowLength && c < columnLength)
     {
-        return _rep[r*columns + c];
+        return _rep[r*columnLength + c];
     }
 
     /// Assign a matrix component with index known at compile time
     @property void ctComp(size_t r, size_t c, U)(in U val)
-    if (r < rows && c < columns && isImplicitlyConvertible!(U, T))
+    if (r < rowLength && c < columnLength && isImplicitlyConvertible!(U, T))
     {
-        _rep[r*columns + c] = val;
+        _rep[r*columnLength + c] = val;
     }
 
     /// Index a row at compile time
     @property Row ctRow(size_t r)() const
-    if (r < rows)
+    if (r < rowLength)
     {
-        return Row(_rep[r*columns .. (r+1)*columns]);
+        return Row(_rep[r*columnLength .. (r+1)*columnLength]);
     }
 
     /// Assign a row with index known at compile time
     @property void ctRow(size_t r)(in Row row)
-    if (r < rows)
+    if (r < rowLength)
     {
-        _rep[r*columns .. (r+1)*columns] = row._rep;
+        _rep[r*columnLength .. (r+1)*columnLength] = row._rep;
     }
 
-    /// Index a row at compile time
+    /// Index a column at compile time
     @property Column ctColumn(size_t c)() const
-    if (c < columns)
+    if (c < columnLength)
     {
         Column col = void;
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
-            col.ctComp!r = _rep[r*columns + c];
+            col.ctComp!r = _rep[r*columnLength + c];
         }
         return col;
     }
 
     /// Assign a column with index known at compile time
     @property void ctColumn(size_t c)(in Column column)
-    if (c < columns)
+    if (c < columnLength)
     {
-        foreach(r; staticRange!(0, rows))
+        foreach(r; staticRange!(0, rowLength))
         {
-            _rep[r*columns, c] = column.ctComp!(r);
+            _rep[r*columnLength, c] = column.ctComp!(r);
         }
     }
 
     /// Return a slice whose size is known at compile-time.
     @property Mat!(T, RE-RS, CE-CS) ctSlice(size_t RS, size_t RE, size_t CS, size_t CE)() const
-    if (RE > RS && RE <= rows && CE > CS && CE <= columns)
+    if (RE > RS && RE <= rowLength && CE > CS && CE <= columnLength)
     {
         Mat!(T, RE-RS, CE-CS) res = void;
         foreach (r; staticRange!(RS, RE))
@@ -343,7 +285,7 @@ if (isNumeric!T && R > 0 && C > 0)
     /// Assign a slice whose size is known at compile-time.
     /// e.g: $(D_CODE mat.ctSlice!(0, 2) = otherMat;)
     @property void ctSlice(size_t RS, size_t CS, U, size_t UR, size_t UC)(in Mat!(U, UR, UC) mat)
-    if (RS+UR <= rows && CS+UC <= columns && isImplicitlyConvertible!(U, T))
+    if (RS+UR <= rowLength && CS+UC <= columnLength && isImplicitlyConvertible!(U, T))
     {
         foreach (r; staticRange!(0, UR))
         {
@@ -360,16 +302,16 @@ if (isNumeric!T && R > 0 && C > 0)
     /// Index a matrix row.
     Row row(in size_t r) const
     {
-        assert(r < rows);
-        return Row(_rep[r*columns .. (r+1)*columns]);
+        assert(r < rowLength);
+        return Row(_rep[r*columnLength .. (r+1)*columnLength]);
     }
 
     /// Index a matrix column.
     Column column(in size_t c) const
     {
-        assert(c < columns);
+        assert(c < columnLength);
         Column res=void;
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
             res[r] = _rep[index(r, c)];
         }
@@ -387,13 +329,13 @@ if (isNumeric!T && R > 0 && C > 0)
     /// immutable m = IMat2(4, 5, 6, 8);
     /// assert( m ~ IMat2.identity == IMat2x4(4, 5, 1, 0, 6, 8, 0, 1));
     /// ---
-    auto opBinary(string op, U, size_t UC)(in Mat!(U, rows, UC) mat) const
+    auto opBinary(string op, U, size_t UC)(in Mat!(U, rowLength, UC) mat) const
     if (op == "~")
     {
-        alias ResMat = Mat!(CommonType!(T, U), rows, columns+UC);
+        alias ResMat = Mat!(CommonType!(T, U), rowLength, columnLength+UC);
         ResMat res = void;
         res.ctSlice!(0, 0) = this;
-        res.ctSlice!(0, columns) = mat;
+        res.ctSlice!(0, columnLength) = mat;
         return res;
     }
 
@@ -428,23 +370,23 @@ if (isNumeric!T && R > 0 && C > 0)
         static assert(i < 2, "A matrix only has 2 dimensions.");
         static if(i == 0)
         {
-            return rows;
+            return rowLength;
         }
         else
         {
-            return columns;
+            return columnLength;
         }
     }
 
     /// Add/Subtract by a matrix to its right.
-    auto opBinary(string op, U)(in Mat!(U, rows, columns) oth) const
+    auto opBinary(string op, U)(in Mat!(U, rowLength, columnLength) oth) const
     if ((op == "+" || op == "-") && !is(CommonType!(T, U) == void))
     {
-        alias ResMat = Mat!(CommonType!(T, U), rows, columns);
+        alias ResMat = Mat!(CommonType!(T, U), rowLength, columnLength);
         ResMat res = void;
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
-            foreach (c; staticRange!(0, columns))
+            foreach (c; staticRange!(0, columnLength))
             {
                 mixin("res[r, c] = comp(r, c) "~op~" oth[r, c]");
             }
@@ -454,20 +396,20 @@ if (isNumeric!T && R > 0 && C > 0)
 
     /// Multiply by a matrix to its right.
     auto opBinary(string op, U, size_t UR, size_t UC)(in Mat!(U, UR, UC) oth) const
-    if (op == "*" && columns == UR && !is(CommonType!(T, U) == void))
+    if (op == "*" && columnLength == UR && !is(CommonType!(T, U) == void))
     {
         // multiply the rows of this by the columns of oth.
         //  1 2 3     7 8     1*7 + 2*9 + 3*3   1*8 + 2*1 + 3*5
         //  4 5 6  x  9 1  =  4*7 + 5*9 + 6*3   4*8 + 5*9 + 6*3
         //            3 5
-        alias ResMat = Mat!(CommonType!(T, U), rows, UC);
+        alias ResMat = Mat!(CommonType!(T, U), rowLength, UC);
         ResMat res = void;
-        foreach(r; staticRange!(0, rows))
+        foreach(r; staticRange!(0, rowLength))
         {
             foreach (c; staticRange!(0, UC))
             {
                 ResMat.Component resComp = 0;
-                foreach (rc; staticRange!(0, columns))
+                foreach (rc; staticRange!(0, columnLength))
                 {
                     resComp += comp(r, rc) * oth[rc, c];
                 }
@@ -479,7 +421,7 @@ if (isNumeric!T && R > 0 && C > 0)
 
     /// Multiply a matrix by a vector to its right.
     auto opBinary(string op, U, size_t N)(in Vec!(U, N) vec) const
-    if (op == "*" && N == columns && !is(CommonType!(T, U) == void))
+    if (op == "*" && N == columnLength && !is(CommonType!(T, U) == void))
     {
         // import std.conv : to;
         // pragma(msg, op);
@@ -488,12 +430,12 @@ if (isNumeric!T && R > 0 && C > 0)
         // pragma(msg, N.to!string);
         // pragma(msg, "");
         // same as matrix with one column
-        alias ResVec = Vec!(CommonType!(T, U), rows);
+        alias ResVec = Vec!(CommonType!(T, U), rowLength);
         ResVec res = void;
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
             ResVec.Component resComp = 0;
-            foreach (c; staticRange!(0, columns))
+            foreach (c; staticRange!(0, columnLength))
             {
                 resComp += comp(r, c) * vec[c];
             }
@@ -504,15 +446,15 @@ if (isNumeric!T && R > 0 && C > 0)
 
     /// Multiply a matrix by a vector to its left.
     auto opBinaryRight(string op, U, size_t N)(in Vec!(U, N) vec) const
-    if (op == "*" && N == rows && !is(CommonType!(T, U) == void))
+    if (op == "*" && N == rowLength && !is(CommonType!(T, U) == void))
     {
         // same as matrix with one row
-        alias ResVec = Vec!(CommonType!(T, U), columns);
+        alias ResVec = Vec!(CommonType!(T, U), columnLength);
         ResVec res = void;
-        foreach (c; staticRange!(0, columns))
+        foreach (c; staticRange!(0, columnLength))
         {
             ResVec.Component resComp = 0;
-            foreach (r; staticRange!(0, rows))
+            foreach (r; staticRange!(0, rowLength))
             {
                 resComp += vec[r]*comp(r, c);
             }
@@ -527,11 +469,11 @@ if (isNumeric!T && R > 0 && C > 0)
     if ((op == "+" || op == "-" || op == "*" || op == "/") &&
         !is(CommonType!(T, U) == void))
     {
-        alias ResMat = Mat!(CommonType!(T, U), rows, columns);
+        alias ResMat = Mat!(CommonType!(T, U), rowLength, columnLength);
         ResMat res = void;
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
-            foreach (c; staticRange!(0, columns))
+            foreach (c; staticRange!(0, columnLength))
             {
                 mixin("res.ctComp!(r, c) = ctComp!(r, c) "~op~" val;");
             }
@@ -544,11 +486,11 @@ if (isNumeric!T && R > 0 && C > 0)
     if ((op == "+" || op == "-" || op == "*" || op == "/") &&
         !is(CommonType!(T, U) == void))
     {
-        alias ResMat = Mat!(CommonType!(T, U), rows, columns);
+        alias ResMat = Mat!(CommonType!(T, U), rowLength, columnLength);
         ResMat res = void;
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
-            foreach (c; staticRange!(0, columns))
+            foreach (c; staticRange!(0, columnLength))
             {
                 mixin("res.ctComp!(r, c) = val "~op~" ctComp!(r, c);");
             }
@@ -561,11 +503,11 @@ if (isNumeric!T && R > 0 && C > 0)
     if ((op == "+" || op == "-" || op == "*" || op == "/") &&
         !is(CommonType!(T, U) == void))
     {
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
-            foreach (c; staticRange!(0, columns))
+            foreach (c; staticRange!(0, columnLength))
             {
-                mixin("_rep[r*columns+c] "~op~"= val;");
+                mixin("_rep[r*columnLength+c] "~op~"= val;");
             }
         }
         return res;
@@ -580,7 +522,7 @@ if (isNumeric!T && R > 0 && C > 0)
         /// ]
         import std.format : format;
         string res = "[\n";
-        foreach (r; staticRange!(0, rows))
+        foreach (r; staticRange!(0, rowLength))
         {
             static if (isFloatingPoint!T)
             {
@@ -590,8 +532,8 @@ if (isNumeric!T && R > 0 && C > 0)
             {
                 enum fmt = "   [ %(% 10s%|, %) ]";
             }
-            res ~= format(fmt, _rep[r*columns .. (r+1)*columns]);
-            if (r != rows-1) res ~= ",\n";
+            res ~= format(fmt, _rep[r*columnLength .. (r+1)*columnLength]);
+            if (r != rowLength-1) res ~= ",\n";
             else res ~= "\n";
         }
         return res ~ "]";
@@ -599,21 +541,117 @@ if (isNumeric!T && R > 0 && C > 0)
 
     private static size_t index(in size_t r, in size_t c)
     {
-        assert(r < rows && c < columns);
-        return r * columns + c;
+        assert(r < rowLength && c < columnLength);
+        return r * columnLength + c;
     }
 
     private static @property string identityCode()
     {
         string code = "Mat (";
-        foreach (r; 0 .. rows)
+        foreach (r; 0 .. rowLength)
         {
-            foreach (c; 0 .. columns)
+            foreach (c; 0 .. columnLength)
             {
                 code ~= r == c ? "1, " : "0, ";
             }
         }
         return code ~ ")";
+    }
+}
+
+
+
+/// Return a sequence of vectors and matrices as a flat tuple of rows.
+template rowTuple(Rows...)
+{
+    auto rowTuple(Rows rows)
+    {
+        static if (Rows.length == 0)
+        {
+            return tuple();
+        }
+        else static if (Rows.length == 1)
+        {
+            static if (isVec!(Rows[0]))
+            {
+                return tuple(rows[0]);
+            }
+            else static if (isMat!(Rows[0]))
+            {
+                return rows[0].rowTup;
+            }
+            else
+            {
+                static assert(false, "only vectors and matrices allowed in rowTuple");
+            }
+        }
+        else
+        {
+            return tuple(
+                rowTuple(rows[0]).expand,
+                rowTuple(rows[1 .. $]).expand
+            );
+        }
+    }
+}
+
+
+/// The type of row tuple from a sequence of vectors and tuples
+template RowTuple (Rows...)
+{
+    alias RowTuple = typeof(rowTuple(Rows.init));
+}
+
+/// The number of rows in a row sequence
+template rowLength (Rows...)
+{
+    enum rowLength = RowTuple!(Rows).length;
+}
+
+/// Check whether a row sequence has a consistent length.
+/// (i.e. all rows have the same length).
+template hasConsistentLength (Rows...)
+{
+    alias Tup = RowTuple!Rows;
+    template lengthOK(R)
+    {
+        enum lengthOK = R.length == Tup[0].length;
+    }
+    enum hasConsistentLength = allSatisfy!(lengthOK, Tup.Types[1 .. $]);
+}
+
+
+/// Check whether MatT is a Mat
+template isMat(MatT)
+{
+    import std.traits : TemplateOf;
+    enum isMat = __traits(isSame, TemplateOf!MatT, Mat);
+}
+
+/// Check whether MatT is a Mat with R rows and C columns
+template isMat(size_t R, size_t C, MatT)
+{
+    import std.traits : TemplateOf;
+    enum isMat = isMat!MatT && MatT.rowLength == R && MatT.columnLength == C;
+}
+
+/// Check if all types of MatSeq are instantiation of Mat
+template areMat(MatSeq...)
+{
+    enum areMat = allSatisfy!(isMat, MatSeq);
+}
+
+/// Check if all types of MatSeq are instantiation of Mat with R rows and C columns
+template areMat(size_t R, size_t C, MatSeq...)
+{
+    static assert(MatSeq.length > 0);
+    static if (MatSeq.length == 1)
+    {
+        enum areMat = isMat!(R, C, MatSeq[0]);
+    }
+    else
+    {
+        enum areMat = isMat!(R, C, MatSeq[0]) && areMat!(R, C, MatSeq[1 .. $]);
     }
 }
 
@@ -632,21 +670,6 @@ template transpose(T, size_t R, size_t C)
         }
         return res;
     }
-}
-
-
-/// Check whether MatT is a Mat
-template isMat(MatT)
-{
-    import std.traits : TemplateOf;
-    enum isMat = __traits(isSame, TemplateOf!MatT, Mat);
-}
-
-/// Check whether MatT is a Mat
-template isMat(size_t R, size_t C, MatT)
-{
-    import std.traits : TemplateOf;
-    enum isMat = isMat!MatT && MatT.rows == R && MatT.columns == C;
 }
 
 /// Compute the determinant of a matrix.
