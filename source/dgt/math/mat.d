@@ -513,6 +513,21 @@ template transpose(T, size_t R, size_t C)
     }
 }
 
+
+/// Check whether MatT is a Mat
+template isMat(MatT)
+{
+    import std.traits : TemplateOf;
+    enum isMat = __traits(isSame, TemplateOf!MatT, Mat);
+}
+
+/// Check whether MatT is a Mat
+template isMat(size_t R, size_t C, MatT)
+{
+    import std.traits : TemplateOf;
+    enum isMat = isMat!MatT && MatT.rows == R && MatT.columns == C;
+}
+
 /// Compute the determinant of a matrix.
 template determinant(T)
 {

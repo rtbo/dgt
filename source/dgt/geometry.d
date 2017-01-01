@@ -5,7 +5,7 @@ import dgt.math.vec;
 import std.traits : isNumeric;
 import std.algorithm : min, max;
 
-alias TPoint(T) = TVec2!T;
+alias TPoint(T) = Vec2!T;
 alias Point = TPoint!float;
 alias IPoint = TPoint!int;
 

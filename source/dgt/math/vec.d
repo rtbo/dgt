@@ -6,13 +6,18 @@ import std.traits;
 import std.meta;
 import std.typecons : Tuple, tuple;
 
-alias TVec2(T) = Vec!(T, 2);
-alias TVec3(T) = Vec!(T, 3);
-alias TVec4(T) = Vec!(T, 4);
+version (unittest)
+{
+    import std.algorithm : equal;
+}
 
-alias DVecN(int N) = Vec!(double, N);
-alias FVecN(int N) = Vec!(float, N);
-alias IVecN(int N) = Vec!(int, N);
+alias Vec2(T) = Vec!(T, 2);
+alias Vec3(T) = Vec!(T, 3);
+alias Vec4(T) = Vec!(T, 4);
+
+alias DVec(int N) = Vec!(double, N);
+alias FVec(int N) = Vec!(float, N);
+alias IVec(int N) = Vec!(int, N);
 
 alias DVec2 = Vec!(double, 2);
 alias DVec3 = Vec!(double, 3);
@@ -26,7 +31,117 @@ alias IVec2 = Vec!(int, 2);
 alias IVec3 = Vec!(int, 3);
 alias IVec4 = Vec!(int, 4);
 
-/// A vector type with size known at compile time.
+
+/// Build a Vec whose component type and size is deducted from arguments.
+auto vec(Comps...)(Comps comps)
+if (Comps.length > 0 && !(Comps.length == 1 && isStaticArray!(Comps[0])))
+{
+    alias FlatTup = ComponentTuple!(Comps);
+    alias CompType = CommonType!(typeof(FlatTup.init.expand));
+    alias ResVec = Vec!(CompType, FlatTup.length);
+    return ResVec (comps);
+}
+
+/// ditto
+auto vec(Arr)(in Arr arr)
+if (isStaticArray!Arr)
+{
+    alias CompType = Unqual!(typeof(arr[0]));
+    alias ResVec = Vec!(CompType, Arr.length);
+    return ResVec(arr);
+}
+
+///
+unittest
+{
+    immutable v1 = vec (1, 2, 4.0, 0); // CommonType!(int, double) is double
+    static assert( is(Unqual!(typeof(v1)) == DVec4) );
+    assert(equal(v1.data[], [1, 2, 4, 0]));
+
+    immutable int[3] arr = [0, 1, 2];
+    immutable v2 = vec (arr);
+    static assert( is(Unqual!(typeof(v2)) == IVec3) );
+    assert(equal(v2.data[], [0, 1, 2]));
+}
+
+/// Build a Vec with specified component type T and size deducted from arguments.
+template vec (T) if (isNumeric!T)
+{
+    auto vec (Comps...)(Comps comps)
+    if (Comps.length > 0 && !(Comps.length == 1 && isStaticArray!(Comps[0])))
+    {
+        alias ResVec = Vec!(T, numComponents!Comps);
+        return ResVec (comps);
+    }
+    auto vec (ArrT)(in ArrT arr)
+    if (isStaticArray!ArrT)
+    {
+        alias ResVec = Vec!(T, ArrT.length);
+        return ResVec (arr);
+    }
+}
+
+/// ditto
+alias dvec = vec!double;
+/// ditto
+alias fvec = vec!float;
+/// ditto
+alias ivec = vec!int;
+
+///
+unittest
+{
+    immutable v1 = dvec (1, 2, 4, 0); // none of the args is double
+    static assert( is(Unqual!(typeof(v1)) == DVec4) );
+    assert(equal(v1.data[], [1, 2, 4, 0]));
+
+    immutable int[3] arr = [0, 1, 2];
+    immutable v2 = fvec(arr);
+    static assert( is(Unqual!(typeof(v2)) == FVec3) );
+    assert(equal(v2.data[], [0, 1, 2]));
+
+    immutable v3 = dvec (1, 2);
+    immutable v4 = dvec (0, v3, 3);
+    static assert( is(Unqual!(typeof(v4)) == DVec4) );
+    assert(equal(v4.data[], [0, 1, 2, 3]));
+}
+
+/// Build a Vec with specified size and type deducted from arguments
+auto vec (size_t N, Arr)(in Arr arr)
+if (isDynamicArray!Arr)
+in
+{
+    assert(arr.length == N);
+}
+body
+{
+    alias CompType = Unqual!(typeof(arr[0]));
+    return Vec!(CompType, N)(arr);
+}
+
+/// ditto
+auto vec (size_t N, T)(in T comp)
+if (isNumeric!T)
+{
+    return Vec!(T, N)(comp);
+}
+
+///
+unittest
+{
+    immutable double[] arr = [1, 2, 4, 0];  // arr.length known at runtime
+    immutable v1 = vec!4 (arr);             // asserts that arr.length == 4
+    static assert( is(Unqual!(typeof(v1)) == DVec4) );
+    assert(equal(v1.data[], [1, 2, 4, 0]));
+
+    immutable int comp = 2;
+    immutable v2 = vec!4 (comp);
+    static assert( is(Unqual!(typeof(v2)) == IVec4) );
+    assert(equal(v2.data[], [2, 2, 2, 2]));
+}
+
+
+/// A vector type with size known at compile time suitable for linear algebra.
 struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
 {
     package T[N] _rep = 0; // accessible from dgt.math.mat
@@ -40,6 +155,7 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     /// It can be given any combination of scalars or vecs in any order as long
     /// as the total number of components fit the size of the vector.
     this(Comps...)(in Comps comps)
+    if (Comps.length > 1)
     {
         import std.conv : to;
         enum numComps = numComponents!Comps;
@@ -50,18 +166,29 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     }
 
     /// Build a vector from an array.
-    this(V)(in V vec)
-    if (isArray!V)
+    this(Arr)(in Arr arr)
+    if (isArray!Arr)
     {
-        static if (isStaticArray!(typeof(vec)))
+        static if (isStaticArray!Arr)
         {
-            static assert(vec.length == length);
+            static assert(Arr.length == length);
         }
         else
         {
-            assert(vec.length == length);
+            assert(arr.length == length);
         }
-        _rep[] = vec;
+        static if (is(typeof(arr[0]) == T))
+        {
+            _rep[] = arr;
+        }
+        else
+        {
+            static assert(isImplicitlyConvertible!(typeof(arr[0]), T));
+            foreach (i; staticRange!(0, N))
+            {
+                _rep[i] = arr[i];
+            }
+        }
     }
 
     /// Build a vector with all components assigned to one value
@@ -507,7 +634,7 @@ unittest
     assert(c.b == 0.6);
     assert(c.a == 0.9);
 
-    assert(c.rrwuzy == DVecN!6(0.2, 0.2, 0.9, 0.2, 0.6, 1));
+    assert(c.rrwuzy == DVec!6(0.2, 0.2, 0.9, 0.2, 0.6, 1));
     c.bgra = DVec4(0.3, 0.4, 0.5, 0.6);
     assert(c.data == [0.5, 0.4, 0.3, 0.6]);
 }
@@ -614,4 +741,39 @@ unittest
     assert(approxUlp(squaredMag(v), 50));
 
     assert(approxUlp(normalize(FVec3(4, 0, 0)), FVec3(1, 0, 0)));
+}
+
+
+private:
+
+version (LDC)
+{
+    // LDC do not have Repeat at time of writing (ldc-1.0 based on dmd-2.070.2)
+    // this is a copy-paste of Repeat availble in phobos 2.071.2
+    /**
+    * Creates an `AliasSeq` which repeats a type or an `AliasSeq` exactly `n` times.
+    */
+    template Repeat(size_t n, TList...) if (n > 0)
+    {
+        static if (n == 1)
+        {
+            alias Repeat = AliasSeq!TList;
+        }
+        else static if (n == 2)
+        {
+            alias Repeat = AliasSeq!(TList, TList);
+        }
+        else
+        {
+            alias R = Repeat!((n - 1) / 2, TList);
+            static if ((n - 1) % 2 == 0)
+            {
+                alias Repeat = AliasSeq!(TList, R, R);
+            }
+            else
+            {
+                alias Repeat = AliasSeq!(TList, TList, R, R);
+            }
+        }
+    }
 }
