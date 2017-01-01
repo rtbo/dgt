@@ -107,35 +107,44 @@ unittest
 }
 
 /// Build a Vec with specified size and type deducted from arguments
-auto vec (size_t N, Arr)(in Arr arr)
-if (isDynamicArray!Arr)
-in
+template vec (size_t N)
 {
-    assert(arr.length == N);
-}
-body
-{
-    alias CompType = Unqual!(typeof(arr[0]));
-    return Vec!(CompType, N)(arr);
+    auto vec (Arr)(in Arr arr)
+    if (isDynamicArray!Arr)
+    in
+    {
+        assert(arr.length == N);
+    }
+    body
+    {
+        alias CompType = Unqual!(typeof(arr[0]));
+        return Vec!(CompType, N)(arr);
+    }
+
+    auto vec (T)(in T comp)
+    if (isNumeric!T)
+    {
+        return Vec!(T, N)(comp);
+    }
 }
 
 /// ditto
-auto vec (size_t N, T)(in T comp)
-if (isNumeric!T)
-{
-    return Vec!(T, N)(comp);
-}
+alias vec2 = vec!2;
+/// ditto
+alias vec3 = vec!3;
+/// ditto
+alias vec4 = vec!4;
 
 ///
 unittest
 {
     immutable double[] arr = [1, 2, 4, 0];  // arr.length known at runtime
-    immutable v1 = vec!4 (arr);             // asserts that arr.length == 4
+    immutable v1 = vec4 (arr);             // asserts that arr.length == 4
     static assert( is(Unqual!(typeof(v1)) == DVec4) );
     assert(equal(v1.data[], [1, 2, 4, 0]));
 
     immutable int comp = 2;
-    immutable v2 = vec!4 (comp);
+    immutable v2 = vec4 (comp);
     static assert( is(Unqual!(typeof(v2)) == IVec4) );
     assert(equal(v2.data[], [2, 2, 2, 2]));
 }
@@ -200,12 +209,12 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     // Tuple representation
 
     /// Alias to a type sequence holding all components
-    alias TypeSeq = Repeat!(N, T);
+    alias CompSeq = Repeat!(N, T);
 
     /// All components in a tuple
-    @property Tuple!(TypeSeq) tup() const
+    @property Tuple!(CompSeq) tup() const
     {
-        return Tuple!(TypeSeq)(_rep);
+        return Tuple!(CompSeq)(_rep);
     }
 
     /// Return the data of the array
@@ -744,7 +753,7 @@ unittest
 }
 
 
-private:
+package:
 
 version (LDC)
 {

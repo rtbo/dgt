@@ -5,8 +5,14 @@ import dgt.math.vec;
 import dgt.core.typecons : staticRange;
 
 import std.traits;
-import std.meta : allSatisfy;
+import std.typecons : tuple, Tuple;
+import std.meta;
 import std.exception : enforce;
+
+version(unittest)
+{
+    import std.algorithm : equal;
+}
 
 alias FMat(size_t R, size_t C) = Mat!(float, R, C);
 alias DMat(size_t R, size_t C) = Mat!(double, R, C);
@@ -66,6 +72,94 @@ alias IMat2 = IMat2x2;
 alias IMat3 = IMat3x3;
 alias IMat4 = IMat4x4;
 
+/// Build a matrix whose component type and size is inferred from arguments.
+/// Arguments must be rows or matrices with consistent column count.
+auto mat(Rows...)(in Rows rows)
+{
+    static assert(hasConsistentLength!Rows, "All rows must have the same number of components");
+    immutable rt = rowTuple(rows);
+    alias CompTup = ComponentTuple!(typeof(rt).Types);
+    alias Comp = CommonType!(CompTup.Types);
+    enum rowLength = rt.length;
+    enum colLength = rt[0].length;
+    return Mat!(Comp, rowLength, colLength)(rt.expand);
+}
+
+///
+unittest
+{
+    immutable r1 = dvec(1, 2, 3);
+    immutable r2 = dvec(4, 5, 6);
+    immutable m1 = mat(r1, r2);
+    static assert( is(Unqual!(typeof(m1)) == DMat2x3) );
+    assert(equal(m1.data, [ 1, 2, 3, 4, 5, 6 ]));
+
+    immutable m2 = mat(r2, m1, r1);
+    static assert( is(Unqual!(typeof(m2)) == DMat4x3) );
+    assert(equal(m2.data, [ 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3]));
+
+    // The following would yield an inconsistent column count.
+    static assert( !__traits(compiles, mat(r1, dvec(1, 2))) );
+}
+
+/// Return a sequence of vectors and matrices as a flat tuple of rows.
+template rowTuple(Rows...)
+{
+    auto rowTuple(Rows rows)
+    {
+        static if (Rows.length == 0)
+        {
+            return tuple();
+        }
+        else static if (Rows.length == 1)
+        {
+            static if (isVec!(Rows[0]))
+            {
+                return tuple(rows[0]);
+            }
+            else static if (isMat!(Rows[0]))
+            {
+                return rows[0].rowTup;
+            }
+            else
+            {
+                static assert(false, "only vectors and matrices allowed in rowTuple");
+            }
+        }
+        else
+        {
+            return tuple(
+                rowTuple(rows[0]).expand,
+                rowTuple(rows[1 .. $]).expand
+            );
+        }
+    }
+}
+
+/// The type of row tuple from a sequence of vectors and tuples
+template RowTuple (Rows...)
+{
+    alias RowTuple = typeof(rowTuple(Rows.init));
+}
+
+/// The number of rows in a row sequence
+template rowLength (Rows...)
+{
+    enum rowLength = RowTuple!(Rows).length;
+}
+
+/// Check whether a row sequence has a consistent length.
+/// (i.e. all rows have the same length).
+template hasConsistentLength (Rows...)
+{
+    alias Tup = RowTuple!Rows;
+    template lengthOK(R)
+    {
+        enum lengthOK = R.length == Tup[0].length;
+    }
+    enum hasConsistentLength = allSatisfy!(lengthOK, Tup.Types[1 .. $]);
+}
+
 /// Row major matrix type.
 /// Mat.init is a null matrix.
 struct Mat(T, size_t R, size_t C)
@@ -81,7 +175,7 @@ if (isNumeric!T && R > 0 && C > 0)
     alias Row = Vec!(T, columns);
     /// The matrix columns type.
     alias Column = Vec!(T, rows);
-    /// The type of the components.
+    /// The type of the componetypeof(rt.expand)nts.
     alias Component = T;
 
     static if (rows == columns)
@@ -128,7 +222,7 @@ if (isNumeric!T && R > 0 && C > 0)
         foreach(r, arg; args)
         {
             static assert(arg.length == columns, "incorrect row size");
-            _rep[r*columns .. (r+1)*columns] = arg;
+            _rep[r*columns .. (r+1)*columns] = arg._rep;
         }
     }
 
@@ -138,6 +232,33 @@ if (isNumeric!T && R > 0 && C > 0)
     {
         enforce(data.length == rows*columns);
         _rep[] = data;
+    }
+
+    // representation in tuple
+
+    /// Alias to a type sequence holding all rows
+    alias RowSeq = Repeat!(rows, Row);
+    /// Alias to a type sequence holding all components
+    alias CompSeq = Repeat!(rows*columns, T);
+
+    /// All rows in a tuple
+    @property Tuple!RowSeq rowTup() const
+    {
+        return Tuple!RowSeq(cast(Row[rows])_rep);
+    }
+    /// All components in a tuple
+    @property Tuple!CompSeq compTup() const
+    {
+        return Tuple!CompSeq(_rep);
+    }
+
+    // array representation
+
+    /// Direct access to underlying data.
+    /// Reminder: row major order!
+    @property inout(Component)[] data() inout
+    {
+        return _rep[];
     }
 
     /// Cast a matrix to another type
@@ -407,7 +528,7 @@ if (isNumeric!T && R > 0 && C > 0)
         !is(CommonType!(T, U) == void))
     {
         alias ResMat = Mat!(CommonType!(T, U), rows, columns);
-        ResMat mat = void;
+        ResMat res = void;
         foreach (r; staticRange!(0, rows))
         {
             foreach (c; staticRange!(0, columns))
@@ -424,7 +545,7 @@ if (isNumeric!T && R > 0 && C > 0)
         !is(CommonType!(T, U) == void))
     {
         alias ResMat = Mat!(CommonType!(T, U), rows, columns);
-        ResMat mat = void;
+        ResMat res = void;
         foreach (r; staticRange!(0, rows))
         {
             foreach (c; staticRange!(0, columns))
