@@ -120,11 +120,8 @@ if (isNumeric!T && R > 0 && C > 0)
     /// The type of the componetypeof(rt.expand)nts.
     alias Component = T;
 
-    static if (rowLength == columnLength)
-    {
-        /// The identity matrix.
-        enum identity = mixin(identityCode);
-    }
+    /// The identity matrix.
+    enum identity = mixin(identityCode);
 
     /// Build a matrix from its elements.
     /// To be provided row major.
@@ -229,36 +226,39 @@ if (isNumeric!T && R > 0 && C > 0)
 
     /// Index a matrix component at compile time
     @property T ctComp(size_t r, size_t c)() const
-    if (r < rowLength && c < columnLength)
     {
+        static assert (r < rowLength, "row out of bounds");
+        static assert (c < columnLength, "column out of bounds");
         return _rep[r*columnLength + c];
     }
 
     /// Assign a matrix component with index known at compile time
     @property void ctComp(size_t r, size_t c, U)(in U val)
-    if (r < rowLength && c < columnLength && isImplicitlyConvertible!(U, T))
+    if (isImplicitlyConvertible!(U, T))
     {
+        static assert (r < rowLength, "row out of bounds");
+        static assert (c < columnLength, "column out of bounds");
         _rep[r*columnLength + c] = val;
     }
 
     /// Index a row at compile time
     @property Row ctRow(size_t r)() const
-    if (r < rowLength)
     {
+        static assert (r < rowLength, "row out of bounds");
         return Row(_rep[r*columnLength .. (r+1)*columnLength]);
     }
 
     /// Assign a row with index known at compile time
     @property void ctRow(size_t r)(in Row row)
-    if (r < rowLength)
     {
+        static assert (r < rowLength, "row out of bounds");
         _rep[r*columnLength .. (r+1)*columnLength] = row._rep;
     }
 
     /// Index a column at compile time
     @property Column ctColumn(size_t c)() const
-    if (c < columnLength)
     {
+        static assert (c < columnLength, "column out of bounds");
         Column col = void;
         foreach (r; staticRange!(0, rowLength))
         {
@@ -269,8 +269,8 @@ if (isNumeric!T && R > 0 && C > 0)
 
     /// Assign a column with index known at compile time
     @property void ctColumn(size_t c)(in Column column)
-    if (c < columnLength)
     {
+        static assert (c < columnLength, "column out of bounds");
         foreach(r; staticRange!(0, rowLength))
         {
             ctComp!(r, c) = column.ctComp!(r);
