@@ -164,7 +164,17 @@ if (isNumeric!T && R > 0 && C > 0)
         foreach(r, arg; args)
         {
             static assert(arg.length == columnLength, "incorrect row size");
-            _rep[r*columnLength .. (r+1)*columnLength] = arg._rep;
+            static if (is(typeof(arg[0]) == T))
+            {
+                _rep[r*columnLength .. (r+1)*columnLength] = arg._rep;
+            }
+            else
+            {
+                foreach (c; staticRange!(0, columnLength))
+                {
+                    _rep[r*columnLength + c] = cast(T)arg[c];
+                }
+            }
         }
     }
 
@@ -619,14 +629,27 @@ template hasConsistentLength (Rows...)
 template isMat(MatT)
 {
     import std.traits : TemplateOf;
-    enum isMat = __traits(isSame, TemplateOf!MatT, Mat);
+    static if (is(typeof(__traits(isSame, TemplateOf!MatT, Mat))))
+    {
+        enum isMat = __traits(isSame, TemplateOf!MatT, Mat);
+    }
+    else
+    {
+        enum isMat = false;
+    }
 }
 
 /// Check whether MatT is a Mat with R rows and C columns
 template isMat(size_t R, size_t C, MatT)
 {
-    import std.traits : TemplateOf;
-    enum isMat = isMat!MatT && MatT.rowLength == R && MatT.columnLength == C;
+    static if (isMat!MatT)
+    {
+        enum isMat = MatT.rowLength == R && MatT.columnLength == C;
+    }
+    else
+    {
+        enum isMat = false;
+    }
 }
 
 /// Check if all types of MatSeq are instantiation of Mat

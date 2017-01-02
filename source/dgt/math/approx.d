@@ -8,6 +8,7 @@ import dgt.math.mat : Mat;
 import dgt.core.typecons : staticRange;
 
 import std.traits : isFloatingPoint;
+import std.experimental.logger;
 
 /// Different methods to check if two floating point values are close to each other.
 enum ApproxMethod
@@ -53,12 +54,12 @@ alias approxEpsAndAbs = approx!(ApproxMethod.epsAndAbs);
 /// Negative result indicates that b has higher ULP value than a.
 template ulpDiff(T) if (isFloatingPoint!T)
 {
-    int ulpDiff(in T a, in T b)
+    long ulpDiff(in T a, in T b)
     {
         immutable fnA = FloatNum!T(a);
         immutable fnB = FloatNum!T(b);
 
-        return (fnA.i - fnB.i);
+        return (fnA - fnB);
     }
 }
 
@@ -77,7 +78,7 @@ template scalarApproxUlp(T) if (isFloatingPoint!T)
             return a == b; // check for +0 / -0
         }
 
-        return (abs(fnA.i - fnB.i) <= maxUlps);
+        return (abs(fnA - fnB) <= maxUlps);
     }
 }
 
@@ -210,59 +211,116 @@ template approx(ApproxMethod method)
 }
 
 
-private
+private:
+
+template FloatTraits(T)
+if (isFloatingPoint!T)
 {
-    template FloatTraits(T) if (isFloatingPoint!T)
-    {
-        import std.traits : fullyQualifiedName;
-
-        static assert(0, "approxUlp does not support " ~ fullyQualifiedName!T);
-    }
-
-    template FloatTraits(T : float)
+    static if (is(T == float))
     {
         alias IntType = int;
-        enum ExponentMask = 0x7f80_0000;
+        enum exponentMask = 0x7f80_0000;
     }
-
-    template FloatTraits(T : double)
+    else static if (is(T == double) || (is(T == real) && T.sizeof == 8))
     {
         alias IntType = long;
-        enum ExponentMask = 0x7ff0_0000_0000_0000;
+        enum exponentMask = 0x7ff0_0000_0000_0000;
     }
-
-    template FloatNum(T) if (isFloatingPoint!T)
+    else static if (is(T == real) && T.sizeof > 8)
     {
-        union FloatNum
-        {
-            alias F = FloatTraits!T;
-
-            alias FloatType = T;
-            alias IntType = F.IntType;
-
-            this (FloatType f)
-            {
-                this.f = f;
-            }
-
-            FloatType f;
-            IntType i;
-
-            @property bool negative() const
-            {
-                return i < 0;
-            }
-
-            debug @property IntType mantissa() const
-            {
-                enum IntType one = 1;
-                return i & ((one << T.mant_dig) - one);
-            }
-
-            debug @property IntType exponent() const
-            {
-                return ((i & F.ExponentMask) >> T.mant_dig);
-            }
-        }
+        static assert(false, "FloatTraits unsupported for real.");
     }
+}
+
+union FloatNum(T)
+if (is(T == float) || is(T == double) || is(T == real) && T.sizeof == 8)
+{
+    alias F = FloatTraits!T;
+
+    alias FloatType = T;
+    alias IntType = F.IntType;
+
+    this (FloatType f)
+    {
+        this.f = f;
+    }
+
+    FloatType f;
+    IntType i;
+
+    long opBinary(string op)(FloatNum rhs) const
+    if (op == "-")
+    {
+        return i - rhs.i;
+    }
+
+    @property bool negative() const
+    {
+        return i < 0;
+    }
+
+    debug @property IntType mantissa() const
+    {
+        enum IntType one = 1;
+        return i & ((one << T.mant_dig) - one);
+    }
+
+    debug @property IntType exponent() const
+    {
+        return ((i & F.exponentMask) >> T.mant_dig);
+    }
+}
+
+
+union FloatNum(T)
+if (is(T == real) && T.sizeof > 8)
+{
+    static assert(T.sizeof == 16, "Unexpected real size.");
+    struct Int
+    {
+        long l;
+        long h;
+    }
+
+    real f;
+    Int i;
+
+    this (real f)
+    {
+        this.f = f;
+    }
+
+    long opBinary(string op)(FloatNum rhs) const
+    if (op == "-")
+    {
+        immutable lo = i.l - rhs.i.l;
+        // do not check for overflow of the hi long
+        return lo;
+    }
+
+    @property bool negative() const
+    {
+        return f < 0;
+    }
+}
+
+unittest
+{
+    immutable fn1 = FloatNum!real(1);
+    immutable fn2 = FloatNum!real(-1);
+
+    assert(! fn1.negative);
+    assert(  fn2.negative);
+}
+
+unittest
+{
+    import std.math : nextUp;
+    immutable real r1 = 0;
+    immutable real r2 = nextUp(r1);
+
+    immutable fn1 = FloatNum!real(r1);
+    immutable fn2 = FloatNum!real(r2);
+
+    assert(fn2 - fn1 == 1);
 }

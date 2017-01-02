@@ -321,6 +321,18 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         }
     }
 
+    /// Cast the vector to another type of component
+    auto opCast(V)() const
+    if (isVec!(length, V))
+    {
+        V res;
+        foreach (i; staticRange!(0, length))
+        {
+            res.ctComp!i = cast(V.Component)ctComp!i;
+        }
+        return res;
+    }
+
     /// Unary "+" operation.
     Vec!(T, N) opUnary(string op : "+")() const
     {

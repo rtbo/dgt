@@ -3,7 +3,7 @@ module dgt.math.transform;
 
 import dgt.math.vec;
 import dgt.math.mat;
-
+import dgt.core.typecons : staticRange;
 version (unittest)
 {
     import dgt.math.approx : approxUlp;
@@ -14,9 +14,9 @@ import std.meta;
 import std.typecons : Flag, Yes, No;
 
 /// Build a translation matrix.
-auto translation(U, V)(in U x, in V y)
+auto translation(X, Y)(in X x, in Y y)
 {
-    alias ResMat = Mat3x3!(CommonType!(U, V));
+    alias ResMat = Mat3x3!(CommonType!(X, Y));
     return ResMat(
         1, 0, x,
         0, 1, y,
@@ -35,9 +35,9 @@ Mat3x3!T translation(T)(in Vec2!T v)
 }
 
 /// ditto
-auto translation(U, V, W)(in U x, in V y, in W z)
+auto translation(X, Y, Z)(in X x, in Y y, in Z z)
 {
-    alias ResMat = Mat4x4!(CommonType!(U, V, W));
+    alias ResMat = Mat4x4!(CommonType!(X, Y, Z));
     return ResMat(
         1, 0, 0, x,
         0, 1, 0, y,
@@ -70,8 +70,8 @@ unittest
 /// This is equivalent to the expression $(D_CODE translation(...) * m)
 /// but actually save computation by knowing
 /// where the ones and zeros are in a pure translation matrix.
-M translate(M, U, V)(in M m, in U x, in V y)
-if (isMat!(3, 3, M) && allSatisfy!(isNumeric, U, V))
+M translate(M, X, Y)(in M m, in X x, in Y y)
+if (isMat!(3, 3, M) && allSatisfy!(isNumeric, X, Y))
 {
     return M (
         // row 1
@@ -88,8 +88,8 @@ if (isMat!(3, 3, M) && allSatisfy!(isNumeric, U, V))
 }
 
 /// ditto
-M translate(M, U, V)(in M m, in U x, in V y)
-if (isMat!(2, 3, M) && allSatisfy!(isNumeric, U, V))
+M translate(M, X, Y)(in M m, in X x, in Y y)
+if (isMat!(2, 3, M) && allSatisfy!(isNumeric, X, Y))
 {
     return M (
         // row 1
@@ -111,8 +111,8 @@ if ((isMat!(2, 3, M) || isMat!(3, 3, M)) && isVec!(2, V))
 }
 
 /// ditto
-M translate (M, U, V, W)(in M m, in U x, in V y, in W z)
-if (isMat!(4, 4, M) && allSatisfy!(isNumeric, U, V, W))
+M translate (M, X, Y, Z)(in M m, in X x, in Y y, in Z z)
+if (isMat!(4, 4, M) && allSatisfy!(isNumeric, X, Y, Z))
 {
     return M (
         // row 1
@@ -136,8 +136,8 @@ if (isMat!(4, 4, M) && allSatisfy!(isNumeric, U, V, W))
 }
 
 /// ditto
-M translate (M, U, V, W)(in M m, in U x, in V y, in W z)
-if (isMat!(3, 4, M) && allSatisfy!(isNumeric, U, V, W))
+M translate (M, X, Y, Z)(in M m, in X x, in Y y, in Z z)
+if (isMat!(3, 4, M) && allSatisfy!(isNumeric, X, Y, Z))
 {
     return M (
         // row 1
@@ -187,41 +187,20 @@ unittest
 }
 
 
-/// Build a rotation matrix.
-/// angle in radians.
-Mat3x3!T rotation(T) (in real angle)
+/// Build a pure 3d rotation matrix with angle in radians
+auto rotationPure(V) (in real angle, in V axis)
+if (isVec!(3, V))
 {
-    import std.math : cos, sin;
-    immutable c = cast(T) cos(angle);
-    immutable s = cast(T) sin(angle);
-    return Mat3x3!T (
-        c, -s, 0,
-        s, c, 0,
-        0, 0, 1
+    static assert (
+        isFloatingPoint!(V.Component),
+        "rotationPure must be passed a floating point axis"
     );
-}
-
-/// ditto
-Mat4x4!T rotation(T) (in real angle, in Vec3!T axis)
-{
-    immutable m = rotationPure(angle, axis);
-    return mat(
-        vec(m.ctRow!0, 0),
-        vec(m.ctRow!1, 0),
-        vec(m.ctRow!2, 0),
-        vec(0, 0,  0,  1)
-    );
-}
-
-/// ditto
-Mat3x3!T rotationPure(T) (in real angle, in Vec3!T axis)
-{
     import std.math : cos, sin;
     immutable u = normalize(cast(Vec3!real)axis);
     immutable c = cos(angle);
     immutable s = sin(angle);
     immutable c1 = 1 - c;
-    return Mat3x3!T (
+    return Mat3x3!(V.Component) (
         // row 1
         c1 * u.x * u.x  +  c,
         c1 * u.x * u.y  -  s * u.z,
@@ -237,10 +216,45 @@ Mat3x3!T rotationPure(T) (in real angle, in Vec3!T axis)
     );
 }
 
-/// ditto
-auto rotation(U, V, W) (in real angle, in U x, in V y, in W z)
-if (allSatisfy!(isNumeric, U, V, W))
+/// Build a rotation matrix.
+/// angle in radians.
+Mat3x3!T rotation(T) (in real angle)
 {
+    import std.math : cos, sin;
+    immutable c = cast(T) cos(angle);
+    immutable s = cast(T) sin(angle);
+    return Mat3x3!T (
+        c, -s, 0,
+        s, c, 0,
+        0, 0, 1
+    );
+}
+
+/// ditto
+auto rotation(V) (in real angle, in V axis)
+if (isVec!(3, V) && isFloatingPoint!(V.Component))
+{
+    static assert (
+        isFloatingPoint!(V.Component),
+        "rotation must be passed a floating point axis"
+    );
+    immutable m = rotationPure(angle, axis);
+    return mat(
+        vec(m.ctRow!0, 0),
+        vec(m.ctRow!1, 0),
+        vec(m.ctRow!2, 0),
+        vec(0, 0,  0,  1)
+    );
+}
+
+/// ditto
+auto rotation(X, Y, Z) (in real angle, in X x, in Y y, in Z z)
+if (allSatisfy!(isNumeric, X, Y, Z))
+{
+    static assert (
+        allSatisfy!(isFloatingPoint, X, Y, Z),
+        "rotation must be passed a floating point axis"
+    );
     return rotation(angle, vec(x, y, z));
 }
 
@@ -256,13 +270,13 @@ if (isMat!(3, 3, M))
     immutable s = sin(angle);
     return M (
         // row 1
-        c * m.ctComp!(0, 0) - s * ctComp!(1, 0),
-        c * m.ctComp!(0, 1) - s * ctComp!(1, 1),
-        c * m.ctComp!(0, 2) - s * ctComp!(1, 2),
+        c * m.ctComp!(0, 0) - s * m.ctComp!(1, 0),
+        c * m.ctComp!(0, 1) - s * m.ctComp!(1, 1),
+        c * m.ctComp!(0, 2) - s * m.ctComp!(1, 2),
         // row 2
-        s * m.ctComp!(0, 0) + c * ctComp!(1, 0),
-        s * m.ctComp!(0, 1) + c * ctComp!(1, 1),
-        s * m.ctComp!(0, 2) + c * ctComp!(1, 2),
+        s * m.ctComp!(0, 0) + c * m.ctComp!(1, 0),
+        s * m.ctComp!(0, 1) + c * m.ctComp!(1, 1),
+        s * m.ctComp!(0, 2) + c * m.ctComp!(1, 2),
         // row 3
         m.ctComp!(2, 0), m.ctComp!(2, 1), m.ctComp!(2, 2)
     );
@@ -277,20 +291,24 @@ if (isMat!(2, 3, M))
     immutable s = sin(angle);
     return M (
         // row 1
-        c * m.ctComp!(0, 0) - s * ctComp!(1, 0),
-        c * m.ctComp!(0, 1) - s * ctComp!(1, 1),
-        c * m.ctComp!(0, 2) - s * ctComp!(1, 2),
+        c * m.ctComp!(0, 0) - s * m.ctComp!(1, 0),
+        c * m.ctComp!(0, 1) - s * m.ctComp!(1, 1),
+        c * m.ctComp!(0, 2) - s * m.ctComp!(1, 2),
         // row 2
-        s * m.ctComp!(0, 0) + c * ctComp!(1, 0),
-        s * m.ctComp!(0, 1) + c * ctComp!(1, 1),
-        s * m.ctComp!(0, 2) + c * ctComp!(1, 2)
+        s * m.ctComp!(0, 0) + c * m.ctComp!(1, 0),
+        s * m.ctComp!(0, 1) + c * m.ctComp!(1, 1),
+        s * m.ctComp!(0, 2) + c * m.ctComp!(1, 2)
     );
 }
 
 /// ditto
 M rotate (M, V) (in M m, in real angle, in V axis)
-if (isMat!(4, 4, M) && isVec!(3, V) && isFloatingPoint!(V.Component))
+if (isMat!(4, 4, M) && isVec!(3, V))
 {
+    static assert (
+        allSatisfy!(isFloatingPoint, V.Component),
+        "rotate must be passed a floating point axis"
+    );
     immutable r = rotationPure(angle, axis);
     return M (
         // row 1
@@ -317,6 +335,10 @@ if (isMat!(4, 4, M) && isVec!(3, V) && isFloatingPoint!(V.Component))
 M rotate (M, V) (in M m, in real angle, in V axis)
 if (isMat!(3, 4, M) && isVec!(3, V) && isFloatingPoint!(V.Component))
 {
+    static assert (
+        isFloatingPoint!(V.Component),
+        "rotate must be passed a floating point axis"
+    );
     immutable r = rotationPure(angle, axis);
     return M (
         // row 1
@@ -338,8 +360,8 @@ if (isMat!(3, 4, M) && isVec!(3, V) && isFloatingPoint!(V.Component))
 }
 
 /// ditto
-M rotate (M, U, V, W) (in M m, in real angle, in U x, in V y, in W z)
-if ((isMat!(3, 4, M) || isMat!(4, 4, M)) && allSatisfy!(isNumeric, U, V, W))
+M rotate (M, X, Y, Z) (in M m, in real angle, in X x, in Y y, in Z z)
+if ((isMat!(3, 4, M) || isMat!(4, 4, M)) && allSatisfy!(isFloatingPoint, X, Y, Z))
 {
     return rotate(m, angle, vec(x, y, z));
 }
@@ -350,7 +372,7 @@ unittest
     import std.math : PI;
     immutable m = DMat3( 1, 2, 3, 4, 5, 6, 7, 8, 9 );
 
-    immutable expected = rotation(PI) * m; // full multiplication
+    immutable expected = rotation!double(PI) * m; // full multiplication
     immutable result = rotate(m, PI);      // simplified multiplication
 
     assert (approxUlp(expected, result));
@@ -360,19 +382,21 @@ unittest
 {
     import std.math : PI;
     immutable m = DMat4( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 );
+    immutable angle = PI;
+    immutable v = fvec(3, 4, 5);
 
-    immutable expected = rotation(PI, 3, 4, 5) * m; // full multiplication
-    immutable result = rotate(m, PI, 3, 4, 5);      // simplified multiplication
+    immutable expected = rotation(angle, v) * m; // full multiplication
+    immutable result = rotate(m, angle, v);      // simplified multiplication
 
     assert (approxUlp(expected, result));
 }
 
 
 /// Build a scale matrix.
-Mat3!(CommonType!(U, V)) scale(U, V) (in U x, in V y)
-if (allSatisfy!(isNumeric, U, V))
+Mat3!(CommonType!(X, Y)) scale(X, Y) (in X x, in Y y)
+if (allSatisfy!(isNumeric, X, Y))
 {
-    return Mat3!(CommonType!(U, V))(
+    return Mat3!(CommonType!(X, Y))(
         x, 0, 0,
         0, y, 0,
         0, 0, 1,
@@ -390,10 +414,10 @@ Mat3!T scale(T) (in Vec2!T v)
 }
 
 /// ditto
-Mat4!(CommonType!(U, V, W)) scale (U, V, W) (in U x, in V y, in W, z)
-if (allSatisfy!(isNumeric, U, V, W))
+Mat4!(CommonType!(X, Y, Z)) scale (X, Y, Z) (in X x, in Y y, in Z z)
+if (allSatisfy!(isNumeric, X, Y, Z))
 {
-    return Mat4!(CommonType!(U, V, W))(
+    return Mat4!(CommonType!(X, Y, Z))(
         x, 0, 0, 0,
         0, y, 0, 0,
         0, 0, z, 0,
@@ -416,8 +440,8 @@ Mat4!T scale(T) (in Vec3!T v)
 /// This is equivalent to the expression $(D_CODE scale(...) * m)
 /// but actually save computation by knowing
 /// where the ones and zeros are in a pure scale matrix.
-M scale (M, U, V)(in M m, in U x, in V y)
-if (isMat!(3, 3, M) && allSatisfy!(isNumeric, U, V))
+M scale (M, X, Y)(in M m, in X x, in Y y)
+if (isMat!(3, 3, M) && allSatisfy!(isNumeric, X, Y))
 {
     return M (
         // row 1
@@ -434,8 +458,8 @@ if (isMat!(3, 3, M) && allSatisfy!(isNumeric, U, V))
 }
 
 /// ditto
-M scale (M, U, V)(in M m, in U x, in V y)
-if (isMat!(2, 3, M) && allSatisfy!(isNumeric, U, V))
+M scale (M, X, Y)(in M m, in X x, in Y y)
+if (isMat!(2, 3, M) && allSatisfy!(isNumeric, X, Y))
 {
     return M (
         // row 1
@@ -457,8 +481,8 @@ if ((isMat!(2, 3, M) || isMat!(3, 3, M)) && isVec!(2, V))
 }
 
 /// ditto
-M scale (M, U, V, W)(in M m, in U x, in V y, in W z)
-if (isMat!(4, 4, M) && allSatisfy!(isNumeric, U, V, W))
+M scale (M, X, Y, Z)(in M m, in X x, in Y y, in Z z)
+if (isMat!(4, 4, M) && allSatisfy!(isNumeric, X, Y, Z))
 {
     return M (
         // row 1
@@ -482,8 +506,8 @@ if (isMat!(4, 4, M) && allSatisfy!(isNumeric, U, V, W))
 }
 
 /// ditto
-M scale (M, U, V, W)(in M m, in U x, in V y, in W z)
-if (isMat!(3, 4, M) && allSatisfy!(isNumeric, U, V, W))
+M scale (M, X, Y, Z)(in M m, in X x, in Y y, in Z z)
+if (isMat!(3, 4, M) && allSatisfy!(isNumeric, X, Y, Z))
 {
     return M (
         // row 1
@@ -518,7 +542,7 @@ unittest
     immutable m = DMat3( 1, 2, 3, 4, 5, 6, 7, 8, 9 );
 
     immutable expected = scale(4, 5) * m; // full multiplication
-    immutable result = rotate(m, 4, 5);   // simplified multiplication
+    immutable result = scale(m, 4, 5);   // simplified multiplication
 
     assert (approxUlp(expected, result));
 }
@@ -528,7 +552,7 @@ unittest
     immutable m = DMat4( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 );
 
     immutable expected = scale(4, 5, 6) * m; // full multiplication
-    immutable result = rotate(m, 4, 5, 6);   // simplified multiplication
+    immutable result = scale(m, 4, 5, 6);   // simplified multiplication
 
     assert (approxUlp(expected, result));
 }
