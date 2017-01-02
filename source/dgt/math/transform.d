@@ -6,7 +6,7 @@ import dgt.math.mat;
 import dgt.core.typecons : staticRange;
 version (unittest)
 {
-    import dgt.math.approx : approxUlp;
+    import dgt.math.approx;
 }
 
 import std.traits;
@@ -663,4 +663,21 @@ unittest
         0, 1, 2,
     );
     assert( approxUlp(transform(dvec(3, 5), transl), dvec(6, 7)) );
+}
+
+///
+unittest
+{
+    import std.math : PI;
+    immutable v = dvec(2, 0);
+    auto m = DMat2x3.identity;
+
+    m = m.rotate(PI/2);
+    assert ( approxUlpAndAbs(transform(v, m), dvec(0, 2)) );
+
+    m = m.translate(2, 2);
+    assert ( approxUlp(transform(v, m), dvec(2, 4)) );
+
+    m = m.scale(2, 2);
+    assert ( approxUlp(transform(v, m), dvec(4, 8)) );
 }
