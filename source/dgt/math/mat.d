@@ -252,7 +252,7 @@ if (isNumeric!T && R > 0 && C > 0)
         Column col = void;
         foreach (r; staticRange!(0, rowLength))
         {
-            col.ctComp!r = _rep[r*columnLength + c];
+            col.ctComp!r = ctComp!(r, c);
         }
         return col;
     }
@@ -263,7 +263,7 @@ if (isNumeric!T && R > 0 && C > 0)
     {
         foreach(r; staticRange!(0, rowLength))
         {
-            _rep[r*columnLength, c] = column.ctComp!(r);
+            ctComp!(r, c) = column.ctComp!(r);
         }
     }
 
@@ -313,7 +313,7 @@ if (isNumeric!T && R > 0 && C > 0)
         Column res=void;
         foreach (r; staticRange!(0, rowLength))
         {
-            res[r] = _rep[index(r, c)];
+            res.ctComp!r = _rep[index(r, c)];
         }
         return res;
     }
@@ -388,7 +388,7 @@ if (isNumeric!T && R > 0 && C > 0)
         {
             foreach (c; staticRange!(0, columnLength))
             {
-                mixin("res[r, c] = comp(r, c) "~op~" oth[r, c]");
+                mixin("res.ctComp!(r, c) = ctComp!(r, c) "~op~" ctComp!(r, c)");
             }
         }
         return res;
@@ -411,9 +411,9 @@ if (isNumeric!T && R > 0 && C > 0)
                 ResMat.Component resComp = 0;
                 foreach (rc; staticRange!(0, columnLength))
                 {
-                    resComp += comp(r, rc) * oth[rc, c];
+                    resComp += ctComp!(r, rc) * oth.ctComp!(rc, c);
                 }
-                res[r, c] = resComp;
+                res.ctComp!(r, c) = resComp;
             }
         }
         return res;
@@ -423,12 +423,6 @@ if (isNumeric!T && R > 0 && C > 0)
     auto opBinary(string op, U, size_t N)(in Vec!(U, N) vec) const
     if (op == "*" && N == columnLength && !is(CommonType!(T, U) == void))
     {
-        // import std.conv : to;
-        // pragma(msg, op);
-        // pragma(msg, rows.to!string);
-        // pragma(msg, columns.to!string);
-        // pragma(msg, N.to!string);
-        // pragma(msg, "");
         // same as matrix with one column
         alias ResVec = Vec!(CommonType!(T, U), rowLength);
         ResVec res = void;
@@ -437,9 +431,9 @@ if (isNumeric!T && R > 0 && C > 0)
             ResVec.Component resComp = 0;
             foreach (c; staticRange!(0, columnLength))
             {
-                resComp += comp(r, c) * vec[c];
+                resComp += ctComp!(r, c) * vec.ctComp!c;
             }
-            res[r] = resComp;
+            res.ctComp!r = resComp;
         }
         return res;
     }
@@ -456,9 +450,9 @@ if (isNumeric!T && R > 0 && C > 0)
             ResVec.Component resComp = 0;
             foreach (r; staticRange!(0, rowLength))
             {
-                resComp += vec[r]*comp(r, c);
+                resComp += vec.ctComp!r * ctComp!(r, c);
             }
-            res[c] = resComp;
+            res.ctComp!c = resComp;
         }
         return res;
     }
