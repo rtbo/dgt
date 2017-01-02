@@ -66,7 +66,7 @@ template ulpDiff(T) if (isFloatingPoint!T)
 /// Determines if two floating point scalars are maxUlps close to each other.
 template scalarApproxUlp(T) if (isFloatingPoint!T)
 {
-    bool scalarApproxUlp(in T a, in T b, in int maxUlps=4)
+    bool scalarApproxUlp(in T a, in T b, in ulong maxUlps=4)
     {
         import std.math : abs;
 
@@ -102,10 +102,10 @@ template scalarApproxEps(T) if (isFloatingPoint!T)
 /// This is useful when comparing against zero the result of a subtraction.
 template scalarApproxUlpAndAbs(T) if (isFloatingPoint!T)
 {
-    bool scalarApproxUlpAndAbs(in T a, in T b, in T maxAbs=0.0001, in size_t maxUlps=4)
+    bool scalarApproxUlpAndAbs(in T a, in T b, in T maxAbs=0.0001, in ulong maxUlps=4)
     {
         import std.math : abs;
-        if (diff(b-a) <= maxAbs) return true;
+        if ((b-a) <= maxAbs) return true;
         return scalarApproxUlp(a, b, maxUlps);
     }
 }
@@ -118,7 +118,7 @@ template scalarApproxEpsAndAbs(T) if (isFloatingPoint!T)
     bool scalarApproxEpsAndAbs(in T a, in T b, in T maxAbs=0.0001, in T maxEps=4*T.epsilon)
     {
         import std.math : abs;
-        if (diff(b-a) <= maxAbs) return true;
+        if ((b-a) <= maxAbs) return true;
         return scalarApproxEps(a, b, maxEps);
     }
 }
