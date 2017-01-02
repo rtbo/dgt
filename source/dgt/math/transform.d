@@ -93,13 +93,13 @@ if (isMat!(2, 3, M) && allSatisfy!(isNumeric, X, Y))
 {
     return M (
         // row 1
-        m.ctComp!(0, 0) + m.ctComp!(2, 0) * x,
-        m.ctComp!(0, 1) + m.ctComp!(2, 1) * x,
-        m.ctComp!(0, 2) + m.ctComp!(2, 2) * x,
+        m.ctComp!(0, 0),
+        m.ctComp!(0, 1),
+        m.ctComp!(0, 2) + x,
         // row 2
-        m.ctComp!(1, 0) + m.ctComp!(2, 0) * y,
-        m.ctComp!(1, 1) + m.ctComp!(2, 1) * y,
-        m.ctComp!(1, 2) + m.ctComp!(2, 2) * y,
+        m.ctComp!(1, 0),
+        m.ctComp!(1, 1),
+        m.ctComp!(1, 2) + y,
     );
 }
 
