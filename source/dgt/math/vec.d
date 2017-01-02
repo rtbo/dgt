@@ -56,12 +56,12 @@ unittest
 {
     immutable v1 = vec (1, 2, 4.0, 0); // CommonType!(int, double) is double
     static assert( is(Unqual!(typeof(v1)) == DVec4) );
-    assert(equal(v1.data[], [1, 2, 4, 0]));
+    assert(equal(v1.data, [1, 2, 4, 0]));
 
     immutable int[3] arr = [0, 1, 2];
     immutable v2 = vec (arr);
     static assert( is(Unqual!(typeof(v2)) == IVec3) );
-    assert(equal(v2.data[], [0, 1, 2]));
+    assert(equal(v2.data, [0, 1, 2]));
 }
 
 /// Build a Vec with specified component type T and size deducted from arguments.
@@ -93,17 +93,17 @@ unittest
 {
     immutable v1 = dvec (1, 2, 4, 0); // none of the args is double
     static assert( is(Unqual!(typeof(v1)) == DVec4) );
-    assert(equal(v1.data[], [1, 2, 4, 0]));
+    assert(equal(v1.data, [1, 2, 4, 0]));
 
     immutable int[3] arr = [0, 1, 2];
     immutable v2 = fvec(arr);
     static assert( is(Unqual!(typeof(v2)) == FVec3) );
-    assert(equal(v2.data[], [0, 1, 2]));
+    assert(equal(v2.data, [0, 1, 2]));
 
     immutable v3 = dvec (1, 2);
     immutable v4 = dvec (0, v3, 3);
     static assert( is(Unqual!(typeof(v4)) == DVec4) );
-    assert(equal(v4.data[], [0, 1, 2, 3]));
+    assert(equal(v4.data, [0, 1, 2, 3]));
 }
 
 /// Build a Vec with specified size and type deducted from arguments
@@ -141,12 +141,12 @@ unittest
     immutable double[] arr = [1, 2, 4, 0];  // arr.length known at runtime
     immutable v1 = vec4 (arr);             // asserts that arr.length == 4
     static assert( is(Unqual!(typeof(v1)) == DVec4) );
-    assert(equal(v1.data[], [1, 2, 4, 0]));
+    assert(equal(v1.data, [1, 2, 4, 0]));
 
     immutable int comp = 2;
     immutable v2 = vec4 (comp);
     static assert( is(Unqual!(typeof(v2)) == IVec4) );
-    assert(equal(v2.data[], [2, 2, 2, 2]));
+    assert(equal(v2.data, [2, 2, 2, 2]));
 }
 
 
@@ -218,9 +218,9 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     }
 
     /// Return the data of the array
-    @property T[length] data() const
+    @property inout(T)[] data() inout
     {
-        return _rep;
+        return _rep[];
     }
 
     // compile time addressing
