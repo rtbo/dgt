@@ -109,6 +109,8 @@ class Font : RefCounted
         FT_Done_Face(_ftFace);
     }
 
+    /// Rasterize the glyph at the specified index.
+    /// If the glyph is a whitespace, null is returned.
     Glyph renderGlyph(size_t glyphIndex)
     {
         import std.math : abs;
@@ -121,6 +123,11 @@ class Font : RefCounted
 
         ubyte *srcData = bitmap.buffer;
         immutable srcStride = abs(bitmap.pitch);
+        if (srcStride == 0)
+        {
+            // likely a space
+            return null;
+        }
 
         immutable destStride = ImageFormat.a8.bytesForWidth(bitmap.width);
         ubyte[] destData = new ubyte[bitmap.rows * destStride];
@@ -167,10 +174,7 @@ class Font : RefCounted
     private hb_font_t* _hbFont;
 }
 
-struct GlyphMetrics
-{
-}
-
+/// A glyph rasterized in a bitmap
 class Glyph
 {
     private Image _bitmap;

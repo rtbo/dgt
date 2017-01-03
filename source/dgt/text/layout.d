@@ -88,18 +88,23 @@ class TextLayout : RefCounted
         scope(exit)
             context.restore();
 
-        auto tr = context.transform;
+        immutable origTr = context.transform;
+        auto advance = fvec(0, 0);
         foreach (TextShape ts; _shapes)
         {
             foreach (i, GlyphInfo gi; ts.glyphs)
             {
                 auto g = ts.font.renderGlyph(gi.index);
-                immutable gTr = tr.translate(
-                    gi.offset + vec(g.bearing.x, -g.bearing.y)
-                );
-                context.transform = gTr;
-                context.mask(g.bitmap);
-                tr = tr.translate(vec(floor(gi.advance.x), floor(gi.advance.y)));
+                if (g)
+                {
+                    context.transform = origTr.translate(
+                        gi.offset +
+                        ivec(g.bearing.x, -g.bearing.y) +
+                        ivec(floor(advance.x), floor(advance.y))
+                    );
+                    context.mask(g.bitmap);
+                }
+                advance += gi.advance;
             }
         }
     }
