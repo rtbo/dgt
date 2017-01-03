@@ -171,7 +171,21 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         static assert(numComponents!Comps == N,
             "type sequence "~Comps.stringof~" (size "~numComps.to!string~
             ") do not fit the size of "~Vec!(T, N).stringof~" (size "~N.to!string~").");
-        _rep = [ componentTuple(comps).expand ];
+        static if (
+            is(typeof([ componentTuple(comps).expand ])) &&
+            isImplicitlyConvertible!(typeof([ componentTuple(comps).expand ]), typeof(_rep))
+        )
+        {
+            _rep = [ componentTuple(comps).expand ];
+        }
+        else
+        {
+            foreach (i; staticRange!(0, length))
+            {
+                _rep[i] = cast(T)comps[i];
+            }
+        }
+
     }
 
     /// Build a vector from an array.
