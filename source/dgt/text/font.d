@@ -107,11 +107,42 @@ class Font : RefCounted
     {
         hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
+        // GC help in case this font is retained somewhere after disposal
+        // (which should not be the case)
+        _renderedCache = null;
     }
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
     Glyph renderGlyph(size_t glyphIndex)
+    {
+        Glyph* pg = glyphIndex in _renderedCache;
+        if (pg) return *pg;
+
+        auto g = render(glyphIndex);
+        _renderedCache[glyphIndex] = g;
+        return g;
+    }
+
+    mixin ReadOnlyValueProperty!("filename", string);
+    mixin ReadOnlyValueProperty!("faceIndex", int);
+    mixin ReadOnlyValueProperty!("family", string);
+    mixin ReadOnlyValueProperty!("size", FontSize);
+    mixin ReadOnlyValueProperty!("weight", int);
+    mixin ReadOnlyValueProperty!("style", FontStyle);
+    mixin ReadOnlyValueProperty!("foundry", string);
+    mixin ReadOnlyValueProperty!("format", FontFormat);
+
+    @property FT_Face ftFace()
+    {
+        return _ftFace;
+    }
+    @property hb_font_t* hbFont()
+    {
+        return _hbFont;
+    }
+
+    private Glyph render(size_t glyphIndex)
     {
         import std.math : abs;
         import std.algorithm : min;
@@ -152,26 +183,9 @@ class Font : RefCounted
         return new Glyph(img, vec(slot.bitmap_left, slot.bitmap_top));
     }
 
-    mixin ReadOnlyValueProperty!("filename", string);
-    mixin ReadOnlyValueProperty!("faceIndex", int);
-    mixin ReadOnlyValueProperty!("family", string);
-    mixin ReadOnlyValueProperty!("size", FontSize);
-    mixin ReadOnlyValueProperty!("weight", int);
-    mixin ReadOnlyValueProperty!("style", FontStyle);
-    mixin ReadOnlyValueProperty!("foundry", string);
-    mixin ReadOnlyValueProperty!("format", FontFormat);
-
-    @property FT_Face ftFace()
-    {
-        return _ftFace;
-    }
-    @property hb_font_t* hbFont()
-    {
-        return _hbFont;
-    }
-
     private FT_Face _ftFace;
     private hb_font_t* _hbFont;
+    private Glyph[size_t] _renderedCache;
 }
 
 /// A glyph rasterized in a bitmap
