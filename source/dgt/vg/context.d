@@ -51,6 +51,16 @@ alias PaintModeFlags = BitFlags!PaintMode;
 /// The transform type of the VgContext is 2x3 row major float matrix.
 alias Transform = FMat2x3;
 
+
+/// Call dg in a state sandbox.
+void sandbox(alias dg)(VgContext ctx)
+{
+    ctx.save();
+    scope(exit) ctx.restore();
+    dg();
+}
+
+/// A vector graphics context.
 interface VgContext : RefCounted
 {
     @property inout(Surface) surface() inout;

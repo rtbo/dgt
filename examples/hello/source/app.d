@@ -57,10 +57,7 @@ int main()
         strokePaint.color = [0.8, 0.2, 0.2, 1.0];
         textPaint.color = [ 0.2, 0.2, 0.8, 1.0 ];
 
-        {
-            ctx.save();
-            scope(exit) ctx.restore();
-
+        ctx.sandbox!({
             ctx.fillPaint = fillPaint;
             ctx.strokePaint = strokePaint;
             ctx.lineWidth = 5f;
@@ -68,16 +65,13 @@ int main()
             p.lineTo([size.width-10, 400]);
             p.lineTo([size.width-400, 10]);
             ctx.drawPath(p, PaintMode.fill | PaintMode.stroke);
-        }
+        });
 
-        {
-            ctx.save();
-            scope(exit) ctx.restore();
-
+        ctx.sandbox!({
             ctx.fillPaint = textPaint;
             ctx.transform = ctx.transform.translate(30, size.height-30);
             layout.renderInto(ctx);
-        }
+        });
 
     };
     win.onClosed += (Window) { app.exit(0); };
