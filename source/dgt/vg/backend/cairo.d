@@ -105,7 +105,7 @@ class CairoVgContext : VgContext
     private Surface _surface;
     private cairo_surface_t* _cairoSurface;
     private cairo_t* _cairo;
-    private cairo_pattern_t* _defaultSrc;
+    private Rc!CairoPaint _defaultSrc;
     private State _currentState;
     private GrowableStack!State _stateStack;
 
@@ -114,12 +114,20 @@ class CairoVgContext : VgContext
         _surface = surface;
         _cairoSurface = cairo_surface_reference(cairoSurface);
         _cairo = cairo_create(_cairoSurface);
-        _defaultSrc = cairo_get_source(_cairo);
-        if (_defaultSrc)
+
+        auto defaultSrc = cairo_get_source(_cairo);
+        if (defaultSrc)
         {
-            cairo_pattern_reference(_defaultSrc);
+            _defaultSrc = makeRc!CairoPaint(defaultSrc);
         }
-        // FIXME: fetch fill and stroke paints
+        else
+        {
+            _defaultSrc = makeRc!CairoPaint();
+            _defaultSrc.color = [ 0, 0, 0, 1 ];
+        }
+
+        _currentState.fill = _defaultSrc;
+        _currentState.stroke = _defaultSrc;
         cairo_matrix_t cm;
         cairo_get_matrix(_cairo, &cm);
         _currentState.transform = Transform (
@@ -148,11 +156,8 @@ class CairoVgContext : VgContext
                 _stateStack.pop();
             }
         }
+        _defaultSrc.unload();
         _currentState = State.init; // release the state
-        if (_defaultSrc)
-        {
-            cairo_pattern_destroy(_defaultSrc);
-        }
         cairo_destroy(_cairo);
         cairo_surface_destroy(_cairoSurface);
     }
@@ -412,7 +417,7 @@ class CairoVgContext : VgContext
         }
         else
         {
-            cairo_set_source(cairo, _defaultSrc);
+            cairo_set_source(cairo, _defaultSrc.pattern);
         }
     }
 }
@@ -436,7 +441,15 @@ final class CairoPaint : Paint
 
     private cairo_pattern_t* _pattern;
 
+    /// Build an virgin paint.
     this() {}
+
+    /// Build a paint from an existing pattern.
+    this(cairo_pattern_t* pattern)
+    {
+        _pattern = pattern;
+        cairo_pattern_reference(_pattern);
+    }
 
     override void dispose()
     {
