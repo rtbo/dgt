@@ -2,8 +2,10 @@ module dgt.text.font;
 
 import dgt.text.fontcache;
 import dgt.image;
+import dgt.math.vec;
 import dgt.core.resource;
 import dgt.core.util;
+import dgt.bindings.harfbuzz;
 
 import derelict.freetype.ft;
 
@@ -69,6 +71,7 @@ enum FontFormat
     bitmap,
 }
 
+
 /// An actual font that hold font information and will lazily load glyph into memory
 class Font : RefCounted
 {
@@ -96,10 +99,13 @@ class Font : RefCounted
         {
             FT_Set_Pixel_Sizes(_ftFace, 0, cast(int)_size.value);
         }
+
+        _hbFont = hb_ft_font_create(_ftFace, null);
     }
 
     override void dispose()
     {
+        hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
     }
 
@@ -110,7 +116,8 @@ class Font : RefCounted
 
         FT_Load_Glyph(_ftFace, cast(FT_UInt)glyphIndex, FT_LOAD_DEFAULT);
         FT_Render_Glyph(_ftFace.glyph, FT_RENDER_MODE_NORMAL);
-        auto bitmap = _ftFace.glyph.bitmap;
+        auto slot = _ftFace.glyph;
+        auto bitmap = slot.bitmap;
 
         ubyte *srcData = bitmap.buffer;
         immutable srcStride = abs(bitmap.pitch);
@@ -135,7 +142,7 @@ class Font : RefCounted
         }
         auto img = new Image(destData, ImageFormat.a8, bitmap.width, destStride);
         assert(img.size.height == bitmap.rows);
-        return new Glyph(img);
+        return new Glyph(img, vec(slot.bitmap_left, slot.bitmap_top));
     }
 
     mixin ReadOnlyValueProperty!("filename", string);
@@ -151,8 +158,13 @@ class Font : RefCounted
     {
         return _ftFace;
     }
+    @property hb_font_t* hbFont()
+    {
+        return _hbFont;
+    }
 
     private FT_Face _ftFace;
+    private hb_font_t* _hbFont;
 }
 
 struct GlyphMetrics
@@ -162,16 +174,22 @@ struct GlyphMetrics
 class Glyph
 {
     private Image _bitmap;
-    private GlyphMetrics _metrics;
+    private @property IVec2 _bearing;
 
-    this (Image bitmap)
+    this (Image bitmap, in IVec2 bearing)
     {
         _bitmap = bitmap;
+        _bearing = bearing;
     }
 
     @property inout(Image) bitmap() inout
     {
         return _bitmap;
+    }
+
+    @property IVec2 bearing() const
+    {
+        return _bearing;
     }
 }
 
@@ -182,6 +200,7 @@ __gshared FT_Library _ftLib;
 shared static this()
 {
     DerelictFT.load();
+    loadHarfbuzzSymbols();
     FT_Init_FreeType(&_ftLib);
 }
 

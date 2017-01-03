@@ -92,6 +92,7 @@ private struct State
 {
     Rc!Paint fill;
     Rc!Paint stroke;
+    Transform transform;
 }
 
 /// VgContext implementation for cairo graphics library
@@ -118,6 +119,13 @@ class CairoVgContext : VgContext
         {
             cairo_pattern_reference(_defaultSrc);
         }
+        // FIXME: fetch fill and stroke paints
+        cairo_matrix_t cm;
+        cairo_get_matrix(_cairo, &cm);
+        _currentState.transform = Transform (
+            cm.xx, cm.xy, cm.x0,
+            cm.yx, cm.yy, cm.y0
+        );
     }
 
     private @property cairo_t* cairo() const
@@ -226,35 +234,48 @@ class CairoVgContext : VgContext
         cairo_set_dash(cairo, &values[0], cast(int) values.length, cast(float) dash.offset);
     }
 
-    override @property const(float)[] pathTransform() const
+    override @property Transform transform() const
     {
-        float[9] mat;
-        cairo_matrix_t cairoMat;
-        cairo_get_matrix(cairo, &cairoMat);
-        mat[0] = cast(float) cairoMat.xx;
-        mat[1] = cast(float) cairoMat.xy;
-        mat[2] = cast(float) cairoMat.x0;
-        mat[3] = cast(float) cairoMat.yy;
-        mat[4] = cast(float) cairoMat.yx;
-        mat[5] = cast(float) cairoMat.y0;
-        mat[6] = 0;
-        mat[7] = 0;
-        mat[8] = 1;
-        return mat[].dup;
+        return _currentState.transform;
     }
 
-    override @property void pathTransform(in float[] pathTransform)
+    override @property void transform(in Transform tr)
+    {
+        setCairoTransform(tr);
+        _currentState.transform = tr;
+    }
+
+    override @property const(float)[] transformData() const
+    {
+        return _currentState.transform.data;
+    }
+
+    override @property void transformData(in float[] data)
     {
         import dgt.math.approx : approxUlp;
         import std.exception : enforce;
 
-        enforce(pathTransform.length == 9, "incorrect matrix size");
-        enforce(approxUlp(pathTransform[6], 0), "not affine matrix");
-        enforce(approxUlp(pathTransform[7], 0), "not affine matrix");
-        enforce(approxUlp(pathTransform[8], 1), "not affine matrix");
-        auto cairoMat = cairo_matrix_t(pathTransform[0], pathTransform[1],
-                pathTransform[2], pathTransform[3], pathTransform[4], pathTransform[5]);
-        cairo_set_matrix(cairo, &cairoMat);
+        if (data.length == 9)
+        {
+            debug {
+                import dgt.math.approx : approxUlp, approxUlpAndAbs;
+                if ( ! (approxUlpAndAbs(data[6], 0) &&
+                        approxUlpAndAbs(data[7], 0) &&
+                        approxUlp(data[8], 1)))
+                {
+                    import dgt.math.mat : FMat3;
+                    warningf("Supplied matrix is not affine: %s", FMat3(data));
+                }
+            }
+        }
+        else
+        {
+            enforce(data.length == 6, "Unappropriate matrix size for 2D transforms");
+        }
+
+        immutable tr = Transform( data[0 .. 6] );
+        setCairoTransform(tr);
+        _currentState.transform = tr;
     }
 
     override @property inout(Paint) fillPaint() inout
@@ -301,10 +322,8 @@ class CairoVgContext : VgContext
         scope(exit)
             cairo_pattern_destroy(imgPatt);
 
-        cairo_save(cairo);
-        cairo_translate(cairo, 50, 50);
+        setSource(cast(CairoPaint)_currentState.fill.obj);
         cairo_mask(cairo, imgPatt);
-        cairo_restore(cairo);
     }
 
     override void clear(in float[4] color)
@@ -337,6 +356,17 @@ class CairoVgContext : VgContext
     override void flush()
     {
         cairo_surface_flush(_cairoSurface);
+    }
+
+    private void setCairoTransform(in Transform tr)
+    {
+        // cairo matrix is column major
+        auto cm = cairo_matrix_t (
+            tr[0, 0], tr[1, 0],
+            tr[0, 1], tr[1, 1],
+            tr[0, 2], tr[1, 2],
+        );
+        cairo_set_matrix(cairo, &cm);
     }
 
     private void bindPath(in Path path)

@@ -3,6 +3,10 @@ import dgt.window;
 import dgt.event;
 import key = dgt.keys;
 import dgt.vg;
+import dgt.math.transform;
+import dgt.text.fontcache;
+import dgt.text.font;
+import dgt.text.layout;
 import dgt.core.resource;
 
 import std.typecons : scoped;
@@ -31,38 +35,50 @@ int main()
             break;
         }
     };
+
+    // preparing text
+    FontRequest font;
+    font.family = "Serif";
+    font.size = FontSize.pts(100);
+    auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
+    layout.layout();
+
     win.onExpose += (WindowExposeEvent ev)
     {
         auto factory = win.vgFactory;
         auto ctx = factory.createContext().rc();
         auto fillPaint = factory.createPaint().rc();
         auto strokePaint = factory.createPaint().rc();
+        auto textPaint = factory.createPaint().rc();
 
-        immutable width = win.size.width;
-        fillPaint.color = [width/1300f, 0.8, 0.2, 1.0];
+        immutable size = win.size;
+
+        fillPaint.color = [size.width/1300f, 0.8, 0.2, 1.0];
         strokePaint.color = [0.8, 0.2, 0.2, 1.0];
-        ctx.fillPaint = fillPaint;
-        ctx.strokePaint = strokePaint;
+        textPaint.color = [ 0.2, 0.2, 0.8, 1.0 ];
 
-        ctx.lineWidth = 5f;
-        auto p = new Path([width-10, 10]);
-        p.lineTo([width-10, 400]);
-        p.lineTo([width-400, 10]);
-        ctx.drawPath(p, PaintMode.fill | PaintMode.stroke);
+        {
+            ctx.save();
+            scope(exit) ctx.restore();
 
-        import dgt.text.font;
-        import dgt.text.fontcache;
-        import dgt.text.layout;
-        import dgt.text.shaper;
+            ctx.fillPaint = fillPaint;
+            ctx.strokePaint = strokePaint;
+            ctx.lineWidth = 5f;
+            auto p = new Path([size.width-10, 10]);
+            p.lineTo([size.width-10, 400]);
+            p.lineTo([size.width-400, 10]);
+            ctx.drawPath(p, PaintMode.fill | PaintMode.stroke);
+        }
 
-        FontRequest font;
-        font.family = "Courier";
-        font.size = FontSize.pts(100);
-        auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
-        layout.layout();
-        auto shape = TextShaper.instance.shape(layout.items()[0]);
-        auto glyph = shape.font.renderGlyph(shape.glyphs[0].index);
-        ctx.mask(glyph.bitmap);
+        {
+            ctx.save();
+            scope(exit) ctx.restore();
+
+            ctx.fillPaint = textPaint;
+            ctx.transform = ctx.transform.translate(30, size.height-30);
+            layout.renderInto(ctx);
+        }
+
     };
     win.onClosed += (Window) { app.exit(0); };
     win.show();

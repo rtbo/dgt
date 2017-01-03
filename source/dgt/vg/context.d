@@ -5,6 +5,7 @@ import dgt.vg.path;
 import dgt.vg.paint;
 import dgt.surface;
 import dgt.image;
+import dgt.math.mat;
 
 import std.typecons : BitFlags, Flag, No;
 
@@ -47,11 +48,25 @@ enum PaintMode
 
 alias PaintModeFlags = BitFlags!PaintMode;
 
+/// The transform type of the VgContext is 2x3 row major float matrix.
+alias Transform = FMat2x3;
+
 interface VgContext : RefCounted
 {
     @property inout(Surface) surface() inout;
 
+    /// Save and restore the context state.
+    /// The state include the following properties:
+    ///   - fillRule
+    ///   - lineWidth
+    ///   - lineCap
+    ///   - lineJoin
+    ///   - dash
+    ///   - transform
+    ///   - fillPaint and strokePaint
+    ///   - clip
     void save();
+    /// ditto
     void restore();
 
     @property FillRule fillRule() const;
@@ -69,8 +84,19 @@ interface VgContext : RefCounted
     @property const(Dash) dash() const;
     @property void dash(in Dash dash);
 
-    @property const(float)[] pathTransform() const;
-    @property void pathTransform(in float[] pathTransform);
+    /// Get and set the transform of the context.
+    @property Transform transform() const;
+    /// ditto
+    @property void transform(in Transform transform);
+
+    /// Get and set the transform directly with row major data.
+    /// Allow the use of an alternative matrix library.
+    /// Supplied data can be 2x3 floats or 3x3. The drawing transformation
+    /// should be affine, therefore the backend has the possibility to ignore
+    /// the last row.
+    @property const(float)[] transformData() const;
+    /// ditto
+    @property void transformData(in float[] transform);
 
     /// Intersects the current clip path with path
     void clip(in Path path);
@@ -83,8 +109,8 @@ interface VgContext : RefCounted
     @property inout(Paint) strokePaint() inout;
     @property void strokePaint(Paint paint);
 
-    /// Paint the surface with the current fill paint and mask it with the
-    /// alpha plane of the image. Format must be either ImageFormat.a1 or
+    /// Mask the surface with the alpha plane of the image and paint it
+    /// with the current fill paint. Format must be either ImageFormat.a1 or
     /// ImageFormat.a8.
     void mask(Image img);
 
