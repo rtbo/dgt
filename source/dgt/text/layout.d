@@ -42,7 +42,7 @@ struct GlyphInfo
 {
     uint index;
     FVec2 advance;
-    FVec2 offset;
+    IVec2 offset;
 }
 
 /// A single line text layout
@@ -83,6 +83,7 @@ class TextLayout : RefCounted
     /// Render the layout into the supplied context.
     public void renderInto(VgContext context)
     {
+        import std.math : floor;
         context.save();
         scope(exit)
             context.restore();
@@ -93,10 +94,12 @@ class TextLayout : RefCounted
             foreach (i, GlyphInfo gi; ts.glyphs)
             {
                 auto g = ts.font.renderGlyph(gi.index);
-                immutable gTr = tr.translate(gi.offset+vec(g.bearing.x, -g.bearing.y));
+                immutable gTr = tr.translate(
+                    gi.offset + vec(g.bearing.x, -g.bearing.y)
+                );
                 context.transform = gTr;
                 context.mask(g.bitmap);
-                tr = tr.translate(gi.advance);
+                tr = tr.translate(vec(floor(gi.advance.x), floor(gi.advance.y)));
             }
         }
     }
@@ -116,8 +119,8 @@ class TextLayout : RefCounted
         {
             glyphs[i] = GlyphInfo(
                 glyphInfos[i].codepoint,
-                FVec2(glyphPos[i].x_advance, glyphPos[i].y_advance) / 64,
-                FVec2(glyphPos[i].x_offset, -glyphPos[i].y_offset) / 64,
+                fvec(glyphPos[i].x_advance/64, glyphPos[i].y_advance/64),
+                ivec(glyphPos[i].x_offset/64, -glyphPos[i].y_offset/64),
             );
         }
         return TextShape(item.text, item.font, glyphs);
