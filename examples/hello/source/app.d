@@ -45,11 +45,11 @@ int main()
 
     win.onExpose += (WindowExposeEvent ev)
     {
-        auto factory = win.vgFactory;
-        auto ctx = factory.createContext().rc();
-        auto fillPaint = factory.createPaint().rc();
-        auto strokePaint = factory.createPaint().rc();
-        auto textPaint = factory.createPaint().rc();
+        auto surf = win.surface.rc;
+        auto ctx = createContext(surf).rc;
+        auto fillPaint = surf.backend.createPaint().rc();
+        auto strokePaint = surf.backend.createPaint().rc();
+        auto textPaint = surf.backend.createPaint().rc();
 
         immutable size = win.size;
 

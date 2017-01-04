@@ -46,6 +46,15 @@ unittest
     static assert(!__traits(compiles, staticRange!(0, 11, 3)));
 }
 
+/// Computes a string hash at compile time.
+template hash(string s, size_t sofar=0)
+{
+    static if (s.length == 0)
+        enum hash = sofar;
+    else
+        enum hash = hash!(s[1 .. $], sofar * 11 + s[0]);
+}
+
 /// stack container inspired from GrowableCircularQueue hereunder
 struct GrowableStack(T)
 {

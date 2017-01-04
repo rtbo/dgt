@@ -43,5 +43,5 @@ interface PlatformWindow
     @property IRect geometry() const;
     @property void geometry(IRect pos);
 
-    @property VgFactory vgFactory();
+    @property VgSurface surface();
 }

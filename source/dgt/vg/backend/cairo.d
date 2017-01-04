@@ -4,13 +4,96 @@ import dgt.core.resource;
 import dgt.vg;
 import dgt.surface;
 import dgt.image;
+import dgt.geometry;
 import dgt.bindings.cairo;
 
 import std.exception : enforce;
 import std.experimental.logger;
 
-pure @safe @nogc
+/// A surface for the cairo backend.
+/// Implementation is required to retain a reference to the underlying cairo
+/// surface and to release it when disposed.
+interface CairoSurface : VgSurface
 {
+    /// Retrieve the cairo_surface_t object held by implementation.
+    @property cairo_surface_t* cairoSurf();
+}
+
+
+private __gshared CairoBackend _cairoBackend;
+
+shared static this()
+{
+    _cairoBackend = new CairoBackend;
+}
+
+shared static ~this()
+{
+    _cairoBackend.dispose();
+}
+
+/// Access to the cairo backend singleton.
+static @property CairoBackend cairoBackend()
+{
+    return _cairoBackend;
+}
+
+
+private class CairoBackend : VgBackend
+{
+    override void dispose()
+    {}
+
+    override @property size_t uid() const
+    {
+        import dgt.core.typecons : hash;
+        return hash!"cairo";
+    }
+
+    override @property string name() const
+    {
+        return "cairo";
+    }
+
+    override @property bool hardwareAccelerated() const
+    {
+        return false;
+    }
+
+    override VgContext createContext(VgSurface surf)
+    {
+        return new CairoContext(enforce(cast(CairoSurface) surf));
+    }
+
+    override Paint createPaint()
+    {
+        return new CairoPaint();
+    }
+}
+
+pure @safe
+{
+    /// map ImageFormat to cairo_format_t
+    public cairo_format_t cairoFormat(in ImageFormat ifmt)
+    {
+        switch (ifmt)
+        {
+        case ImageFormat.a1:
+            return CAIRO_FORMAT_A1;
+        case ImageFormat.a8:
+            return CAIRO_FORMAT_A8;
+        case ImageFormat.rgb:
+            return CAIRO_FORMAT_RGB24;
+        case ImageFormat.argbPremult:
+            return CAIRO_FORMAT_ARGB32;
+        default:
+            import std.format : format;
+            throw new Exception(
+                format("ImageFormat.%s is not supported by cairo", ifmt)
+            );
+        }
+    }
+
     private cairo_fill_rule_t cairoFillRule(in FillRule fillRule)
     {
         final switch (fillRule)
@@ -96,24 +179,22 @@ private struct State
 }
 
 /// VgContext implementation for cairo graphics library
-class CairoVgContext : VgContext
+class CairoContext : VgContext
 {
     import dgt.core.typecons : GrowableStack;
 
     mixin(rcCode);
 
-    private Surface _surface;
-    private cairo_surface_t* _cairoSurface;
+    private Rc!CairoSurface _surface;
     private cairo_t* _cairo;
     private Rc!CairoPaint _defaultSrc;
     private State _currentState;
     private GrowableStack!State _stateStack;
 
-    this(Surface surface, cairo_surface_t* cairoSurface)
+    this(CairoSurface surface)
     {
         _surface = surface;
-        _cairoSurface = cairo_surface_reference(cairoSurface);
-        _cairo = cairo_create(_cairoSurface);
+        _cairo = cairo_create(_surface.cairoSurf);
 
         auto defaultSrc = cairo_get_source(_cairo);
         if (defaultSrc)
@@ -138,6 +219,9 @@ class CairoVgContext : VgContext
 
     private @property cairo_t* cairo() const
     {
+        // That is quite ugly but unfortunately necessary to preserve constness
+        // to the application. The backend has responsibility to not abuse it
+        // and using the cast only for getters.
         return cast(cairo_t*) _cairo;
     }
 
@@ -159,10 +243,10 @@ class CairoVgContext : VgContext
         _defaultSrc.unload();
         _currentState = State.init; // release the state
         cairo_destroy(_cairo);
-        cairo_surface_destroy(_cairoSurface);
+        _surface.unload();
     }
 
-    override @property inout(Surface) surface() inout
+    override @property inout(VgSurface) surface() inout
     {
         return _surface;
     }
@@ -356,11 +440,6 @@ class CairoVgContext : VgContext
             setSource(cast(CairoPaint) _currentState.stroke.obj);
             cairo_stroke(cairo);
         }
-    }
-
-    override void flush()
-    {
-        cairo_surface_flush(_cairoSurface);
     }
 
     private void setCairoTransform(in Transform tr)

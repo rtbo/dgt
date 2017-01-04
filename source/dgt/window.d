@@ -75,7 +75,7 @@ interface OnWindowExposeHandler
     void onWindowExpose(WindowExposeEvent ev);
 }
 
-class Window : Surface, VgSurface
+class Window : Surface
 {
     this()
     {
@@ -268,9 +268,10 @@ class Window : Surface, VgSurface
         }
     }
 
-    override @property VgFactory vgFactory()
+    /// Return a vector graphics surface to draw into this window.
+    @property VgSurface surface()
     {
-        return _platformWindow.vgFactory;
+        return _platformWindow.surface;
     }
 
     private

@@ -3,7 +3,6 @@ module dgt.core.util;
 
 import std.traits : Unqual, hasIndirections;
 
-
 // GC utilities
 
 void hideFromGC(void* location)

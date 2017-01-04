@@ -1,9 +1,7 @@
 module dgt.vg.context;
 
 import dgt.core.resource;
-import dgt.vg.path;
-import dgt.vg.paint;
-import dgt.surface;
+import dgt.vg;
 import dgt.image;
 import dgt.math.mat;
 
@@ -63,7 +61,8 @@ void sandbox(alias dg)(VgContext ctx)
 /// A vector graphics context.
 interface VgContext : RefCounted
 {
-    @property inout(Surface) surface() inout;
+    /// Get the surface this context is drawing on.
+    @property inout(VgSurface) surface() inout;
 
     /// Save and restore the context state.
     /// The state include the following properties:
@@ -129,5 +128,4 @@ interface VgContext : RefCounted
     /// but can possibly be faster.
     void clear(in float[4] color);
     void drawPath(in Path path, in PaintMode paintMode);
-    void flush();
 }
