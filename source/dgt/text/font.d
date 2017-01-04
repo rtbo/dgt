@@ -109,18 +109,18 @@ class Font : RefCounted
         FT_Done_Face(_ftFace);
         // GC help in case this font is retained somewhere after disposal
         // (which should not be the case)
-        _renderedCache = null;
+        _rasterizedCache = null;
     }
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
-    Glyph renderGlyph(size_t glyphIndex)
+    RasterizedGlyph rasterizeGlyph(size_t glyphIndex)
     {
-        Glyph* pg = glyphIndex in _renderedCache;
+        RasterizedGlyph* pg = glyphIndex in _rasterizedCache;
         if (pg) return *pg;
 
-        auto g = render(glyphIndex);
-        _renderedCache[glyphIndex] = g;
+        auto g = rasterize(glyphIndex);
+        _rasterizedCache[glyphIndex] = g;
         return g;
     }
 
@@ -142,7 +142,7 @@ class Font : RefCounted
         return _hbFont;
     }
 
-    private Glyph render(size_t glyphIndex)
+    private RasterizedGlyph rasterize(size_t glyphIndex)
     {
         import std.math : abs;
         import std.algorithm : min;
@@ -180,16 +180,16 @@ class Font : RefCounted
         }
         auto img = new Image(destData, ImageFormat.a8, bitmap.width, destStride);
         assert(img.size.height == bitmap.rows);
-        return new Glyph(img, vec(slot.bitmap_left, slot.bitmap_top));
+        return new RasterizedGlyph(img, vec(slot.bitmap_left, slot.bitmap_top));
     }
 
     private FT_Face _ftFace;
     private hb_font_t* _hbFont;
-    private Glyph[size_t] _renderedCache;
+    private RasterizedGlyph[size_t] _rasterizedCache;
 }
 
 /// A glyph rasterized in a bitmap
-class Glyph
+class RasterizedGlyph
 {
     private Image _bitmap;
     private @property IVec2 _bearing;

@@ -94,15 +94,15 @@ class TextLayout : RefCounted
         {
             foreach (i, GlyphInfo gi; ts.glyphs)
             {
-                auto g = ts.font.renderGlyph(gi.index);
-                if (g)
+                auto rg = ts.font.rasterizeGlyph(gi.index);
+                if (rg)
                 {
                     context.transform = origTr.translate(
                         gi.offset +
-                        ivec(g.bearing.x, -g.bearing.y) +
+                        ivec(rg.bearing.x, -rg.bearing.y) +
                         ivec(floor(advance.x), floor(advance.y))
                     );
-                    context.mask(g.bitmap);
+                    context.mask(rg.bitmap);
                 }
                 advance += gi.advance;
             }
