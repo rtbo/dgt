@@ -93,7 +93,7 @@ class Font : RefCounted
 
         if (_size.unit == FontSize.Unit.pts)
         {
-            FT_Set_Char_Size(_ftFace, 0, cast(long)_size.value*64, 96, 96);
+            FT_Set_Char_Size(_ftFace, 0, cast(FT_F26Dot6)(_size.value*64), 96, 96);
         }
         else
         {
