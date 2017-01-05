@@ -167,10 +167,11 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     if (Comps.length > 1)
     {
         import std.conv : to;
-        enum numComps = numComponents!Comps;
-        static assert(numComponents!Comps == N,
+        enum numComps = numComponents!(Comps);
+        static assert(numComps == N,
             "type sequence "~Comps.stringof~" (size "~numComps.to!string~
             ") do not fit the size of "~Vec!(T, N).stringof~" (size "~N.to!string~").");
+
         static if (
             is(typeof([ componentTuple(comps).expand ])) &&
             isImplicitlyConvertible!(typeof([ componentTuple(comps).expand ]), typeof(_rep))
@@ -180,9 +181,10 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         }
         else
         {
-            foreach (i; staticRange!(0, length))
+            //auto compT = componentTuple(comps);
+            foreach(i, c; componentTuple(comps))
             {
-                _rep[i] = cast(T)comps[i];
+                _rep[i] = cast(T)c;
             }
         }
 
@@ -555,14 +557,30 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
 template isVec(VecT)
 {
     import std.traits : TemplateOf;
-    enum isVec = __traits(isSame, TemplateOf!VecT, Vec);
+    static if (is(typeof(__traits(isSame, TemplateOf!VecT, Vec))))
+    {
+        enum isVec = __traits(isSame, TemplateOf!VecT, Vec);
+    }
+    else
+    {
+        enum isVec = false;
+    }
 }
+
+static assert( isVec!(FVec2) );
+static assert( !isVec!double );
 
 /// Check whether VecT is a Vec of size N
 template isVec(size_t N, VecT)
 {
-    import std.traits : TemplateOf;
-    enum isVec = isVec!VecT && VecT.length == N;
+    static if (is(typeof(VecT.length)))
+    {
+        enum isVec = isVec!VecT && VecT.length == N;
+    }
+    else
+    {
+        enum isVec = false;
+    }
 }
 
 /// Check whether a char is a vector component name.
@@ -588,36 +606,35 @@ if (s.length != 0)
 
 /// Build a tuple with one entry per component in the type sequence.
 /// Each T can be a scalar type (hold 1 component) or a vector type.
-template componentTuple(T...)
+
+auto componentTuple(T...)(T vals)
 {
-    auto componentTuple(T vals)
+    static if (T.length == 0)
     {
-        static if (T.length == 0)
+        return tuple();
+    }
+    else static if (T.length == 1)
+    {
+        static if (isNumeric!(T[0]))
         {
-            return tuple();
+            return tuple(vals[0]);
         }
-        else static if (T.length == 1)
+        else static if (isVec!(T[0]))
         {
-            static if (isNumeric!(T[0]))
-            {
-                return tuple(vals[0]);
-            }
-            else static if (isVec!(T[0]))
-            {
-                return vals[0].tup;
-            }
-            else
-            {
-                static assert(false,
-                    "componentTuple only works with scalars and vecs, not with "~T.stringof);
-            }
+            return vals[0].tup;
         }
         else
         {
-            return tuple(componentTuple(vals[0]).expand, componentTuple(vals[1 .. $]).expand);
+            static assert(false,
+                "componentTuple only works with scalars and vecs, not with "~T.stringof);
         }
     }
+    else
+    {
+        return tuple(componentTuple(vals[0]).expand, componentTuple(vals[1 .. $]).expand);
+    }
 }
+
 
 /// Alias to the type of component tuple
 template ComponentTuple(T...)
