@@ -20,6 +20,10 @@ public void loadCairoSymbols(string[] libNames = [])
     {
         auto defaultLibNames = ["libcairo.so", "libcairo.so.2"];
     }
+    else version (Windows)
+    {
+        auto defaultLibNames = ["cairo.dll", "libcairo.dll"];
+    }
     if (libNames.length == 0)
     {
         libNames = defaultLibNames;
@@ -460,9 +464,9 @@ version(linux)
     );
     alias CairoPlatformSymbols = CairoXcbSymbols;
 }
-// else version(Windows)
-// {
-//     alias CairoWin32Symbols = AliasSeq!(
+else version(Windows)
+{
+    alias CairoWin32Symbols = AliasSeq!(
 //         cairo_win32_surface_create,
 //         cairo_win32_printing_surface_create,
 //         cairo_win32_surface_create_with_ddb,
@@ -477,9 +481,9 @@ version(linux)
 //         cairo_win32_scaled_font_get_metrics_factor,			Yes.optional,
 //         cairo_win32_scaled_font_get_logical_to_device,		Yes.optional,
 //         cairo_win32_scaled_font_get_device_to_logical,		Yes.optional,
-//     );
-//     alias CairoPlatformSymbols = CairoWin32Symbols;
-// }
+    );
+    alias CairoPlatformSymbols = CairoWin32Symbols;
+}
 
 
 __gshared Symbol!(cairo_t*, cairo_surface_t*) cairo_create;

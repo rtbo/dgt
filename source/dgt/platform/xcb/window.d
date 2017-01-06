@@ -1,5 +1,7 @@
 module dgt.platform.xcb.window;
 
+version(linux):
+
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
 import dgt.core.resource;

@@ -76,7 +76,13 @@ class Application : Disposable
 /// Make the default Platform for the running OS.
 Uniq!Platform makeDefaultPlatform()
 {
-    import dgt.platform.xcb : XcbPlatform;
-
-    return Uniq!Platform(new XcbPlatform);
+    version(linux)
+    {
+        import dgt.platform.xcb : XcbPlatform;
+        return Uniq!Platform(new XcbPlatform);
+    }
+    else
+    {
+        assert(false, "unimplemented");
+    }
 }

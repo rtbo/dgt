@@ -1,5 +1,7 @@
 module dgt.platform.xcb.keyboard;
 
+version(linux):
+
 import dgt.platform.xcb : xcbEventType;
 import key = dgt.keys;
 import dgt.event;

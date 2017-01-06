@@ -1,5 +1,7 @@
 module dgt.platform.xcb.screen;
 
+version(linux):
+
 import dgt.screen;
 
 import xcb.xcb;

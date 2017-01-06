@@ -1,5 +1,7 @@
 module dgt.platform.xcb;
 
+version(linux):
+
 import dgt.platform.xcb.keyboard;
 import dgt.platform.xcb.screen;
 import dgt.platform.xcb.window;

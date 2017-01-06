@@ -16,6 +16,10 @@ public void loadHarfbuzzSymbols(string[] libNames = [])
     {
         auto defaultLibNames = ["libharfbuzz.so", "libharfbuzz.so.0"];
     }
+    version (Windows)
+    {
+        auto defaultLibNames = ["harfbuzz.dll", "libharfbuzz.dll"];
+    }
     if (libNames.length == 0)
     {
         libNames = defaultLibNames;
