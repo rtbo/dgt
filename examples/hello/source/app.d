@@ -1,13 +1,14 @@
+import dgt.core.resource;
 import dgt.application;
 import dgt.window;
 import dgt.event;
 import key = dgt.keys;
 import dgt.vg;
 import dgt.math.transform;
+import dgt.math.vec;
 import dgt.text.fontcache;
 import dgt.text.font;
 import dgt.text.layout;
-import dgt.core.resource;
 
 import std.typecons : scoped;
 import std.stdio;
@@ -36,6 +37,11 @@ int main()
         }
     };
 
+    // preparing drawing
+    auto fillPaint = makeRc!ColorPaint();
+    auto strokePaint = makeRc!ColorPaint(fvec(0.8, 0.2, 0.2, 1));
+    auto textPaint = makeRc!ColorPaint(fvec(0, 0, 1, 1));
+
     // preparing text
     FontRequest font;
     font.family = "Serif";
@@ -43,19 +49,14 @@ int main()
     auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
     layout.layout();
 
-    win.onExpose += (WindowExposeEvent ev)
+    win.onExpose += (WindowExposeEvent /+ev+/)
     {
         auto surf = win.surface.rc;
         auto ctx = createContext(surf).rc;
-        auto fillPaint = surf.backend.createPaint().rc();
-        auto strokePaint = surf.backend.createPaint().rc();
-        auto textPaint = surf.backend.createPaint().rc();
 
         immutable size = win.size;
 
-        fillPaint.color = [size.width/1300f, 0.8, 0.2, 1.0];
-        strokePaint.color = [0.8, 0.2, 0.2, 1.0];
-        textPaint.color = [ 0.2, 0.2, 0.8, 1.0 ];
+        fillPaint.color = fvec(size.width/1300f, 0.8, 0.2, 1);
 
         ctx.sandbox!({
             ctx.fillPaint = fillPaint;
