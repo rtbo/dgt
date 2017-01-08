@@ -1,6 +1,8 @@
 /// Resource management module
 module dgt.core.resource;
 
+import std.typecons : Flag, Yes, No;
+
 /// A resource that can be disposed
 interface Disposable
 {
@@ -111,7 +113,7 @@ debug(Uniq)
 /// Note: dlang has capability to enforce a parameter be a lvalue (ref param)
 /// but has no mechanism such as c++ rvalue reference which would enforce
 /// true uniqueness by the compiler. Uniq gives additional robustness, but it is
-/// up to the programmer to make sure that the values passed by rvalue in are
+/// up to the programmer to make sure that the values passed in by rvalue are
 /// not referenced somewhere else in the code
 struct Uniq(T)
 if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
@@ -273,7 +275,7 @@ version(unittest)
         return makeUniq!UniqTest();
     }
 
-    private void consume(Uniq!UniqTest u)
+    private void consume(Uniq!UniqTest /+u+/)
     {
     }
 
@@ -305,7 +307,10 @@ version(unittest)
 
 /// A string that can be mixed-in a class declaration to implement RefCounted.
 /// Disposable implementation is not given.
-enum rcCode = buildRcCode();
+enum rcCode = buildRcCode!(No.atomic)();
+
+/// Atomic version of rcCode.
+enum atomicRcCode = buildRcCode!(Yes.atomic)();
 
 /// Helper that build a new instance of T and returns it within a Rc!T
 template makeRc(T) if (is(T : RefCounted))
@@ -383,9 +388,9 @@ template Rc(T) if (is(T:RefCounted))
 
 
 
-private string buildRcCode()
+private string buildRcCode(Flag!"atomic" atomic)()
 {
-    version(rcAtomic)
+    static if (atomic)
     {
         return q{
             private shared size_t _refCount=0;
