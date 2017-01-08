@@ -176,7 +176,9 @@ class Image
         return _stride;
     }
 
-    /// Make a surface that will for which drawing will occur directly in this image data.
+    /// Make a surface that can be used to draw directly into the image data.
+    /// As image data resides in main memory, the surface will be associated
+    /// with a software rasterizer.
     VgSurface makeSurface()
     {
         return new CairoImgSurf(this);
