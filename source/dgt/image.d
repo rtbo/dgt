@@ -125,7 +125,6 @@ class Image
     private ushort _width; // in px
     private ushort _height; // in px
     private size_t _stride; // in bytes
-    private size_t _minStride; // in bytes
 
     /// Allocates an image with format and size
     this(ImageFormat format, ISize size)
@@ -134,7 +133,6 @@ class Image
         _width = cast(ushort)size.width;
         _height = cast(ushort)size.height;
         _stride = format.bytesForWidth(size.width);
-        _minStride = _stride;
         _data = new ubyte[_stride * _height];
     }
 
@@ -176,7 +174,6 @@ class Image
         _width = cast(ushort)width;
         _height = cast(ushort)height;
         _stride = destStride;
-        _minStride = destStride;
     }
 
     /// Initialize an $(D Image) with existing $(D data) and $(D format),
@@ -203,7 +200,6 @@ class Image
         _width = cast(ushort)width;
         _height = cast(ushort)height;
         _stride = stride;
-        _minStride = minStride;
         _format = fmt;
         _data = data;
     }
@@ -223,7 +219,7 @@ class Image
     body
     {
         immutable start = l * _stride;
-        immutable end = start + _minStride;
+        immutable end = start + _stride;
         return _data[start .. end];
     }
 
