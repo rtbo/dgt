@@ -121,3 +121,52 @@ string onChangeSigName(string name)
 // checking compile-time functionality
 static assert(capitalizeFst("name") == "Name");
 static assert(onChangeSigName("name") == "onNameChange");
+
+/// Check whether T is a reference type, that is class, interface or pointer.
+template isReference(T)
+{
+    import std.traits : isPointer;
+    enum isReference = is(T == class) || is(T == interface) || isPointer!T;
+}
+
+version (unittest)
+{
+    static assert(isReference!Object);
+    static assert(isReference!Exception);
+    static assert(!isReference!int);
+    static assert(isReference!(const(char)*));
+}
+
+/// Down cast of a reference to a child class reference.
+/// Runtime check is disabled in release build.
+template unsafeCast(U)
+if (is(U == class))
+{
+    U unsafeCast (T)(T obj)
+    if (isReference!T && is(U : T) && !is(T == const))
+    {
+        debug
+        {
+            auto uObj = cast(U)obj;
+            assert(uObj, "unsafeCast from "~T.stringof~" to "~U.stringof~" failed");
+            return uObj;
+        }
+        else
+        {
+            return cast(U)(cast(void*)(cast(Object)obj));
+        }
+    }
+
+    const(U) unsafeCast(T)(const(T) obj)
+    if (isReference!T && is(U : T))
+    {
+        debug {
+            auto uObj = cast(const(U))obj;
+            assert(uObj, "unsafeCast from "~T.stringof~" to "~U.stringof~" failed");
+            return uObj;
+        }
+        else {
+            return cast(const(U))(cast(const(void*))(cast(const(Object))obj));
+        }
+    }
+}
