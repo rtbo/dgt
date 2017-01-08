@@ -45,7 +45,8 @@ enum ImageFormat
 /// Required bytes alignment for stride (one row of pixels)
 enum strideAlignment = 4;
 
-/// The minimum number of bytes an image must have for a row of pixels
+/// The minimum number of bytes an image must have for a row of pixels.
+/// This gives number of bytes for a row of image including a 4 bytes alignement.
 size_t bytesForWidth(in ImageFormat format, in size_t width)
 {
     immutable size_t bits = format.bpp * width;
@@ -83,7 +84,40 @@ unittest
         size.width < ushort.max && size.height < ushort.max;
 }
 
+/// Basic aggregation of data to describe pixels.
+/// It does not check for any validity of size, nor does it constrain
+/// bytes alignement as Image does.
+struct Pixels
+{
+    /// The format describing pixels.
+    ImageFormat format;
+    /// The actual pixel data.
+    ubyte[] data;
+    /// Amount of bytes between two rows.
+    /// If negative, it means that first row is at the bottom.
+    int stride;
+    /// The meaningful width
+    size_t width;
+    /// The number of rows.
+    size_t height;
+
+    /// Build a Pixels struct.
+    /// If passed height is zero, it is interpreted as data.length / abs(stride).
+    this (in ImageFormat format, ubyte[] data, in int stride, in size_t width,
+            in size_t height=0)
+    {
+        import std.math : abs;
+        this.format = format;
+        this.data = data;
+        this.stride = stride;
+        this.width = width;
+        this.height = height ? height : data.length / abs(stride);
+    }
+}
+
 /// In-memory representation of an image.
+/// Store pixels in main memory and keep rows 4 bytes aligned to
+/// allow drawing optimizations.
 class Image
 {
     private ubyte[] _data;
@@ -102,6 +136,47 @@ class Image
         _stride = format.bytesForWidth(size.width);
         _minStride = _stride;
         _data = new ubyte[_stride * _height];
+    }
+
+    /// Build an Image from a Pixels struct. $(D pixels.data) does not need to
+    /// meet alignement requirements.
+    /// A copy of pixels is made. At most pixels.height rows will be copied.
+    /// An exception is thrown if pixels.height cannot be read.
+    this(in Pixels pixels)
+    {
+        import std.array : uninitializedArray;
+        import std.algorithm : min;
+        import std.math : abs;
+        enforce(
+            pixels.height <= pixels.data.length / abs(pixels.stride)
+        );
+        enforce(
+            pixels.width <= 8 * pixels.stride / pixels.format.bpp
+        );
+
+        immutable width = pixels.width;
+        immutable height = pixels.height;
+        immutable destStride = pixels.format.bytesForWidth(width);
+        immutable srcStride = abs(pixels.stride);
+        immutable copyStride = min(destStride, srcStride);
+        auto srcData = pixels.data;
+        auto destData = uninitializedArray!(ubyte[])(destStride * height);
+
+        foreach(r; 0 .. pixels.height)
+        {
+            immutable srcOffset = r * srcStride;
+            immutable destLine = pixels.stride > 0 ? r : height-r-1;
+            immutable destOffset = destLine * destStride;
+            destData[destOffset .. destOffset+copyStride] =
+                    srcData[srcOffset .. srcOffset+copyStride];
+        }
+
+        _format = pixels.format;
+        _data = destData;
+        _width = cast(ushort)width;
+        _height = cast(ushort)height;
+        _stride = destStride;
+        _minStride = destStride;
     }
 
     /// Initialize an $(D Image) with existing $(D data) and $(D format),
