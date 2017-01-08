@@ -14,6 +14,10 @@ public void loadFontconfigSymbols(string[] libNames = [])
     {
         auto defaultLibNames = ["libfontconfig.so", "libfontconfig.so.1"];
     }
+    else version (Windows)
+    {
+        auto defaultLibNames = ["fontconfig.dll"];
+    }
     if (libNames.length == 0)
     {
         libNames = defaultLibNames;

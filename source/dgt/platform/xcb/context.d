@@ -1,5 +1,7 @@
 module dgt.platform.xcb.context;
 
+version(linux):
+
 import dgt.platform.xcb;
 import dgt.platform.xcb.screen;
 import dgt.surface;
