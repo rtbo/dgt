@@ -1,59 +1,295 @@
 module dgt.vg.paint;
 
+import dgt.vg;
 import dgt.core.resource;
+import dgt.math.vec;
 
+/// The type of a paint.
 enum PaintType
 {
+    /// solid color
     color,
+    /// gradient that interpolate a set of colors between two points.
     linearGradient,
+    /// gradient that interpolate a set of colors from one point to a circle.
     radialGradient,
-    //image,
+    /// paint from image data
+    texture,
 }
 
+/// A gradient stop.
 struct GradientStop
 {
+    /// linear distance between two points of this stop.
     float offset;
-    float[4] color;
+    /// color of this stop.
+    FVec4 color;
 }
 
-struct LinearGradient
-{
-    float[2] p0;
-    float[2] p1;
-    GradientStop[] stops;
-}
-
-struct RadialGradient
-{
-    float[2] c;
-    float[2] f;
-    float r;
-    GradientStop[] stops;
-}
-
+/// Spread mode for gradient paints.
+/// Defines how is specified gradient color outside of range [0, 1].
 enum SpreadMode
 {
+    /// The color is fully transparent.
     none,
+    /// The color is padded to the color at 0 or to the color at 1.
     pad,
+    /// The pattern is repeated beyond 0 or beyond 1.
     repeat,
+    /// The pattern is reflected beyond 0 or beyond 1.
     reflect,
 }
 
-/// Paint defines the material that fills and strokes pathes.
+/// Paint defines the material that fills and strokes paths.
 /// It can hold one of the different paint types.
-interface Paint : RefCounted
+abstract class Paint : RefCounted
 {
-    @property PaintType type() const;
+    mixin(rcCode);
 
-    @property float[4] color() const;
-    @property void color(in float[4] color);
+    private PaintType _type;
+    private Rc!RefCounted _backendData;
+    private size_t _backendDataOwner;
 
-    @property LinearGradient linearGradient() const;
-    @property void linearGradient(in LinearGradient gradient);
+    private this (PaintType type)
+    {
+        _type = type;
+    }
 
-    @property RadialGradient radialGradient() const;
-    @property void radialGradient(in RadialGradient gradient);
+    override void dispose()
+    {
+        unloadBackendData();
+    }
 
-    @property SpreadMode spreadMode() const;
-    @property void spreadMode(in SpreadMode spreadMode);
+    final @property PaintType type() const
+    {
+        return _type;
+    }
+
+    package(dgt) RefCounted backendData(in size_t owner)
+    {
+        if (owner == _backendDataOwner) return _backendData.obj;
+        else return null;
+    }
+
+    package(dgt) void setBackendData(in size_t owner, RefCounted data)
+    {
+        _backendDataOwner = owner;
+        _backendData = data;
+    }
+
+    private void unloadBackendData()
+    {
+        _backendData.unload();
+        _backendDataOwner = 0;
+    }
+}
+
+/// A solid paint color.
+/// The color is represented with sRGBA float channels.
+class ColorPaint : Paint
+{
+    private FVec4 _color;
+
+    /// Initialize with opaque black.
+    this ()
+    {
+        super(PaintType.color);
+        _color = [ 0, 0, 0, 1 ];
+    }
+    /// Initialize with RGBA color
+    this (in float[4] color)
+    {
+        super(PaintType.color);
+        _color = vec(color);
+    }
+    /// ditto
+    this (in FVec4 color)
+    {
+        super(PaintType.color);
+        _color = color;
+    }
+
+    /// Get the color.
+    @property FVec4 color() const
+    {
+        return _color;
+    }
+    /// Set the color.
+    @property void color(in float[4] color)
+    {
+        _color = vec(color);
+        unloadBackendData();
+    }
+    /// Set the color.
+    @property void color(in FVec4 color)
+    {
+        _color = color;
+        unloadBackendData();
+    }
+}
+
+/// Abstract base for gradient paints.
+abstract class GradientPaint : Paint
+{
+    private GradientStop[] _stops;
+    private SpreadMode _spreadMode;
+
+    private this(PaintType type)
+    {
+        super(type);
+    }
+
+    /// Get the color stops.
+    @property const(GradientStop)[] stops() const
+    {
+        return _stops;
+    }
+    /// Set the color stops.
+    @property void stops (GradientStop[] stops)
+    {
+        _stops = stops;
+        unloadBackendData();
+    }
+
+    /// Get the spread mode.
+    @property SpreadMode spreadMode() const
+    {
+        return _spreadMode;
+    }
+    /// Set the spread mode.
+    @property void spreadMode(in SpreadMode spreadMode)
+    {
+        _spreadMode = spreadMode;
+        unloadBackendData();
+    }
+}
+
+/// Gradient that interpolate colors in a linear way between two points.
+/// The color on each point on the line from start to end is projected
+/// orthogonally on both sides of the line.
+class LinearGradientPaint : GradientPaint
+{
+    private FVec2 _start;
+    private FVec2 _end;
+
+    this()
+    {
+        super(PaintType.linearGradient);
+    }
+    this (in FVec2 start, in FVec2 end, GradientStop[] stops)
+    {
+        super(PaintType.linearGradient);
+        _start = start;
+        _end = end;
+        _stops = stops;
+    }
+
+    /// Get the start point (offset 0).
+    @property FVec2 start() const
+    {
+        return _start;
+    }
+    /// Set the start point (offset 0).
+    @property void start(in FVec2 start)
+    {
+        _start = start;
+        unloadBackendData();
+    }
+
+    /// Get the end point (offset 1).
+    @property FVec2 end() const
+    {
+        return _end;
+    }
+    /// Set the end point (offset 1).
+    @property void end(in FVec2 end)
+    {
+        _end = end;
+        unloadBackendData();
+    }
+}
+
+/// Gradient paint that interpolates the color defined in stops between a focal
+/// point and a circle.
+class RadialGradientPaint : GradientPaint
+{
+    private FVec2 _focal;
+    private FVec2 _center;
+    private float _radius;
+
+    this()
+    {
+        super(PaintType.radialGradient);
+    }
+
+    this (in FVec2 focal, in FVec2 center, in float radius, GradientStop[] stops)
+    {
+        super(PaintType.radialGradient);
+        _focal = focal;
+        _center = center;
+        _radius = radius;
+        _stops = stops;
+    }
+
+    @property FVec2 focal() const
+    {
+        return _focal;
+    }
+    @property void focal(in FVec2 focal)
+    {
+        _focal = focal;
+        unloadBackendData();
+    }
+
+    @property FVec2 center() const
+    {
+        return _center;
+    }
+    @property void center(in FVec2 center)
+    {
+        _center = center;
+        unloadBackendData();
+    }
+
+    @property float radius() const
+    {
+        return _radius;
+    }
+    @property void radius(in float radius)
+    {
+        _radius = radius;
+        unloadBackendData();
+    }
+}
+
+/// A Paint that will paint image data (a.k.a. texture).
+class TexturePaint : Paint
+{
+    private Rc!VgTexture _tex;
+
+    this()
+    {
+        super(PaintType.texture);
+    }
+    this(VgTexture tex)
+    {
+        super(PaintType.texture);
+        _tex = tex;
+    }
+
+    override void dispose()
+    {
+        _tex.unload();
+        super.dispose();
+    }
+
+    @property inout(VgTexture) texture() inout
+    {
+        return _tex.obj;
+    }
+    @property void texture(VgTexture texture)
+    {
+        _tex = texture;
+        unloadBackendData();
+    }
 }

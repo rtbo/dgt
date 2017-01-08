@@ -1,12 +1,15 @@
 module dgt.vg.backend.cairo;
 
-import dgt.core.resource;
 import dgt.vg;
+import dgt.core.resource;
+import dgt.math.vec;
+import dgt.core.typecons : hash;
 import dgt.surface;
 import dgt.image;
 import dgt.geometry;
 import dgt.bindings.cairo;
 
+import std.typecons : Flag, Yes, No;
 import std.exception : enforce;
 import std.experimental.logger;
 
@@ -38,6 +41,10 @@ static @property CairoBackend cairoBackend()
     return _cairoBackend;
 }
 
+/// Unique identifier of the cairo backend.
+public enum cairoUid = hash!"dgt.vg.backend.cairo";
+static assert(cairoUid != 0);
+
 
 private class CairoBackend : VgBackend
 {
@@ -46,8 +53,7 @@ private class CairoBackend : VgBackend
 
     override @property size_t uid() const
     {
-        import dgt.core.typecons : hash;
-        return hash!"cairo";
+        return cairoUid;
     }
 
     override @property string name() const
@@ -64,110 +70,8 @@ private class CairoBackend : VgBackend
     {
         return new CairoContext(enforce(cast(CairoSurface) surf));
     }
-
-    override Paint createPaint()
-    {
-        return new CairoPaint();
-    }
 }
 
-pure @safe
-{
-    /// map ImageFormat to cairo_format_t
-    public cairo_format_t cairoFormat(in ImageFormat ifmt)
-    {
-        switch (ifmt)
-        {
-        case ImageFormat.a1:
-            return CAIRO_FORMAT_A1;
-        case ImageFormat.a8:
-            return CAIRO_FORMAT_A8;
-        case ImageFormat.rgb:
-            return CAIRO_FORMAT_RGB24;
-        case ImageFormat.argbPremult:
-            return CAIRO_FORMAT_ARGB32;
-        default:
-            import std.format : format;
-            throw new Exception(
-                format("ImageFormat.%s is not supported by cairo", ifmt)
-            );
-        }
-    }
-
-    private cairo_fill_rule_t cairoFillRule(in FillRule fillRule)
-    {
-        final switch (fillRule)
-        {
-        case FillRule.NonZero:
-            return CAIRO_FILL_RULE_WINDING;
-        case FillRule.EvenOdd:
-            return CAIRO_FILL_RULE_EVEN_ODD;
-        }
-    }
-
-    private FillRule dgtFillRule(in cairo_fill_rule_t fillRule)
-    {
-        final switch (fillRule)
-        {
-        case CAIRO_FILL_RULE_WINDING:
-            return FillRule.NonZero;
-        case CAIRO_FILL_RULE_EVEN_ODD:
-            return FillRule.EvenOdd;
-        }
-    }
-
-    private cairo_line_cap_t cairoLineCap(in LineCap cap)
-    {
-        final switch (cap)
-        {
-        case LineCap.butt:
-            return CAIRO_LINE_CAP_BUTT;
-        case LineCap.round:
-            return CAIRO_LINE_CAP_ROUND;
-        case LineCap.square:
-            return CAIRO_LINE_CAP_SQUARE;
-        }
-    }
-
-    private LineCap dgtLineCap(in cairo_line_cap_t cap)
-    {
-        final switch (cap)
-        {
-        case CAIRO_LINE_CAP_BUTT:
-            return LineCap.butt;
-        case CAIRO_LINE_CAP_ROUND:
-            return LineCap.round;
-        case CAIRO_LINE_CAP_SQUARE:
-            return LineCap.square;
-        }
-    }
-
-    private cairo_line_join_t cairoLineJoin(in LineJoin val)
-    {
-        final switch (val)
-        {
-        case LineJoin.miter:
-            return CAIRO_LINE_JOIN_MITER;
-        case LineJoin.round:
-            return CAIRO_LINE_JOIN_ROUND;
-        case LineJoin.bevel:
-            return CAIRO_LINE_JOIN_BEVEL;
-        }
-    }
-
-    private LineJoin dgtLineJoin(in cairo_line_join_t val)
-    {
-        final switch (val)
-        {
-        case CAIRO_LINE_JOIN_MITER:
-            return LineJoin.miter;
-        case CAIRO_LINE_JOIN_ROUND:
-            return LineJoin.round;
-        case CAIRO_LINE_JOIN_BEVEL:
-            return LineJoin.bevel;
-        }
-    }
-}
 
 /// Context state tracked explicitely, that is not handled by cairo,
 /// or just easier to track that way.
@@ -187,7 +91,7 @@ class CairoContext : VgContext
 
     private Rc!CairoSurface _surface;
     private cairo_t* _cairo;
-    private Rc!CairoPaint _defaultSrc;
+    private Rc!Paint _defaultPaint;
     private State _currentState;
     private GrowableStack!State _stateStack;
 
@@ -197,18 +101,20 @@ class CairoContext : VgContext
         _cairo = cairo_create(_surface.cairoSurf);
 
         auto defaultSrc = cairo_get_source(_cairo);
+        Paint defaultPaint;
         if (defaultSrc)
         {
-            _defaultSrc = makeRc!CairoPaint(defaultSrc);
+            defaultPaint = paintFromCairoPattern(
+                new CairoPattern(defaultSrc, Yes.addRef)
+            );
         }
         else
         {
-            _defaultSrc = makeRc!CairoPaint();
-            _defaultSrc.color = [ 0, 0, 0, 1 ];
+            defaultPaint = new ColorPaint( fvec(0, 0, 0, 1) );
         }
 
-        _currentState.fill = _defaultSrc;
-        _currentState.stroke = _defaultSrc;
+        _currentState.fill = defaultPaint;
+        _currentState.stroke = defaultPaint;
         cairo_matrix_t cm;
         cairo_get_matrix(_cairo, &cm);
         _currentState.transform = Transform (
@@ -221,7 +127,7 @@ class CairoContext : VgContext
     {
         // That is quite ugly but unfortunately necessary to preserve constness
         // to the application. The backend has responsibility to not abuse it
-        // and using the cast only for getters.
+        // and using the const cast only for getters.
         return cast(cairo_t*) _cairo;
     }
 
@@ -240,7 +146,6 @@ class CairoContext : VgContext
                 _stateStack.pop();
             }
         }
-        _defaultSrc.unload();
         _currentState = State.init; // release the state
         cairo_destroy(_cairo);
         _surface.unload();
@@ -411,7 +316,7 @@ class CairoContext : VgContext
         scope(exit)
             cairo_pattern_destroy(imgPatt);
 
-        setSource(cast(CairoPaint)_currentState.fill.obj);
+        setPaint(_currentState.fill.obj);
         cairo_mask(cairo, imgPatt);
     }
 
@@ -429,7 +334,7 @@ class CairoContext : VgContext
         // FIXME: pattern transform at cairo_set_source time
         if (fill)
         {
-            setSource(cast(CairoPaint) _currentState.fill.obj);
+            setPaint(_currentState.fill.obj);
             if (stroke)
                 cairo_fill_preserve(cairo);
             else
@@ -437,7 +342,7 @@ class CairoContext : VgContext
         }
         if (stroke)
         {
-            setSource(cast(CairoPaint) _currentState.stroke.obj);
+            setPaint(_currentState.stroke.obj);
             cairo_stroke(cairo);
         }
     }
@@ -488,212 +393,284 @@ class CairoContext : VgContext
         }
     }
 
-    private void setSource(CairoPaint paint)
+    private void setPaint(Paint paint)
     {
-        if (paint)
+        assert(paint !is null);
+        auto cp = cairoPatternFromPaint(paint);
+        cairo_set_source(cairo, cp.pattern);
+    }
+}
+
+
+pure @safe
+{
+    /// map ImageFormat to cairo_format_t
+    public cairo_format_t cairoFormat(in ImageFormat ifmt)
+    {
+        switch (ifmt)
         {
-            cairo_set_source(cairo, paint.pattern);
+        case ImageFormat.a1:
+            return CAIRO_FORMAT_A1;
+        case ImageFormat.a8:
+            return CAIRO_FORMAT_A8;
+        case ImageFormat.rgb:
+            return CAIRO_FORMAT_RGB24;
+        case ImageFormat.argbPremult:
+            return CAIRO_FORMAT_ARGB32;
+        default:
+            import std.format : format;
+            throw new Exception(
+                format("ImageFormat.%s is not supported by cairo", ifmt)
+            );
         }
-        else
+    }
+
+    private float[4] quadToCubicControlPoints(in float[2] start,
+                                            in float[2] control,
+                                            in float[2] end) pure nothrow @safe @nogc
+    {
+        return [
+            start[0] / 3f + control[0] * 2f / 3f,
+            start[1] / 3f + control[1] * 2f / 3f,
+            end[0] / 3f + control[0] * 2f / 3f,
+            end[1] / 3f + control[1] * 2f / 3f
+        ];
+    }
+
+    private cairo_fill_rule_t cairoFillRule(in FillRule fillRule)
+    {
+        final switch (fillRule)
         {
-            cairo_set_source(cairo, _defaultSrc.pattern);
+        case FillRule.NonZero:
+            return CAIRO_FILL_RULE_WINDING;
+        case FillRule.EvenOdd:
+            return CAIRO_FILL_RULE_EVEN_ODD;
+        }
+    }
+
+    private FillRule dgtFillRule(in cairo_fill_rule_t fillRule)
+    {
+        final switch (fillRule)
+        {
+        case CAIRO_FILL_RULE_WINDING:
+            return FillRule.NonZero;
+        case CAIRO_FILL_RULE_EVEN_ODD:
+            return FillRule.EvenOdd;
+        }
+    }
+
+    private cairo_line_cap_t cairoLineCap(in LineCap cap)
+    {
+        final switch (cap)
+        {
+        case LineCap.butt:
+            return CAIRO_LINE_CAP_BUTT;
+        case LineCap.round:
+            return CAIRO_LINE_CAP_ROUND;
+        case LineCap.square:
+            return CAIRO_LINE_CAP_SQUARE;
+        }
+    }
+
+    private LineCap dgtLineCap(in cairo_line_cap_t cap)
+    {
+        final switch (cap)
+        {
+        case CAIRO_LINE_CAP_BUTT:
+            return LineCap.butt;
+        case CAIRO_LINE_CAP_ROUND:
+            return LineCap.round;
+        case CAIRO_LINE_CAP_SQUARE:
+            return LineCap.square;
+        }
+    }
+
+    private cairo_line_join_t cairoLineJoin(in LineJoin val)
+    {
+        final switch (val)
+        {
+        case LineJoin.miter:
+            return CAIRO_LINE_JOIN_MITER;
+        case LineJoin.round:
+            return CAIRO_LINE_JOIN_ROUND;
+        case LineJoin.bevel:
+            return CAIRO_LINE_JOIN_BEVEL;
+        }
+    }
+
+    private LineJoin dgtLineJoin(in cairo_line_join_t val)
+    {
+        final switch (val)
+        {
+        case CAIRO_LINE_JOIN_MITER:
+            return LineJoin.miter;
+        case CAIRO_LINE_JOIN_ROUND:
+            return LineJoin.round;
+        case CAIRO_LINE_JOIN_BEVEL:
+            return LineJoin.bevel;
         }
     }
 }
 
-private float[4] quadToCubicControlPoints(in float[2] start,
-                                          in float[2] control,
-                                          in float[2] end) pure nothrow @safe @nogc
+private void patternAddStops(cairo_pattern_t* patt, in GradientStop[] stops)
 {
-    return [
-        start[0] / 3f + control[0] * 2f / 3f,
-        start[1] / 3f + control[1] * 2f / 3f,
-        end[0] / 3f + control[0] * 2f / 3f,
-        end[1] / 3f + control[1] * 2f / 3f
-    ];
+    foreach (stop; stops)
+    {
+        cairo_pattern_add_color_stop_rgba(patt, stop.offset,
+                stop.color[0], stop.color[1], stop.color[2], stop.color[3]);
+    }
 }
 
-/// Paint implementation of Cairo
-final class CairoPaint : Paint
+private GradientStop[] patternGetStops(cairo_pattern_t* patt)
+{
+    import std.array : uninitializedArray;
+    int stopCount = void;
+    cairo_pattern_get_color_stop_count(patt, &stopCount);
+    auto stops = uninitializedArray!(GradientStop[])(stopCount);
+    foreach (i; 0 .. stopCount)
+    {
+        double offset=void, r=void, g=void, b=void, a=void;
+        cairo_pattern_get_color_stop_rgba(patt, i, &offset, &r, &g, &b, &a);
+        stops[i] = GradientStop(cast(float) offset, fvec(r, g, b, a));
+    }
+    return stops;
+}
+
+private SpreadMode patternSpreadMode(in cairo_extend_t extend)
+{
+    final switch (extend)
+    {
+    case CAIRO_EXTEND_NONE:
+        return SpreadMode.none;
+    case CAIRO_EXTEND_PAD:
+        return SpreadMode.pad;
+    case CAIRO_EXTEND_REPEAT:
+        return SpreadMode.reflect;
+    case CAIRO_EXTEND_REFLECT:
+        return SpreadMode.reflect;
+    }
+}
+
+private cairo_extend_t paintPatternExtend(in SpreadMode mode)
+{
+    final switch (mode)
+    {
+    case SpreadMode.none:
+        return CAIRO_EXTEND_NONE;
+    case SpreadMode.pad:
+        return CAIRO_EXTEND_PAD;
+    case SpreadMode.repeat:
+        return CAIRO_EXTEND_REPEAT;
+    case SpreadMode.reflect:
+        return CAIRO_EXTEND_REFLECT;
+    }
+}
+
+private Paint paintFromCairoPattern(CairoPattern cp)
+{
+    cairo_pattern_t* patt = cp.pattern;
+    Paint paint;
+    final switch(cairo_pattern_get_type(patt))
+    {
+    case CAIRO_PATTERN_TYPE_SOLID:
+        double r=void, g=void, b=void, a=void;
+        cairo_pattern_get_rgba(patt, &r, &g, &b, &a);
+        paint = new ColorPaint(fvec(r, g, b, a));
+        break;
+    case CAIRO_PATTERN_TYPE_LINEAR:
+        auto stops = patternGetStops(patt);
+        double xs=void, ys=void, xe=void, ye=void;
+        cairo_pattern_get_linear_points(patt, &xs, &ys, &xe, &ye);
+        auto lgp = new LinearGradientPaint(fvec(xs, ys), fvec(xe, ye), stops);
+        lgp.spreadMode = patternSpreadMode(
+            cairo_pattern_get_extend(patt)
+        );
+        paint = lgp;
+        break;
+    case CAIRO_PATTERN_TYPE_RADIAL:
+        import dgt.math.approx : approxUlpAndAbs;
+        auto stops = patternGetStops(patt);
+        double x0 = void, y0 = void, x1 = void, y1 = void;
+        double r0 = void, r1 = void;
+        cairo_pattern_get_radial_circles(patt, &x0, &y0, &r0, &x1, &y1, &r1);
+        assert(approxUlpAndAbs(r0, 0.0));
+        auto rgp = new RadialGradientPaint(fvec(x0, y0), fvec(x1, y1), cast(float)r1, stops);
+        rgp.spreadMode = patternSpreadMode(
+            cairo_pattern_get_extend(patt)
+        );
+        paint = rgp;
+        break;
+    case CAIRO_PATTERN_TYPE_SURFACE:
+        assert(false, "unimplemented");
+    case CAIRO_PATTERN_TYPE_MESH:
+        assert(false, "unsupported");
+    case CAIRO_PATTERN_TYPE_RASTER_SOURCE:
+        assert(false, "unsupported");
+    }
+    paint.setBackendData(cairoUid, cp);
+    return paint;
+}
+
+private CairoPattern cairoPatternFromPaint(Paint paint)
+{
+    import dgt.core.util : unsafeCast;
+    auto pbd = paint.backendData(cairoUid);
+    if (pbd)
+    {
+        return unsafeCast!CairoPattern(pbd);
+    }
+    else
+    {
+        cairo_pattern_t* patt;
+        switch (paint.type)
+        {
+        case PaintType.color:
+            auto cp = unsafeCast!ColorPaint(paint);
+            immutable c = cp.color;
+            patt = cairo_pattern_create_rgba(c[0], c[1], c[2], c[3]);
+            break;
+        case PaintType.linearGradient:
+            auto lgp = unsafeCast!LinearGradientPaint(paint);
+            immutable s = lgp.start;
+            immutable e = lgp.end;
+            patt = cairo_pattern_create_linear(s[0], s[1], e[0], e[1]);
+            patternAddStops(patt, lgp.stops);
+            break;
+        case PaintType.radialGradient:
+            auto rgp = unsafeCast!RadialGradientPaint(paint);
+            immutable f = rgp.focal;
+            immutable c = rgp.center;
+            immutable r = rgp.radius;
+            patt = cairo_pattern_create_radial(f[0], f[1], 0.0, c[0], c[1], r);
+            patternAddStops(patt, rgp.stops);
+            break;
+        default:
+            assert(false, "unimplemented");
+        }
+        auto cp = new CairoPattern(patt, No.addRef);
+        paint.setBackendData(cairoUid, cp);
+        return cp;
+    }
+}
+
+private class CairoPattern : RefCounted
 {
     mixin(rcCode);
 
-    private cairo_pattern_t* _pattern;
+    private cairo_pattern_t* pattern;
 
-    /// Build an virgin paint.
-    this() {}
-
-    /// Build a paint from an existing pattern.
-    this(cairo_pattern_t* pattern)
+    this(cairo_pattern_t* pattern, Flag!"addRef" addRef)
     {
-        _pattern = pattern;
-        cairo_pattern_reference(_pattern);
+        this.pattern = pattern;
+        if (addRef) cairo_pattern_reference(pattern);
     }
 
     override void dispose()
     {
-        if (_pattern)
+        if (pattern)
         {
-            cairo_pattern_destroy(_pattern);
-            _pattern = null;
-        }
-    }
-
-    override @property PaintType type() const
-    {
-        immutable cairoType = cairo_pattern_get_type(enforce(pattern));
-        final switch (cairoType)
-        {
-        case CAIRO_PATTERN_TYPE_SOLID:
-            return PaintType.color;
-        case CAIRO_PATTERN_TYPE_LINEAR:
-            return PaintType.linearGradient;
-        case CAIRO_PATTERN_TYPE_RADIAL:
-            return PaintType.radialGradient;
-        case CAIRO_PATTERN_TYPE_SURFACE:
-            assert(false, "unimplemented");
-        case CAIRO_PATTERN_TYPE_MESH:
-            assert(false, "unsupported");
-        case CAIRO_PATTERN_TYPE_RASTER_SOURCE:
-            assert(false, "unsupported");
-        }
-    }
-
-    override @property float[4] color() const
-    {
-        enforce(type == PaintType.color);
-        double r;
-        double g;
-        double b;
-        double a;
-        cairo_pattern_get_rgba(pattern, &r, &g, &b, &a);
-        return [cast(float) r, cast(float) g, cast(float) b, cast(float) a];
-    }
-
-    override @property void color(in float[4] color)
-    {
-        enforce(!_pattern);
-        _pattern = cairo_pattern_create_rgba(color[0], color[1], color[2], color[3]);
-    }
-
-    override @property LinearGradient linearGradient() const
-    {
-        enforce(type == PaintType.linearGradient);
-        LinearGradient gradient;
-        double x0 = void, y0 = void, x1 = void, y1 = void;
-        cairo_pattern_get_linear_points(pattern, &x0, &y0, &x1, &y1);
-        gradient.p0 = [cast(float) x0, cast(float) y0];
-        gradient.p1 = [cast(float) x1, cast(float) y1];
-        gradient.stops = getStops();
-        return gradient;
-    }
-
-    override @property void linearGradient(in LinearGradient gradient)
-    {
-        enforce(!_pattern);
-        _pattern = cairo_pattern_create_linear(gradient.p0[0], gradient.p0[1],
-                gradient.p1[0], gradient.p1[1]);
-        addStops(gradient.stops);
-    }
-
-    // OpenVG radial gradients bind in the following way
-    // OpenVG       Cairo
-    // focal        start circle (start circle radius = 0)
-    // center       end circle
-    // radius       end circle radius
-    override @property RadialGradient radialGradient() const
-    {
-        import dgt.math.approx : approxUlp;
-
-        enforce(type == PaintType.radialGradient);
-        RadialGradient gradient;
-        double x0 = void, y0 = void, x1 = void, y1 = void;
-        double r0 = void, r1 = void;
-        cairo_pattern_get_radial_circles(pattern, &x0, &y0, &r0, &x1, &y1, &r1);
-        gradient.f = [cast(float) x0, cast(float) y0];
-        assert(approxUlp(r0, 0f));
-        gradient.c = [cast(float) x1, cast(float) y1];
-        gradient.r = cast(float) r1;
-        gradient.stops = getStops();
-        return gradient;
-    }
-
-    override @property void radialGradient(in RadialGradient gradient)
-    {
-        assert(!_pattern);
-        _pattern = cairo_pattern_create_radial(gradient.f[0], gradient.f[1],
-                0.0, gradient.c[0], gradient.c[1], gradient.r);
-        addStops(gradient.stops);
-    }
-
-    override @property SpreadMode spreadMode() const
-    {
-        immutable extend = cairo_pattern_get_extend(pattern);
-        final switch (extend)
-        {
-        case cairo_extend_t.CAIRO_EXTEND_NONE:
-            return SpreadMode.none;
-        case cairo_extend_t.CAIRO_EXTEND_PAD:
-            return SpreadMode.pad;
-        case cairo_extend_t.CAIRO_EXTEND_REPEAT:
-            return SpreadMode.reflect;
-        case cairo_extend_t.CAIRO_EXTEND_REFLECT:
-            return SpreadMode.reflect;
-        }
-    }
-
-    override @property void spreadMode(in SpreadMode spreadMode)
-    {
-        final switch (spreadMode)
-        {
-        case SpreadMode.none:
-            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_NONE);
-            break;
-        case SpreadMode.pad:
-            cairo_pattern_set_extend(pattern, cairo_extend_t.CAIRO_EXTEND_PAD);
-            break;
-        case SpreadMode.repeat:
-            cairo_pattern_set_extend(pattern,
-                    cairo_extend_t.CAIRO_EXTEND_REPEAT);
-            break;
-        case SpreadMode.reflect:
-            cairo_pattern_set_extend(pattern,
-                    cairo_extend_t.CAIRO_EXTEND_REFLECT);
-            break;
-        }
-    }
-
-    private @property cairo_pattern_t* pattern() const
-    {
-        return cast(cairo_pattern_t*) _pattern;
-    }
-
-    private @property cairo_pattern_t* pattern()
-    {
-        return _pattern;
-    }
-
-    private GradientStop[] getStops() const
-    {
-        int stopCount = void;
-        cairo_pattern_get_color_stop_count(pattern, &stopCount);
-        auto stops = new GradientStop[stopCount];
-        foreach (i; 0 .. stopCount)
-        {
-            double offset = void, r = void, g = void, b = void, a = void;
-            cairo_pattern_get_color_stop_rgba(pattern, i, &offset, &r, &g, &b, &a);
-            stops[i] = GradientStop(cast(float) offset, [cast(float) r,
-                    cast(float) g, cast(float) b, cast(float) a]);
-        }
-        return stops;
-    }
-
-    private void addStops(in GradientStop[] stops)
-    {
-        foreach (stop; stops)
-        {
-            cairo_pattern_add_color_stop_rgba(pattern, stop.offset,
-                    stop.color[0], stop.color[1], stop.color[2], stop.color[3]);
+            cairo_pattern_destroy(pattern);
+            pattern = null;
         }
     }
 }

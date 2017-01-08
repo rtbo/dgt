@@ -38,9 +38,6 @@ interface VgBackend : Disposable
     /// Surface.backend is guaranteed to support the surface it is issued from,
     /// though there could be other backends supporting it.
     VgContext createContext(VgSurface surf);
-
-    /// Create a paint usable with context created by the same backend.
-    Paint createPaint();
 }
 
 /// Create a graphics context associated with a surface.
