@@ -5,6 +5,7 @@ public import dgt.vg.paint;
 public import dgt.vg.path;
 import dgt.core.resource;
 import dgt.geometry;
+import dgt.image : Pixels, ImageFormat;
 
 /// A surface to render vector graphics on.
 interface VgSurface : RefCounted
@@ -17,6 +18,23 @@ interface VgSurface : RefCounted
 
     /// Finalize pending operations before returning.
     void flush();
+}
+
+/// An surface that contain image data that can be painted into
+/// other surfaces.
+/// VgTexture being surfaces, they can also be painted into.
+/// At the difference of other surfaces, texture can be initialized directly
+/// with pixel data.
+interface VgTexture : VgSurface
+{
+    /// The pixel format of the texture
+    @property ImageFormat format() const;
+    /// Resets the pixels of the texture.
+    /// After the call, the texture will have the same size as the image.
+    void setPixels(in Pixels pixels);
+    /// Update a part of the pixels. The texture size is not updated.
+    /// An exception is thrown if one of the size is not compatible.
+    void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea);
 }
 
 /// A vector graphics backend.
@@ -38,6 +56,9 @@ interface VgBackend : Disposable
     /// Surface.backend is guaranteed to support the surface it is issued from,
     /// though there could be other backends supporting it.
     VgContext createContext(VgSurface surf);
+
+    /// Create a texture from the provided pixels.
+    VgTexture createTexture(in Pixels pixels);
 }
 
 /// Create a graphics context associated with a surface.

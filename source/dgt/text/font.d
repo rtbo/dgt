@@ -6,6 +6,7 @@ import dgt.math.vec;
 import dgt.core.resource;
 import dgt.core.util;
 import dgt.bindings.harfbuzz;
+import dgt.vg;
 
 import derelict.freetype.ft;
 
@@ -107,19 +108,29 @@ class Font : RefCounted
     {
         hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
-        // GC help in case this font is retained somewhere after disposal
-        // (which should not be the case)
-        _rasterizedCache = null;
+        foreach(rg; _rasterizedCache)
+        {
+            if (rg) rg.release();
+        }
     }
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
-    RasterizedGlyph rasterizeGlyph(size_t glyphIndex)
+    RasterizedGlyph rasterizeGlyph(size_t glyphIndex, VgBackend backend)
     {
         RasterizedGlyph* pg = glyphIndex in _rasterizedCache;
-        if (pg) return *pg;
+        if (pg && *pg && pg.backendUid == backend.uid)
+        {
+            return *pg;
+        }
+        if (pg && !(*pg))
+        {
+            // null was inserted in the cache, likely a space.
+            return null;
+        }
 
-        auto g = rasterize(glyphIndex);
+        auto g = rasterize(glyphIndex, backend);
+        if (g) g.retain();
         _rasterizedCache[glyphIndex] = g;
         return g;
     }
@@ -142,7 +153,7 @@ class Font : RefCounted
         return _hbFont;
     }
 
-    private RasterizedGlyph rasterize(size_t glyphIndex)
+    private RasterizedGlyph rasterize(size_t glyphIndex, VgBackend backend)
     {
         import std.math : abs;
         import std.algorithm : min;
@@ -152,35 +163,20 @@ class Font : RefCounted
         auto slot = _ftFace.glyph;
         auto bitmap = slot.bitmap;
 
-        ubyte *srcData = bitmap.buffer;
-        immutable srcStride = abs(bitmap.pitch);
-        if (srcStride == 0)
+        immutable stride = abs(bitmap.pitch);
+
+        if (stride == 0)
         {
             // likely a space
             return null;
         }
-
-        immutable destStride = ImageFormat.a8.bytesForWidth(bitmap.width);
-        ubyte[] destData = new ubyte[bitmap.rows * destStride];
-
-        immutable copyStride = min(srcStride, destStride);
-
-        foreach (r; 0 .. bitmap.rows)
-        {
-            immutable srcOffset = r * srcStride;
-            immutable destLine = bitmap.pitch > 0 ? r : bitmap.rows-r-1;
-            immutable destOffset = destLine * destStride;
-            destData[destOffset .. destOffset+copyStride] =
-                srcData[srcOffset .. srcOffset+copyStride ];
-            if (copyStride < destStride)
-            {
-                // padding stride to zero, probably not necessary
-                destData[destOffset+copyStride .. destOffset+destStride] = 0;
-            }
-        }
-        auto img = new Image(destData, ImageFormat.a8, bitmap.width, destStride);
-        assert(img.size.height == bitmap.rows);
-        return new RasterizedGlyph(img, vec(slot.bitmap_left, slot.bitmap_top));
+        // Pixels is (purposely) compatible with FreeType bitmap
+        auto pixels = Pixels(ImageFormat.a8, bitmap.buffer[0 .. bitmap.rows*stride],
+                            bitmap.pitch, bitmap.width, bitmap.rows);
+        auto tex = backend.createTexture(pixels);
+        return new RasterizedGlyph(
+            tex, vec(slot.bitmap_left, slot.bitmap_top), backend.uid
+        );
     }
 
     private FT_Face _ftFace;
@@ -189,20 +185,29 @@ class Font : RefCounted
 }
 
 /// A glyph rasterized in a bitmap
-class RasterizedGlyph
+class RasterizedGlyph : RefCounted
 {
-    private Image _bitmap;
-    private @property IVec2 _bearing;
+    mixin(rcCode);
 
-    this (Image bitmap, in IVec2 bearing)
+    private Rc!VgTexture _bitmapTex;
+    private @property IVec2 _bearing;
+    private size_t backendUid;
+
+    this (VgTexture bitmapTex, in IVec2 bearing, in size_t backendUid)
     {
-        _bitmap = bitmap;
+        _bitmapTex = bitmapTex;
         _bearing = bearing;
+        this.backendUid = backendUid;
     }
 
-    @property inout(Image) bitmap() inout
+    override void dispose()
     {
-        return _bitmap;
+        _bitmapTex.unload();
+    }
+
+    @property inout(VgTexture) bitmapTex() inout
+    {
+        return _bitmapTex;
     }
 
     @property IVec2 bearing() const

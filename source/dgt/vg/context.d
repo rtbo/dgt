@@ -61,6 +61,9 @@ void sandbox(alias dg)(VgContext ctx)
 /// A vector graphics context.
 interface VgContext : RefCounted
 {
+    /// Get the backend associated with this context.
+    @property inout(VgBackend) backend() inout;
+
     /// Get the surface this context is drawing on.
     @property inout(VgSurface) surface() inout;
 
@@ -118,10 +121,10 @@ interface VgContext : RefCounted
     @property inout(Paint) strokePaint() inout;
     @property void strokePaint(Paint paint);
 
-    /// Mask the surface with the alpha plane of the image and paint it
-    /// with the current fill paint. Format must be either ImageFormat.a1 or
+    /// Mask the surface with the alpha plane of the texture and paint it
+    /// with the current fill paint. tex.format must be either ImageFormat.a1 or
     /// ImageFormat.a8.
-    void mask(Image img);
+    void mask(VgTexture tex);
 
     /// Clear the whole clipping area with the provided color.
     /// This is equivalent has filling the clip path with a color Paint,

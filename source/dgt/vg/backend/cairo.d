@@ -22,7 +22,6 @@ interface CairoSurface : VgSurface
     @property cairo_surface_t* cairoSurf();
 }
 
-
 private __gshared CairoBackend _cairoBackend;
 
 shared static this()
@@ -68,7 +67,12 @@ private class CairoBackend : VgBackend
 
     override VgContext createContext(VgSurface surf)
     {
-        return new CairoContext(enforce(cast(CairoSurface) surf));
+        return new CairoContext(this, enforce(cast(CairoSurface) surf));
+    }
+
+    override VgTexture createTexture(in Pixels pixels)
+    {
+        return new CairoImgSurf(pixels);
     }
 }
 
@@ -89,14 +93,16 @@ class CairoContext : VgContext
 
     mixin(rcCode);
 
+    private CairoBackend _backend;
     private Rc!CairoSurface _surface;
     private cairo_t* _cairo;
     private Rc!Paint _defaultPaint;
     private State _currentState;
     private GrowableStack!State _stateStack;
 
-    this(CairoSurface surface)
+    this(CairoBackend backend, CairoSurface surface)
     {
+        _backend = backend;
         _surface = surface;
         _cairo = cairo_create(_surface.cairoSurf);
 
@@ -149,6 +155,11 @@ class CairoContext : VgContext
         _currentState = State.init; // release the state
         cairo_destroy(_cairo);
         _surface.unload();
+    }
+
+    override @property inout(VgBackend) backend() inout
+    {
+        return _backend;
     }
 
     override @property inout(VgSurface) surface() inout
@@ -304,20 +315,19 @@ class CairoContext : VgContext
         cairo_reset_clip(cairo);
     }
 
-    override void mask(Image img)
+    override void mask(VgTexture tex)
     {
-        auto imgSurf = cairo_image_surface_create_for_data(img.data.ptr,
-            CAIRO_FORMAT_A8, img.width, img.height, cast(int)img.stride
+        auto cis = enforce(cast(CairoImgSurf)tex,
+            "VgTexture of type "~typeid(tex).toString()~
+            " is not usable with a cairo context"
         );
-        scope(exit)
-            cairo_surface_destroy(imgSurf);
 
-        auto imgPatt = cairo_pattern_create_for_surface(imgSurf);
+        auto patt = cairo_pattern_create_for_surface(cis.cairoSurf);
         scope(exit)
-            cairo_pattern_destroy(imgPatt);
+            cairo_pattern_destroy(patt);
 
         setPaint(_currentState.fill.obj);
-        cairo_mask(cairo, imgPatt);
+        cairo_mask(cairo, patt);
     }
 
     override void clear(in float[4] color)
@@ -398,6 +408,72 @@ class CairoContext : VgContext
         assert(paint !is null);
         auto cp = cairoPatternFromPaint(paint);
         cairo_set_source(cairo, cp.pattern);
+    }
+}
+
+
+/// VgTexture implementation for Cairo.
+class CairoImgSurf : CairoSurface, VgTexture
+{
+    mixin(rcCode);
+
+    cairo_surface_t* _surf;
+    Image _img;
+
+    this (Image img)
+    {
+        updateImage(img);
+    }
+
+    this (in Pixels pixels)
+    {
+        updateImage(new Image(pixels));
+    }
+
+    override @property cairo_surface_t* cairoSurf()
+    {
+        return _surf;
+    }
+
+    override void dispose()
+    {
+        cairo_surface_destroy(_surf);
+    }
+
+    override @property VgBackend backend()
+    {
+        return cairoBackend;
+    }
+
+    override @property ISize size() const
+    {
+        return _img.size;
+    }
+
+    override void flush()
+    {
+        cairo_surface_flush(_surf);
+    }
+
+    override @property ImageFormat format() const
+    {
+        return _img.format;
+    }
+
+    override void setPixels(in Pixels pixels)
+    {
+        updateImage(new Image(pixels));
+    }
+
+    override void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea)
+    {}
+
+    private void updateImage(Image img)
+    {
+        _img = img;
+        _surf = cairo_image_surface_create_for_data(img.data.ptr,
+            cairoFormat(img.format), img.width, img.height, cast(int)img.stride
+        );
     }
 }
 

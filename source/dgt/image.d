@@ -252,6 +252,7 @@ class Image
     /// with a software rasterizer.
     VgSurface makeSurface()
     {
+        import dgt.vg.backend.cairo : CairoImgSurf;
         return new CairoImgSurf(this);
     }
 
@@ -419,51 +420,4 @@ unittest
         0xa5, 0x65, 0x53, 0x34,
         0xdb, 0x04, 0xe8, 0x11,
     ]);
-}
-
-private:
-
-import dgt.core.resource;
-import dgt.bindings.cairo;
-import dgt.vg.backend.cairo;
-
-static class CairoImgSurf : CairoSurface
-{
-    mixin(rcCode);
-
-    cairo_surface_t* _surf;
-    Image _img;
-
-    this (Image img)
-    {
-        _img = img;
-        _surf = cairo_image_surface_create_for_data(img.data.ptr,
-            cairoFormat(img.format), img.width, img.height, cast(int)img.stride
-        );
-    }
-
-    @property cairo_surface_t* cairoSurf()
-    {
-        return _surf;
-    }
-
-    override void dispose()
-    {
-        cairo_surface_destroy(_surf);
-    }
-
-    override @property VgBackend backend()
-    {
-        return cairoBackend;
-    }
-
-    override @property ISize size() const
-    {
-        return _img.size;
-    }
-
-    override void flush()
-    {
-        cairo_surface_flush(_surf);
-    }
 }
