@@ -684,6 +684,7 @@ private Paint paintFromCairoPattern(CairoPattern cp)
         assert(false, "unsupported");
     }
     paint.setBackendData(cairoUid, cp);
+    paint._backendDataDirty = false;
     return paint;
 }
 
@@ -691,7 +692,7 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
 {
     import dgt.core.util : unsafeCast;
     auto pbd = paint.backendData(cairoUid);
-    if (pbd)
+    if (pbd && !paint._backendDataDirty)
     {
         return unsafeCast!CairoPattern(pbd);
     }
@@ -725,6 +726,7 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
         }
         auto cp = new CairoPattern(patt, No.addRef);
         paint.setBackendData(cairoUid, cp);
+        paint._backendDataDirty = false;
         return cp;
     }
 }

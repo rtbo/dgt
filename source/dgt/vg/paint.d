@@ -47,8 +47,9 @@ abstract class Paint : RefCounted
     mixin(rcCode);
 
     private PaintType _type;
-    private Rc!RefCounted _backendData;
-    private size_t _backendDataOwner;
+    package(dgt) Rc!RefCounted _backendData;
+    package(dgt) size_t _backendDataOwner;
+    package(dgt) bool _backendDataDirty = true;
 
     private this (PaintType type)
     {
@@ -57,7 +58,9 @@ abstract class Paint : RefCounted
 
     override void dispose()
     {
-        unloadBackendData();
+        _backendData.unload();
+        _backendDataOwner = 0;
+        _backendDataDirty = true;
     }
 
     final @property PaintType type() const
@@ -75,12 +78,6 @@ abstract class Paint : RefCounted
     {
         _backendDataOwner = owner;
         _backendData = data;
-    }
-
-    private void unloadBackendData()
-    {
-        _backendData.unload();
-        _backendDataOwner = 0;
     }
 }
 
@@ -118,13 +115,13 @@ class ColorPaint : Paint
     @property void color(in float[4] color)
     {
         _color = vec(color);
-        unloadBackendData();
+        _backendDataDirty = true;
     }
     /// Set the color.
     @property void color(in FVec4 color)
     {
         _color = color;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 }
 
@@ -148,7 +145,7 @@ abstract class GradientPaint : Paint
     @property void stops (GradientStop[] stops)
     {
         _stops = stops;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 
     /// Get the spread mode.
@@ -160,7 +157,7 @@ abstract class GradientPaint : Paint
     @property void spreadMode(in SpreadMode spreadMode)
     {
         _spreadMode = spreadMode;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 }
 
@@ -193,7 +190,7 @@ class LinearGradientPaint : GradientPaint
     @property void start(in FVec2 start)
     {
         _start = start;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 
     /// Get the end point (offset 1).
@@ -205,7 +202,7 @@ class LinearGradientPaint : GradientPaint
     @property void end(in FVec2 end)
     {
         _end = end;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 }
 
@@ -238,7 +235,7 @@ class RadialGradientPaint : GradientPaint
     @property void focal(in FVec2 focal)
     {
         _focal = focal;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 
     @property FVec2 center() const
@@ -248,7 +245,7 @@ class RadialGradientPaint : GradientPaint
     @property void center(in FVec2 center)
     {
         _center = center;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 
     @property float radius() const
@@ -258,7 +255,7 @@ class RadialGradientPaint : GradientPaint
     @property void radius(in float radius)
     {
         _radius = radius;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 }
 
@@ -290,6 +287,6 @@ class TexturePaint : Paint
     @property void texture(VgTexture texture)
     {
         _tex = texture;
-        unloadBackendData();
+        _backendDataDirty = true;
     }
 }
