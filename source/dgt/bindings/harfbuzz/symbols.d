@@ -1,7 +1,7 @@
 module dgt.bindings.harfbuzz.symbols;
 
 import dgt.bindings.harfbuzz.definitions;
-import dgt.bindings;
+import dgt.bindings.package_old;
 
 import derelict.freetype.ft;
 

@@ -365,7 +365,7 @@ class XcbPlatform : Platform
 
         void initializeVG()
         {
-            import dgt.bindings.cairo;
+            import dgt.bindings.cairo.load : loadCairoSymbols, cairoHasXcb;
             loadCairoSymbols();
             enforce(cairoHasXcb);
         }

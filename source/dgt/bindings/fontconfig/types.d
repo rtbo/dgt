@@ -1,6 +1,6 @@
 module dgt.bindings.fontconfig.types;
 
-import dgt.bindings;
+import dgt.bindings.package_old;
 
 mixin(globalEnumsAliasesCode!(
     FcType,

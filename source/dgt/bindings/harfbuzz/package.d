@@ -2,7 +2,7 @@ module dgt.bindings.harfbuzz;
 
 public import dgt.bindings.harfbuzz.definitions;
 public import dgt.bindings.harfbuzz.symbols;
-import dgt.bindings;
+import dgt.bindings.package_old;
 
 import std.meta : AliasSeq;
 import std.typecons : Yes;

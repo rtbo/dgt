@@ -1,6 +1,6 @@
 module dgt.bindings.fontconfig;
 
-import dgt.bindings;
+import dgt.bindings.package_old;
 public import dgt.bindings.fontconfig.symbols;
 public import dgt.bindings.fontconfig.types;
 

@@ -1,7 +1,7 @@
 module dgt.bindings.fontconfig.symbols;
 
 import dgt.bindings.fontconfig.types;
-import dgt.bindings;
+import dgt.bindings.package_old;
 
 /* fcblanks.c */
 __gshared Symbol!(FcBlanks*,) FcBlanksCreate;

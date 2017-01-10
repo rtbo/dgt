@@ -1,6 +1,6 @@
 module dgt.bindings.harfbuzz.definitions;
 
-import dgt.bindings;
+import dgt.bindings.package_old;
 
 extern(C) nothrow @nogc:
 

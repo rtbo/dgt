@@ -2,36 +2,62 @@ module dgt.bindings.cairo.win32;
 
 version (Windows):
 
-// import dgt.bindings.cairo.types;
-// import dgt.bindings.cairo.enums;
-// import dgt.bindings;
+import dgt.bindings.cairo.types;
+import dgt.bindings.cairo.enums;
 
-// import core.sys.windows.windef;
+import core.sys.windows.windef;
 
-// __gshared Symbol!(cairo_surface_t*, HDC) cairo_win32_surface_create;
+extern(C) nothrow @nogc __gshared
+{
+    cairo_surface_t * function (HDC hdc)
+            cairo_win32_surface_create;
 
-// __gshared Symbol!(cairo_surface_t*, HDC) cairo_win32_printing_surface_create;
+    cairo_surface_t * function (HDC hdc)
+            cairo_win32_printing_surface_create;
 
-// __gshared Symbol!(cairo_surface_t*, HDC, cairo_format_t, int, int) cairo_win32_surface_create_with_ddb;
+    cairo_surface_t * function (HDC hdc,
+                                         cairo_format_t format,
+                                         int width,
+                                         int height)
+            cairo_win32_surface_create_with_ddb;
 
-// __gshared Symbol!(cairo_surface_t*, cairo_format_t, int, int) cairo_win32_surface_create_with_dib;
+    cairo_surface_t * function (cairo_format_t format,
+                                         int width,
+                                         int height)
+            cairo_win32_surface_create_with_dib;
 
-// __gshared Symbol!(HDC, cairo_surface_t*) cairo_win32_surface_get_dc;
+    HDC function (cairo_surface_t *surface)
+            cairo_win32_surface_get_dc;
 
-// __gshared Symbol!(cairo_surface_t*, cairo_surface_t*) cairo_win32_surface_get_image;
+    cairo_surface_t * function (cairo_surface_t *surface)
+            cairo_win32_surface_get_image;
 
-// __gshared Symbol!(cairo_font_face_t*, LOGFONTW*) cairo_win32_font_face_create_for_logfontw;
 
-// __gshared Symbol!(cairo_font_face_t*, HFONT) cairo_win32_font_face_create_for_hfont;
+    cairo_font_face_t * function (LOGFONTW *logfont)
+            cairo_win32_font_face_create_for_logfontw;
 
-// __gshared Symbol!(cairo_font_face_t*, LOGFONTW*, HFONT) cairo_win32_font_face_create_for_logfontw_hfont;
+    cairo_font_face_t * function (HFONT font)
+            cairo_win32_font_face_create_for_hfont;
 
-// __gshared Symbol!(cairo_status_t, cairo_scaled_font_t*, HDC) cairo_win32_scaled_font_select_font;
+    cairo_font_face_t * function (LOGFONTW *logfont, HFONT font)
+            cairo_win32_font_face_create_for_logfontw_hfont;
 
-// __gshared Symbol!(void, cairo_scaled_font_t*) cairo_win32_scaled_font_done_font;
+    cairo_status_t function (cairo_scaled_font_t *scaled_font,
+                         HDC                  hdc)
+            cairo_win32_scaled_font_select_font;
 
-// __gshared Symbol!(double, cairo_scaled_font_t*) cairo_win32_scaled_font_get_metrics_factor;
+    void function (cairo_scaled_font_t *scaled_font)
+            cairo_win32_scaled_font_done_font;
 
-// __gshared Symbol!(void, cairo_scaled_font_t*, cairo_matrix_t*) cairo_win32_scaled_font_get_logical_to_device;
+    double function (cairo_scaled_font_t *scaled_font)
+            cairo_win32_scaled_font_get_metrics_factor;
 
-// __gshared Symbol!(void, cairo_scaled_font_t*, cairo_matrix_t*) cairo_win32_scaled_font_get_device_to_logical;
+    void function (cairo_scaled_font_t *scaled_font,
+                               cairo_matrix_t *logical_to_device)
+            cairo_win32_scaled_font_get_logical_to_device;
+
+    void function (cairo_scaled_font_t *scaled_font,
+                               cairo_matrix_t *device_to_logical)
+            cairo_win32_scaled_font_get_device_to_logical;
+}
+

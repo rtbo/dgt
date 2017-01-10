@@ -4,28 +4,64 @@ version(linux):
 
 import dgt.bindings.cairo.types;
 import dgt.bindings.cairo.enums;
-import dgt.bindings;
 
 import xcb.xcb;
 import xcb.render;
 
-__gshared Symbol!(cairo_surface_t*, xcb_connection_t*, xcb_drawable_t, xcb_visualtype_t*, int, int) cairo_xcb_surface_create;
+extern(C) nothrow @nogc __gshared
+{
+    cairo_surface_t * function (xcb_connection_t	*connection,
+                                xcb_drawable_t	 drawable,
+                                xcb_visualtype_t	*visual,
+                                int			 width,
+                                int			 height)
+            cairo_xcb_surface_create;
 
-// __gshared Symbol!(cairo_surface_t*, xcb_connection_t*, xcb_screen_t*, xcb_pixmap_t, int, int) cairo_xcb_surface_create_for_bitmap;
+    cairo_surface_t * function (xcb_connection_t	*connection,
+                                xcb_screen_t	*screen,
+                                xcb_pixmap_t	 bitmap,
+                                int		 width,
+                                int		 height)
+            cairo_xcb_surface_create_for_bitmap;
 
-// __gshared Symbol!(cairo_surface_t*, xcb_connection_t*, xcb_screen_t*, xcb_drawable_t,
-//         xcb_render_pictforminfo_t*, int, int) cairo_xcb_surface_create_with_xrender_format;
+    cairo_surface_t * function (xcb_connection_t			*connection,
+                                xcb_screen_t			*screen,
+                                xcb_drawable_t			 drawable,
+                                xcb_render_pictforminfo_t		*format,
+                                int				 width,
+                                int				 height)
+            cairo_xcb_surface_create_with_xrender_format;
 
-__gshared Symbol!(void, cairo_surface_t*, int, int) cairo_xcb_surface_set_size;
+    void function (cairo_surface_t *surface,
+                   int		     width,
+                   int		     height)
+            cairo_xcb_surface_set_size;
 
-// __gshared Symbol!(void, cairo_surface_t*, xcb_drawable_t, int, int) cairo_xcb_surface_set_drawable;
+    void function (cairo_surface_t *surface,
+                   xcb_drawable_t	drawable,
+                   int		width,
+                   int		height)
+            cairo_xcb_surface_set_drawable;
 
-// __gshared Symbol!(xcb_connection_t*, cairo_device_t*) cairo_xcb_device_get_connection;
+    xcb_connection_t * function (cairo_device_t *device)
+            cairo_xcb_device_get_connection;
 
-// __gshared Symbol!(void, cairo_device_t*, int, int) cairo_xcb_device_debug_cap_xshm_version;
 
-// __gshared Symbol!(void, cairo_device_t*, int, int) cairo_xcb_device_debug_cap_xrender_version;
+    void function (cairo_device_t *device,
+                   int major_version,
+                   int minor_version)
+            cairo_xcb_device_debug_cap_xshm_version;
 
-// __gshared Symbol!(void, cairo_device_t*, int) cairo_xcb_device_debug_set_precision;
+    void function (cairo_device_t *device,
+                   int major_version,
+                   int minor_version)
+            cairo_xcb_device_debug_cap_xrender_version;
 
-// __gshared Symbol!(int, cairo_device_t*) cairo_xcb_device_debug_get_precision;
+    void function (cairo_device_t *device,
+                   int precision)
+            cairo_xcb_device_debug_set_precision;
+
+    int function (cairo_device_t *device)
+            cairo_xcb_device_debug_get_precision;
+}
+

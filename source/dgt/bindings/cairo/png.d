@@ -2,12 +2,19 @@ module dgt.bindings.cairo.png;
 
 import dgt.bindings.cairo.enums;
 import dgt.bindings.cairo.types;
-import dgt.bindings;
 
-__gshared Symbol!(cairo_status_t, cairo_surface_t*, const(char)*) cairo_surface_write_to_png;
+extern(C) nothrow @nogc __gshared
+{
+    cairo_status_t function (cairo_surface_t* surface, const(char)* filename)
+            cairo_surface_write_to_png;
 
-__gshared Symbol!(cairo_status_t, cairo_surface_t*, cairo_write_func_t, void*) cairo_surface_write_to_png_stream;
+    cairo_status_t function (cairo_surface_t* surface, cairo_write_func_t write_func,
+                             void* closure)
+            cairo_surface_write_to_png_stream;
 
-__gshared Symbol!(cairo_surface_t*, const(char)*) cairo_image_surface_create_from_png;
+    cairo_surface_t* function (const(char)* filename)
+            cairo_image_surface_create_from_png;
 
-__gshared Symbol!(cairo_surface_t*, cairo_read_func_t, void*) cairo_image_surface_create_from_png_stream;
+    cairo_surface_t* function (cairo_read_func_t read_func, void* closure)
+            cairo_image_surface_create_from_png_stream;
+}
