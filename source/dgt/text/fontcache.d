@@ -78,6 +78,7 @@ class FontCache : Disposable
 
     private this()
     {
+        import dgt.bindings.fontconfig.load;
         loadFontconfigSymbols();
         enforce(FcInit());
         _config = enforce(FcConfigGetCurrent());

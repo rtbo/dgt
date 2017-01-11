@@ -181,6 +181,11 @@ class SymbolLoader(SymbolSpecs...)
                 throw new Exception("Cannot load symbol "~name~" from "~_libName~".");
             }
             ss.symbol = cast(typeof(ss.symbol)) sym;
+            if (name == "hb_ft_font_create")
+            {
+                import std.stdio;
+                writefln("0x%x 0x%s %s", sym, &ss.symbol, name);
+            }
         }
     }
 

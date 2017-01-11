@@ -1,0 +1,20 @@
+{
+	"name": "cairo",
+	"targetType": "library",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"description": "D GUI Toolkit - Dynamic bindings to Cairo",
+	"copyright": "Copyright © 2017, Rémi Thebault",
+	"license": "MIT",
+
+  "dependencies":	{
+		"dgt:bindings": {
+			"path": ".."
+		}
+  },
+
+	"dependencies-linux": {
+		"xcb-d":			"~>2.1.0"
+	}
+}

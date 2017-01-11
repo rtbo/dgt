@@ -1,6 +1,6 @@
-module dgt.bindings.fontconfig.types;
+module dgt.bindings.fontconfig.definitions;
 
-import dgt.bindings.package_old;
+import dgt.bindings;
 
 mixin(globalEnumsAliasesCode!(
     FcType,
@@ -172,6 +172,34 @@ void FcMatrixInit(ref FcMatrix m)
     m.xy = 0;
     m.yx = 0;
 }
+
+
+enum FC_CHARSET_MAP_SIZE = 256 / 32;
+enum FC_CHARSET_DONE = cast()-1;
+
+/* These are ASCII only, suitable only for pattern element names */
+bool FcIsUpper(C)(C c)
+{
+    import std.conv : octal;
+
+    return (octal!101 <= c) && (c <= octal!132);
+}
+
+bool FcIsLower(C)(C c)
+{
+    import std.conv : octal;
+
+    return (octal!141 <= c) && (c <= octal!172);
+}
+
+C FcToLower(C)(C c)
+{
+    import std.conv : octal;
+
+    return FcIsUpper() ? c - octal!101 + octal!141 : c;
+}
+
+enum FC_UTF8_MAX_LEN = 6;
 
 /*
  * A data structure to represent the available glyphs in a font.

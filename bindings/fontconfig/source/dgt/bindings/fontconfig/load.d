@@ -1,9 +1,7 @@
-module dgt.bindings.fontconfig;
+module dgt.bindings.fontconfig.load;
 
-import dgt.bindings.package_old;
-public import dgt.bindings.fontconfig.symbols;
-public import dgt.bindings.fontconfig.types;
-
+import dgt.bindings;
+import dgt.bindings.fontconfig.symbols;
 
 /// Load the fontconfig library symbols.
 /// Must be called before any use of hb_* functions.
@@ -32,6 +30,16 @@ public @property bool fontconfigLoaded()
 }
 
 private __gshared FontconfigLoader fontconfigLoader;
+
+shared static this()
+{
+    fontconfigLoader = new FontconfigLoader();
+}
+
+shared static ~this()
+{
+    fontconfigLoader.unload();
+}
 
 alias FontconfigLoader = SymbolLoader!(
 /* fcblanks.c */
@@ -151,7 +159,7 @@ alias FontconfigLoader = SymbolLoader!(
     FcObjectSetAdd,
     FcObjectSetDestroy,
 //    FcObjectSetVaBuild,
-    FcObjectSetBuild, // FC_ATTRIBUTE_SENTINEL()
+//    FcObjectSetBuild, // FC_ATTRIBUTE_SENTINEL()
     FcFontSetList,
     FcFontList,
 /* fcatomic.c */
@@ -239,7 +247,7 @@ alias FontconfigLoader = SymbolLoader!(
     FcStrStr,
     FcUtf8ToUcs4,
     FcUtf8Len,
-    FcUcs4ToUtf8,
+//    FcUcs4ToUtf8,
     FcUtf16ToUcs4, /* in bytes */
     FcUtf16Len,
     FcStrDirname,

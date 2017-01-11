@@ -222,6 +222,7 @@ __gshared FT_Library _ftLib;
 
 shared static this()
 {
+    import dgt.bindings.harfbuzz.load;
     DerelictFT.load();
     loadHarfbuzzSymbols();
     FT_Init_FreeType(&_ftLib);
