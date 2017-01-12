@@ -47,6 +47,9 @@ version(unittest)
 }
 
 
+// Dynamic bindings facility
+
+
 /// A handle to a shared library
 alias SharedLib = void*;
 /// A handle to a shared library symbol
@@ -85,6 +88,10 @@ version(Posix)
         dlclose(lib);
     }
 }
+
+// SymbolLoader class works, but eat several tons of RAM megabytes during build
+// process. Too bad, have to give up clean unloading. Replaced now by
+// SharedLibLoader, very similar to derelict
 
 /// Utility that keeps track at compile time of a list of symbols to load and unload.
 /// Each symbol can be associated (at compile time) with a Flag!"optional" parameter.
@@ -181,11 +188,6 @@ class SymbolLoader(SymbolSpecs...)
                 throw new Exception("Cannot load symbol "~name~" from "~_libName~".");
             }
             ss.symbol = cast(typeof(ss.symbol)) sym;
-            if (name == "hb_ft_font_create")
-            {
-                import std.stdio;
-                writefln("0x%x 0x%s %s", sym, &ss.symbol, name);
-            }
         }
     }
 
@@ -219,3 +221,72 @@ class SymbolLoader(SymbolSpecs...)
 
 }
 
+/// Utility that open a shared library and load symbols from it.
+class SharedLibLoader
+{
+    import std.typecons : Flag, Yes, No;
+    private SharedLib _lib;
+    private string _libName;
+
+    /// Load the shared libraries and call bindSymbols if succesful.
+    void load (string[] libNames)
+    {
+        foreach (ln; libNames)
+        {
+            _lib = openSharedLib(ln);
+            if (_lib)
+            {
+                _libName = ln;
+                break;
+            }
+        }
+        if (!_lib)
+        {
+            import std.conv : to;
+            throw new Exception(
+                "Cannot load one of shared libs " ~ libNames.to!string
+            );
+        }
+        bindSymbols();
+    }
+
+    /// Direct handle access
+    public @property SharedLib handle()
+    {
+        return _lib;
+    }
+
+    /// Returns whether the shared library is open.
+    public @property bool loaded() const
+    {
+        return _lib !is null;
+    }
+
+    /// Returns the name of the shared library that was open.
+    /// Empty string if not loaded.
+    public @property string libName() const
+    {
+        return _libName;
+    }
+
+    /// Bind a symbol, using the function pointer symbol name.
+    void bind(alias f)(Flag!"optional" optional = No.optional)
+    {
+        immutable name = f.stringof;
+        if (f !is null)
+        {
+            throw new Exception("Tentative to bind already bound symbol "~ name);
+        }
+        auto sym = loadSharedSym(_lib, name);
+        if (!sym && !optional)
+        {
+            throw new Exception("Cannot load symbol "~name~" from "~_libName~".");
+        }
+        f = cast(typeof(f)) sym;
+    }
+
+    /// Subclasses can override this to bind all the necessary symbols.
+    /// Default implementation does nothing.
+    void bindSymbols()
+    {}
+}
