@@ -3,697 +3,928 @@ module dgt.bindings.fontconfig.symbols;
 import dgt.bindings.fontconfig.definitions;
 
 
-extern(C) nothrow @nogc __gshared
+extern(C) nothrow @nogc
 {
     /* fcblanks.c */
-    FcBlanks * function ()
-            FcBlanksCreate;
+    alias da_FcBlanksCreate = FcBlanks * function ();
 
-    void function (FcBlanks *b)
-            FcBlanksDestroy;
+    alias da_FcBlanksDestroy = void function (FcBlanks *b);
 
-    FcBool function (FcBlanks *b, FcChar32 ucs4)
-            FcBlanksAdd;
+    alias da_FcBlanksAdd = FcBool function (FcBlanks *b, FcChar32 ucs4);
 
-    FcBool function (FcBlanks *b, FcChar32 ucs4)
-            FcBlanksIsMember;
+    alias da_FcBlanksIsMember = FcBool function (FcBlanks *b, FcChar32 ucs4);
 
     /* fccache.c */
 
-    const(FcChar8)* function (const(FcCache)* c)
-            FcCacheDir;
+    alias da_FcCacheDir = const(FcChar8)* function (const(FcCache)* c);
 
-    FcFontSet *function (const(FcCache)* c)
-            FcCacheCopySet;
+    alias da_FcCacheCopySet = FcFontSet *function (const(FcCache)* c);
 
-    const(FcChar8)* function (const(FcCache)* c, int i)
-            FcCacheSubdir;
+    alias da_FcCacheSubdir = const(FcChar8)* function (const(FcCache)* c, int i);
 
-    int function (const(FcCache)* c)
-            FcCacheNumSubdir;
+    alias da_FcCacheNumSubdir = int function (const(FcCache)* c);
 
-    int function (const(FcCache)* c)
-            FcCacheNumFont;
+    alias da_FcCacheNumFont = int function (const(FcCache)* c);
 
-    FcBool function (const(FcChar8)* dir, FcConfig *config)
-            FcDirCacheUnlink;
+    alias da_FcDirCacheUnlink = FcBool function (const(FcChar8)* dir, FcConfig *config);
 
-    FcBool function (const(FcChar8)* cache_file)
-            FcDirCacheValid;
+    alias da_FcDirCacheValid = FcBool function (const(FcChar8)* cache_file);
 
-    FcBool function (const(FcChar8)* cache_dir, FcBool verbose)
-            FcDirCacheClean;
+    alias da_FcDirCacheClean = FcBool function (const(FcChar8)* cache_dir, FcBool verbose);
 
-    void function (const(FcConfig)* config)
-            FcCacheCreateTagFile;
+    alias da_FcCacheCreateTagFile = void function (const(FcConfig)* config);
 
     /* fccfg.c */
-    FcChar8 * function ()
-            FcConfigHome;
+    alias da_FcConfigHome = FcChar8 * function ();
 
-    FcBool function (FcBool enable)
-            FcConfigEnableHome;
+    alias da_FcConfigEnableHome = FcBool function (FcBool enable);
 
-    FcChar8 * function (const(FcChar8)* url)
-            FcConfigFilename;
+    alias da_FcConfigFilename = FcChar8 * function (const(FcChar8)* url);
 
-    FcConfig * function ()
-            FcConfigCreate;
+    alias da_FcConfigCreate = FcConfig * function ();
 
-    FcConfig * function (FcConfig *config)
-            FcConfigReference;
+    alias da_FcConfigReference = FcConfig * function (FcConfig *config);
 
-    void function (FcConfig *config)
-            FcConfigDestroy;
+    alias da_FcConfigDestroy = void function (FcConfig *config);
 
-    FcBool function (FcConfig *config)
-            FcConfigSetCurrent;
+    alias da_FcConfigSetCurrent = FcBool function (FcConfig *config);
 
-    FcConfig * function ()
-            FcConfigGetCurrent;
+    alias da_FcConfigGetCurrent = FcConfig * function ();
 
-    FcBool function (FcConfig *config)
-            FcConfigUptoDate;
+    alias da_FcConfigUptoDate = FcBool function (FcConfig *config);
 
-    FcBool function (FcConfig *config)
-            FcConfigBuildFonts;
+    alias da_FcConfigBuildFonts = FcBool function (FcConfig *config);
 
-    FcStrList * function (FcConfig   *config)
-            FcConfigGetFontDirs;
+    alias da_FcConfigGetFontDirs = FcStrList * function (FcConfig   *config);
 
-    FcStrList * function (FcConfig   *config)
-            FcConfigGetConfigDirs;
+    alias da_FcConfigGetConfigDirs = FcStrList * function (FcConfig   *config);
 
-    FcStrList * function (FcConfig    *config)
-            FcConfigGetConfigFiles;
+    alias da_FcConfigGetConfigFiles = FcStrList * function (FcConfig    *config);
 
-    FcChar8 * function (FcConfig  *config)
-            FcConfigGetCache;
+    alias da_FcConfigGetCache = FcChar8 * function (FcConfig  *config);
 
-    FcBlanks * function (FcConfig *config)
-            FcConfigGetBlanks;
+    alias da_FcConfigGetBlanks = FcBlanks * function (FcConfig *config);
 
-    FcStrList * function (const(FcConfig)* config)
-            FcConfigGetCacheDirs;
+    alias da_FcConfigGetCacheDirs = FcStrList * function (const(FcConfig)* config);
 
-    int function (FcConfig *config)
-            FcConfigGetRescanInterval;
+    alias da_FcConfigGetRescanInterval = int function (FcConfig *config);
 
-    FcBool function (FcConfig *config, int rescanInterval)
-            FcConfigSetRescanInterval;
+    alias da_FcConfigSetRescanInterval = FcBool function (FcConfig *config, int rescanInterval);
 
-    FcFontSet * function (FcConfig	*config,
-              FcSetName	set)
-            FcConfigGetFonts;
+    alias da_FcConfigGetFonts = FcFontSet * function (FcConfig	*config,
+              FcSetName	set);
 
-    FcBool function (FcConfig    *config,
-                const(FcChar8)* file)
-            FcConfigAppFontAddFile;
+    alias da_FcConfigAppFontAddFile = FcBool function (FcConfig    *config,
+                const(FcChar8)* file);
 
-    FcBool function (FcConfig	    *config,
-                   const(FcChar8)* dir)
-            FcConfigAppFontAddDir;
+    alias da_FcConfigAppFontAddDir = FcBool function (FcConfig	    *config,
+                   const(FcChar8)* dir);
 
-    void function (FcConfig	    *config)
-            FcConfigAppFontClear;
+    alias da_FcConfigAppFontClear = void function (FcConfig	    *config);
 
-    FcBool function (FcConfig	*config,
+    alias da_FcConfigSubstituteWithPat = FcBool function (FcConfig	*config,
                    FcPattern	*p,
                    FcPattern	*p_pat,
-                   FcMatchKind	kind)
-            FcConfigSubstituteWithPat;
+                   FcMatchKind	kind);
 
-    FcBool function (FcConfig	*config,
+    alias da_FcConfigSubstitute = FcBool function (FcConfig	*config,
                 FcPattern	*p,
-                FcMatchKind	kind)
-            FcConfigSubstitute;
+                FcMatchKind	kind);
 
-    const(FcChar8)* function (const(FcConfig)* config)
-            FcConfigGetSysRoot;
+    alias da_FcConfigGetSysRoot = const(FcChar8)* function (const(FcConfig)* config);
 
-    void function (FcConfig      *config,
-                const(FcChar8)* sysroot)
-            FcConfigSetSysRoot;
+    alias da_FcConfigSetSysRoot = void function (FcConfig      *config,
+                const(FcChar8)* sysroot);
 
     /* fccharset.c */
-    FcCharSet* function ()
-            FcCharSetCreate;
+    alias da_FcCharSetCreate = FcCharSet* function ();
 
-    void function (FcCharSet *fcs)
-            FcCharSetDestroy;
+    alias da_FcCharSetDestroy = void function (FcCharSet *fcs);
 
-    FcBool function (FcCharSet *fcs, FcChar32 ucs4)
-            FcCharSetAddChar;
+    alias da_FcCharSetAddChar = FcBool function (FcCharSet *fcs, FcChar32 ucs4);
 
-    FcBool function (FcCharSet *fcs, FcChar32 ucs4)
-            FcCharSetDelChar;
+    alias da_FcCharSetDelChar = FcBool function (FcCharSet *fcs, FcChar32 ucs4);
 
-    FcCharSet* function (FcCharSet *src)
-            FcCharSetCopy;
+    alias da_FcCharSetCopy = FcCharSet* function (FcCharSet *src);
 
-    FcBool function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetEqual;
+    alias da_FcCharSetEqual = FcBool function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcCharSet* function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetIntersect;
+    alias da_FcCharSetIntersect = FcCharSet* function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcCharSet* function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetUnion;
+    alias da_FcCharSetUnion = FcCharSet* function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcCharSet* function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetSubtract;
+    alias da_FcCharSetSubtract = FcCharSet* function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcBool function (FcCharSet *a, const(FcCharSet)* b, FcBool *changed)
-            FcCharSetMerge;
+    alias da_FcCharSetMerge = FcBool function (FcCharSet *a, const(FcCharSet)* b, FcBool *changed);
 
-    FcBool function (const(FcCharSet)* fcs, FcChar32 ucs4)
-            FcCharSetHasChar;
+    alias da_FcCharSetHasChar = FcBool function (const(FcCharSet)* fcs, FcChar32 ucs4);
 
-    FcChar32 function (const(FcCharSet)* a)
-            FcCharSetCount;
+    alias da_FcCharSetCount = FcChar32 function (const(FcCharSet)* a);
 
-    FcChar32 function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetIntersectCount;
+    alias da_FcCharSetIntersectCount = FcChar32 function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcChar32 function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetSubtractCount;
+    alias da_FcCharSetSubtractCount = FcChar32 function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcBool function (const(FcCharSet)* a, const(FcCharSet)* b)
-            FcCharSetIsSubset;
+    alias da_FcCharSetIsSubset = FcBool function (const(FcCharSet)* a, const(FcCharSet)* b);
 
-    FcChar32 function (const(FcCharSet)* a,
+    alias da_FcCharSetFirstPage = FcChar32 function (const(FcCharSet)* a,
                 FcChar32[FC_CHARSET_MAP_SIZE]	    map,
-                FcChar32	    *next)
-            FcCharSetFirstPage;
+                FcChar32	    *next);
 
-    FcChar32 function (const(FcCharSet)* a,
+    alias da_FcCharSetNextPage = FcChar32 function (const(FcCharSet)* a,
                FcChar32[FC_CHARSET_MAP_SIZE]	    map,
-               FcChar32	    *next)
-            FcCharSetNextPage;
+               FcChar32	    *next);
 
     /*
      * old coverage API, rather hard to use correctly
      */
 
-    FcChar32 function (const(FcCharSet)* a, FcChar32 page, FcChar32 *result)
-            FcCharSetCoverage;
+    alias da_FcCharSetCoverage = FcChar32 function (const(FcCharSet)* a, FcChar32 page, FcChar32 *result);
 
     /* fcdbg.c */
-    void function (const FcValue v)
-            FcValuePrint;
+    alias da_FcValuePrint = void function (const FcValue v);
 
-    void function (const(FcPattern)* p)
-            FcPatternPrint;
+    alias da_FcPatternPrint = void function (const(FcPattern)* p);
 
-    void function (const(FcFontSet)* s)
-            FcFontSetPrint;
+    alias da_FcFontSetPrint = void function (const(FcFontSet)* s);
 
     /* fcdefault.c */
-    FcStrSet * function ()
-            FcGetDefaultLangs;
+    alias da_FcGetDefaultLangs = FcStrSet * function ();
 
-    void function (FcPattern *pattern)
-            FcDefaultSubstitute;
+    alias da_FcDefaultSubstitute = void function (FcPattern *pattern);
 
     /* fcdir.c */
-    FcBool function (const(FcChar8)* file)
-            FcFileIsDir;
+    alias da_FcFileIsDir = FcBool function (const(FcChar8)* file);
 
-    FcBool function (FcFontSet	    *set,
+    alias da_FcFileScan = FcBool function (FcFontSet	    *set,
             FcStrSet	    *dirs,
             FcFileCache	    *cache,
             FcBlanks	    *blanks,
             const(FcChar8)* file,
-            FcBool	    force)
-            FcFileScan;
+            FcBool	    force);
 
-    FcBool function (FcFontSet	    *set,
+    alias da_FcDirScan = FcBool function (FcFontSet	    *set,
            FcStrSet	    *dirs,
            FcFileCache	    *cache,
            FcBlanks	    *blanks,
            const(FcChar8)* dir,
-           FcBool	    force)
-            FcDirScan;
+           FcBool	    force);
 
-    FcBool function (FcFontSet *set, FcStrSet *dirs, const(FcChar8)* dir)
-            FcDirSave;
+    alias da_FcDirSave = FcBool function (FcFontSet *set, FcStrSet *dirs, const(FcChar8)* dir);
 
-    FcCache * function (const(FcChar8)* dir, FcConfig *config, FcChar8 **cache_file)
-            FcDirCacheLoad;
+    alias da_FcDirCacheLoad = FcCache * function (const(FcChar8)* dir, FcConfig *config, FcChar8 **cache_file);
 
-    FcCache * function (const(FcChar8)* dir, FcConfig *config)
-            FcDirCacheRescan;
+    alias da_FcDirCacheRescan = FcCache * function (const(FcChar8)* dir, FcConfig *config);
 
-    FcCache * function (const(FcChar8)* dir, FcBool force, FcConfig *config)
-            FcDirCacheRead;
+    alias da_FcDirCacheRead = FcCache * function (const(FcChar8)* dir, FcBool force, FcConfig *config);
 
-    //FcCache * function (const(FcChar8)* cache_file, struct stat *file_stat)
-    //        FcDirCacheLoadFile;
+    //alias da_FcDirCacheLoadFile = FcCache * function (const(FcChar8)* cache_file, struct stat *file_stat);
 
-    void function (FcCache *cache)
-            FcDirCacheUnload;
+    alias da_FcDirCacheUnload = void function (FcCache *cache);
 
     /* fcfreetype.c */
-    FcPattern * function (const(FcChar8)* file, int id, FcBlanks *blanks, int *count)
-            FcFreeTypeQuery;
+    alias da_FcFreeTypeQuery = FcPattern * function (const(FcChar8)* file, int id, FcBlanks *blanks, int *count);
 
     /* fcfs.c */
 
-    FcFontSet * function ()
-            FcFontSetCreate;
+    alias da_FcFontSetCreate = FcFontSet * function ();
 
-    void function (FcFontSet *s)
-            FcFontSetDestroy;
+    alias da_FcFontSetDestroy = void function (FcFontSet *s);
 
-    FcBool function (FcFontSet *s, FcPattern *font)
-            FcFontSetAdd;
+    alias da_FcFontSetAdd = FcBool function (FcFontSet *s, FcPattern *font);
 
     /* fcinit.c */
-    FcConfig * function ()
-            FcInitLoadConfig;
+    alias da_FcInitLoadConfig = FcConfig * function ();
 
-    FcConfig * function ()
-            FcInitLoadConfigAndFonts;
+    alias da_FcInitLoadConfigAndFonts = FcConfig * function ();
 
-    FcBool function ()
-            FcInit;
+    alias da_FcInit = FcBool function ();
 
-    void function ()
-            FcFini;
+    alias da_FcFini = void function ();
 
-    int function ()
-            FcGetVersion;
+    alias da_FcGetVersion = int function ();
 
-    FcBool function ()
-            FcInitReinitialize;
+    alias da_FcInitReinitialize = FcBool function ();
 
-    FcBool function ()
-            FcInitBringUptoDate;
+    alias da_FcInitBringUptoDate = FcBool function ();
 
     /* fclang.c */
-    FcStrSet * function ()
-            FcGetLangs;
+    alias da_FcGetLangs = FcStrSet * function ();
 
-    FcChar8 * function (const(FcChar8)* lang)
-            FcLangNormalize;
+    alias da_FcLangNormalize = FcChar8 * function (const(FcChar8)* lang);
 
-    const(FcCharSet)* function (const(FcChar8)* lang)
-            FcLangGetCharSet;
+    alias da_FcLangGetCharSet = const(FcCharSet)* function (const(FcChar8)* lang);
 
-    FcLangSet* function ()
-            FcLangSetCreate;
+    alias da_FcLangSetCreate = FcLangSet* function ();
 
-    void function (FcLangSet *ls)
-            FcLangSetDestroy;
+    alias da_FcLangSetDestroy = void function (FcLangSet *ls);
 
-    FcLangSet* function (const(FcLangSet)* ls)
-            FcLangSetCopy;
+    alias da_FcLangSetCopy = FcLangSet* function (const(FcLangSet)* ls);
 
-    FcBool function (FcLangSet *ls, const(FcChar8)* lang)
-            FcLangSetAdd;
+    alias da_FcLangSetAdd = FcBool function (FcLangSet *ls, const(FcChar8)* lang);
 
-    FcBool function (FcLangSet *ls, const(FcChar8)* lang)
-            FcLangSetDel;
+    alias da_FcLangSetDel = FcBool function (FcLangSet *ls, const(FcChar8)* lang);
 
-    FcLangResult function (const(FcLangSet)* ls, const(FcChar8)* lang)
-            FcLangSetHasLang;
+    alias da_FcLangSetHasLang = FcLangResult function (const(FcLangSet)* ls, const(FcChar8)* lang);
 
-    FcLangResult function (const(FcLangSet)* lsa, const(FcLangSet)* lsb)
-            FcLangSetCompare;
+    alias da_FcLangSetCompare = FcLangResult function (const(FcLangSet)* lsa, const(FcLangSet)* lsb);
 
-    FcBool function (const(FcLangSet)* lsa, const(FcLangSet)* lsb)
-            FcLangSetContains;
+    alias da_FcLangSetContains = FcBool function (const(FcLangSet)* lsa, const(FcLangSet)* lsb);
 
-    FcBool function (const(FcLangSet)* lsa, const(FcLangSet)* lsb)
-            FcLangSetEqual;
+    alias da_FcLangSetEqual = FcBool function (const(FcLangSet)* lsa, const(FcLangSet)* lsb);
 
-    FcChar32 function (const(FcLangSet)* ls)
-            FcLangSetHash;
+    alias da_FcLangSetHash = FcChar32 function (const(FcLangSet)* ls);
 
-    FcStrSet * function (const(FcLangSet)* ls)
-            FcLangSetGetLangs;
+    alias da_FcLangSetGetLangs = FcStrSet * function (const(FcLangSet)* ls);
 
-    FcLangSet * function (const(FcLangSet)* a, const(FcLangSet)* b)
-            FcLangSetUnion;
+    alias da_FcLangSetUnion = FcLangSet * function (const(FcLangSet)* a, const(FcLangSet)* b);
 
-    FcLangSet * function (const(FcLangSet)* a, const(FcLangSet)* b)
-            FcLangSetSubtract;
+    alias da_FcLangSetSubtract = FcLangSet * function (const(FcLangSet)* a, const(FcLangSet)* b);
 
     /* fclist.c */
-    FcObjectSet * function ()
-            FcObjectSetCreate;
+    alias da_FcObjectSetCreate = FcObjectSet * function ();
 
-    FcBool function (FcObjectSet *os, const(char)* object)
-            FcObjectSetAdd;
+    alias da_FcObjectSetAdd = FcBool function (FcObjectSet *os, const(char)* object);
 
-    void function (FcObjectSet *os)
-            FcObjectSetDestroy;
+    alias da_FcObjectSetDestroy = void function (FcObjectSet *os);
 
-    // FcObjectSet * function (const(char)* first, va_list va)
-    //         FcObjectSetVaBuild;
+    // alias da_FcObjectSetVaBuild = FcObjectSet * function (const(char)* first, va_list va);
 
-    // FcObjectSet * function (const(char)* first, ...)
-    //         FcObjectSetBuild FC_ATTRIBUTE_SENTINEL(0);
+    // alias da_FcObjectSetBuild  = FcObjectSet * function (const(char)* first, ...) FC_ATTRIBUTE_SENTINEL(0);
 
-    FcFontSet * function (FcConfig	    *config,
+    alias da_FcFontSetList = FcFontSet * function (FcConfig	    *config,
                FcFontSet    **sets,
                int	    nsets,
                FcPattern    *p,
-               FcObjectSet  *os)
-            FcFontSetList;
+               FcObjectSet  *os);
 
-    FcFontSet * function (FcConfig	*config,
+    alias da_FcFontList = FcFontSet * function (FcConfig	*config,
             FcPattern	*p,
-            FcObjectSet *os)
-            FcFontList;
+            FcObjectSet *os);
 
     /* fcatomic.c */
 
-    FcAtomic * function (const(FcChar8)* file)
-            FcAtomicCreate;
+    alias da_FcAtomicCreate = FcAtomic * function (const(FcChar8)* file);
 
-    FcBool function (FcAtomic *atomic)
-            FcAtomicLock;
+    alias da_FcAtomicLock = FcBool function (FcAtomic *atomic);
 
-    FcChar8 * function (FcAtomic *atomic)
-            FcAtomicNewFile;
+    alias da_FcAtomicNewFile = FcChar8 * function (FcAtomic *atomic);
 
-    FcChar8 * function (FcAtomic *atomic)
-            FcAtomicOrigFile;
+    alias da_FcAtomicOrigFile = FcChar8 * function (FcAtomic *atomic);
 
-    FcBool function (FcAtomic *atomic)
-            FcAtomicReplaceOrig;
+    alias da_FcAtomicReplaceOrig = FcBool function (FcAtomic *atomic);
 
-    void function (FcAtomic *atomic)
-            FcAtomicDeleteNew;
+    alias da_FcAtomicDeleteNew = void function (FcAtomic *atomic);
 
-    void function (FcAtomic *atomic)
-            FcAtomicUnlock;
+    alias da_FcAtomicUnlock = void function (FcAtomic *atomic);
 
-    void function (FcAtomic *atomic)
-            FcAtomicDestroy;
+    alias da_FcAtomicDestroy = void function (FcAtomic *atomic);
 
     /* fcmatch.c */
-    FcPattern * function (FcConfig    *config,
+    alias da_FcFontSetMatch = FcPattern * function (FcConfig    *config,
             FcFontSet   **sets,
             int	    nsets,
             FcPattern   *p,
-            FcResult    *result)
-            FcFontSetMatch;
+            FcResult    *result);
 
-    FcPattern * function (FcConfig	*config,
+    alias da_FcFontMatch = FcPattern * function (FcConfig	*config,
              FcPattern	*p,
-             FcResult	*result)
-            FcFontMatch;
+             FcResult	*result);
 
-    FcPattern * function (FcConfig	    *config,
+    alias da_FcFontRenderPrepare = FcPattern * function (FcConfig	    *config,
                  FcPattern	    *pat,
-                 FcPattern	    *font)
-            FcFontRenderPrepare;
+                 FcPattern	    *font);
 
-    FcFontSet * function (FcConfig	    *config,
+    alias da_FcFontSetSort = FcFontSet * function (FcConfig	    *config,
                FcFontSet    **sets,
                int	    nsets,
                FcPattern    *p,
                FcBool	    trim,
                FcCharSet    **csp,
-               FcResult	    *result)
-            FcFontSetSort;
+               FcResult	    *result);
 
-    FcFontSet * function (FcConfig	 *config,
+    alias da_FcFontSort = FcFontSet * function (FcConfig	 *config,
             FcPattern    *p,
             FcBool	 trim,
             FcCharSet    **csp,
-            FcResult	 *result)
-            FcFontSort;
+            FcResult	 *result);
 
-    void function (FcFontSet *fs)
-            FcFontSetSortDestroy;
+    alias da_FcFontSetSortDestroy = void function (FcFontSet *fs);
 
     /* fcmatrix.c */
-    FcMatrix * function (const(FcMatrix)* mat)
-            FcMatrixCopy;
+    alias da_FcMatrixCopy = FcMatrix * function (const(FcMatrix)* mat);
 
-    FcBool function (const(FcMatrix)* mat1, const(FcMatrix)* mat2)
-            FcMatrixEqual;
+    alias da_FcMatrixEqual = FcBool function (const(FcMatrix)* mat1, const(FcMatrix)* mat2);
 
-    void function (FcMatrix *result, const(FcMatrix)* a, const(FcMatrix)* b)
-            FcMatrixMultiply;
+    alias da_FcMatrixMultiply = void function (FcMatrix *result, const(FcMatrix)* a, const(FcMatrix)* b);
 
-    void function (FcMatrix *m, double c, double s)
-            FcMatrixRotate;
+    alias da_FcMatrixRotate = void function (FcMatrix *m, double c, double s);
 
-    void function (FcMatrix *m, double sx, double sy)
-            FcMatrixScale;
+    alias da_FcMatrixScale = void function (FcMatrix *m, double sx, double sy);
 
-    void function (FcMatrix *m, double sh, double sv)
-            FcMatrixShear;
+    alias da_FcMatrixShear = void function (FcMatrix *m, double sh, double sv);
 
     /* fcname.c */
 
-    const(FcObjectType)* function (const(char)* object)
-            FcNameGetObjectType;
+    alias da_FcNameGetObjectType = const(FcObjectType)* function (const(char)* object);
 
-    const(FcConstant)* function (const(FcChar8)* string)
-            FcNameGetConstant;
+    alias da_FcNameGetConstant = const(FcConstant)* function (const(FcChar8)* string);
 
-    FcBool function (const(FcChar8)* string, int *result)
-            FcNameConstant;
+    alias da_FcNameConstant = FcBool function (const(FcChar8)* string, int *result);
 
-    FcPattern * function (const(FcChar8)* name)
-            FcNameParse;
+    alias da_FcNameParse = FcPattern * function (const(FcChar8)* name);
 
-    FcChar8 * function (FcPattern *pat)
-            FcNameUnparse;
+    alias da_FcNameUnparse = FcChar8 * function (FcPattern *pat);
 
     /* fcpat.c */
-    FcPattern * function ()
-            FcPatternCreate;
+    alias da_FcPatternCreate = FcPattern * function ();
 
-    FcPattern * function (const(FcPattern)* p)
-            FcPatternDuplicate;
+    alias da_FcPatternDuplicate = FcPattern * function (const(FcPattern)* p);
 
-    void function (FcPattern *p)
-            FcPatternReference;
+    alias da_FcPatternReference = void function (FcPattern *p);
 
-    FcPattern * function (FcPattern *p, const(FcObjectSet)* os)
-            FcPatternFilter;
+    alias da_FcPatternFilter = FcPattern * function (FcPattern *p, const(FcObjectSet)* os);
 
-    void function (FcValue v)
-            FcValueDestroy;
+    alias da_FcValueDestroy = void function (FcValue v);
 
-    FcBool function (FcValue va, FcValue vb)
-            FcValueEqual;
+    alias da_FcValueEqual = FcBool function (FcValue va, FcValue vb);
 
-    FcValue function (FcValue v)
-            FcValueSave;
+    alias da_FcValueSave = FcValue function (FcValue v);
 
-    void function (FcPattern *p)
-            FcPatternDestroy;
+    alias da_FcPatternDestroy = void function (FcPattern *p);
 
-    FcBool function (const(FcPattern)* pa, const(FcPattern)* pb)
-            FcPatternEqual;
+    alias da_FcPatternEqual = FcBool function (const(FcPattern)* pa, const(FcPattern)* pb);
 
-    FcBool function (const(FcPattern)* pa, const(FcPattern)* pb, const(FcObjectSet)* os)
-            FcPatternEqualSubset;
+    alias da_FcPatternEqualSubset = FcBool function (const(FcPattern)* pa, const(FcPattern)* pb, const(FcObjectSet)* os);
 
-    FcChar32 function (const(FcPattern)* p)
-            FcPatternHash;
+    alias da_FcPatternHash = FcChar32 function (const(FcPattern)* p);
 
-    FcBool function (FcPattern *p, const(char)* object, FcValue value, FcBool append)
-            FcPatternAdd;
+    alias da_FcPatternAdd = FcBool function (FcPattern *p, const(char)* object, FcValue value, FcBool append);
 
-    FcBool function (FcPattern *p, const(char)* object, FcValue value, FcBool append)
-            FcPatternAddWeak;
+    alias da_FcPatternAddWeak = FcBool function (FcPattern *p, const(char)* object, FcValue value, FcBool append);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int id, FcValue *v)
-            FcPatternGet;
+    alias da_FcPatternGet = FcResult function (const(FcPattern)* p, const(char)* object, int id, FcValue *v);
 
-    FcBool function (FcPattern *p, const(char)* object)
-            FcPatternDel;
+    alias da_FcPatternDel = FcBool function (FcPattern *p, const(char)* object);
 
-    FcBool function (FcPattern *p, const(char)* object, int id)
-            FcPatternRemove;
+    alias da_FcPatternRemove = FcBool function (FcPattern *p, const(char)* object, int id);
 
-    FcBool function (FcPattern *p, const(char)* object, int i)
-            FcPatternAddInteger;
+    alias da_FcPatternAddInteger = FcBool function (FcPattern *p, const(char)* object, int i);
 
-    FcBool function (FcPattern *p, const(char)* object, double d)
-            FcPatternAddDouble;
+    alias da_FcPatternAddDouble = FcBool function (FcPattern *p, const(char)* object, double d);
 
-    FcBool function (FcPattern *p, const(char)* object, const(FcChar8)* s)
-            FcPatternAddString;
+    alias da_FcPatternAddString = FcBool function (FcPattern *p, const(char)* object, const(FcChar8)* s);
 
-    FcBool function (FcPattern *p, const(char)* object, const(FcMatrix)* s)
-            FcPatternAddMatrix;
+    alias da_FcPatternAddMatrix = FcBool function (FcPattern *p, const(char)* object, const(FcMatrix)* s);
 
-    FcBool function (FcPattern *p, const(char)* object, const(FcCharSet)* c)
-            FcPatternAddCharSet;
+    alias da_FcPatternAddCharSet = FcBool function (FcPattern *p, const(char)* object, const(FcCharSet)* c);
 
-    FcBool function (FcPattern *p, const(char)* object, FcBool b)
-            FcPatternAddBool;
+    alias da_FcPatternAddBool = FcBool function (FcPattern *p, const(char)* object, FcBool b);
 
-    FcBool function (FcPattern *p, const(char)* object, const(FcLangSet)* ls)
-            FcPatternAddLangSet;
+    alias da_FcPatternAddLangSet = FcBool function (FcPattern *p, const(char)* object, const(FcLangSet)* ls);
 
-    FcBool function (FcPattern *p, const(char)* object, const(FcRange)* r)
-            FcPatternAddRange;
+    alias da_FcPatternAddRange = FcBool function (FcPattern *p, const(char)* object, const(FcRange)* r);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, int *i)
-            FcPatternGetInteger;
+    alias da_FcPatternGetInteger = FcResult function (const(FcPattern)* p, const(char)* object, int n, int *i);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, double *d)
-            FcPatternGetDouble;
+    alias da_FcPatternGetDouble = FcResult function (const(FcPattern)* p, const(char)* object, int n, double *d);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, FcChar8 ** s)
-            FcPatternGetString;
+    alias da_FcPatternGetString = FcResult function (const(FcPattern)* p, const(char)* object, int n, FcChar8 ** s);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, FcMatrix **s)
-            FcPatternGetMatrix;
+    alias da_FcPatternGetMatrix = FcResult function (const(FcPattern)* p, const(char)* object, int n, FcMatrix **s);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, FcCharSet **c)
-            FcPatternGetCharSet;
+    alias da_FcPatternGetCharSet = FcResult function (const(FcPattern)* p, const(char)* object, int n, FcCharSet **c);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, FcBool *b)
-            FcPatternGetBool;
+    alias da_FcPatternGetBool = FcResult function (const(FcPattern)* p, const(char)* object, int n, FcBool *b);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int n, FcLangSet **ls)
-            FcPatternGetLangSet;
+    alias da_FcPatternGetLangSet = FcResult function (const(FcPattern)* p, const(char)* object, int n, FcLangSet **ls);
 
-    FcResult function (const(FcPattern)* p, const(char)* object, int id, FcRange **r)
-            FcPatternGetRange;
+    alias da_FcPatternGetRange = FcResult function (const(FcPattern)* p, const(char)* object, int id, FcRange **r);
 
-    //FcPattern * function (FcPattern *p, va_list va)
-    //        FcPatternVaBuild;
+    // alias da_FcPatternVaBuild = FcPattern * function (FcPattern *p, va_list va);
 
-    // FcPattern * function (FcPattern *p, ...)
-    //         FcPatternBuild FC_ATTRIBUTE_SENTINEL(0);
+    // alias da_FcPatternBuild  = FcPattern * function (FcPattern *p, ...) FC_ATTRIBUTE_SENTINEL(0);
 
-    FcChar8 * function (FcPattern *pat, const(FcChar8)* format)
-            FcPatternFormat;
+    alias da_FcPatternFormat = FcChar8 * function (FcPattern *pat, const(FcChar8)* format);
 
     /* fcrange.c */
-    FcRange * function (double begin, double end)
-            FcRangeCreateDouble;
+    alias da_FcRangeCreateDouble = FcRange * function (double begin, double end);
 
-    FcRange * function (FcChar32 begin, FcChar32 end)
-            FcRangeCreateInteger;
+    alias da_FcRangeCreateInteger = FcRange * function (FcChar32 begin, FcChar32 end);
 
-    void function (FcRange *range)
-            FcRangeDestroy;
+    alias da_FcRangeDestroy = void function (FcRange *range);
 
-    FcRange * function (const(FcRange)* r)
-            FcRangeCopy;
+    alias da_FcRangeCopy = FcRange * function (const(FcRange)* r);
 
-    FcBool function (const(FcRange)* range, double *begin, double *end)
-            FcRangeGetDouble;
+    alias da_FcRangeGetDouble = FcBool function (const(FcRange)* range, double *begin, double *end);
 
     /* fcweight.c */
 
-    int function (int ot_weight)
-            FcWeightFromOpenType;
+    alias da_FcWeightFromOpenType = int function (int ot_weight);
 
-    int function (int fc_weight)
-            FcWeightToOpenType;
+    alias da_FcWeightToOpenType = int function (int fc_weight);
 
     /* fcstr.c */
 
-    FcChar8 * function (const(FcChar8)* s)
-            FcStrCopy;
+    alias da_FcStrCopy = FcChar8 * function (const(FcChar8)* s);
 
-    FcChar8 * function (const(FcChar8)* s)
-            FcStrCopyFilename;
+    alias da_FcStrCopyFilename = FcChar8 * function (const(FcChar8)* s);
 
-    FcChar8 * function (const(FcChar8)* s1, const(FcChar8)* s2)
-            FcStrPlus;
+    alias da_FcStrPlus = FcChar8 * function (const(FcChar8)* s1, const(FcChar8)* s2);
 
-    void function (FcChar8 *s)
-            FcStrFree;
+    alias da_FcStrFree = void function (FcChar8 *s);
 
-    FcChar8 * function (const(FcChar8)* s)
-            FcStrDowncase;
+    alias da_FcStrDowncase = FcChar8 * function (const(FcChar8)* s);
 
-    int function (const(FcChar8)* s1, const(FcChar8)* s2)
-            FcStrCmpIgnoreCase;
+    alias da_FcStrCmpIgnoreCase = int function (const(FcChar8)* s1, const(FcChar8)* s2);
 
-    int function (const(FcChar8)* s1, const(FcChar8)* s2)
-            FcStrCmp;
+    alias da_FcStrCmp = int function (const(FcChar8)* s1, const(FcChar8)* s2);
 
-    const(FcChar8)* function (const(FcChar8)* s1, const(FcChar8)* s2)
-            FcStrStrIgnoreCase;
+    alias da_FcStrStrIgnoreCase = const(FcChar8)* function (const(FcChar8)* s1, const(FcChar8)* s2);
 
-    const(FcChar8)* function (const(FcChar8)* s1, const(FcChar8)* s2)
-            FcStrStr;
+    alias da_FcStrStr = const(FcChar8)* function (const(FcChar8)* s1, const(FcChar8)* s2);
 
-    int function (const(FcChar8)* src_orig,
+    alias da_FcUtf8ToUcs4 = int function (const(FcChar8)* src_orig,
               FcChar32	    *dst,
-              int	    len)
-            FcUtf8ToUcs4;
+              int	    len);
 
-    FcBool function (const(FcChar8)* string,
+    alias da_FcUtf8Len = FcBool function (const(FcChar8)* string,
            int		    len,
            int		    *nchar,
-           int		    *_wchar)
-            FcUtf8Len;
+           int		    *_wchar);
 
-    // int (FcChar32	ucs4,
-    //           FcChar8[FC_UTF8_MAX_LEN]	destfunction)
+    // alias da_FcChar8 = int (FcChar32	ucs4,[FC_UTF8_MAX_LEN]	destfunction)
     //         FcUcs4ToUtf8;
 
-    int function (const(FcChar8)* src_orig,
+    alias da_FcUtf16ToUcs4 = int function (const(FcChar8)* src_orig,
                FcEndian		endian,
                FcChar32		*dst,
-               int		len)
-            FcUtf16ToUcs4;	    /* in bytes */
+               int		len);	    /* in bytes */
 
-    FcBool function (const(FcChar8)* string,
+    alias da_FcUtf16Len = FcBool function (const(FcChar8)* string,
             FcEndian	    endian,
             int		    len,	    /* in bytes */
             int		    *nchar,
-            int		    *_wchar)
-            FcUtf16Len;
+            int		    *_wchar);
 
-    FcChar8 * function (const(FcChar8)* file)
-            FcStrDirname;
+    alias da_FcStrDirname = FcChar8 * function (const(FcChar8)* file);
 
-    FcChar8 * function (const(FcChar8)* file)
-            FcStrBasename;
+    alias da_FcStrBasename = FcChar8 * function (const(FcChar8)* file);
 
-    FcStrSet * function ()
-            FcStrSetCreate;
+    alias da_FcStrSetCreate = FcStrSet * function ();
 
-    FcBool function (FcStrSet *set, const(FcChar8)* s)
-            FcStrSetMember;
+    alias da_FcStrSetMember = FcBool function (FcStrSet *set, const(FcChar8)* s);
 
-    FcBool function (FcStrSet *sa, FcStrSet *sb)
-            FcStrSetEqual;
+    alias da_FcStrSetEqual = FcBool function (FcStrSet *sa, FcStrSet *sb);
 
-    FcBool function (FcStrSet *set, const(FcChar8)* s)
-            FcStrSetAdd;
+    alias da_FcStrSetAdd = FcBool function (FcStrSet *set, const(FcChar8)* s);
 
-    FcBool function (FcStrSet *set, const(FcChar8)* s)
-            FcStrSetAddFilename;
+    alias da_FcStrSetAddFilename = FcBool function (FcStrSet *set, const(FcChar8)* s);
 
-    FcBool function (FcStrSet *set, const(FcChar8)* s)
-            FcStrSetDel;
+    alias da_FcStrSetDel = FcBool function (FcStrSet *set, const(FcChar8)* s);
 
-    void function (FcStrSet *set)
-            FcStrSetDestroy;
+    alias da_FcStrSetDestroy = void function (FcStrSet *set);
 
-    FcStrList * function (FcStrSet *set)
-            FcStrListCreate;
+    alias da_FcStrListCreate = FcStrList * function (FcStrSet *set);
 
-    void function (FcStrList *list)
-            FcStrListFirst;
+    alias da_FcStrListFirst = void function (FcStrList *list);
 
-    FcChar8 * function (FcStrList *list)
-            FcStrListNext;
+    alias da_FcStrListNext = FcChar8 * function (FcStrList *list);
 
-    void function (FcStrList *list)
-            FcStrListDone;
+    alias da_FcStrListDone = void function (FcStrList *list);
 
     /* fcxml.c */
-    FcBool function (FcConfig *config, const(FcChar8)* file, FcBool complain)
-            FcConfigParseAndLoad;
+    alias da_FcConfigParseAndLoad = FcBool function (FcConfig *config, const(FcChar8)* file, FcBool complain);
+}
+
+
+__gshared
+{
+    /* fcblanks.c */
+    da_FcBlanksCreate FcBlanksCreate;
+
+    da_FcBlanksDestroy FcBlanksDestroy;
+
+    da_FcBlanksAdd FcBlanksAdd;
+
+    da_FcBlanksIsMember FcBlanksIsMember;
+
+    /* fccache.c */
+
+    da_FcCacheDir FcCacheDir;
+
+    da_FcCacheCopySet FcCacheCopySet;
+
+    da_FcCacheSubdir FcCacheSubdir;
+
+    da_FcCacheNumSubdir FcCacheNumSubdir;
+
+    da_FcCacheNumFont FcCacheNumFont;
+
+    da_FcDirCacheUnlink FcDirCacheUnlink;
+
+    da_FcDirCacheValid FcDirCacheValid;
+
+    da_FcDirCacheClean FcDirCacheClean;
+
+    da_FcCacheCreateTagFile FcCacheCreateTagFile;
+
+    /* fccfg.c */
+    da_FcConfigHome FcConfigHome;
+
+    da_FcConfigEnableHome FcConfigEnableHome;
+
+    da_FcConfigFilename FcConfigFilename;
+
+    da_FcConfigCreate FcConfigCreate;
+
+    da_FcConfigReference FcConfigReference;
+
+    da_FcConfigDestroy FcConfigDestroy;
+
+    da_FcConfigSetCurrent FcConfigSetCurrent;
+
+    da_FcConfigGetCurrent FcConfigGetCurrent;
+
+    da_FcConfigUptoDate FcConfigUptoDate;
+
+    da_FcConfigBuildFonts FcConfigBuildFonts;
+
+    da_FcConfigGetFontDirs FcConfigGetFontDirs;
+
+    da_FcConfigGetConfigDirs FcConfigGetConfigDirs;
+
+    da_FcConfigGetConfigFiles FcConfigGetConfigFiles;
+
+    da_FcConfigGetCache FcConfigGetCache;
+
+    da_FcConfigGetBlanks FcConfigGetBlanks;
+
+    da_FcConfigGetCacheDirs FcConfigGetCacheDirs;
+
+    da_FcConfigGetRescanInterval FcConfigGetRescanInterval;
+
+    da_FcConfigSetRescanInterval FcConfigSetRescanInterval;
+
+    da_FcConfigGetFonts FcConfigGetFonts;
+
+    da_FcConfigAppFontAddFile FcConfigAppFontAddFile;
+
+    da_FcConfigAppFontAddDir FcConfigAppFontAddDir;
+
+    da_FcConfigAppFontClear FcConfigAppFontClear;
+
+    da_FcConfigSubstituteWithPat FcConfigSubstituteWithPat;
+
+    da_FcConfigSubstitute FcConfigSubstitute;
+
+    da_FcConfigGetSysRoot FcConfigGetSysRoot;
+
+    da_FcConfigSetSysRoot FcConfigSetSysRoot;
+
+    /* fccharset.c */
+    da_FcCharSetCreate FcCharSetCreate;
+
+    da_FcCharSetDestroy FcCharSetDestroy;
+
+    da_FcCharSetAddChar FcCharSetAddChar;
+
+    da_FcCharSetDelChar FcCharSetDelChar;
+
+    da_FcCharSetCopy FcCharSetCopy;
+
+    da_FcCharSetEqual FcCharSetEqual;
+
+    da_FcCharSetIntersect FcCharSetIntersect;
+
+    da_FcCharSetUnion FcCharSetUnion;
+
+    da_FcCharSetSubtract FcCharSetSubtract;
+
+    da_FcCharSetMerge FcCharSetMerge;
+
+    da_FcCharSetHasChar FcCharSetHasChar;
+
+    da_FcCharSetCount FcCharSetCount;
+
+    da_FcCharSetIntersectCount FcCharSetIntersectCount;
+
+    da_FcCharSetSubtractCount FcCharSetSubtractCount;
+
+    da_FcCharSetIsSubset FcCharSetIsSubset;
+
+    da_FcCharSetFirstPage FcCharSetFirstPage;
+
+    da_FcCharSetNextPage FcCharSetNextPage;
+
+    /*
+     * old coverage API, rather hard to use correctly
+     */
+
+    da_FcCharSetCoverage FcCharSetCoverage;
+
+    /* fcdbg.c */
+    da_FcValuePrint FcValuePrint;
+
+    da_FcPatternPrint FcPatternPrint;
+
+    da_FcFontSetPrint FcFontSetPrint;
+
+    /* fcdefault.c */
+    da_FcGetDefaultLangs FcGetDefaultLangs;
+
+    da_FcDefaultSubstitute FcDefaultSubstitute;
+
+    /* fcdir.c */
+    da_FcFileIsDir FcFileIsDir;
+
+    da_FcFileScan FcFileScan;
+
+    da_FcDirScan FcDirScan;
+
+    da_FcDirSave FcDirSave;
+
+    da_FcDirCacheLoad FcDirCacheLoad;
+
+    da_FcDirCacheRescan FcDirCacheRescan;
+
+    da_FcDirCacheRead FcDirCacheRead;
+
+    //da_FcDirCacheLoadFile FcDirCacheLoadFile;
+
+    da_FcDirCacheUnload FcDirCacheUnload;
+
+    /* fcfreetype.c */
+    da_FcFreeTypeQuery FcFreeTypeQuery;
+
+    /* fcfs.c */
+
+    da_FcFontSetCreate FcFontSetCreate;
+
+    da_FcFontSetDestroy FcFontSetDestroy;
+
+    da_FcFontSetAdd FcFontSetAdd;
+
+    /* fcinit.c */
+    da_FcInitLoadConfig FcInitLoadConfig;
+
+    da_FcInitLoadConfigAndFonts FcInitLoadConfigAndFonts;
+
+    da_FcInit FcInit;
+
+    da_FcFini FcFini;
+
+    da_FcGetVersion FcGetVersion;
+
+    da_FcInitReinitialize FcInitReinitialize;
+
+    da_FcInitBringUptoDate FcInitBringUptoDate;
+
+    /* fclang.c */
+    da_FcGetLangs FcGetLangs;
+
+    da_FcLangNormalize FcLangNormalize;
+
+    da_FcLangGetCharSet FcLangGetCharSet;
+
+    da_FcLangSetCreate FcLangSetCreate;
+
+    da_FcLangSetDestroy FcLangSetDestroy;
+
+    da_FcLangSetCopy FcLangSetCopy;
+
+    da_FcLangSetAdd FcLangSetAdd;
+
+    da_FcLangSetDel FcLangSetDel;
+
+    da_FcLangSetHasLang FcLangSetHasLang;
+
+    da_FcLangSetCompare FcLangSetCompare;
+
+    da_FcLangSetContains FcLangSetContains;
+
+    da_FcLangSetEqual FcLangSetEqual;
+
+    da_FcLangSetHash FcLangSetHash;
+
+    da_FcLangSetGetLangs FcLangSetGetLangs;
+
+    da_FcLangSetUnion FcLangSetUnion;
+
+    da_FcLangSetSubtract FcLangSetSubtract;
+
+    /* fclist.c */
+    da_FcObjectSetCreate FcObjectSetCreate;
+
+    da_FcObjectSetAdd FcObjectSetAdd;
+
+    da_FcObjectSetDestroy FcObjectSetDestroy;
+
+    //da_FcObjectSetVaBuild FcObjectSetVaBuild;
+
+    da_FcFontSetList FcFontSetList;
+
+    da_FcFontList FcFontList;
+
+    /* fcatomic.c */
+
+    da_FcAtomicCreate FcAtomicCreate;
+
+    da_FcAtomicLock FcAtomicLock;
+
+    da_FcAtomicNewFile FcAtomicNewFile;
+
+    da_FcAtomicOrigFile FcAtomicOrigFile;
+
+    da_FcAtomicReplaceOrig FcAtomicReplaceOrig;
+
+    da_FcAtomicDeleteNew FcAtomicDeleteNew;
+
+    da_FcAtomicUnlock FcAtomicUnlock;
+
+    da_FcAtomicDestroy FcAtomicDestroy;
+
+    /* fcmatch.c */
+    da_FcFontSetMatch FcFontSetMatch;
+
+    da_FcFontMatch FcFontMatch;
+
+    da_FcFontRenderPrepare FcFontRenderPrepare;
+
+    da_FcFontSetSort FcFontSetSort;
+
+    da_FcFontSort FcFontSort;
+
+    da_FcFontSetSortDestroy FcFontSetSortDestroy;
+
+    /* fcmatrix.c */
+    da_FcMatrixCopy FcMatrixCopy;
+
+    da_FcMatrixEqual FcMatrixEqual;
+
+    da_FcMatrixMultiply FcMatrixMultiply;
+
+    da_FcMatrixRotate FcMatrixRotate;
+
+    da_FcMatrixScale FcMatrixScale;
+
+    da_FcMatrixShear FcMatrixShear;
+
+    /* fcname.c */
+
+    da_FcNameGetObjectType FcNameGetObjectType;
+
+    da_FcNameGetConstant FcNameGetConstant;
+
+    da_FcNameConstant FcNameConstant;
+
+    da_FcNameParse FcNameParse;
+
+    da_FcNameUnparse FcNameUnparse;
+
+    /* fcpat.c */
+    da_FcPatternCreate FcPatternCreate;
+
+    da_FcPatternDuplicate FcPatternDuplicate;
+
+    da_FcPatternReference FcPatternReference;
+
+    da_FcPatternFilter FcPatternFilter;
+
+    da_FcValueDestroy FcValueDestroy;
+
+    da_FcValueEqual FcValueEqual;
+
+    da_FcValueSave FcValueSave;
+
+    da_FcPatternDestroy FcPatternDestroy;
+
+    da_FcPatternEqual FcPatternEqual;
+
+    da_FcPatternEqualSubset FcPatternEqualSubset;
+
+    da_FcPatternHash FcPatternHash;
+
+    da_FcPatternAdd FcPatternAdd;
+
+    da_FcPatternAddWeak FcPatternAddWeak;
+
+    da_FcPatternGet FcPatternGet;
+
+    da_FcPatternDel FcPatternDel;
+
+    da_FcPatternRemove FcPatternRemove;
+
+    da_FcPatternAddInteger FcPatternAddInteger;
+
+    da_FcPatternAddDouble FcPatternAddDouble;
+
+    da_FcPatternAddString FcPatternAddString;
+
+    da_FcPatternAddMatrix FcPatternAddMatrix;
+
+    da_FcPatternAddCharSet FcPatternAddCharSet;
+
+    da_FcPatternAddBool FcPatternAddBool;
+
+    da_FcPatternAddLangSet FcPatternAddLangSet;
+
+    da_FcPatternAddRange FcPatternAddRange;
+
+    da_FcPatternGetInteger FcPatternGetInteger;
+
+    da_FcPatternGetDouble FcPatternGetDouble;
+
+    da_FcPatternGetString FcPatternGetString;
+
+    da_FcPatternGetMatrix FcPatternGetMatrix;
+
+    da_FcPatternGetCharSet FcPatternGetCharSet;
+
+    da_FcPatternGetBool FcPatternGetBool;
+
+    da_FcPatternGetLangSet FcPatternGetLangSet;
+
+    da_FcPatternGetRange FcPatternGetRange;
+
+    // da_FcPatternVaBuild FcPatternVaBuild;
+
+    da_FcPatternFormat FcPatternFormat;
+
+    /* fcrange.c */
+    da_FcRangeCreateDouble FcRangeCreateDouble;
+
+    da_FcRangeCreateInteger FcRangeCreateInteger;
+
+    da_FcRangeDestroy FcRangeDestroy;
+
+    da_FcRangeCopy FcRangeCopy;
+
+    da_FcRangeGetDouble FcRangeGetDouble;
+
+    /* fcweight.c */
+
+    da_FcWeightFromOpenType FcWeightFromOpenType;
+
+    da_FcWeightToOpenType FcWeightToOpenType;
+
+    /* fcstr.c */
+
+    da_FcStrCopy FcStrCopy;
+
+    da_FcStrCopyFilename FcStrCopyFilename;
+
+    da_FcStrPlus FcStrPlus;
+
+    da_FcStrFree FcStrFree;
+
+    da_FcStrDowncase FcStrDowncase;
+
+    da_FcStrCmpIgnoreCase FcStrCmpIgnoreCase;
+
+    da_FcStrCmp FcStrCmp;
+
+    da_FcStrStrIgnoreCase FcStrStrIgnoreCase;
+
+    da_FcStrStr FcStrStr;
+
+    da_FcUtf8ToUcs4 FcUtf8ToUcs4;
+
+    da_FcUtf8Len FcUtf8Len;
+
+    // da_FcUcs4ToUtf8 FcUcs4ToUtf8;
+
+    da_FcUtf16ToUcs4 FcUtf16ToUcs4;	    /* in bytes */
+
+    da_FcUtf16Len FcUtf16Len;
+
+    da_FcStrDirname FcStrDirname;
+
+    da_FcStrBasename FcStrBasename;
+
+    da_FcStrSetCreate FcStrSetCreate;
+
+    da_FcStrSetMember FcStrSetMember;
+
+    da_FcStrSetEqual FcStrSetEqual;
+
+    da_FcStrSetAdd FcStrSetAdd;
+
+    da_FcStrSetAddFilename FcStrSetAddFilename;
+
+    da_FcStrSetDel FcStrSetDel;
+
+    da_FcStrSetDestroy FcStrSetDestroy;
+
+    da_FcStrListCreate FcStrListCreate;
+
+    da_FcStrListFirst FcStrListFirst;
+
+    da_FcStrListNext FcStrListNext;
+
+    da_FcStrListDone FcStrListDone;
+
+    /* fcxml.c */
+    da_FcConfigParseAndLoad FcConfigParseAndLoad;
 }
 
