@@ -794,38 +794,3 @@ unittest
 
     assert(approxUlp(normalize(FVec3(4, 0, 0)), FVec3(1, 0, 0)));
 }
-
-
-package:
-
-version (LDC)
-{
-    // LDC do not have Repeat at time of writing (ldc-1.0 based on dmd-2.070.2)
-    // this is a copy-paste of Repeat availble in phobos 2.071.2
-    /**
-    * Creates an `AliasSeq` which repeats a type or an `AliasSeq` exactly `n` times.
-    */
-    template Repeat(size_t n, TList...) if (n > 0)
-    {
-        static if (n == 1)
-        {
-            alias Repeat = AliasSeq!TList;
-        }
-        else static if (n == 2)
-        {
-            alias Repeat = AliasSeq!(TList, TList);
-        }
-        else
-        {
-            alias R = Repeat!((n - 1) / 2, TList);
-            static if ((n - 1) % 2 == 0)
-            {
-                alias Repeat = AliasSeq!(TList, R, R);
-            }
-            else
-            {
-                alias Repeat = AliasSeq!(TList, TList, R, R);
-            }
-        }
-    }
-}
