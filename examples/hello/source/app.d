@@ -75,7 +75,6 @@ int main()
         });
 
     };
-    win.onClosed += (Window) { app.exit(0); };
     win.show();
     return app.loop();
 }

@@ -3,6 +3,7 @@ module dgt.application;
 import dgt.core.resource;
 import dgt.platform;
 import dgt.text.fontcache;
+import dgt.window;
 
 /// Singleton class that must be built by the client application
 class Application : Disposable
@@ -50,9 +51,29 @@ class Application : Disposable
         FontCache.initialize();
     }
 
+    package void registerWindow(Window w)
+    {
+        import std.algorithm : canFind;
+        assert(!_windows.canFind(w), "tentative to register registered window");
+        _windows ~= w;
+    }
+
+    package void unregisterWindow(Window w)
+    {
+        import std.algorithm : canFind, remove, SwapStrategy;
+        assert(_windows.canFind(w), "tentative to unregister unregistered window");
+        _windows = _windows.remove!(win => win is w, SwapStrategy.unstable)();
+
+        if (!_windows.length && !_exitFlag)
+        {
+            exit(0);
+        }
+    }
+
     private Uniq!Platform _platform;
     private bool _exitFlag;
     private int _exitCode;
+    private Window[] _windows;
 
     static
     {

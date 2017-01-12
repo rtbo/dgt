@@ -80,6 +80,7 @@ class Window : Surface
     this()
     {
         _platformWindow = Application.platform.createWindow(this);
+        Application.instance.registerWindow(this);
     }
 
     @property IPoint position() const
@@ -190,6 +191,7 @@ class Window : Surface
         enforce(_platformWindow.created, "attempt to close a non-created window");
         _platformWindow.close();
         _onClosed.fire(this);
+        Application.instance.unregisterWindow(this);
     }
 
     mixin SignalMixin!("onTitleChange", string);
