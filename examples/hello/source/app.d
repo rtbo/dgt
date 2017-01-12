@@ -32,6 +32,9 @@ int main()
         case key.Sym.s:
             win.showMinimized();
             break;
+        case key.Sym.escape:
+            win.close();
+            break;
         default:
             break;
         }
