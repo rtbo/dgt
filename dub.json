@@ -12,6 +12,7 @@
 		"dgt:cairo":		"*",
 		"dgt:fontconfig":	"*",
 		"dgt:harfbuzz":		"*",
+		"img-d":			"~master",
 		"derelict-gl3":		"~>1.0.19",
 		"derelict-ft":		"~>1.1.3"
     },

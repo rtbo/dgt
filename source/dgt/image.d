@@ -421,3 +421,141 @@ unittest
         0xdb, 0x04, 0xe8, 0x11,
     ]);
 }
+
+
+private
+{
+
+    import libpng.png;
+    import libjpeg.turbojpeg;
+    import std.path;
+    import std.string;
+    import std.uni : toLower;
+
+
+    ImgIO makeImgIO (string filename)
+    out (result) {
+        assert(result !is null);
+    }
+    body {
+        auto ext = filename.extension.toLower;
+        switch (ext) {
+        case ".png":
+            return new PngIO;
+        case ".jpg":
+        case ".jpeg":
+            return new JpegIO;
+        default:
+            throw new Exception("cannot find IO engine for "~filename.baseName);
+        }
+    }
+
+
+    interface ImgIO
+    {
+        Image load(string filename);
+        void save(const(Image) img, string filename);
+    }
+
+
+    class PngIO : ImgIO
+    {
+
+        version(LittleEndian) {
+            enum pngFormat = PNG_FORMAT_BGRA;
+        }
+        else {
+            enum pngFormat = PNG_FORMAT_ARGB;
+        }
+
+        override Image load(string filename)
+        {
+            png_image pimg;
+            pimg.version_ = PNG_IMAGE_VERSION;
+            if (!png_image_begin_read_from_file(&pimg, filename.toStringz))
+            {
+                throw new Exception("could not read image from "~filename);
+            }
+            scope(failure) png_image_free(&pimg);
+
+            immutable rowStride = bytesForWidth(ImageFormat.argb, pimg.width);
+            immutable numBytes = rowStride*pimg.height;
+            pimg.format = pngFormat;
+            ubyte[] buf = new ubyte[numBytes];
+            if (!png_image_finish_read(&pimg, null, cast(void*)buf, cast(int)rowStride, null)) {
+                throw new Exception("could not finish read image from "~filename);
+            }
+            return new Image(buf, ImageFormat.argb, pimg.width, rowStride);
+        }
+
+
+        override void save(const(Image) img, string filename)
+        {
+            png_image pimg;
+            pimg.version_ = PNG_IMAGE_VERSION;
+            pimg.format = pngFormat;
+            pimg.width = img.width;
+            pimg.height = img.height;
+
+            png_image_write_to_file(&pimg, filename.toStringz, 0, img.data.ptr, 0, null);
+        }
+    }
+
+    class JpegIO : ImgIO
+    {
+        version(LittleEndian) {
+            enum jpegFormat = TJPF.TJPF_BGRA;
+        }
+        else {
+            enum jpegFormat = TJPF.TJPF_ARGB;
+        }
+
+
+        string errorMsg() {
+            import core.stdc.string : strlen;
+            char* msg = tjGetErrorStr();
+            auto len = strlen(msg);
+            return msg[0..len].idup;
+        }
+
+
+        override Image load(string filename)
+        {
+            import std.file : read;
+            auto bytes = cast(ubyte[]) read(filename);
+            tjhandle jpeg = tjInitDecompress();
+            scope(exit) tjDestroy(jpeg);
+
+            int width, height, jpegsubsamp;
+            if (tjDecompressHeader2(jpeg, bytes.ptr, bytes.length, &width, &height, &jpegsubsamp) != 0) {
+                throw new Exception("could not read "~filename.baseName~": "~errorMsg());
+            }
+
+            immutable rowStride = bytesForWidth(ImageFormat.argb, width);
+            auto data = new ubyte[rowStride * height];
+            if(tjDecompress2(jpeg, bytes.ptr, bytes.length, data.ptr, width,
+                            cast(int)rowStride, height, jpegFormat, 0) != 0) {
+                throw new Exception("could not read "~filename.baseName~": "~errorMsg());
+            }
+
+            return new Image(data, ImageFormat.argb, width, rowStride);
+        }
+
+        override void save(const(Image) img, string filename)
+        {
+            import std.file : write;
+            tjhandle jpeg = tjInitCompress();
+            scope(exit) tjDestroy(jpeg);
+            c_ulong len;
+            ubyte *bytes;
+            if (tjCompress2(jpeg, cast(ubyte*)img.data.ptr, img.width, 0, img.height,
+                       jpegFormat, &bytes, &len, TJSAMP.TJSAMP_444, 100,
+                       TJFLAG_FASTDCT) != 0) {
+                throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg());
+            }
+            scope(exit) tjFree(bytes);
+            write(filename, cast(void[])bytes[0..cast(uint)len]);
+        }
+    }
+
+}
