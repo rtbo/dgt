@@ -6,6 +6,7 @@ import dgt.bindings.cairo.types;
 import dgt.bindings.cairo.enums;
 
 import core.sys.windows.windef;
+import core.sys.windows.wingdi;
 
 extern(C) nothrow @nogc
 {
