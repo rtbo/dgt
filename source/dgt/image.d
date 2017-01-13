@@ -256,6 +256,18 @@ class Image
         return new CairoImgSurf(this);
     }
 
+    static Image loadFromFile(string filename)
+    {
+        auto io = makeImgIO(filename);
+        return io.load(filename);
+    }
+
+    void saveToFile(string filename) const
+    {
+        auto io = makeImgIO(filename);
+        io.save(this, filename);
+    }
+
 }
 
 
