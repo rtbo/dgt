@@ -27,6 +27,21 @@ enum ImageFormat
     argbPremult,
 }
 
+@property bool isPureAlpha(in ImageFormat format)
+{
+    return format == ImageFormat.a1 || format == ImageFormat.a8;
+}
+
+@property bool hasAlpha(in ImageFormat format)
+{
+    return format != ImageFormat.rgb;
+}
+
+@property bool hasRgb(in ImageFormat format)
+{
+    return !format.isPureAlpha;
+}
+
 /// How many bits per pixel for a format?
 @property size_t bpp(in ImageFormat format)
 {
@@ -212,6 +227,16 @@ class Image
         _data = data;
     }
 
+    private this(ubyte[] data, ImageFormat format, ushort width, ushort height,
+                    size_t stride)
+    {
+        _data = data;
+        _format = format;
+        _width = width;
+        _height = height;
+        _stride = stride;
+    }
+
     /// Direct access to pixel data.
     @property inout(ubyte)[] data() inout
     {
@@ -297,8 +322,118 @@ class Image
         io.writeFile(this, filename);
     }
 
+    /// Duplicates the image into an image completely independant of this one.
+    @property Image dup() const
+    {
+        return new Image(_data.dup, _format, _width, _height, _stride);
+    }
+
+    /// Convert the image into another format. If format is the same, dup is returned.
+    /// It is only possible to convert between a1 and a8 or between one of the
+    /// rgb formats. An unsupported conversion tentative will throw.
+    Image convert(in ImageFormat format) const
+    {
+        if (format == _format)
+        {
+            return dup;
+        }
+
+        if (format.isPureAlpha != _format.isPureAlpha &&
+            format.hasRgb != _format.hasRgb)
+        {
+            import std.conv : to;
+            throw new Exception(
+                "Unsupported image conversion from "~_format.to!string~
+                " to "~format.to!string
+            );
+        }
+
+        immutable stride = bytesForWidth(format, _width);
+        auto res = new Image (
+            new ubyte[stride * _height], format, _width, _height, stride
+        );
+
+        if (_format == ImageFormat.a8 && format == ImageFormat.a1)
+        {
+            /// TODO: check accumulation of 4 bytes at a time
+            foreach (l; 0 .. _height)
+            {
+                const from = line(l);
+                auto to = res.line(l);
+                int count=0;
+                int ind =0;
+                ubyte val=0;
+                foreach (p; 0 .. _width)
+                {
+                    if (from[p] > 127) val &= (1 << count);
+                    if (++count == 8)
+                    {
+                        to[ind++] = val;
+                        val = 0;
+                        count = 0;
+                    }
+                }
+                // if we are not multiple of 8, the last byte is not written
+                assert(count == 0 || _width % 8);
+                if (count) to[ind] = val;
+            }
+        }
+        else if (_format == ImageFormat.a1 && format == ImageFormat.a8)
+        {
+            /// TODO: check accumulation of 4 bytes at a time
+            foreach (l; 0 .. _height)
+            {
+                const from = line(l);
+                auto to = res.line(l);
+                foreach (p; 0 .. _width)
+                {
+                    to[p] = getA1(from, p) ? 0xff : 0x00;
+                }
+            }
+        }
+        else if ((_format == ImageFormat.rgb && format == ImageFormat.argb) ||
+                (_format == ImageFormat.argb && format == ImageFormat.rgb))
+        {
+            fourBytesConv!eraseAlpha(this, res);
+        }
+        else if (_format == ImageFormat.argbPremult)
+        {
+            assert(format.hasRgb);
+            fourBytesConv!unpremultiply(this, res);
+        }
+        else if (format == ImageFormat.argbPremult)
+        {
+            assert(_format.hasRgb);
+            fourBytesConv!premultiply(this, res);
+        }
+        else
+        {
+            assert(false);
+        }
+        return res;
+    }
+
 }
 
+
+
+private void fourBytesConv(alias convFn)(const(Image) from, Image to)
+if (is(typeof(convFn(uint.init)) == uint))
+{
+    assert(from.size == to.size);
+    assert(from.format.bpp == 32 && to.format.bpp == 32);
+
+    foreach (l; 0 .. from.height)
+    {
+        const lfrom = from.line(l);
+        auto lto = to.line(l);
+        foreach (offset; 0 .. from.width)
+        {
+            immutable px = getArgb(lfrom, offset);
+            setArgb(lto, offset, convFn(px));
+        }
+    }
+}
 
 /// The size of the image
 @property ISize size(const(Image) img)
@@ -363,6 +498,12 @@ uint unpremultiply(in uint value)
         cast(ubyte)(value.green * 255 / alpha),
         cast(ubyte)(value.blue * 255 / alpha),
     );
+}
+
+/// Erase the alpha channel of the given pixel.
+uint eraseAlpha(in uint value)
+{
+    return 0xff000000 & value;
 }
 
 /// Get a pixel value from a $(D ImageFormat.a1) scanline.
