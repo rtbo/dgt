@@ -149,14 +149,16 @@ class Image
     private ushort _height; // in px
     private size_t _stride; // in bytes
 
-    /// Allocates an image with format and size
+    /// Allocates an image with format and size.
+    /// The pixel content is not initialized.
     this(ImageFormat format, ISize size)
     {
+        import std.array : uninitializedArray;
         enforce(size.isValidImageSize);
         _width = cast(ushort)size.width;
         _height = cast(ushort)size.height;
         _stride = format.bytesForWidth(size.width);
-        _data = new ubyte[_stride * _height];
+        _data = uninitializedArray!(ubyte[])(_stride * _height);
     }
 
     /// Build an Image from a Pixels struct. $(D pixels.data) does not need to
@@ -282,10 +284,12 @@ class Image
 
     /// Make a surface that can be used to draw directly into the image data.
     /// As image data resides in main memory, the surface will be associated
-    /// with a software rasterizer.
+    /// with a software rasterizer. ImageFormat.argb is not supported.
+    /// Use convert(ImageFormat.argbPremult) to draw into such image.
     VgSurface makeSurface()
     {
         import dgt.vg.backend.cairo : CairoImgSurf;
+        enforce(format != ImageFormat.argb);
         return new CairoImgSurf(this);
     }
 
@@ -367,7 +371,7 @@ class Image
 
         if (_format == ImageFormat.a8 && format == ImageFormat.a1)
         {
-            /// TODO: check accumulation of 4 bytes at a time
+            /// TODO: accumulation of 4 bytes at a time
             foreach (l; 0 .. _height)
             {
                 const from = line(l);
@@ -392,7 +396,7 @@ class Image
         }
         else if (_format == ImageFormat.a1 && format == ImageFormat.a8)
         {
-            /// TODO: check accumulation of 4 bytes at a time
+            /// TODO: accumulation of 4 bytes at a time
             foreach (l; 0 .. _height)
             {
                 const from = line(l);
@@ -427,14 +431,15 @@ class Image
 
 }
 
-
-
 private void fourBytesConv(alias convFn)(const(Image) from, Image to)
 if (is(typeof(convFn(uint.init)) == uint))
+in
 {
     assert(from.size == to.size);
     assert(from.format.bpp == 32 && to.format.bpp == 32);
-
+}
+body
+{
     foreach (l; 0 .. from.height)
     {
         const lfrom = from.line(l);
@@ -443,6 +448,23 @@ if (is(typeof(convFn(uint.init)) == uint))
         {
             immutable px = getArgb(lfrom, offset);
             setArgb(lto, offset, convFn(px));
+        }
+    }
+}
+
+/// Apply in-place the conversion function to each 4 bytes group of data.
+/// If the image has 4 bytes component, each pixel will be processed individually.
+/// Image.stride is always 4 bytes aligned.
+void apply(alias convFn)(Image img)
+if (is(typeof(convFn(uint.init)) == uint))
+{
+    foreach (l; 0 .. img.height)
+    {
+        auto line = img.line(l);
+        foreach (i; 0 .. img.width)
+        {
+            immutable px = getArgb(line, i);
+            setArgb(line, i, convFn(px));
         }
     }
 }
@@ -505,7 +527,8 @@ uint premultiply(in uint value)
 uint unpremultiply(in uint value)
 {
     immutable alpha = value.alpha;
-    return argb( alpha,
+    if (!alpha) return value;
+    else return argb( alpha,
         cast(ubyte)(value.red * 255 / alpha),
         cast(ubyte)(value.green * 255 / alpha),
         cast(ubyte)(value.blue * 255 / alpha),
@@ -764,6 +787,10 @@ private
             {
                 return img.convert(ImageFormat.a1);
             }
+            if (format == ImageFormat.argbPremult)
+            {
+                img.apply!premultiply();
+            }
             return img;
         }
 
@@ -848,6 +875,10 @@ private
             if (format == ImageFormat.a1)
             {
                 return img.convert(ImageFormat.a1);
+            }
+            if (format == ImageFormat.argbPremult)
+            {
+                img.apply!premultiply();
             }
             return img;
         }
