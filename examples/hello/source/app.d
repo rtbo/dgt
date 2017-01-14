@@ -64,7 +64,7 @@ int main()
 
         if (!tex.loaded)
         {
-            tex = surf.backend.createTexture(img);
+            tex = createTexture(surf, img);
         }
 
         immutable size = win.size;

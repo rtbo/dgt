@@ -76,3 +76,17 @@ VgContext createContext(VgSurface surf)
 {
     return surf.backend.createContext(surf);
 }
+
+/// Create a texture to be used on a surface.
+/// Shortcut for $(D_CODE surf.backend.createTexture(pixels)).
+VgTexture createTexture(VgSurface surf, in Pixels pixels)
+{
+    return surf.backend.createTexture(pixels);
+}
+
+/// Create a texture to be used on a surface.
+/// Shortcut for $(D_CODE surf.backend.createTexture(image)).
+VgTexture createTexture(VgSurface surf, Image image)
+{
+    return surf.backend.createTexture(image);
+}
