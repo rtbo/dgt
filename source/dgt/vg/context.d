@@ -126,6 +126,9 @@ interface VgContext : RefCounted
     /// ImageFormat.a8.
     void mask(VgTexture tex);
 
+    /// Draw the texture to the surface.
+    void drawTexture(VgTexture tex);
+
     /// Clear the whole clipping area with the provided color.
     /// This is equivalent has filling the clip path with a color Paint,
     /// but can possibly be faster.

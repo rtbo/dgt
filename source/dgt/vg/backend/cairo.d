@@ -74,6 +74,11 @@ private class CairoBackend : VgBackend
     {
         return new CairoImgSurf(pixels);
     }
+
+    override VgTexture createTexture(Image image)
+    {
+        return new CairoImgSurf(image);
+    }
 }
 
 
@@ -330,6 +335,16 @@ class CairoContext : VgContext
         cairo_mask(cairo, patt);
     }
 
+    override void drawTexture(VgTexture tex)
+    {
+        auto cis = enforce(cast(CairoImgSurf)tex,
+            "VgTexture of type "~typeid(tex).toString()~
+            " is not usable with a cairo context"
+        );
+        cairo_set_source_surface(cairo, cis.cairoSurf, 0, 0);
+        cairo_paint(cairo);
+    }
+
     override void clear(in float[4] color)
     {
         cairo_set_source_rgba(cairo, color[0], color[1], color[2], color[3]);
@@ -422,12 +437,16 @@ class CairoImgSurf : CairoSurface, VgTexture
 
     this (Image img)
     {
+        if (img.format == ImageFormat.argb)
+        {
+            img = img.convert(ImageFormat.argbPremult);
+        }
         updateImage(img);
     }
 
     this (in Pixels pixels)
     {
-        updateImage(new Image(pixels));
+        setPixels(pixels);
     }
 
     override @property cairo_surface_t* cairoSurf()
@@ -462,7 +481,33 @@ class CairoImgSurf : CairoSurface, VgTexture
 
     override void setPixels(in Pixels pixels)
     {
-        updateImage(new Image(pixels));
+        if (pixels.format == ImageFormat.argb)
+        {
+            import std.math : abs;
+            // convert to premultiplied
+            Image img = new Image(ImageFormat.argbPremult,
+                    ISize(cast(int)pixels.width, cast(int)pixels.height));
+
+            immutable pixStride = abs(pixels.stride);
+            foreach(l; 0 .. pixels.height)
+            {
+                immutable pixLine = pixels.stride > 0 ? l : pixels.height-l-1;
+                immutable pixOffset = pixLine * pixStride;
+                const from = pixels.data[pixOffset .. pixOffset+pixStride];
+                auto to = img.line(l);
+
+                foreach (i; 0 .. pixels.width)
+                {
+                    immutable px = getArgb(from, i);
+                    setArgb(to, i, premultiply(px));
+                }
+            }
+            updateImage(img);
+        }
+        else
+        {
+            updateImage(new Image(pixels));
+        }
     }
 
     override void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea)
@@ -699,6 +744,7 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
     else
     {
         cairo_pattern_t* patt;
+
         switch (paint.type)
         {
         case PaintType.color:
@@ -720,6 +766,15 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
             immutable r = rgp.radius;
             patt = cairo_pattern_create_radial(f[0], f[1], 0.0, c[0], c[1], r);
             patternAddStops(patt, rgp.stops);
+            break;
+        case PaintType.texture:
+            auto tp =  unsafeCast!TexturePaint(paint);
+            auto img = enforce(cast(CairoImgSurf)tp.texture);
+            patt = cairo_pattern_create_for_surface(img.cairoSurf);
+            import std.stdio;
+            writefln("pattern with img %s x %s",
+                    cairo_image_surface_get_width (img.cairoSurf),
+                    cairo_image_surface_get_height (img.cairoSurf));
             break;
         default:
             assert(false, "unimplemented");

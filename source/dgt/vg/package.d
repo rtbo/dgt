@@ -5,7 +5,7 @@ public import dgt.vg.paint;
 public import dgt.vg.path;
 import dgt.core.resource;
 import dgt.geometry;
-import dgt.image : Pixels, ImageFormat;
+import dgt.image;
 
 /// A surface to render vector graphics on.
 interface VgSurface : RefCounted
@@ -59,10 +59,19 @@ interface VgBackend : Disposable
 
     /// Create a texture from the provided pixels.
     VgTexture createTexture(in Pixels pixels);
+
+    /// Create a texture from the provided image.
+    /// In case of a software renderer (hardwareAccelerated == false), the
+    /// image will be converted to ImageFormat.argbPremult. If it has already
+    /// this format, the image content will be used directly (no copy). In this
+    /// special case, modifying the image content of another reference of the
+    /// image will also modify the texture content. If this behavior is harmful
+    /// create the texture using a copy of the image (Image.dup).
+    VgTexture createTexture(Image image);
 }
 
 /// Create a graphics context associated with a surface.
-/// It basically calls $(D_CODE surf.backend.createContext(surf))
+/// It basically calls $(D_CODE surf.backend.createContext(surf)).
 VgContext createContext(VgSurface surf)
 {
     return surf.backend.createContext(surf);
