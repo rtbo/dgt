@@ -6,6 +6,7 @@ import dgt.image;
 import dgt.math.mat;
 
 import std.typecons : BitFlags, Flag, No;
+import std.traits : isCallable;
 
 enum FillRule
 {
@@ -51,11 +52,12 @@ alias Transform = FMat2x3;
 
 
 /// Call dg in a state sandbox.
-void sandbox(alias dg)(VgContext ctx)
+void sandbox(alias drawDg)(VgContext ctx)
+if (isCallable!drawDg)
 {
     ctx.save();
     scope(exit) ctx.restore();
-    dg();
+    drawDg();
 }
 
 /// A vector graphics context.
