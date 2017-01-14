@@ -290,32 +290,44 @@ class Image
     }
 
     /// Read the file specified by filename and load into an Image.
-    /// Reads in ImageFormat.argb.
-    static Image loadFromFile(string filename)
+    static Image loadFromFile(in string filename, in ImageFormat format)
     {
         auto io = imgIOFromFile(filename);
         if (!io)
         {
             throw new Exception("Unrecognized image format");
         }
-        return io.readFile(filename);
+        return io.readFile(filename, format);
     }
 
     /// Read the file specified by buffer and load into an Image.
     /// Reads in ImageFormat.argb
-    static Image loadFromMemory(const(ubyte)[] data)
+    static Image loadFromMemory(in ubyte[] data, in ImageFormat format)
     {
         auto io = imgIOFromMem(data);
         if (!io)
         {
             throw new Exception("Unrecognized image format");
         }
-        return io.readMem(data);
+        return io.readMem(data, format);
+    }
+
+    /// Read the file specified at compile time by using an import expression
+    /// to read the bytes
+    static Image loadFromImport(string path)(in ImageFormat format)
+    {
+        immutable data = cast(immutable(ubyte)[])import(path);
+        auto io = imgIOFromMem(data);
+        if (!io)
+        {
+            throw new Exception("Unrecognized image format:" ~ path);
+        }
+        return io.readMem(data, format);
     }
 
     /// Save the image to the specified buffer.
     /// Only ImageFormat.argb is supported.
-    void saveToFile(string filename) const
+    void saveToFile(in string filename) const
     {
         enforce(format == ImageFormat.argb);
         auto io = imgIOFromFile(filename);
@@ -677,23 +689,37 @@ private
 
     interface ImgIO
     {
-        Image readFile(string filename);
-        Image readMem(const(ubyte)[] data);
-        void writeFile(const(Image) img, string filename);
+        Image readFile(in string filename, in ImageFormat format);
+        Image readMem(in ubyte[] data, in ImageFormat format);
+        void writeFile(in Image img, in string filename);
     }
 
 
     class PngIO : ImgIO
     {
 
-        version(LittleEndian) {
-            enum pngFormat = PNG_FORMAT_BGRA;
-        }
-        else {
-            enum pngFormat = PNG_FORMAT_ARGB;
+        static uint pngFormat(ImageFormat format)
+        {
+            final switch (format)
+            {
+            case ImageFormat.a1:
+                assert(false);
+            case ImageFormat.a8:
+                return PNG_FORMAT_GRAY;
+            case ImageFormat.rgb:
+            case ImageFormat.argb:
+            case ImageFormat.argbPremult:
+            version(LittleEndian) {
+                return PNG_FORMAT_BGRA;
+            }
+            else {
+                return PNG_FORMAT_ARGB;
+            }
+            }
         }
 
-        override Image readFile(string filename)
+
+        override Image readFile(in string filename, in ImageFormat format)
         {
             png_image pimg;
             pimg.version_ = PNG_IMAGE_VERSION;
@@ -701,19 +727,11 @@ private
             {
                 throw new Exception("could not read image from "~filename);
             }
-            scope(failure) png_image_free(&pimg);
-
-            immutable rowStride = bytesForWidth(ImageFormat.argb, pimg.width);
-            immutable numBytes = rowStride*pimg.height;
-            pimg.format = pngFormat;
-            ubyte[] buf = new ubyte[numBytes];
-            if (!png_image_finish_read(&pimg, null, cast(void*)buf, cast(int)rowStride, null)) {
-                throw new Exception("could not finish read image from "~filename);
-            }
-            return new Image(buf, ImageFormat.argb, pimg.width, rowStride);
+            scope(exit) png_image_free(&pimg);
+            return readFinish(&pimg, format);
         }
 
-        override Image readMem(const(ubyte)[] data)
+        override Image readMem(in ubyte[] data, in ImageFormat format)
         {
             png_image pimg;
             pimg.version_ = PNG_IMAGE_VERSION;
@@ -721,24 +739,40 @@ private
             {
                 throw new Exception("could not read image from memory");
             }
-            scope(failure) png_image_free(&pimg);
+            scope(exit) png_image_free(&pimg);
+            return readFinish(&pimg, format);
+        }
 
-            immutable rowStride = bytesForWidth(ImageFormat.argb, pimg.width);
+        private Image readFinish(png_imagep pimg, in ImageFormat format)
+        {
+            ImageFormat readFmt = format;
+            // 1 bpp is not supported by libpng
+            if (format == ImageFormat.a1) readFmt = ImageFormat.a8;
+
+            immutable rowStride = bytesForWidth(readFmt, pimg.width);
             immutable numBytes = rowStride*pimg.height;
-            pimg.format = pngFormat;
+            pimg.format = pngFormat(readFmt);
             ubyte[] buf = new ubyte[numBytes];
-            if (!png_image_finish_read(&pimg, null, cast(void*)buf, cast(int)rowStride, null)) {
-                throw new Exception("could not finish read image from memory");
+            if (!png_image_finish_read(pimg, null, cast(void*)buf, cast(int)rowStride, null))
+            {
+                throw new Exception("could not finish read image");
             }
-            return new Image(buf, ImageFormat.argb, pimg.width, rowStride);
+
+            auto img = new Image(buf, readFmt, pimg.width, rowStride);
+
+            if (format == ImageFormat.a1)
+            {
+                return img.convert(ImageFormat.a1);
+            }
+            return img;
         }
 
 
-        override void writeFile(const(Image) img, string filename)
+        override void writeFile(in Image img, in string filename)
         {
             png_image pimg;
             pimg.version_ = PNG_IMAGE_VERSION;
-            pimg.format = pngFormat;
+            pimg.format = pngFormat(img.format);
             pimg.width = img.width;
             pimg.height = img.height;
 
@@ -748,11 +782,24 @@ private
 
     class JpegIO : ImgIO
     {
-        version(LittleEndian) {
-            enum jpegFormat = TJPF.TJPF_BGRA;
-        }
-        else {
-            enum jpegFormat = TJPF.TJPF_ARGB;
+        static uint jpegFormat(ImageFormat format)
+        {
+            final switch (format)
+            {
+            case ImageFormat.a1:
+                assert(false);
+            case ImageFormat.a8:
+                return TJPF.TJPF_GRAY;
+            case ImageFormat.rgb:
+            case ImageFormat.argb:
+            case ImageFormat.argbPremult:
+            version(LittleEndian) {
+                return TJPF.TJPF_BGRA;
+            }
+            else {
+                return TJPF.TJPF_ARGB;
+            }
+            }
         }
 
 
@@ -764,36 +811,48 @@ private
         }
 
 
-        override Image readFile(string filename)
+        override Image readFile(in string filename, in ImageFormat format)
         {
             import std.file : read;
             auto bytes = cast(ubyte[]) read(filename);
-            return readMem(bytes);
+            return readMem(bytes, format);
         }
 
-        override Image readMem(const(ubyte)[] bytes)
+        override Image readMem(in ubyte[] bytes, in ImageFormat format)
         {
+            ImageFormat readFmt = format;
+            // 1 bpp is not supported by libjpeg
+            if (format == ImageFormat.a1) readFmt = ImageFormat.a8;
+
             tjhandle jpeg = tjInitDecompress();
             scope(exit) tjDestroy(jpeg);
 
             // const cast needed.  arrgh!
             int width, height, jpegsubsamp;
             if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, bytes.length,
-                                    &width, &height, &jpegsubsamp) != 0) {
+                                    &width, &height, &jpegsubsamp) != 0)
+            {
                 throw new Exception("could not read from memory: "~errorMsg());
             }
 
             immutable rowStride = bytesForWidth(ImageFormat.argb, width);
             auto data = new ubyte[rowStride * height];
             if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, bytes.length, data.ptr,
-                            width, cast(int)rowStride, height, jpegFormat, 0) != 0) {
+                            width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)
+            {
                 throw new Exception("could not read from memory: "~errorMsg());
             }
 
-            return new Image(data, ImageFormat.argb, width, rowStride);
+            auto img = new Image(data, ImageFormat.argb, width, rowStride);
+
+            if (format == ImageFormat.a1)
+            {
+                return img.convert(ImageFormat.a1);
+            }
+            return img;
         }
 
-        override void writeFile(const(Image) img, string filename)
+        override void writeFile(in Image img, in string filename)
         {
             import std.file : write;
             tjhandle jpeg = tjInitCompress();
@@ -801,7 +860,7 @@ private
             c_ulong len;
             ubyte *bytes;
             if (tjCompress2(jpeg, cast(ubyte*)img.data.ptr, img.width, 0, img.height,
-                       jpegFormat, &bytes, &len, TJSAMP.TJSAMP_444, 100,
+                       jpegFormat(img.format), &bytes, &len, TJSAMP.TJSAMP_444, 100,
                        TJFLAG_FASTDCT) != 0) {
                 throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg());
             }
