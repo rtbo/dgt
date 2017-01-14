@@ -9,6 +9,7 @@ import dgt.math.vec;
 import dgt.text.fontcache;
 import dgt.text.font;
 import dgt.text.layout;
+import dgt.image;
 
 import std.typecons : scoped;
 import std.stdio;
@@ -44,6 +45,7 @@ int main()
     auto fillPaint = makeRc!ColorPaint();
     auto strokePaint = makeRc!ColorPaint(fvec(0.8, 0.2, 0.2, 1));
     auto textPaint = makeRc!ColorPaint(fvec(0, 0, 1, 1));
+    Rc!VgTexture tex;
 
     // preparing text
     FontRequest font;
@@ -52,10 +54,18 @@ int main()
     auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
     layout.layout();
 
+    auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
+    img.convert(ImageFormat.argb).saveToFile("/home/remi/dlang.jpeg");
+
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
         auto surf = win.surface.rc;
         auto ctx = createContext(surf).rc;
+
+        if (!tex.loaded)
+        {
+            tex = surf.backend.createTexture(img);
+        }
 
         immutable size = win.size;
 
@@ -77,6 +87,13 @@ int main()
             layout.renderInto(ctx);
         });
 
+        ctx.sandbox!({
+            ctx.transform = ctx.transform.translate(
+                size.width - img.width - 10,
+                size.height - img.height - 10
+            );
+            ctx.drawTexture(tex);
+        });
     };
     win.show();
     return app.loop();
