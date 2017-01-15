@@ -128,11 +128,11 @@ extern(C) nothrow @nogc
     alias da_FcCharSetIsSubset = FcBool function (const(FcCharSet)* a, const(FcCharSet)* b);
 
     alias da_FcCharSetFirstPage = FcChar32 function (const(FcCharSet)* a,
-                FcChar32[FC_CHARSET_MAP_SIZE]	    map,
+                ref FcChar32[FC_CHARSET_MAP_SIZE]	    map,
                 FcChar32	    *next);
 
     alias da_FcCharSetNextPage = FcChar32 function (const(FcCharSet)* a,
-               FcChar32[FC_CHARSET_MAP_SIZE]	    map,
+               ref FcChar32[FC_CHARSET_MAP_SIZE]	    map,
                FcChar32	    *next);
 
     /*
@@ -453,8 +453,7 @@ extern(C) nothrow @nogc
            int		    *nchar,
            int		    *_wchar);
 
-    // alias da_FcChar8 = int (FcChar32	ucs4,[FC_UTF8_MAX_LEN]	destfunction)
-    //         FcUcs4ToUtf8;
+    alias da_FcUcs4ToUtf8 = int function (FcChar32 ucs4, ref FcChar8[FC_UTF8_MAX_LEN] dest);
 
     alias da_FcUtf16ToUcs4 = int function (const(FcChar8)* src_orig,
                FcEndian		endian,
@@ -892,7 +891,7 @@ __gshared
 
     da_FcUtf8Len FcUtf8Len;
 
-    // da_FcUcs4ToUtf8 FcUcs4ToUtf8;
+    da_FcUcs4ToUtf8 FcUcs4ToUtf8;
 
     da_FcUtf16ToUcs4 FcUtf16ToUcs4;	    /* in bytes */
 

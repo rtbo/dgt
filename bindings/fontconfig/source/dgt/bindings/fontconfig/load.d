@@ -247,7 +247,7 @@ alias FontconfigLoader = SymbolLoader!(
     FcStrStr,
     FcUtf8ToUcs4,
     FcUtf8Len,
-//    FcUcs4ToUtf8,
+    FcUcs4ToUtf8,
     FcUtf16ToUcs4, /* in bytes */
     FcUtf16Len,
     FcStrDirname,
