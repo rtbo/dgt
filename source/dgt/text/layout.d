@@ -60,6 +60,7 @@ class TextLayout : RefCounted
 
     override void dispose()
     {
+        reinit(_matchedFonts);
         reinit(_items);
         reinit(_shapes);
     }
@@ -68,11 +69,24 @@ class TextLayout : RefCounted
     /// each of them.
     void layout()
     {
+        import std.algorithm : find, all;
         reinit(_items);
         reinit(_shapes);
+
+        // find the first font that cover the whole string
+        auto mf = _matchedFonts.find!(
+            (ref m) {
+                import std.utf : byDchar;
+                auto cov = m.coverage;
+                return byDchar(_text).all!(c => cov[c]);
+            }
+        );
+
+        enforce(mf.length, "Could not find a font matching for \""~_text~"\"");
+
         // only plain text single item support
         _items = [TextItem(
-            _text, makeRc!Font(_matchedFonts[0]), ImageFormat.a8, 0,
+            _text, makeRc!Font(mf[0]), ImageFormat.a8, 0,
         )];
         foreach(ref i; _items)
         {

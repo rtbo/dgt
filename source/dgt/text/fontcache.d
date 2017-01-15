@@ -7,6 +7,8 @@ import dgt.core.resource;
 import std.exception;
 import std.string;
 import std.experimental.logger;
+import std.uni;
+import std.typecons : Flag, Yes, No;
 
 
 /// A structured font request.
@@ -39,7 +41,10 @@ struct FontResult
 
     string filename;
     int faceIndex;
+    // todo: build coverage lazily and cache it.
+    CodepointSet coverage;
 }
+
 
 
 private __gshared FontCache _instance;
@@ -158,6 +163,7 @@ class FontCache : Disposable
                 double dval = void;
                 char* sval = void;
                 int ival = void;
+                FcCharSet *csval = void;
                 FontResult fr;
                 if (FcPatternGetString(p, FC_FAMILY, 0, &sval) == FcResultMatch)
                 {
@@ -181,6 +187,9 @@ class FontCache : Disposable
                 {
                     fr.foundry = fromStringz(sval).idup;
                 }
+                string fn;
+                int fi;
+                CodepointSet cps;
                 if (FcPatternGetString(p, FC_FILE, 0, &sval) == FcResultMatch)
                 {
                     fr.filename = fromStringz(sval).idup;
@@ -189,10 +198,59 @@ class FontCache : Disposable
                 {
                     fr.faceIndex = ival;
                 }
+                if (FcPatternGetCharSet(p, FC_CHARSET, 0, &csval) == FcResultMatch)
+                {
+                    fr.coverage = buildCoverage(csval);
+                }
                 res ~= fr;
             }
         }
         return res;
+    }
+
+    CodepointSet buildCoverage(FcCharSet* cs)
+    {
+        CodepointSet coverage;
+        Flag!"included" inSet = No.included;
+        dchar intervalSt;
+        dchar intervalEnd;
+
+        FcChar32[FC_CHARSET_MAP_SIZE] map;
+        FcChar32 pos;
+        for(FcChar32 base = FcCharSetFirstPage(cs, map, &pos);
+            base != FC_CHARSET_DONE;
+            base = FcCharSetNextPage(cs, map, &pos))
+        {
+            foreach (immutable uint i, bits; map)
+            {
+                foreach (immutable dchar cp; base+i*32 .. base+i*64)
+                {
+                    immutable cIsIn = (bits & 1) ? Yes.included : No.included;
+                    if (cIsIn)
+                    {
+                        intervalEnd = cp;
+                    }
+
+                    if (cIsIn && !inSet)
+                    {
+                        intervalSt = cp;
+                    }
+                    else if (!cIsIn && inSet)
+                    {
+                        coverage.add(intervalSt, intervalEnd + 1);
+                    }
+
+                    inSet = cIsIn;
+                    bits >>>= 1;
+                    if (!cIsIn && !bits) break;
+                }
+            }
+        }
+        if (inSet)
+        {
+            coverage.add(intervalSt, intervalEnd+1);
+        }
+        return coverage;
     }
 }
 
