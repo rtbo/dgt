@@ -135,14 +135,14 @@ class Font : RefCounted
         return g;
     }
 
-    mixin ReadOnlyValueProperty!("filename", string);
-    mixin ReadOnlyValueProperty!("faceIndex", int);
-    mixin ReadOnlyValueProperty!("family", string);
-    mixin ReadOnlyValueProperty!("size", FontSize);
-    mixin ReadOnlyValueProperty!("weight", int);
-    mixin ReadOnlyValueProperty!("style", FontStyle);
-    mixin ReadOnlyValueProperty!("foundry", string);
-    mixin ReadOnlyValueProperty!("format", FontFormat);
+    mixin ReadOnlyValueProperty!(string, "filename");
+    mixin ReadOnlyValueProperty!(int, "faceIndex");
+    mixin ReadOnlyValueProperty!(string, "family");
+    mixin ReadOnlyValueProperty!(FontSize, "size");
+    mixin ReadOnlyValueProperty!(int, "weight");
+    mixin ReadOnlyValueProperty!(FontStyle, "style");
+    mixin ReadOnlyValueProperty!(string, "foundry");
+    mixin ReadOnlyValueProperty!(FontFormat, "format");
 
     @property FT_Face ftFace()
     {
