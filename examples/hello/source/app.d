@@ -49,10 +49,12 @@ int main()
 
     // preparing text
     FontRequest font;
-    font.family = "Serif";
+    font.family = "serif";
     font.size = FontSize.pts(100);
     auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
     layout.layout();
+    auto arLayout = makeRc!TextLayout("مرحبا", TextFormat.plain, font);
+    arLayout.layout();
 
     auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
     img.convert(ImageFormat.argb).saveToFile("/home/remi/dlang.jpeg");
@@ -85,6 +87,12 @@ int main()
             ctx.fillPaint = textPaint;
             ctx.transform = ctx.transform.translate(30, size.height-30);
             layout.renderInto(ctx);
+        });
+
+        ctx.sandbox!({
+            ctx.fillPaint = textPaint;
+            ctx.transform = ctx.transform.translate(size.width-400, 150);
+            arLayout.renderInto(ctx);
         });
 
         ctx.sandbox!({
