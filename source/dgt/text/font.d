@@ -108,31 +108,64 @@ class Font : RefCounted
     {
         hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
-        foreach(rg; _rasterizedCache)
+        foreach(ref cache; _glyphCache)
         {
-            if (rg) rg.release();
+            if (cache.rasterized) cache.rasterized.release();
         }
+    }
+
+    /// Get the metrics of one glyph
+    GlyphMetrics glyphMetrics(size_t glyphIndex)
+    {
+        GlyphCache* entry = glyphIndex in _glyphCache;
+        GlyphCache cache = entry ? *entry : GlyphCache.init;
+        if (cache.metrics) return cache.metrics;
+
+        FT_Load_Glyph(_ftFace, cast(FT_UInt)glyphIndex, FT_LOAD_DEFAULT);
+
+        auto ftm = _ftFace.glyph.metrics;
+        cache.metrics = new GlyphMetrics(
+            fvec(ftm.width/64f, ftm.height/64f),
+
+            fvec(ftm.horiBearingX/64f, ftm.horiBearingY/64f),
+            ftm.horiAdvance/64f,
+
+            fvec(ftm.vertBearingX/64f, ftm.vertBearingY/64f),
+            ftm.vertAdvance/64f,
+        );
+
+        if (entry) *entry = cache;
+        else _glyphCache[glyphIndex] = cache;
+        return cache.metrics;
     }
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
     RasterizedGlyph rasterizeGlyph(size_t glyphIndex, VgBackend backend)
     {
-        RasterizedGlyph* pg = glyphIndex in _rasterizedCache;
-        if (pg && *pg && pg.backendUid == backend.uid)
+        GlyphCache* entry = glyphIndex in _glyphCache;
+        GlyphCache cache = entry ? *entry : GlyphCache.init;
+        if (cache.rasterized && cache.rasterized.backendUid == backend.uid)
         {
-            return *pg;
-        }
-        if (pg && !(*pg))
-        {
-            // null was inserted in the cache, likely a space.
-            return null;
+            return cache.rasterized;
         }
 
-        auto g = rasterize(glyphIndex, backend);
-        if (g) g.retain();
-        _rasterizedCache[glyphIndex] = g;
-        return g;
+        if (cache.isWhitespace) return null;
+
+        auto rasterized = rasterize(glyphIndex, backend);
+        if (rasterized)
+        {
+            rasterized.retain();
+            cache.rasterized = rasterized;
+        }
+        else
+        {
+            cache.isWhitespace = true;
+        }
+
+        if (entry) *entry = cache;
+        else _glyphCache[glyphIndex] = cache;
+        return rasterized;
     }
 
     mixin ReadOnlyValueProperty!(string, "filename");
@@ -181,7 +214,61 @@ class Font : RefCounted
 
     private FT_Face _ftFace;
     private hb_font_t* _hbFont;
-    private RasterizedGlyph[size_t] _rasterizedCache;
+    private GlyphCache[size_t] _glyphCache;
+}
+
+private enum CacheFlags
+{
+    metricsSet  = 1,
+    isWhitespace = 2,
+}
+private struct GlyphCache
+{
+    CacheFlags flags;
+    GlyphMetrics metrics;
+    RasterizedGlyph rasterized;
+
+    @property bool metricsSet() const
+    {
+        return (flags & CacheFlags.metricsSet) != 0;
+    }
+    @property void metricsSet(bool val)
+    {
+        flags = val ?
+            flags | CacheFlags.metricsSet :
+            flags & ~CacheFlags.metricsSet;
+    }
+
+    @property bool isWhitespace() const
+    {
+        return (flags & CacheFlags.isWhitespace) != 0;
+    }
+    @property void isWhitespace(bool val)
+    {
+        flags = val ?
+            flags | CacheFlags.isWhitespace :
+            flags & ~CacheFlags.isWhitespace;
+    }
+}
+
+/// Glyph metrics.
+class GlyphMetrics
+{
+    private this (in FVec2 size, in FVec2 horBearing, in float horAdvance,
+            in FVec2 verBearing, in float verAdvance)
+    {
+        _size = size;
+        _horBearing = horBearing;
+        _horAdvance = horAdvance;
+        _verBearing = verBearing;
+        _verAdvance = verAdvance;
+    }
+
+    mixin ReadOnlyValueProperty!(FVec2, "size");
+    mixin ReadOnlyValueProperty!(FVec2, "horBearing");
+    mixin ReadOnlyValueProperty!(float, "horAdvance");
+    mixin ReadOnlyValueProperty!(FVec2, "verBearing");
+    mixin ReadOnlyValueProperty!(float, "verAdvance");
 }
 
 /// A glyph rasterized in a bitmap
