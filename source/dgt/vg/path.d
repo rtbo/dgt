@@ -200,11 +200,12 @@ class Path
     /// Throws: Exception if no moveTo can be found before this call.
     void close()
     {
+        import std.range : retro;
         _segments ~= PathSeg.close;
         _lastControl[] = float.nan;
         // reverse search for the last move to or throw
         size_t offset = 0;
-        foreach_reverse(seg; _segments[0 .. $-1])
+        foreach(seg; retro(_segments[0 .. $-1]))
         {
             offset += seg.numComponents;
             if (seg == PathSeg.moveTo)
