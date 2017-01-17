@@ -197,11 +197,24 @@ class Path
         _lastPoint = point;
     }
 
+    /// Throws: Exception if no moveTo can be found before this call.
     void close()
     {
         _segments ~= PathSeg.close;
         _lastControl[] = float.nan;
-        // keep last point around for a relative moveTo
+        // reverse search for the last move to or throw
+        size_t offset = 0;
+        foreach_reverse(seg; _segments[0 .. $-1])
+        {
+            offset += seg.numComponents;
+            if (seg == PathSeg.moveTo)
+            {
+                assert(offset <= _data.length && offset >= 2);
+                _lastPoint = _data[$-offset .. $-(offset-2)];
+                return;
+            }
+        }
+        enforce(false, "close without moveTo segment");
     }
 
     private @property hasLastPoint() const
@@ -258,7 +271,7 @@ struct SegmentDataRange
 
     @property bool empty()
     {
-        return segments.empty || data.empty;
+        return segments.empty;
     }
 
     @property auto front()
