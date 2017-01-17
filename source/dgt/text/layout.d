@@ -45,6 +45,38 @@ struct GlyphInfo
     IVec2 offset;
 }
 
+/// Metrics of text drawn to screen
+struct TextMetrics
+{
+    /// Offset of the text bounding box to the pen start position.
+    /// Positive in x means that pen start position is left of the bounding box.
+    /// Positive in y means that pen start position is lower than the bounding box.
+    IVec2 bearing;
+    /// Size of the text bounding box
+    IVec2 size;
+    /// Advance equals (pen end position - pen start position)
+    /// Pen end position can be the start position of another text concatenated
+    /// to the one those metrics refer to.
+    IVec2 advance;
+
+    invariant()
+    {
+        assert(advance.x == 0 || advance.y == 0);
+    }
+
+    /// True if this refers to an horizontal text metrics
+    @property bool horizontal() const
+    {
+        return advance.y == 0;
+    }
+
+    /// True if this refers to a vertical text metrics
+    @property bool vertical() const
+    {
+        return advance.x == 0;
+    }
+}
+
 /// A single line text layout
 class TextLayout : RefCounted
 {
@@ -92,6 +124,49 @@ class TextLayout : RefCounted
         {
             _shapes ~= shapeItem(i);
         }
+    }
+
+    /// Perform a rendering simulation (without rasterizing any glyph) and
+    /// return the metrics associated to this layout.
+    public @property TextMetrics metrics()
+    {
+        import std.algorithm : min, max;
+        import std.math : round;
+        // FIXME: vertical
+        float bearingX;
+        float width;
+        float top = 0;
+        float bottom =0;
+        auto advance = fvec(0, 0);
+
+        foreach (TextShape ts; _shapes)
+        {
+            foreach (i, GlyphInfo gi; ts.glyphs)
+            {
+                immutable gm = ts.font.glyphMetrics(gi.index);
+                if (i == 0)
+                {
+                    bearingX = gm.horBearing.x;
+                    width = -gm.horBearing.x;
+                }
+                if (i == ts.glyphs.length-1)
+                {
+                    // width = total advance wo last char       +
+                    //         horizontal bearing of last char  +
+                    //         width of last char               -
+                    //         horizontal bearing of first char
+                    width += (advance.x + gm.horBearing.x + gm.size.x);
+                }
+                top = max(top, gm.horBearing.y);
+                bottom = min(bottom, gm.horBearing.y - gm.size.y);
+                advance += gi.advance;
+            }
+        }
+        return TextMetrics(
+            ivec(round(bearingX), round(top)),
+            ivec(round(width), round(top-bottom)),
+            ivec(round(advance.x), round(advance.y))
+        );
     }
 
     /// Render the layout into the supplied context.

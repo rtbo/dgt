@@ -119,12 +119,12 @@ class Font : RefCounted
     {
         GlyphCache* entry = glyphIndex in _glyphCache;
         GlyphCache cache = entry ? *entry : GlyphCache.init;
-        if (cache.metrics) return cache.metrics;
+        if (cache.metricsSet) return cache.metrics;
 
         FT_Load_Glyph(_ftFace, cast(FT_UInt)glyphIndex, FT_LOAD_DEFAULT);
 
         auto ftm = _ftFace.glyph.metrics;
-        cache.metrics = new GlyphMetrics(
+        cache.metrics = GlyphMetrics(
             fvec(ftm.width/64f, ftm.height/64f),
 
             fvec(ftm.horiBearingX/64f, ftm.horiBearingY/64f),
@@ -133,6 +133,7 @@ class Font : RefCounted
             fvec(ftm.vertBearingX/64f, ftm.vertBearingY/64f),
             ftm.vertAdvance/64f,
         );
+        cache.metricsSet = true;
 
         if (entry) *entry = cache;
         else _glyphCache[glyphIndex] = cache;
@@ -219,6 +220,7 @@ class Font : RefCounted
 
 private enum CacheFlags
 {
+    none = 0,
     metricsSet  = 1,
     isWhitespace = 2,
 }
@@ -252,7 +254,7 @@ private struct GlyphCache
 }
 
 /// Glyph metrics.
-class GlyphMetrics
+struct GlyphMetrics
 {
     private this (in FVec2 size, in FVec2 horBearing, in float horAdvance,
             in FVec2 verBearing, in float verAdvance)
