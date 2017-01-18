@@ -12,6 +12,7 @@ import derelict.freetype.ft;
 
 import std.string;
 import std.exception;
+import std.typecons : Flag, Yes, No;
 
 /// Font size (expressed in pts or px)
 struct FontSize
@@ -72,8 +73,30 @@ enum FontFormat
     bitmap,
 }
 
+/// General metrics of a scaled font.
+struct FontMetrics
+{
+    /// Maximum advance between two consecutive glyphs.
+    /// Always positive.
+    float maxAdvance;
+    /// Height between two consecutive baselines.
+    /// Always positive.
+    float height;
+    /// Typographic ascender of the font.
+    /// Always positive.
+    float ascender;
+    /// Typographic descender of the font.
+    /// Usually negative.
+    float descender;
+    /// Position where underline should be placed.
+    /// Usuallt negative.
+    float underlinePos;
+    /// Thickness that should apply for underline.
+    float underlineThickness;
+}
 
-/// An actual font that hold font information and will lazily load glyph into memory
+/// A scaled font object that hold font information and will lazily load and
+/// cache glyphs into memory.
 class Font : RefCounted
 {
     mixin(rcCode);
@@ -114,7 +137,33 @@ class Font : RefCounted
         }
     }
 
-    /// Get the metrics of one glyph
+    /// Retrieve the scaled font metrics, with or without hinting.
+    FontMetrics metrics(in Flag!"hinted" hinted = Yes.hinted) const
+    {
+        // combined factor of 26.6 and 16.16 fixed point
+        enum real scaleFactor = 1 << (6 + 16);
+        immutable ftMetrics = _ftFace.size.metrics;
+
+        float scale(FT_Short dimension, FT_Fixed scale)
+        {
+            import std.math : round;
+            return cast(float)( hinted ?
+                    round(dimension * scale / scaleFactor) :
+                    dimension * scale / scaleFactor
+            );
+        }
+
+        FontMetrics metrics;
+        metrics.maxAdvance = scale(_ftFace.max_advance_width, ftMetrics.x_scale);
+        metrics.height = scale(_ftFace.height, ftMetrics.y_scale);
+        metrics.ascender = scale(_ftFace.ascender, ftMetrics.y_scale);
+        metrics.descender = scale(_ftFace.descender, ftMetrics.y_scale);
+        metrics.underlinePos = scale(_ftFace.underline_position, ftMetrics.y_scale);
+        metrics.underlineThickness = scale(_ftFace.underline_thickness, ftMetrics.y_scale);
+        return metrics;
+    }
+
+    /// Get the scaled metrics of one glyph.
     GlyphMetrics glyphMetrics(size_t glyphIndex)
     {
         GlyphCache* entry = glyphIndex in _glyphCache;
