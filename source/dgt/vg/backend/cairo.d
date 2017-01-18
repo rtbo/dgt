@@ -513,6 +513,11 @@ class CairoImgSurf : CairoSurface, VgTexture
     override void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea)
     {}
 
+    override @property VgSurface surface()
+    {
+        return this;
+    }
+
     private void updateImage(Image img)
     {
         _img = img;

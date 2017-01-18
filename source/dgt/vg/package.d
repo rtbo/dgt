@@ -20,12 +20,9 @@ interface VgSurface : RefCounted
     void flush();
 }
 
-/// An surface that contain image data that can be painted into
+/// A texture contains image data that can be painted into
 /// other surfaces.
-/// VgTexture being surfaces, they can also be painted into.
-/// At the difference of other surfaces, texture can be initialized directly
-/// with pixel data.
-interface VgTexture : VgSurface
+interface VgTexture : RefCounted
 {
     /// The pixel format of the texture
     @property ImageFormat format() const;
@@ -35,6 +32,10 @@ interface VgTexture : VgSurface
     /// Update a part of the pixels. The texture size is not updated.
     /// An exception is thrown if one of the size is not compatible.
     void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea);
+    /// Get a surface to paint into this texture.
+    /// Surface.flush must be called to ensure that graphics are transferred
+    /// on the texture.
+    @property VgSurface surface();
 }
 
 /// A vector graphics backend.
