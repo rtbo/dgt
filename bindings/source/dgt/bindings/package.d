@@ -88,6 +88,26 @@ version(Posix)
         dlclose(lib);
     }
 }
+version(Windows)
+{
+    import std.string : toStringz;
+    import core.sys.windows.winbase;
+
+    SharedLib openSharedLib(string name)
+    {
+        return LoadLibraryA(toStringz(name));
+    }
+
+    SharedSym loadSharedSym(SharedLib lib, string name)
+    {
+        return GetProcAddress(lib, toStringz(name));
+    }
+
+    void closeSharedLib(SharedLib lib)
+    {
+        FreeLibrary(lib);
+    }
+}
 
 // SymbolLoader class works, but eat several tons of RAM megabytes during build
 // process. Too bad, have to give up clean unloading. Replaced now by

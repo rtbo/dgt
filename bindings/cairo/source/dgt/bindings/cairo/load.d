@@ -18,7 +18,7 @@ public void loadCairoSymbols(string[] libNames = [])
     }
     else version (Windows)
     {
-        auto defaultLibNames = ["cairo.dll", "libcairo.dll"];
+        auto defaultLibNames = ["cairo.dll", "libcairo.dll", "libcairo-2.dll"];
     }
     if (libNames.length == 0)
     {
