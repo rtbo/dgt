@@ -810,6 +810,8 @@ private
 
         override Image readMem(in ubyte[] bytes, in ImageFormat format)
         {
+            import core.stdc.config : c_ulong;
+
             ImageFormat readFmt = format;
             // 1 bpp is not supported by libjpeg
             if (format == ImageFormat.a1) readFmt = ImageFormat.a8;
@@ -819,7 +821,7 @@ private
 
             // const cast needed.  arrgh!
             int width, height, jpegsubsamp;
-            if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, bytes.length,
+            if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length,
                                     &width, &height, &jpegsubsamp) != 0)
             {
                 throw new Exception("could not read from memory: "~errorMsg());
@@ -827,7 +829,7 @@ private
 
             immutable rowStride = vgBytesForWidth(ImageFormat.argb, width);
             auto data = new ubyte[rowStride * height];
-            if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, bytes.length, data.ptr,
+            if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length, data.ptr,
                             width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)
             {
                 throw new Exception("could not read from memory: "~errorMsg());
