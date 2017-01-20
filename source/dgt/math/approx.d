@@ -275,8 +275,16 @@ if (is(T == float) || is(T == double) || is(T == real) && T.sizeof == 8)
 union FloatNum(T)
 if (is(T == real) && T.sizeof > 8)
 {
-    static assert(T.sizeof == 16 || T.sizeof == 12, "Unexpected real size.");
+    static assert(T.sizeof == 16 || T.sizeof == 12 || T.sizeof == 10, "Unexpected real size.");
 
+    static if (T.sizeof == 10)
+    {
+        struct Int
+        {
+            long l;
+            ushort h;
+        }
+    }
     static if (T.sizeof == 12)
     {
         struct Int
