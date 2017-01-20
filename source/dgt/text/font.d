@@ -240,6 +240,7 @@ class Font : RefCounted
     {
         import std.math : abs;
         import std.algorithm : min;
+        import std.array : uninitializedArray;
 
         FT_Load_Glyph(_ftFace, cast(FT_UInt)glyphIndex, FT_LOAD_DEFAULT);
         FT_Render_Glyph(_ftFace.glyph, FT_RENDER_MODE_NORMAL);
@@ -250,17 +251,33 @@ class Font : RefCounted
 
         if (stride == 0)
         {
-            // likely a space
+            // no graphics (whitespace of some kind)
             return null;
         }
-        // Pixels is (purposely) compatible with FreeType bitmap
-        auto pixels = Pixels(ImageFormat.a8, bitmap.buffer[0 .. bitmap.rows*stride],
-                            bitmap.pitch, bitmap.width, bitmap.rows);
-        auto tex = backend.createTexture(pixels);
+
+        immutable fmt = ImageFormat.a8;
+        immutable width = bitmap.width;
+        immutable height = bitmap.rows;
+        immutable destStride = fmt.vgBytesForWidth(width);
+        immutable srcStride = abs(bitmap.pitch);
+        immutable copyStride = min(destStride, srcStride);
+        const srcData = bitmap.buffer[0 .. height*srcStride];
+        auto destData = uninitializedArray!(ubyte[])(destStride * height);
+        foreach(r; 0 .. height)
+        {
+            immutable srcOffset = r * srcStride;
+            immutable destLine = bitmap.pitch > 0 ? r : height-r-1;
+            immutable destOffset = destLine * destStride;
+            destData[destOffset .. destOffset+copyStride] =
+                    srcData[srcOffset .. srcOffset+copyStride];
+        }
+        auto img = new Image(destData, fmt, width, destStride);
+        auto tex = backend.createTexture(img);
         return new RasterizedGlyph(
             tex, vec(slot.bitmap_left, slot.bitmap_top), backend.uid
         );
     }
+
 
     private FT_Face _ftFace;
     private hb_font_t* _hbFont;

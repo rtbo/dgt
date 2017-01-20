@@ -4,7 +4,7 @@ import dgt.geometry;
 import dgt.vg;
 
 import std.exception;
-import std.typecons : Nullable;
+import std.typecons : Nullable, Flag, Yes, No;
 
 /// Internal representation of an image.
 enum ImageFormat
@@ -43,7 +43,7 @@ enum ImageFormat
 }
 
 /// How many bits per pixel for a format?
-@property size_t bpp(in ImageFormat format)
+@property size_t bpp(in ImageFormat format) pure
 {
     final switch(format)
     {
@@ -57,44 +57,65 @@ enum ImageFormat
         return 32;
     }
 }
+/// Get minimum image stride for a format and a width
+size_t minStrideForWidth(in ImageFormat fmt, in size_t width) pure
+{
+    immutable bits = fmt.bpp * width;
+    return (bits + 7) / 8;
+}
 
-/// Required bytes alignment for stride (one row of pixels)
-enum strideAlignment = 4;
+/// Required bytes alignment for stride (one row of pixels) of an Image
+/// that can be used as vector graphics surface.
+enum vgStrideAlignment = 4;
 
-/// The minimum number of bytes an image must have for a row of pixels.
+/// The minimum number of bytes an image must have for a row of pixels to be
+/// usable as a vector graphics surface.
 /// This gives number of bytes for a row of image including a 4 bytes alignement.
-size_t bytesForWidth(in ImageFormat format, in size_t width)
+size_t vgBytesForWidth(in ImageFormat format, in size_t width) pure
 {
     immutable size_t bits = format.bpp * width;
-    return (((bits + 7) / 8) + strideAlignment-1) & (-strideAlignment);
+    return (((bits + 7) / 8) + vgStrideAlignment-1) & (-vgStrideAlignment);
 }
 
-///
 unittest
 {
-    assert(ImageFormat.a1.bytesForWidth(0) == 0);
-    assert(ImageFormat.a1.bytesForWidth(1) == strideAlignment);
-    assert(ImageFormat.a1.bytesForWidth(5) == strideAlignment);
-    assert(ImageFormat.a1.bytesForWidth(48) == 2*strideAlignment);
-    assert(ImageFormat.a1.bytesForWidth(64) == 2*strideAlignment);
-    assert(ImageFormat.a1.bytesForWidth(65) == 3*strideAlignment);
+    assert(ImageFormat.a1.vgBytesForWidth(0) == 0);
+    assert(ImageFormat.a1.vgBytesForWidth(1) == vgStrideAlignment);
+    assert(ImageFormat.a1.vgBytesForWidth(5) == vgStrideAlignment);
+    assert(ImageFormat.a1.vgBytesForWidth(48) == 2*vgStrideAlignment);
+    assert(ImageFormat.a1.vgBytesForWidth(64) == 2*vgStrideAlignment);
+    assert(ImageFormat.a1.vgBytesForWidth(65) == 3*vgStrideAlignment);
 
-    assert(ImageFormat.a8.bytesForWidth(1) == strideAlignment);
-    assert(ImageFormat.a8.bytesForWidth(3) == strideAlignment);
-    assert(ImageFormat.a8.bytesForWidth(4) == strideAlignment);
-    assert(ImageFormat.a8.bytesForWidth(5) == 2*strideAlignment);
-    assert(ImageFormat.a8.bytesForWidth(8) == 2*strideAlignment);
-    assert(ImageFormat.a8.bytesForWidth(9) == 3*strideAlignment);
+    assert(ImageFormat.a8.vgBytesForWidth(1) == vgStrideAlignment);
+    assert(ImageFormat.a8.vgBytesForWidth(3) == vgStrideAlignment);
+    assert(ImageFormat.a8.vgBytesForWidth(4) == vgStrideAlignment);
+    assert(ImageFormat.a8.vgBytesForWidth(5) == 2*vgStrideAlignment);
+    assert(ImageFormat.a8.vgBytesForWidth(8) == 2*vgStrideAlignment);
+    assert(ImageFormat.a8.vgBytesForWidth(9) == 3*vgStrideAlignment);
 
-    assert(ImageFormat.argb.bytesForWidth(1) == strideAlignment);
-    assert(ImageFormat.argb.bytesForWidth(2) == 2*strideAlignment);
-    assert(ImageFormat.argb.bytesForWidth(3) == 3*strideAlignment);
-    assert(ImageFormat.argb.bytesForWidth(4) == 4*strideAlignment);
-    assert(ImageFormat.argb.bytesForWidth(5) == 5*strideAlignment);
+    assert(ImageFormat.argb.vgBytesForWidth(1) == vgStrideAlignment);
+    assert(ImageFormat.argb.vgBytesForWidth(2) == 2*vgStrideAlignment);
+    assert(ImageFormat.argb.vgBytesForWidth(3) == 3*vgStrideAlignment);
+    assert(ImageFormat.argb.vgBytesForWidth(4) == 4*vgStrideAlignment);
+    assert(ImageFormat.argb.vgBytesForWidth(5) == 5*vgStrideAlignment);
 }
 
+bool vgCompatible(in Image img)
+{
+    import dgt.vg.backend.cairo : cairoCompatible;
+    return cairoCompatible(img);
+}
+
+/// Returns img if compatible, otherwise a compatible image built from img.
+Image makeVgCompatible(Image img)
+{
+    import dgt.vg.backend.cairo : makeCairoCompatible;
+    return makeCairoCompatible(img);
+}
+
+
 /// Check if a size is usable for an image
-@property bool isValidImageSize(in Size size)
+@property bool isValidImageSize(in Size size) pure
 {
     return size.width >= 0 && size.height >= 0 &&
         size.width < ushort.max && size.height < ushort.max;
@@ -107,40 +128,7 @@ enum ImageFileFormat
     jpeg,
 }
 
-/// Basic aggregation of data to describe pixels.
-/// It does not check for any validity of size, nor does it constrain
-/// bytes alignement as Image does.
-struct Pixels
-{
-    /// The format describing pixels.
-    ImageFormat format;
-    /// The actual pixel data.
-    ubyte[] data;
-    /// Amount of bytes between two rows.
-    /// If negative, it means that first row is at the bottom.
-    int stride;
-    /// The meaningful width
-    size_t width;
-    /// The number of rows.
-    size_t height;
-
-    /// Build a Pixels struct.
-    /// If passed height is zero, it is interpreted as data.length / abs(stride).
-    this (in ImageFormat format, ubyte[] data, in int stride, in size_t width,
-            in size_t height=0)
-    {
-        import std.math : abs;
-        this.format = format;
-        this.data = data;
-        this.stride = stride;
-        this.width = width;
-        this.height = height ? height : data.length / abs(stride);
-    }
-}
-
 /// In-memory representation of an image.
-/// Store pixels in main memory and keep rows 4 bytes aligned to
-/// allow drawing optimizations.
 class Image
 {
     private ubyte[] _data;
@@ -157,54 +145,14 @@ class Image
         enforce(size.isValidImageSize);
         _width = cast(ushort)size.width;
         _height = cast(ushort)size.height;
-        _stride = format.bytesForWidth(size.width);
+        _stride = format.minStrideForWidth(size.width);
         _data = uninitializedArray!(ubyte[])(_stride * _height);
-    }
-
-    /// Build an Image from a Pixels struct. $(D pixels.data) does not need to
-    /// meet alignement requirements.
-    /// A copy of pixels is made. At most pixels.height rows will be copied.
-    /// An exception is thrown if pixels.height cannot be read.
-    this(in Pixels pixels)
-    {
-        import std.array : uninitializedArray;
-        import std.algorithm : min;
-        import std.math : abs;
-        enforce(
-            pixels.height <= pixels.data.length / abs(pixels.stride)
-        );
-        enforce(
-            pixels.width <= 8 * pixels.stride / pixels.format.bpp
-        );
-
-        immutable width = pixels.width;
-        immutable height = pixels.height;
-        immutable destStride = pixels.format.bytesForWidth(width);
-        immutable srcStride = abs(pixels.stride);
-        immutable copyStride = min(destStride, srcStride);
-        auto srcData = pixels.data;
-        auto destData = uninitializedArray!(ubyte[])(destStride * height);
-
-        foreach(r; 0 .. pixels.height)
-        {
-            immutable srcOffset = r * srcStride;
-            immutable destLine = pixels.stride > 0 ? r : height-r-1;
-            immutable destOffset = destLine * destStride;
-            destData[destOffset .. destOffset+copyStride] =
-                    srcData[srcOffset .. srcOffset+copyStride];
-        }
-
-        _format = pixels.format;
-        _data = destData;
-        _width = cast(ushort)width;
-        _height = cast(ushort)height;
-        _stride = destStride;
     }
 
     /// Initialize an $(D Image) with existing $(D data) and $(D format),
     /// $(D width) and $(D stride).
     /// Enforcements:
-    ///   - $(D stride >= format.bytesForWidth(width))
+    ///   - $(D stride >= format.minStrideForWidth(width))
     /// Notes:
     ///   - $(D data) is kept within the $(D Image) without any copy or relocation
     ///   - the $(D height) is computed as $(D data.length / stride)
@@ -213,7 +161,7 @@ class Image
     this(ubyte[] data, in ImageFormat fmt, in size_t width, in size_t stride)
     {
         import std.format : format;
-        immutable minStride = fmt.bytesForWidth(width);
+        immutable minStride = fmt.minStrideForWidth(width);
         immutable height = data.length / stride;
         enforce(
             stride >= minStride,
@@ -284,12 +232,27 @@ class Image
 
     /// Make a surface that can be used to draw directly into the image data.
     /// As image data resides in main memory, the surface will be associated
-    /// with a software rasterizer. ImageFormat.argb is not supported.
-    /// Use convert(ImageFormat.argbPremult) to draw into such image.
-    VgSurface makeSurface()
+    /// with a software rasterizer.
+    /// There are some requirements to this:
+    ///   - ImageFormat.argb is not supported.
+    ///   - stride must be 4 bytes aligned.
+    ///
+    /// Yes.autoConvert can be passed to convert the image to a compatible format.
+    /// vgCompatible can be used to check if an image is compatible for vg rendering.
+    /// makeVgCompatible can be used to make a compatible image from another one.
+    VgSurface makeVgSurface(Flag!"autoConvert" autoConvert = No.autoConvert)
     {
         import dgt.vg.backend.cairo : CairoImgSurf;
-        enforce(format != ImageFormat.argb);
+        if (autoConvert && !vgCompatible(this))
+        {
+            // FIXME: do not waste Image.sizeof
+            auto img = makeVgCompatible(this);
+            assert(_width == img.width);
+            assert(_height == img.height);
+            _format = img.format;
+            _stride = img.stride;
+            _data = img.data;
+        }
         return new CairoImgSurf(this);
     }
 
@@ -364,7 +327,7 @@ class Image
             );
         }
 
-        immutable stride = bytesForWidth(format, _width);
+        immutable stride = vgBytesForWidth(format, _width);
         auto res = new Image (
             new ubyte[stride * _height], format, _width, _height, stride
         );
@@ -666,6 +629,7 @@ Nullable!ImageFileFormat checkImgSig(const(ubyte)[] data) pure
     return res;
 }
 
+
 private
 {
 
@@ -674,7 +638,6 @@ private
     import std.path;
     import std.string;
     import std.uni : toLower;
-
 
     ImgIO imgIOFromFile (string filename)
     out (result) {
@@ -772,7 +735,7 @@ private
             // 1 bpp is not supported by libpng
             if (format == ImageFormat.a1) readFmt = ImageFormat.a8;
 
-            immutable rowStride = bytesForWidth(readFmt, pimg.width);
+            immutable rowStride = vgBytesForWidth(readFmt, pimg.width);
             immutable numBytes = rowStride*pimg.height;
             pimg.format = pngFormat(readFmt);
             ubyte[] buf = new ubyte[numBytes];
@@ -862,7 +825,7 @@ private
                 throw new Exception("could not read from memory: "~errorMsg());
             }
 
-            immutable rowStride = bytesForWidth(ImageFormat.argb, width);
+            immutable rowStride = vgBytesForWidth(ImageFormat.argb, width);
             auto data = new ubyte[rowStride * height];
             if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, bytes.length, data.ptr,
                             width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)

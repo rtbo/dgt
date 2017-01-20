@@ -20,18 +20,17 @@ interface VgSurface : RefCounted
     void flush();
 }
 
-/// A texture contains image data that can be painted into
-/// other surfaces.
+/// A texture contains image data that can be painted onto surfaces.
 interface VgTexture : RefCounted
 {
     /// The pixel format of the texture
     @property ImageFormat format() const;
     /// Resets the pixels of the texture.
     /// After the call, the texture will have the same size as the image.
-    void setPixels(in Pixels pixels);
+    void setPixels(Image pixels);
     /// Update a part of the pixels. The texture size is not updated.
     /// An exception is thrown if one of the size is not compatible.
-    void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea);
+    void updatePixels(Image pixels, in IRect fromArea, in IRect toArea);
     /// Get a surface to paint into this texture.
     /// Surface.flush must be called to ensure that graphics are transferred
     /// on the texture.
@@ -58,16 +57,9 @@ interface VgBackend : Disposable
     /// though there could be other backends supporting it.
     VgContext createContext(VgSurface surf);
 
-    /// Create a texture from the provided pixels.
-    VgTexture createTexture(in Pixels pixels);
-
     /// Create a texture from the provided image.
-    /// In case of a software renderer (hardwareAccelerated == false), the
-    /// image will be converted to ImageFormat.argbPremult. If it has already
-    /// this format, the image content will be used directly (no copy). In this
-    /// special case, modifying the image content of another reference of the
-    /// image will also modify the texture content. If this behavior is harmful
-    /// create the texture using a copy of the image (Image.dup).
+    /// In case of a software renderer (hardwareAccelerated == false),
+    /// the image needs to have same constraints than for Image.makeVgSurface.
     VgTexture createTexture(Image image);
 }
 
@@ -76,13 +68,6 @@ interface VgBackend : Disposable
 VgContext createContext(VgSurface surf)
 {
     return surf.backend.createContext(surf);
-}
-
-/// Create a texture to be used on a surface.
-/// Shortcut for $(D_CODE surf.backend.createTexture(pixels)).
-VgTexture createTexture(VgSurface surf, in Pixels pixels)
-{
-    return surf.backend.createTexture(pixels);
 }
 
 /// Create a texture to be used on a surface.

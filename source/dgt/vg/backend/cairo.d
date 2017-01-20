@@ -70,11 +70,6 @@ private class CairoBackend : VgBackend
         return new CairoContext(this, enforce(cast(CairoSurface) surf));
     }
 
-    override VgTexture createTexture(in Pixels pixels)
-    {
-        return new CairoImgSurf(pixels);
-    }
-
     override VgTexture createTexture(Image image)
     {
         return new CairoImgSurf(image);
@@ -427,26 +422,20 @@ class CairoContext : VgContext
 }
 
 
-/// VgTexture implementation for Cairo.
+/// Adaptator from Image to cairo_surface_t.
+/// Cairo requires 4 bytes alignement on each row and a subset of ImageFormat.
+/// If supplied Image is compatible for cairo, its data is used directly,
+/// otherwise, a copy of the data is made.
 class CairoImgSurf : CairoSurface, VgTexture
 {
     mixin(rcCode);
 
-    cairo_surface_t* _surf;
-    Image _img;
+    private Image _img;
+    private cairo_surface_t* _surf;
 
     this (Image img)
     {
-        if (img.format == ImageFormat.argb)
-        {
-            img = img.convert(ImageFormat.argbPremult);
-        }
         updateImage(img);
-    }
-
-    this (in Pixels pixels)
-    {
-        setPixels(pixels);
     }
 
     override @property cairo_surface_t* cairoSurf()
@@ -457,6 +446,7 @@ class CairoImgSurf : CairoSurface, VgTexture
     override void dispose()
     {
         cairo_surface_destroy(_surf);
+        _surf = null;
     }
 
     override @property VgBackend backend()
@@ -479,38 +469,10 @@ class CairoImgSurf : CairoSurface, VgTexture
         return _img.format;
     }
 
-    override void setPixels(in Pixels pixels)
-    {
-        if (pixels.format == ImageFormat.argb)
-        {
-            import std.math : abs;
-            // convert to premultiplied
-            Image img = new Image(ImageFormat.argbPremult,
-                    ISize(cast(int)pixels.width, cast(int)pixels.height));
+    override void setPixels(Image pixels)
+    {}
 
-            immutable pixStride = abs(pixels.stride);
-            foreach(l; 0 .. pixels.height)
-            {
-                immutable pixLine = pixels.stride > 0 ? l : pixels.height-l-1;
-                immutable pixOffset = pixLine * pixStride;
-                const from = pixels.data[pixOffset .. pixOffset+pixStride];
-                auto to = img.line(l);
-
-                foreach (i; 0 .. pixels.width)
-                {
-                    immutable px = getArgb(from, i);
-                    setArgb(to, i, premultiply(px));
-                }
-            }
-            updateImage(img);
-        }
-        else
-        {
-            updateImage(new Image(pixels));
-        }
-    }
-
-    override void updatePixels(in Pixels pixels, in IRect fromArea, in IRect toArea)
+    override void updatePixels(Image pixels, in IRect fromArea, in IRect toArea)
     {}
 
     override @property VgSurface surface()
@@ -520,11 +482,69 @@ class CairoImgSurf : CairoSurface, VgTexture
 
     private void updateImage(Image img)
     {
-        _img = img;
-        _surf = cairo_image_surface_create_for_data(img.data.ptr,
-            cairoFormat(img.format), img.width, img.height, cast(int)img.stride
+        _img = makeCairoCompatible(img);
+        if (_surf) cairo_surface_destroy(_surf);
+        _surf = cairo_image_surface_create_for_data (
+            _img.data.ptr, cairoFormat(_img.format),
+            _img.width, _img.height, cast(int)_img.stride
         );
     }
+}
+
+/// Check compatibility with Cairo.
+@property bool cairoCompatible(in Image img)
+{
+    return img.format != ImageFormat.argb &&
+            img.stride >= cairo_format_stride_for_width(
+                cairoFormat(img.format), img.width
+            );
+
+}
+
+/// Returns img if compatible, otherwise a compatible image built from img.
+Image makeCairoCompatible(Image img)
+out(res)
+{
+    assert(cairoCompatible(img));
+}
+body
+{
+    if (cairoCompatible(img)) return img;
+
+    auto ifmt = img.format;
+    bool premult = false;
+    if (ifmt == ImageFormat.argb)
+    {
+        ifmt = ImageFormat.argbPremult;
+        premult = true;
+    }
+
+    immutable stride = cairo_format_stride_for_width(cairoFormat(ifmt),
+            img.width);
+    ubyte[] data;
+    if (stride == img.stride)
+    {
+        data = img.data.dup;
+    }
+    else
+    {
+        import std.algorithm : min;
+        data = new ubyte[stride * img.height];
+        const srcData = img.data;
+        immutable srcStride = img.stride;
+        immutable copyStride = min(stride, srcStride);
+        foreach (l; 0 .. img.height)
+        {
+            data[l*stride .. l*stride+copyStride] =
+                srcData[l*srcStride .. l*srcStride+copyStride];
+        }
+    }
+    auto newImg = new Image(data, ifmt, img.width, stride);
+    if (premult)
+    {
+        newImg.apply!premultiply();
+    }
+    return newImg;
 }
 
 
