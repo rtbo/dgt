@@ -2,7 +2,6 @@ module dgt.application;
 
 import dgt.core.resource;
 import dgt.platform;
-import dgt.text.fontcache;
 import dgt.window;
 
 /// Singleton class that must be built by the client application
@@ -11,18 +10,24 @@ class Application : Disposable
     /// Build an application. This will initialize underlying platform.
     this()
     {
-        initialize(makeDefaultPlatform());
+        initialize(null);
     }
 
     /// Build an application with the provided platform.
-    this(Uniq!Platform platform)
+    /// Ownership of the platform is taken, caller must not call dispose().
+    this(Platform platform)
     {
-        initialize(platform.release());
+        initialize(platform);
     }
 
     override void dispose()
     {
+        import dgt.text.font : FontEngine;
+        import dgt.text.fontcache : FontCache;
+
         FontCache.instance.dispose();
+        FontEngine.instance.dispose();
+        _platform.dispose();
     }
 
     /// Enter main event processing loop
@@ -40,15 +45,41 @@ class Application : Disposable
         _exitFlag = true;
     }
 
-    private void initialize(Uniq!Platform platform)
+    private void initialize(Platform platform)
     {
+        // init Application singleton
         assert(!_instance, "Attempt to initialize twice DGT Application singleton");
         _instance = this;
-        assert(platform.assigned);
-        _platform = platform.release();
 
-        // initialize other singletons
-        FontCache.initialize();
+        // init bindings to C libraries
+        {
+            import dgt.bindings.cairo.load : loadCairoSymbols;
+            import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
+            import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
+            import dgt.bindings.libpng.load : loadLibpngSymbols;
+            import derelict.opengl3.gl3 : DerelictGL3;
+            import derelict.freetype.ft : DerelictFT;
+
+            DerelictGL3.load();
+            DerelictFT.load();
+            loadCairoSymbols();
+            loadFontconfigSymbols();
+            loadHarfbuzzSymbols();
+            loadLibpngSymbols();
+        }
+
+        // init platform
+        if (!platform) platform = makeDefaultPlatform();
+        _platform = platform;
+
+        // init singletons
+        {
+            import dgt.text.font : FontEngine;
+            import dgt.text.fontcache : FontCache;
+            FontEngine.initialize();
+            FontCache.initialize();
+        }
+
     }
 
     package void registerWindow(Window w)
@@ -70,7 +101,7 @@ class Application : Disposable
         }
     }
 
-    private Uniq!Platform _platform;
+    private Platform _platform;
     private bool _exitFlag;
     private int _exitCode;
     private Window[] _windows;
@@ -87,7 +118,7 @@ class Application : Disposable
         @property Platform platform()
         {
             assert(_instance && _instance._platform, "Attempt to get unintialized DGT Platform");
-            return _instance._platform.obj;
+            return _instance._platform;
         }
 
         private Application _instance;
@@ -95,12 +126,12 @@ class Application : Disposable
 }
 
 /// Make the default Platform for the running OS.
-Uniq!Platform makeDefaultPlatform()
+Platform makeDefaultPlatform()
 {
     version(linux)
     {
         import dgt.platform.xcb : XcbPlatform;
-        return Uniq!Platform(new XcbPlatform);
+        return new XcbPlatform;
     }
     else
     {

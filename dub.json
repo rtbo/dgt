@@ -10,9 +10,9 @@
     "dependencies":	{
 		"dgt:bindings":		"*",
 		"dgt:cairo":		"*",
+		"dgt:libpng":		"*",
 		"dgt:fontconfig":	"*",
 		"dgt:harfbuzz":		"*",
-		"img-d":			"~master",
 		"derelict-gl3":		"~>1.0.19",
 		"derelict-ft":		"~>1.1.3"
     },
@@ -28,6 +28,7 @@
 	"subPackages": [
 		"./bindings",
 		"./bindings/cairo",
+		"./bindings/libpng",
 		"./bindings/fontconfig",
 		"./bindings/harfbuzz",
 

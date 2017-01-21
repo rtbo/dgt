@@ -346,7 +346,6 @@ class XcbPlatform : Platform
 
         void initializeDRI()
         {
-            DerelictGL3.load();
             {
                 xcb_prefetch_extension_data(g_connection, &xcb_dri2_id);
 
@@ -365,8 +364,7 @@ class XcbPlatform : Platform
 
         void initializeVG()
         {
-            import dgt.bindings.cairo.load : loadCairoSymbols, cairoHasXcb;
-            loadCairoSymbols();
+            import dgt.bindings.cairo.load : cairoHasXcb;
             enforce(cairoHasXcb);
         }
 

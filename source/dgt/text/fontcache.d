@@ -47,7 +47,7 @@ struct FontResult
 
 
 
-private __gshared FontCache _instance;
+private __gshared FontCache _fcInst;
 
 /// Singleton that acts like a system font database and that perform
 /// font files queries given structured requests
@@ -55,27 +55,26 @@ private __gshared FontCache _instance;
 class FontCache : Disposable
 {
     // called by Application.initialize
-    package(dgt) static FontCache initialize()
+    package(dgt) static void initialize()
     in
     {
-        assert(_instance is null);
+        assert(_fcInst is null);
     }
     body
     {
-        _instance = new FontCache();
-        return _instance;
+        _fcInst = new FontCache();
     }
 
     /// Returns the singleton instance.
     /// Should not be called before Application is created.
-    public static FontCache instance()
+    static @property FontCache instance()
     in
     {
-        assert(_instance !is null);
+        assert(_fcInst !is null);
     }
     body
     {
-        return _instance;
+        return _fcInst;
     }
 
     private FcConfig* _config;
@@ -83,8 +82,6 @@ class FontCache : Disposable
 
     private this()
     {
-        import dgt.bindings.fontconfig.load;
-        loadFontconfigSymbols();
         enforce(FcInit());
         _config = enforce(FcConfigGetCurrent());
     }

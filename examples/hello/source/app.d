@@ -57,7 +57,7 @@ int main()
     arLayout.layout();
 
     auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
-    img.convert(ImageFormat.argb).saveToFile("/home/remi/dlang.jpeg");
+    //img.convert(ImageFormat.argb).saveToFile("/home/remi/dlang.jpeg");
 
     win.onExpose += (WindowExposeEvent /+ev+/)
     {

@@ -633,8 +633,8 @@ Nullable!ImageFileFormat checkImgSig(const(ubyte)[] data) pure
 private
 {
 
-    import libpng.png;
-    import libjpeg.turbojpeg;
+    import dgt.bindings.libpng;
+    //import libjpeg.turbojpeg;
     import std.path;
     import std.string;
     import std.uni : toLower;
@@ -651,7 +651,8 @@ private
             return new PngIO;
         case ".jpg":
         case ".jpeg":
-            return new JpegIO;
+            //return new JpegIO;
+            return null;
         default:
             return null;
         }
@@ -669,7 +670,8 @@ private
         final switch (format)
         {
         case ImageFileFormat.png: return new PngIO;
-        case ImageFileFormat.jpeg: return new JpegIO;
+        case ImageFileFormat.jpeg: //return new JpegIO;
+            return null;
         }
     }
 
@@ -770,99 +772,99 @@ private
         }
     }
 
-    class JpegIO : ImgIO
-    {
-        static uint jpegFormat(ImageFormat format)
-        {
-            final switch (format)
-            {
-            case ImageFormat.a1:
-                assert(false);
-            case ImageFormat.a8:
-                return TJPF.TJPF_GRAY;
-            case ImageFormat.rgb:
-            case ImageFormat.argb:
-            case ImageFormat.argbPremult:
-            version(LittleEndian) {
-                return TJPF.TJPF_BGRA;
-            }
-            else {
-                return TJPF.TJPF_ARGB;
-            }
-            }
-        }
+    // class JpegIO : ImgIO
+    // {
+    //     static uint jpegFormat(ImageFormat format)
+    //     {
+    //         final switch (format)
+    //         {
+    //         case ImageFormat.a1:
+    //             assert(false);
+    //         case ImageFormat.a8:
+    //             return TJPF.TJPF_GRAY;
+    //         case ImageFormat.rgb:
+    //         case ImageFormat.argb:
+    //         case ImageFormat.argbPremult:
+    //         version(LittleEndian) {
+    //             return TJPF.TJPF_BGRA;
+    //         }
+    //         else {
+    //             return TJPF.TJPF_ARGB;
+    //         }
+    //         }
+    //     }
 
 
-        string errorMsg() {
-            import core.stdc.string : strlen;
-            char* msg = tjGetErrorStr();
-            auto len = strlen(msg);
-            return msg[0..len].idup;
-        }
+    //     string errorMsg() {
+    //         import core.stdc.string : strlen;
+    //         char* msg = tjGetErrorStr();
+    //         auto len = strlen(msg);
+    //         return msg[0..len].idup;
+    //     }
 
 
-        override Image readFile(in string filename, in ImageFormat format)
-        {
-            import std.file : read;
-            auto bytes = cast(ubyte[]) read(filename);
-            return readMem(bytes, format);
-        }
+    //     override Image readFile(in string filename, in ImageFormat format)
+    //     {
+    //         import std.file : read;
+    //         auto bytes = cast(ubyte[]) read(filename);
+    //         return readMem(bytes, format);
+    //     }
 
-        override Image readMem(in ubyte[] bytes, in ImageFormat format)
-        {
-            import core.stdc.config : c_ulong;
+    //     override Image readMem(in ubyte[] bytes, in ImageFormat format)
+    //     {
+    //         import core.stdc.config : c_ulong;
 
-            ImageFormat readFmt = format;
-            // 1 bpp is not supported by libjpeg
-            if (format == ImageFormat.a1) readFmt = ImageFormat.a8;
+    //         ImageFormat readFmt = format;
+    //         // 1 bpp is not supported by libjpeg
+    //         if (format == ImageFormat.a1) readFmt = ImageFormat.a8;
 
-            tjhandle jpeg = tjInitDecompress();
-            scope(exit) tjDestroy(jpeg);
+    //         tjhandle jpeg = tjInitDecompress();
+    //         scope(exit) tjDestroy(jpeg);
 
-            // const cast needed.  arrgh!
-            int width, height, jpegsubsamp;
-            if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length,
-                                    &width, &height, &jpegsubsamp) != 0)
-            {
-                throw new Exception("could not read from memory: "~errorMsg());
-            }
+    //         // const cast needed.  arrgh!
+    //         int width, height, jpegsubsamp;
+    //         if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length,
+    //                                 &width, &height, &jpegsubsamp) != 0)
+    //         {
+    //             throw new Exception("could not read from memory: "~errorMsg());
+    //         }
 
-            immutable rowStride = vgBytesForWidth(ImageFormat.argb, width);
-            auto data = new ubyte[rowStride * height];
-            if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length, data.ptr,
-                            width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)
-            {
-                throw new Exception("could not read from memory: "~errorMsg());
-            }
+    //         immutable rowStride = vgBytesForWidth(ImageFormat.argb, width);
+    //         auto data = new ubyte[rowStride * height];
+    //         if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length, data.ptr,
+    //                         width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)
+    //         {
+    //             throw new Exception("could not read from memory: "~errorMsg());
+    //         }
 
-            auto img = new Image(data, ImageFormat.argb, width, rowStride);
+    //         auto img = new Image(data, ImageFormat.argb, width, rowStride);
 
-            if (format == ImageFormat.a1)
-            {
-                return img.convert(ImageFormat.a1);
-            }
-            if (format == ImageFormat.argbPremult)
-            {
-                img.apply!premultiply();
-            }
-            return img;
-        }
+    //         if (format == ImageFormat.a1)
+    //         {
+    //             return img.convert(ImageFormat.a1);
+    //         }
+    //         if (format == ImageFormat.argbPremult)
+    //         {
+    //             img.apply!premultiply();
+    //         }
+    //         return img;
+    //     }
 
-        override void writeFile(in Image img, in string filename)
-        {
-            import std.file : write;
-            tjhandle jpeg = tjInitCompress();
-            scope(exit) tjDestroy(jpeg);
-            c_ulong len;
-            ubyte *bytes;
-            if (tjCompress2(jpeg, cast(ubyte*)img.data.ptr, img.width, 0, img.height,
-                       jpegFormat(img.format), &bytes, &len, TJSAMP.TJSAMP_444, 100,
-                       TJFLAG_FASTDCT) != 0) {
-                throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg());
-            }
-            scope(exit) tjFree(bytes);
-            write(filename, cast(void[])bytes[0..cast(uint)len]);
-        }
-    }
+    //     override void writeFile(in Image img, in string filename)
+    //     {
+    //         import std.file : write;
+    //         tjhandle jpeg = tjInitCompress();
+    //         scope(exit) tjDestroy(jpeg);
+    //         c_ulong len;
+    //         ubyte *bytes;
+    //         if (tjCompress2(jpeg, cast(ubyte*)img.data.ptr, img.width, 0, img.height,
+    //                    jpegFormat(img.format), &bytes, &len, TJSAMP.TJSAMP_444, 100,
+    //                    TJFLAG_FASTDCT) != 0) {
+    //             throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg());
+    //         }
+    //         scope(exit) tjFree(bytes);
+    //         write(filename, cast(void[])bytes[0..cast(uint)len]);
+    //     }
+    // }
 
 }

@@ -371,22 +371,50 @@ class RasterizedGlyph : RefCounted
     }
 }
 
+/// FontEngine is a singleton that hold some resources to be used by Fonts
+class FontEngine : Disposable
+{
+    /// Instance access
+    static @property FontEngine instance()
+    in
+    {
+        assert(_feInst !is null);
+    }
+    body
+    {
+        return _feInst;
+    }
+
+
+    /// Initialize FontEngine
+    package(dgt) static void initialize()
+    in
+    {
+        assert(_feInst is null);
+    }
+    body
+    {
+        _feInst = new FontEngine();
+    }
+
+
+    private this()
+    {
+        FT_Init_FreeType(&_ftLib);
+    }
+
+    override void dispose()
+    {
+        FT_Done_FreeType(_ftLib);
+        _ftLib = null;
+        _feInst = null;
+    }
+}
+
 private:
 
+__gshared FontEngine _feInst;
 __gshared FT_Library _ftLib;
-
-shared static this()
-{
-    import dgt.bindings.harfbuzz.load;
-    DerelictFT.load();
-    loadHarfbuzzSymbols();
-    FT_Init_FreeType(&_ftLib);
-}
-
-shared static ~this()
-{
-    FT_Done_FreeType(_ftLib);
-}
 
 void ftEnforce(FT_Error err)
 {
