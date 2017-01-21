@@ -3,8 +3,6 @@ module dgt.bindings.libpng.definitions;
 import dgt.bindings.libpng.pnglibconf;
 import dgt.bindings.libpng.pngconf;
 
-import core.stdc.stdio : FILE;
-
 enum PNG_LIBPNG_VER_STRING = "1.6.16";
 enum PNG_HEADER_VERSION_STRING = " libpng version 1.6.16 - December 22, 2014\n";
 
@@ -45,11 +43,6 @@ else
     {
         enum PNG_LIBPNG_BUILD_TYPE = (PNG_LIBPNG_BUILD_BASE_TYPE);
     }
-}
-
-@property auto png_libpng_ver()
-{
-    return png_get_header_ver(null);
 }
 
 // extern(C) for function pointers
@@ -309,10 +302,6 @@ static if (PNG_USER_CHUNKS_SUPPORTED)
 {
     alias png_user_chunk_ptr = int function(png_structp, png_unknown_chunkp);
 }
-static if (PNG_UNKNOWN_CHUNKS_SUPPORTED)
-{
-
-}
 
 static if (PNG_SETJMP_SUPPORTED)
 {
@@ -348,13 +337,12 @@ enum PNG_ALL_MNG_FEATURES = 0x05;
 alias png_malloc_ptr = png_voidp function(png_structp, png_alloc_size_t);
 alias png_free_ptr = void function(png_structp, png_voidp);
 
-
 static if (PNG_READ_RGB_TO_GRAY_SUPPORTED)
 {
     enum PNG_ERROR_ACTION_NONE = 1;
     enum PNG_ERROR_ACTION_WARN = 2;
     enum PNG_ERROR_ACTION_ERROR = 3;
-    enum PNG_RGB_TO_GRAY_DEFAULT = (-1);=
+    enum PNG_RGB_TO_GRAY_DEFAULT = (-1);
 }
 
 static if (PNG_READ_ALPHA_MODE_SUPPORTED)
@@ -437,7 +425,6 @@ enum PNG_FREE_TEXT = 0x4000;
 enum PNG_FREE_ALL = 0x7fff;
 enum PNG_FREE_MUL = 0x4220;
 
-
 static if (!PNG_ERROR_TEXT_SUPPORTED)
 {
     void png_error(S1, S2)(S1 s1, S2 s2)
@@ -476,13 +463,11 @@ static if (!PNG_BENIGN_ERRORS_SUPPORTED)
     }
 }
 
-
 enum PNG_HANDLE_CHUNK_AS_DEFAULT = 0;
 enum PNG_HANDLE_CHUNK_NEVER = 1;
 enum PNG_HANDLE_CHUNK_IF_SAFE = 2;
 enum PNG_HANDLE_CHUNK_ALWAYS = 3;
 enum PNG_HANDLE_CHUNK_LAST = 4;
-
 
 static if (PNG_IO_STATE_SUPPORTED)
 {
@@ -567,24 +552,15 @@ auto PNG_COL_IN_INTERLACE_PASS(T)(x, pass)
     return ((PNG_PASS_MASK(pass, 1) >> ((x) & 7)) & 1);
 }
 
-static if (PNG_READ_COMPOSITE_NODIV_SUPPORTED)
+auto png_composite(T)(out T composite, png_uint_16 fg, png_uint_16 alpha, png_uint_16 bg)
 {
-    static assert(0);
-}
-else
-{
-    auto png_composite(T)(out T composite, png_uint_16 fg, png_uint_16 alpha, png_uint_16 bg)
-    {
-        return (composite) = cast(png_byte)(((fg) * (alpha) + (bg) * (255 - (alpha)) + 127) / 255);
-    }
-
-    auto png_composite_16(T)(out T composite, uint fg, uint alpha, uint bg)
-    {
-        return (composite) = cast(png_uint_16)(
-                ((fg) * (alpha) + (bg) * (65535 - (alpha)) + 32767) / 65535);
-    }
+    return (composite) = cast(png_byte)(((fg) * (alpha) + (bg) * (255 - (alpha)) + 127) / 255);
 }
 
+auto png_composite_16(T)(out T composite, uint fg, uint alpha, uint bg)
+{
+    return (composite) = cast(png_uint_16)(((fg) * (alpha) + (bg) * (65535 - (alpha)) + 32767) / 65535);
+}
 
 version (PNG_USE_READ_MACROS)
 {
@@ -777,13 +753,8 @@ static if (PNG_SIMPLIFIED_READ_SUPPORTED || PNG_SIMPLIFIED_WRITE_SUPPORTED)
 
 }
 
-
 static if (PNG_SET_OPTION_SUPPORTED)
 {
-    static if (PNG_ARM_NEON_API_SUPPORTED)
-    {
-        enum PNG_ARM_NEON = 0;
-    }
     enum PNG_MAXIMUM_INFLATE_WINDOW = 2;
     enum PNG_SKIP_sRGB_CHECK_PROFILE = 4;
     enum PNG_OPTION_NEXT = 6;
