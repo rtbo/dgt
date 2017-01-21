@@ -53,19 +53,21 @@ class Application : Disposable
 
         // init bindings to C libraries
         {
+            import dgt.bindings.libpng.load : loadLibPngSymbols;
+            import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
             import dgt.bindings.cairo.load : loadCairoSymbols;
             import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
             import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
-            import dgt.bindings.libpng.load : loadLibpngSymbols;
             import derelict.opengl3.gl3 : DerelictGL3;
             import derelict.freetype.ft : DerelictFT;
 
             DerelictGL3.load();
             DerelictFT.load();
+            loadLibPngSymbols();
+            loadTurboJpegSymbols();
             loadCairoSymbols();
             loadFontconfigSymbols();
             loadHarfbuzzSymbols();
-            loadLibpngSymbols();
         }
 
         // init platform

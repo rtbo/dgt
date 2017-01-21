@@ -1,0 +1,16 @@
+{
+	"name": "turbojpeg",
+	"targetType": "library",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"description": "D GUI Toolkit - Dynamic bindings to turbojpeg",
+	"copyright": "Copyright © 2017, Rémi Thebault",
+	"license": "MIT",
+
+  "dependencies":	{
+		"dgt:bindings": {
+			"path": ".."
+		}
+  }
+}

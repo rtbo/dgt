@@ -7,10 +7,13 @@
 	"copyright": "Copyright © 2016, Rémi Thebault",
 	"license": "MIT",
 
+	"buildRequirements": [ "disallowDeprecations" ],
+
     "dependencies":	{
 		"dgt:bindings":		"*",
 		"dgt:cairo":		"*",
 		"dgt:libpng":		"*",
+		"dgt:turbojpeg":	"*",
 		"dgt:fontconfig":	"*",
 		"dgt:harfbuzz":		"*",
 		"derelict-gl3":		"~>1.0.19",
@@ -29,6 +32,7 @@
 		"./bindings",
 		"./bindings/cairo",
 		"./bindings/libpng",
+		"./bindings/turbojpeg",
 		"./bindings/fontconfig",
 		"./bindings/harfbuzz",
 

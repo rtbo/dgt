@@ -5,13 +5,10 @@ import dgt.bindings.libpng.pngconf;
 import dgt.bindings.libpng.symbols;
 import dgt.bindings;
 
-import std.meta : AliasSeq;
-import std.typecons : Yes;
-
 /// Load the linpng library symbols.
 /// Must be called before any use of png_* functions.
 /// If no libNames is provided, a per-platform guess is performed.
-public void loadLibpngSymbols(string[] libNames = [])
+public void loadLibPngSymbols(string[] libNames = [])
 {
     version (linux)
     {
@@ -25,23 +22,23 @@ public void loadLibpngSymbols(string[] libNames = [])
     {
         libNames = defaultLibNames;
     }
-    libpngLoader.load(libNames);
+    libPngLoader.load(libNames);
 }
 
 /// Checks whether libpng is loaded
-public @property bool libpngLoaded()
+public @property bool libPngLoaded()
 {
-    return libpngLoader.loaded;
+    return libPngLoader.loaded;
 }
 
 shared static this()
 {
-    libpngLoader = new LibpngLoader();
+    libPngLoader = new LibPngLoader();
 }
 
-private __gshared LibpngLoader libpngLoader;
+private __gshared LibPngLoader libPngLoader;
 
-private class LibpngLoader : SharedLibLoader
+private class LibPngLoader : SharedLibLoader
 {
     override void bindSymbols()
     {
