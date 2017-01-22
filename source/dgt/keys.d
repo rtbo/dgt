@@ -1,11 +1,11 @@
 /// Key enumeration module.
 /// Tip: import in the following way:
-/// ```
+/// ---
 /// import key = dgt.keys;
-/// ...
+///
 /// auto code = key.Code.b;
 /// auto sym = key.Sym.b;
-/// ```
+/// ---
 module dgt.keys;
 
 
