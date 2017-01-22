@@ -135,7 +135,42 @@ class Win32Platform : Platform
 
     private LRESULT wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam, out LRESULT res)
 	{
-        return 0;
+		res = 0;
+
+		Win32Window wnd = findWithHWnd(hWnd);
+		if (!wnd) {
+			return false;
+		}
+
+		switch(msg)
+		{
+			case WM_CLOSE:
+				return wnd.handleClose();
+			case WM_PAINT:
+            case WM_ERASEBKGND:
+				return wnd.handlePaint(msg, wParam, lParam);
+			case WM_SIZE:
+			    return wnd.handleResize(msg, wParam, lParam);
+			case WM_MOVE:
+			    return wnd.handleMove(msg, wParam, lParam);
+			case WM_SHOWWINDOW:
+			    return wnd.handleShow(msg, wParam, lParam);
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_MOUSEMOVE:
+            case WM_MOUSELEAVE:
+                return wnd.handleMouse(msg, wParam, lParam);
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            case WM_CHAR:
+                return wnd.handleKey(msg, wParam, lParam);
+			default:
+				return false;
+		}
     }
 
 }

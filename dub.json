@@ -45,7 +45,8 @@
 		},
 		{
 			"name": "windows",
-			"platforms": ["windows"]
+			"platforms": ["windows"],
+			"libs": ["gdi32"]
 		}
 	]
 }

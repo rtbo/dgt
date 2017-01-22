@@ -4,6 +4,7 @@ version(Windows):
 
 import dgt.platform.win32;
 import dgt.platform;
+import dgt.core.resource;
 import dgt.window;
 import dgt.geometry;
 import dgt.event;
@@ -13,6 +14,7 @@ import key = dgt.keys;
 
 import std.utf : toUTF16z;
 import std.typecons : scoped;
+import std.exception : enforce;
 import std.experimental.logger;
 import core.sys.windows.windows;
 
@@ -21,6 +23,7 @@ class Win32Window : PlatformWindow
 {
     private Window _win;
     private HWND _hWnd;
+    private HDC _hDc;
     private IRect _rect;
     private WindowState _state;
     private bool _shownOnce;
@@ -130,11 +133,43 @@ class Win32Window : PlatformWindow
 
     override @property VgSurface surface()
     {
-        return null;
+        return new CairoWin32Surface(
+            enforce(_hDc, "Win32Window.surface called out of paint event")
+        );
     }
 
     package
     {
+        bool handleClose()
+        {
+            auto ev = scoped!WindowCloseEvent(_win);
+            _win.handleEvent(ev);
+            return true;
+        }
+
+		bool handlePaint(UINT msg, WPARAM wParam, LPARAM lParam)
+		{
+			if (!GetUpdateRect(_hWnd, null, false)) return false;
+            if (msg == WM_ERASEBKGND) return true;
+            if (geometry.area == 0) return true;
+
+
+			PAINTSTRUCT ps;
+			_hDc = BeginPaint(_hWnd, &ps);
+			scope(exit) {
+				EndPaint(_hWnd, &ps);
+			}
+
+            immutable r = IRect(0, 0, geometry.size);
+            auto win32Rect = rectToWin32(r);
+            FillRect(_hDc, &win32Rect, cast(HBRUSH)(COLOR_WINDOW+1));
+
+			auto ev = scoped!WindowExposeEvent(_win, r);
+			_win.handleEvent(ev);
+
+			return true;
+		}
+
         bool handleMove(UINT /+msg+/, WPARAM /+wParam+/, LPARAM /+lParam+/)
         {
             if (!IsIconic(_hWnd)) // do not fire when minimized
@@ -444,5 +479,52 @@ class Win32Window : PlatformWindow
 
             return mods;
         }
+    }
+}
+
+
+private:
+
+import dgt.bindings.cairo;
+import dgt.vg.backend.cairo;
+
+class CairoWin32Surface : CairoSurface
+{
+    mixin(rcCode);
+
+    private cairo_surface_t* _surf;
+    private HDC _hDc;
+
+    this(HDC hdc)
+    {
+        _surf = cairo_win32_surface_create(hdc);
+    }
+
+    override void dispose()
+    {
+        cairo_surface_destroy(_surf);
+    }
+
+    override @property cairo_surface_t* cairoSurf()
+    {
+        return _surf;
+    }
+
+    override @property VgBackend backend()
+    {
+        return cairoBackend;
+    }
+
+    override @property ISize size() const
+    {
+        return ISize(
+            GetDeviceCaps(cast(HDC)_hDc, HORZRES),
+            GetDeviceCaps(cast(HDC)_hDc, VERTRES)
+        );
+    }
+
+    override void flush()
+    {
+        cairo_surface_flush(_surf);
     }
 }
