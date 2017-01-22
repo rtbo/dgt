@@ -332,7 +332,7 @@ class WindowMouseEvent : WindowEvent
 
 class WindowKeyEvent : WindowEvent
 {
-    this(EventType type, Window window, key.Sym sym, key.Code scancode,
+    this(EventType type, Window window, key.Sym sym, key.Code code,
             key.Mods modifiers, string text, uint nativeCode, uint nativeSymbol,
             bool repeat = false, int repeatCount = 1)
     in
