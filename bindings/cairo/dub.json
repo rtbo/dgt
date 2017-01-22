@@ -8,13 +8,21 @@
 	"copyright": "Copyright © 2017, Rémi Thebault",
 	"license": "MIT",
 
-  "dependencies":	{
-		"dgt:bindings": {
-			"path": ".."
-		}
-  },
+	"dependencies":	{
+		"dgt:bindings": { "path": ".." }
+	},
 
-	"dependencies-linux": {
-		"xcb-d":			"~>2.1.0"
-	}
+	"configurations": [
+		{
+			"name": "linux",
+			"platforms": [ "linux" ],
+			"dependencies": {
+				"xcb-d": "~>2.1.0"
+			}
+		},
+		{
+			"name": "windows",
+			"platforms": [ "windows" ]
+		}
+	]
 }

@@ -9,6 +9,17 @@
 
 	"buildRequirements": [ "disallowDeprecations" ],
 
+	"subPackages": [
+		"./bindings",
+		"./bindings/cairo",
+		"./bindings/libpng",
+		"./bindings/turbojpeg",
+		"./bindings/fontconfig",
+		"./bindings/harfbuzz",
+
+		"./examples/hello"
+	],
+
     "dependencies":	{
 		"dgt:bindings":		"*",
 		"dgt:cairo":		"*",
@@ -20,22 +31,21 @@
 		"derelict-ft":		"~>1.1.3"
     },
 
-	"dependencies-linux": {
-		"xcb-d":			"~>2.1.0",
-		"xcb-util-wm-d":	"~>0.5.0",
-        "xkbcommon-d":      "~>0.5.1",
-        "xlib-d":           "~>0.1.1"
-	},
-	"libs-linux": ["xcb-xkb", "xcb-dri2", "xcb-dri3"],
-
-	"subPackages": [
-		"./bindings",
-		"./bindings/cairo",
-		"./bindings/libpng",
-		"./bindings/turbojpeg",
-		"./bindings/fontconfig",
-		"./bindings/harfbuzz",
-
-		"./examples/hello"
+	"configurations": [
+		{
+			"name": "linux",
+			"platforms": ["linux"],
+			"dependencies": {
+				"xcb-d":			"~>2.1.0",
+				"xcb-util-wm-d":	"~>0.5.0",
+				"xkbcommon-d":      "~>0.5.1",
+				"xlib-d":           "~>0.1.1"
+			},
+			"libs" : ["xcb-xkb", "xcb-dri2", "xcb-dri3"]
+		},
+		{
+			"name": "windows",
+			"platforms": ["windows"]
+		}
 	]
 }
