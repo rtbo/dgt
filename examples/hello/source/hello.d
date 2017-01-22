@@ -1,3 +1,5 @@
+module hello;
+
 import dgt.core.resource;
 import dgt.application;
 import dgt.window;
@@ -59,7 +61,6 @@ int main()
 
     auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
 
-    immutable tr = Transform.identity;
     auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
     auto treePath = new Path([0, 0]);
     treePath.lineTo([branchVec.x, branchVec.y]);
@@ -92,7 +93,6 @@ int main()
             ctx.lineWidth = 5f;
             tree.draw(treePath, ctx);
         });
-
 
         ctx.sandbox!({
             ctx.fillPaint = textPaint;

@@ -1,5 +1,6 @@
 {
     "name": "hello",
+    "targetType": "executable",
     "authors": [
         "Rémi Thebault"
     ],
