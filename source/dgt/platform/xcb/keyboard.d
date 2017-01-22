@@ -185,8 +185,10 @@ key.Sym symForKeysym(uint keysym)
 }
 
 
-key.Code codeForKeycode(xkb_keycode_t keycode) {
-    if (keycode >= keycodeTable.length) {
+key.Code codeForKeycode(xkb_keycode_t keycode)
+{
+    if (keycode >= keycodeTable.length)
+    {
         warningf("DGT-XCB: keycode 0x%x is out of bounds", keycode);
         return key.Code.unknown;
     }
@@ -194,11 +196,10 @@ key.Code codeForKeycode(xkb_keycode_t keycode) {
 }
 
 
-private {
-
+private
+{
     immutable key.Sym[uint] keysymMap;
     immutable key.Code[256] keycodeTable;
-
 
     shared static this() {
 

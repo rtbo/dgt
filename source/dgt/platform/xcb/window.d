@@ -232,7 +232,7 @@ class XcbWindow : PlatformWindow
         return _rect;
     }
 
-    private @property IRect geometrySys() const
+    private @property IRect sysGeometry() const
     {
         assert(created);
         auto c = xcb_get_geometry(g_connection, _xcbWin);
