@@ -13,6 +13,7 @@ import dgt.image;
 
 import std.typecons : scoped;
 import std.stdio;
+import std.math : PI;
 
 int main()
 {
@@ -57,7 +58,11 @@ int main()
     arLayout.layout();
 
     auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
-    img.convert(ImageFormat.argb).saveToFile("/home/remi/dlang.jpeg");
+
+    immutable tr = Transform.identity;
+    auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
+    auto treePath = new Path([0, 0]);
+    treePath.lineTo([branchVec.x, branchVec.y]);
 
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
@@ -84,6 +89,12 @@ int main()
         });
 
         ctx.sandbox!({
+            ctx.lineWidth = 5f;
+            tree.draw(treePath, ctx);
+        });
+
+
+        ctx.sandbox!({
             ctx.fillPaint = textPaint;
             ctx.transform = ctx.transform.translate(30, size.height-30);
             layout.renderInto(ctx);
@@ -102,7 +113,72 @@ int main()
             );
             ctx.drawTexture(tex);
         });
+
+        surf.flush();
     };
+
     win.show();
     return app.loop();
+}
+
+private:
+
+enum branchScale = 0.7f;
+enum branchAngle = PI / 8;
+immutable branchVec = fvec(0, -150);
+immutable branchStart = fvec(320, 460);
+immutable subBranches = [ 1.5, -0.5, -2.0 ];
+enum numFractalLevels = 5;
+
+struct FractalBranch
+{
+    Transform base;
+    FractalBranch[] branches;
+
+    this(in FVec2 pos, in real angle, in float scale, in int remainingDepth)
+    {
+        assert(remainingDepth >= 0);
+
+        this.base = Transform.identity
+            .scale(scale, scale)
+            .rotate(angle)
+            .translate(pos);
+
+        if (remainingDepth)
+        {
+            immutable endPos = pos +
+                branchVec.transform(
+                    Transform.identity
+                        .scale(scale, scale)
+                        .rotate(angle)
+                );
+            void addBranch(in real angle)
+            {
+                branches ~= FractalBranch (
+                    endPos, angle, scale*branchScale, remainingDepth-1
+                );
+            }
+
+            import std.algorithm : each;
+
+            subBranches.each!(
+                sb => addBranch(angle + sb * branchAngle)
+            );
+        }
+    }
+
+
+
+    void draw(in Path path, VgContext context)
+    {
+        context.sandbox!({
+            context.transform = base;
+            context.drawPath(path, PaintMode.stroke);
+        });
+        foreach(br; branches)
+        {
+            br.draw(path, context);
+        }
+    }
+
 }
