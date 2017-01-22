@@ -279,8 +279,8 @@ enum Sym : uint
 
     controlMask             = 0x8000_0000,
     keypadMask              = 0x4000_0000,
-
     mediaMask               = 0x2000_0000,
+    imeMask                 = 0x1000_0000,
 
     modMask                 = 0x0080_0000,
 
@@ -342,6 +342,7 @@ enum Sym : uint
     f14,
     f15,
     f16,
+    f17,
     f18,
     f19,
     f20,
@@ -374,12 +375,11 @@ enum Sym : uint
     kp_2,
     kp_3,
     kp_4,
+    kp_5,
     kp_6,
     kp_7,
     kp_8,
     kp_9,
-
-
 
     dead_grave              = modMask | 1,
     dead_acute,
@@ -434,8 +434,6 @@ enum Sym : uint
     dead_small_schwa,
     dead_capital_schwa,
 
-    modeSwitch,
-
     leftCtrl                = ctrlMask  | leftMask  | modMask,
     rightCtrl               = ctrlMask  | rightMask | modMask,
     leftShift               = shiftMask | leftMask  | modMask,
@@ -459,7 +457,7 @@ enum Sym : uint
      */
     space                   = 0x0000_0020,  /* U+0020 SPACE */
     exclam                  = 0x0000_0021,  /* U+0021 EXCLAMATION MARK */
-    quotedbl                = 0x0000_0022,  /* U+0022 QUOTATION MARK */
+    quoteDbl                = 0x0000_0022,  /* U+0022 QUOTATION MARK */
     numbersign              = 0x0000_0023,  /* U+0023 NUMBER SIGN */
     dollar                  = 0x0000_0024,  /* U+0024 DOLLAR SIGN */
     percent                 = 0x0000_0025,  /* U+0025 PERCENT SIGN */
@@ -516,43 +514,24 @@ enum Sym : uint
     x                       = 0x0000_0058,  /* U+0058 LATIN CAPITAL LETTER X */
     y                       = 0x0000_0059,  /* U+0059 LATIN CAPITAL LETTER Y */
     z                       = 0x0000_005a,  /* U+005A LATIN CAPITAL LETTER Z */
-    bracketleft             = 0x0000_005b,  /* U+005B LEFT SQUARE BRACKET */
+    bracketLeft             = 0x0000_005b,  /* U+005B LEFT SQUARE BRACKET */
     backslash               = 0x0000_005c,  /* U+005C REVERSE SOLIDUS */
-    bracketright            = 0x0000_005d,  /* U+005D RIGHT SQUARE BRACKET */
+    bracketRight            = 0x0000_005d,  /* U+005D RIGHT SQUARE BRACKET */
     asciicircum             = 0x0000_005e,  /* U+005E CIRCUMFLEX ACCENT */
     underscore              = 0x0000_005f,  /* U+005F LOW LINE */
     grave                   = 0x0000_0060,  /* U+0060 GRAVE ACCENT */
-    braceleft               = 0x0000_007b,  /* U+007B LEFT CURLY BRACKET */
+    braceLeft               = 0x0000_007b,  /* U+007B LEFT CURLY BRACKET */
     bar                     = 0x0000_007c,  /* U+007C VERTICAL LINE */
-    braceright              = 0x0000_007d,  /* U+007D RIGHT CURLY BRACKET */
-    asciitilde              = 0x0000_007e,  /* U+007E TILDE */
+    braceRight              = 0x0000_007d,  /* U+007D RIGHT CURLY BRACKET */
+    asciiTilde              = 0x0000_007e,  /* U+007E TILDE */
 
-
-    //// dead keys (X keycode - 0xED00 to avoid the conflict)
-    //dead_Grave          = 0x0100_1250,
-    //dead_Acute          = 0x0100_1251,
-    //dead_Circumflex     = 0x0100_1252,
-    //dead_Tilde          = 0x0100_1253,
-    //dead_Macron         = 0x0100_1254,
-    //dead_Breve          = 0x0100_1255,
-    //dead_Abovedot       = 0x0100_1256,
-    //dead_Diaeresis      = 0x0100_1257,
-    //dead_Abovering      = 0x0100_1258,
-    //dead_Doubleacute    = 0x0100_1259,
-    //dead_Caron          = 0x0100_125a,
-    //dead_Cedilla        = 0x0100_125b,
-    //dead_Ogonek         = 0x0100_125c,
-    //dead_Iota           = 0x0100_125d,
-    //dead_Voiced_Sound   = 0x0100_125e,
-    //dead_Semivoiced_Sound = 0x0100_125f,
-    //dead_Belowdot       = 0x0100_1260,
-    //dead_Hook           = 0x0100_1261,
-    //dead_Horn           = 0x0100_1262,
-
-    back                    = mediaMask | 1,
-    forward,
-    stop,
-    refresh,
+    browserBack             = mediaMask | 1,
+    browserForward,
+    browserStop,
+    browserRefresh,
+    browserHome,
+    browserFavorites,
+    browserSearch,
     volumeDown,
     volumeMute,
     volumeUp,
@@ -568,9 +547,6 @@ enum Sym : uint
     mediaRecord,
     mediaPause,
     mediaTogglePlayPause,
-    homePage,
-    favorites,
-    search,
     standby,
     openUrl,
     myComputer,
@@ -729,9 +705,6 @@ enum Sym : uint
     sleep,
     play, // Not the same as MediaPlay
     zoom,
-    //Jisho, // IME: Dictionary key
-    //Oyayubi_Left, // IME: Left Oyayubi key
-    //Oyayubi_Right, // IME: Right Oyayubi key
     exit,
 
     // Device keys
@@ -740,13 +713,29 @@ enum Sym : uint
     context3,
     context4,
     call,      // set absolute state to in a call (do not toggle state)
-    hangup,    // set absolute state to hang up (do not toggle state)
+    hangUp,    // set absolute state to hang up (do not toggle state)
     flip,
-    toggleCallHangup, // a toggle key for answering, or hanging up, based on current call state
+    toggleCallHangUp, // a toggle key for answering, or hanging up, based on current call state
     voiceDial,
     lastNumberRedial,
 
     camera,
     cameraFocus,
+
+    convert                         = imeMask | 1,
+    nonConvert,
+    accept,
+    modeSwitch,
+    final_,
+    kana,
+    hangul,
+    junja,
+    hanja,
+    kanji,
+    jisho,
+    masshou,
+    touroku,
+    oyayubiLeft,
+    oyayubiRight,
 }
 

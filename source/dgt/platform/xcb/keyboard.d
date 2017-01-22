@@ -626,15 +626,15 @@ private
 
         // Special keys from X.org - This include multimedia keys,
             // wireless/bluetooth/uwb keys, special launcher keys, etc.
-        map[XKB_KEY_XF86Back] =                 key.Sym.back;
-        map[XKB_KEY_XF86Forward] =              key.Sym.forward;
-        map[XKB_KEY_XF86Stop] =                 key.Sym.stop;
-        map[XKB_KEY_XF86Refresh] =              key.Sym.refresh;
-        map[XKB_KEY_XF86Favorites] =            key.Sym.favorites;
+        map[XKB_KEY_XF86Back] =                 key.Sym.browserBack;
+        map[XKB_KEY_XF86Forward] =              key.Sym.browserForward;
+        map[XKB_KEY_XF86Stop] =                 key.Sym.browserStop;
+        map[XKB_KEY_XF86Refresh] =              key.Sym.browserRefresh;
+        map[XKB_KEY_XF86Favorites] =            key.Sym.browserFavorites;
         map[XKB_KEY_XF86AudioMedia] =           key.Sym.launchMedia;
         map[XKB_KEY_XF86OpenURL] =              key.Sym.openUrl;
-        map[XKB_KEY_XF86HomePage] =             key.Sym.homePage;
-        map[XKB_KEY_XF86Search] =               key.Sym.search;
+        map[XKB_KEY_XF86HomePage] =             key.Sym.browserHome;
+        map[XKB_KEY_XF86Search] =               key.Sym.browserSearch;
         map[XKB_KEY_XF86AudioLowerVolume] =     key.Sym.volumeDown;
         map[XKB_KEY_XF86AudioMute] =            key.Sym.volumeMute;
         map[XKB_KEY_XF86AudioRaiseVolume] =     key.Sym.volumeUp;
