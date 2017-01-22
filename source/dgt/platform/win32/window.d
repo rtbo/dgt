@@ -286,6 +286,9 @@ class Win32Window : PlatformWindow
 
         bool handleKey(UINT msg, WPARAM wParam, LPARAM lParam)
         {
+            import dgt.platform.win32.keymap : getKeysym, getKeycode;
+            import std.conv : to;
+
             assert(msg != WM_CHAR,
                    "Char msg must be intercepted before delivery!");
             assert(msg == WM_KEYDOWN || msg == WM_KEYUP,
@@ -294,6 +297,31 @@ class Win32Window : PlatformWindow
                 warningf("key %s received a virtual key out of byte boundary: %s",
                          msg == WM_KEYDOWN?"down":"up", wParam);
                 return false;
+            }
+
+            immutable sym = getKeysym(wParam);
+            immutable scancode = cast(ubyte)((lParam & scanCodeMask) >> 16);
+            immutable code = getKeycode(scancode);
+
+            if (msg == WM_KEYDOWN)
+            {
+                immutable text = peekCharMsg();
+                immutable repeat = ((lParam & previousStateMask) != 0);
+                immutable repeatCount = lParam & repeatCountMask;
+
+                auto ev = scoped!WindowKeyEvent(
+                    EventType.windowKeyDown, _win, sym, code, keyMods,
+                    text.to!string, scancode, wParam, repeat, repeatCount
+                );
+                _win.handleEvent(ev);
+            }
+            else
+            {
+                auto ev = scoped!WindowKeyEvent(
+                    EventType.windowKeyDown, _win, sym, code, keyMods,
+                    "", scancode, wParam
+                );
+                _win.handleEvent(ev);
             }
 
             return true;
@@ -305,8 +333,6 @@ class Win32Window : PlatformWindow
             auto ev = scoped!WindowStateChangeEvent(_win, ws);
             _win.handleEvent(ev);
         }
-
-
     }
 
     private
