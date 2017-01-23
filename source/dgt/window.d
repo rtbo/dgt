@@ -215,6 +215,7 @@ class Window : Surface
         {
         case EventType.windowExpose:
             _onExpose.fire(cast(WindowExposeEvent) wEv);
+            _platformWindow.drawingBuffer.flushTo(_platformWindow);
             break;
         case EventType.windowMove:
             auto wmEv = cast(WindowMoveEvent) wEv;
