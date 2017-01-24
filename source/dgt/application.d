@@ -135,6 +135,11 @@ Platform makeDefaultPlatform()
         import dgt.platform.xcb : XcbPlatform;
         return new XcbPlatform;
     }
+    else version(Windows)
+    {
+        import dgt.platform.win32 : Win32Platform;
+        return new Win32Platform;
+    }
     else
     {
         assert(false, "unimplemented");

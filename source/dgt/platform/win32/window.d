@@ -67,6 +67,7 @@ class Win32Window : PlatformWindow
 		}
 
         _state = WindowState.hidden;
+        this.state = state;
 
 		Win32Platform.instance.registerWindow(_hWnd, this);
     }
@@ -344,17 +345,17 @@ class Win32Window : PlatformWindow
                 immutable repeat = ((lParam & previousStateMask) != 0);
                 immutable repeatCount = lParam & repeatCountMask;
 
-                auto ev = scoped!WindowKeyEvent(
+                auto ev = new WindowKeyEvent(
                     EventType.windowKeyDown, _win, sym, code, keyMods,
-                    text.to!string, scancode, wParam, repeat, repeatCount
+                    text.to!string, scancode, cast(uint)wParam, repeat, repeatCount
                 );
                 _win.handleEvent(ev);
             }
             else
             {
-                auto ev = scoped!WindowKeyEvent(
+                auto ev = new WindowKeyEvent(
                     EventType.windowKeyDown, _win, sym, code, keyMods,
-                    "", scancode, wParam
+                    "", scancode, cast(uint)wParam
                 );
                 _win.handleEvent(ev);
             }
@@ -378,7 +379,7 @@ class Win32Window : PlatformWindow
 
         @property int style() const
         {
-            return GetWindowLongPtr(cast(HWND)_hWnd, GWL_STYLE);
+            return cast(int)GetWindowLongPtr(cast(HWND)_hWnd, GWL_STYLE);
         }
 
         @property void style(in int s)
@@ -388,7 +389,7 @@ class Win32Window : PlatformWindow
 
         @property int exStyle() const
         {
-            return GetWindowLongPtr(cast(HWND)_hWnd, GWL_EXSTYLE);
+            return cast(int)GetWindowLongPtr(cast(HWND)_hWnd, GWL_EXSTYLE);
         }
 
         @property void exStyle(in int s)
