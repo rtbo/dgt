@@ -16,7 +16,7 @@ public void loadLibPngSymbols(string[] libNames = [])
     }
     version (Windows)
     {
-        auto defaultLibNames = ["libpng.dll", "libpng-16.dll"];
+        auto defaultLibNames = ["libpng16.dll", "libpng16-16.dll"];
     }
     if (libNames.length == 0)
     {
