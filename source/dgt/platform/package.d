@@ -43,11 +43,11 @@ interface PlatformWindow
     @property IRect geometry() const;
     @property void geometry(IRect pos);
 
-    @property DrawingBuffer drawingBuffer();
+    @property PlatformDrawingBuffer drawingBuffer();
 }
 
 /// A Platform native drawing buffer
-interface DrawingBuffer
+interface PlatformDrawingBuffer
 {
     @property ISize size() const;
     @property void size(in ISize size);

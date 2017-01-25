@@ -278,7 +278,7 @@ class XcbWindow : PlatformWindow
         return _win;
     }
 
-    override @property DrawingBuffer drawingBuffer()
+    override @property PlatformDrawingBuffer drawingBuffer()
     {
         if (!_drawingBuf.loaded)
         {
@@ -579,7 +579,7 @@ class XcbPixmap : Disposable
     }
 }
 
-class XcbDrawingBuffer : DrawingBuffer, CairoSurface
+class XcbDrawingBuffer : PlatformDrawingBuffer, CairoSurface
 {
     mixin(rcCode);
 
