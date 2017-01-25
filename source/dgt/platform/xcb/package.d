@@ -366,6 +366,13 @@ class XcbPlatform : Platform
         void initializeVG()
         {
             import dgt.bindings.cairo.load : cairoHasXcb;
+            import xcb.shm : xcb_shm_id;
+            {
+                xcb_prefetch_extension_data(g_connection, &xcb_shm_id);
+
+                const reply = xcb_get_extension_data(g_connection, &xcb_shm_id);
+                enforce(reply && reply.present, "XCB-SHM extension is not found");
+            }
             enforce(cairoHasXcb);
         }
 
