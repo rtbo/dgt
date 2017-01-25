@@ -82,8 +82,8 @@ class XcbWindow : PlatformWindow
 
         xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen.root, _visualId);
 
-        immutable mask = XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP;
-        uint[] values = [screen.whitePixel, cmap, 0];
+        immutable mask = XCB_CW_COLORMAP;
+        uint[] values = [cmap, 0];
 
         auto cook = xcb_create_window_checked(g_connection, screen.rootDepth,
                 _xcbWin, screen.root, cast(short) pos.x, cast(short) pos.y,

@@ -56,6 +56,7 @@ int main()
     font.size = FontSize.pts(100);
     auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
     layout.layout();
+    // This is "hello" for those who wonder.
     auto arLayout = makeRc!TextLayout("مرحبا", TextFormat.plain, font);
     arLayout.layout();
 
@@ -77,9 +78,10 @@ int main()
 
         immutable size = win.size;
 
-        fillPaint.color = fvec(size.width/1300f, 0.8, 0.2, 1);
+        ctx.clear([1, 1, 1, 1]);
 
         ctx.sandbox!({
+            fillPaint.color = fvec(size.width/1300f, 0.8, 0.2, 1);
             ctx.fillPaint = fillPaint;
             ctx.strokePaint = strokePaint;
             ctx.lineWidth = 5f;
