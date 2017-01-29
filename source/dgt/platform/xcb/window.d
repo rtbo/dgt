@@ -4,6 +4,7 @@ version(linux):
 
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
+import dgt.platform.xcb.drawing_buffer;
 import dgt.core.resource;
 import dgt.vg;
 import dgt.screen;
@@ -39,12 +40,13 @@ class XcbWindow : PlatformWindow
         xcb_window_t _xcbWin;
         xcb_visualid_t _visualId;
         xcb_visualtype_t* _visual;
-        int _depth;
+        xcb_format_t* _format;
+        ubyte _depth;
         WindowState _lastKnownState = WindowState.hidden;
         IRect _rect;
         bool _created = false;
         bool _mapped;
-        Rc!XcbDrawingBuffer _drawingBuf;
+        XcbDrawingBuffer _drawingBuf;
     }
 
     this(Window w, XcbPlatform platform)
@@ -74,8 +76,8 @@ class XcbWindow : PlatformWindow
         XFree(visualInfo);
 
         _visual = getXcbVisualForId(_platform.xcbScreens, _visualId);
-        //_depth = _visual.bits_per_rgb_value;
         _depth = screen.rootDepth;
+        _format = _platform.formatForDepth(_depth);
 
         immutable cmap = xcb_generate_id(g_connection);
         _xcbWin = xcb_generate_id(g_connection);
@@ -109,7 +111,11 @@ class XcbWindow : PlatformWindow
 
     override void close()
     {
-        _drawingBuf.unload();
+        if (_drawingBuf)
+        {
+            _drawingBuf.dispose();
+            _drawingBuf = null;
+        }
         if (_mapped)
             xcb_unmap_window(g_connection, _xcbWin);
         xcb_destroy_window(g_connection, _xcbWin);
@@ -280,11 +286,11 @@ class XcbWindow : PlatformWindow
 
     override @property PlatformDrawingBuffer drawingBuffer()
     {
-        if (!_drawingBuf.loaded)
+        if (!_drawingBuf)
         {
             _drawingBuf = new XcbDrawingBuffer(this);
         }
-        return _drawingBuf.obj;
+        return _drawingBuf;
     }
 
     package
@@ -292,6 +298,26 @@ class XcbWindow : PlatformWindow
         @property xcb_window_t xcbWin() const
         {
             return _xcbWin;
+        }
+
+        @property ubyte depth() const
+        {
+            return _depth;
+        }
+
+        @property uint xcbVisualId() const
+        {
+            return _visualId;
+        }
+
+        @property inout(xcb_visualtype_t)* xcbVisual() inout
+        {
+            return _visual;
+        }
+
+        @property inout(xcb_format_t)* xcbFormat() inout
+        {
+            return _format;
         }
 
         void processButtonEvent(xcb_button_press_event_t* e)
@@ -346,7 +372,7 @@ class XcbWindow : PlatformWindow
             }
             if (e.width != _rect.width || e.height != _rect.height)
             {
-                if (_drawingBuf.loaded)
+                if (_drawingBuf)
                 {
                     _drawingBuf.size = ISize(e.width, e.height);
                 }
@@ -552,113 +578,5 @@ class XcbWindow : PlatformWindow
             return pos;
         }
 
-    }
-}
-
-private:
-
-import dgt.bindings.cairo;
-import dgt.vg.backend.cairo;
-
-class XcbPixmap : Disposable
-{
-    private xcb_drawable_t handle;
-
-    this(xcb_drawable_t baseDrawable, ubyte depth, ISize size)
-    {
-        handle = xcb_generate_id(g_connection);
-        xcb_create_pixmap(
-            g_connection, depth, handle, baseDrawable,
-            cast(ushort)size.width, cast(ushort)size.height
-        );
-    }
-
-    override void dispose()
-    {
-        xcb_free_pixmap(g_connection, handle);
-    }
-}
-
-class XcbDrawingBuffer : PlatformDrawingBuffer, CairoSurface
-{
-    mixin(rcCode);
-
-    private ISize _size;
-    private ubyte _depth;
-    private xcb_drawable_t _baseDrawable;
-    private xcb_visualtype_t* _visual;
-    private XcbPixmap _pixmap;
-    private xcb_gcontext_t gc;
-
-    private cairo_surface_t* _surf;
-
-    this(XcbWindow window)
-    {
-        _size = window.geometry.size;
-        _depth = cast(ubyte)window._depth;
-        _baseDrawable = window.xcbWin;
-        _visual = window._visual;
-        _pixmap = new XcbPixmap(_baseDrawable, _depth, _size);
-        immutable mask = XCB_GC_GRAPHICS_EXPOSURES;
-        immutable uint values = 0;
-        gc = xcb_generate_id(g_connection);
-        xcb_create_gc(g_connection, gc, _baseDrawable, mask, &values);
-        _surf = cairo_xcb_surface_create(g_connection, _pixmap.handle, _visual, _size.width, _size.height);
-    }
-
-    override ISize size() const
-    {
-        return _size;
-    }
-
-    override void size(in ISize size)
-    {
-        if (size == _size) return;
-
-        _size = size;
-        if (_pixmap) _pixmap.dispose();
-        _pixmap = new XcbPixmap(_baseDrawable, _depth, _size);
-        cairo_surface_flush(_surf);
-        cairo_xcb_surface_set_drawable(_surf, _pixmap.handle, _size.width, _size.height);
-    }
-
-    override void dispose()
-    {
-        cairo_surface_destroy(_surf);
-        xcb_free_gc(g_connection, gc);
-        if (_pixmap) _pixmap.dispose();
-
-        _surf = null;
-        _pixmap = null;
-    }
-
-    override @property VgSurface surface()
-    {
-        return this;
-    }
-
-    override @property cairo_surface_t* cairoSurf()
-    {
-        return _surf;
-    }
-
-    override @property VgBackend backend()
-    {
-        return cairoBackend;
-    }
-
-    override void flush()
-    {
-        cairo_surface_flush(_surf);
-    }
-
-    override void flushTo(PlatformWindow pw)
-    {
-        flush();
-        auto win = enforce(cast(XcbWindow)pw);
-        xcb_copy_area(
-            g_connection, _pixmap.handle, win.xcbWin, gc,
-            0, 0, 0, 0, cast(ushort)_size.width, cast(ushort)_size.height
-        );
     }
 }

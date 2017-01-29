@@ -11,6 +11,7 @@ import dgt.screen;
 import dgt.geometry;
 import dgt.enums;
 import dgt.event;
+import dgt.image;
 import key = dgt.keys;
 
 import xcb.xcb;
@@ -256,6 +257,23 @@ class XcbPlatform : Platform
             return _xcbScreens;
         }
 
+        xcb_format_t* formatForDepth(ubyte depth)
+        {
+            auto iter = xcb_setup_pixmap_formats_iterator(
+                xcb_get_setup(g_connection)
+            );
+            while(iter.rem)
+            {
+                auto format = iter.data;
+                if (format.depth == depth)
+                {
+                    return format;
+                }
+                xcb_format_next(&iter);
+            }
+            return null;
+        }
+
         inout(XcbWindow) xcbWindow(xcb_window_t xcbWin) inout
         {
             inout(XcbWindow)* w = xcbWin in _windows;
@@ -441,6 +459,30 @@ MouseButton dgtMouseButton(in xcb_button_t xcbBut) pure @nogc @safe nothrow
     default:
         return MouseButton.none;
     }
+}
+
+ImageFormat dgtImageFormat(in xcb_format_t* fmt)
+{
+    switch (fmt.bits_per_pixel)
+    {
+    case 1:
+        return ImageFormat.a1;
+    case 8:
+        return ImageFormat.a8;
+    case 32:
+        if (fmt.depth == 24)
+        {
+            return ImageFormat.rgb;
+        }
+        else if (fmt.depth == 32)
+        {
+            return ImageFormat.argbPremult;
+        }
+        break;
+    default:
+        break;
+    }
+    throw new Exception("DGT-XCB - Unsupported image format");
 }
 
 private

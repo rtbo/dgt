@@ -47,14 +47,15 @@ interface PlatformWindow
 }
 
 /// A Platform native drawing buffer
-interface PlatformDrawingBuffer
+interface PlatformDrawingBuffer : Disposable
 {
+    @property inout(PlatformWindow) window() inout;
     @property ISize size() const;
     @property void size(in ISize size);
 
     @property VgSurface surface();
 
-    void flushTo(PlatformWindow window);
+    void flush();
 }
 
 VgSurface surface(PlatformWindow window)
