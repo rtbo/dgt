@@ -36,233 +36,232 @@ shared static this()
     fontconfigLoader = new FontconfigLoader();
 }
 
-shared static ~this()
+class FontconfigLoader : SharedLibLoader
 {
-    fontconfigLoader.unload();
-}
-
-alias FontconfigLoader = SymbolLoader!(
-/* fcblanks.c */
-    FcBlanksCreate,
-    FcBlanksDestroy,
-    FcBlanksAdd,
-    FcBlanksIsMember,
-/* fccache.c */
-    FcCacheDir,
-    FcCacheCopySet,
-    FcCacheSubdir,
-    FcCacheNumSubdir,
-    FcCacheNumFont,
-    FcDirCacheUnlink,
-    FcDirCacheValid,
-    FcDirCacheClean,
-    FcCacheCreateTagFile,
-/* fccfg.c */
-    FcConfigHome,
-    FcConfigEnableHome,
-    FcConfigFilename,
-    FcConfigCreate,
-    FcConfigReference,
-    FcConfigDestroy,
-    FcConfigSetCurrent,
-    FcConfigGetCurrent,
-    FcConfigUptoDate,
-    FcConfigBuildFonts,
-    FcConfigGetFontDirs,
-    FcConfigGetConfigDirs,
-    FcConfigGetConfigFiles,
-    FcConfigGetCache,
-    FcConfigGetBlanks,
-    FcConfigGetCacheDirs,
-    FcConfigGetRescanInterval,
-    FcConfigSetRescanInterval,
-    FcConfigGetFonts,
-    FcConfigAppFontAddFile,
-    FcConfigAppFontAddDir,
-    FcConfigAppFontClear,
-    FcConfigSubstituteWithPat,
-    FcConfigSubstitute,
-    FcConfigGetSysRoot,
-    FcConfigSetSysRoot,
-/* fccharset.c */
-    FcCharSetCreate,
-    FcCharSetDestroy,
-    FcCharSetAddChar,
-    FcCharSetDelChar,
-    FcCharSetCopy,
-    FcCharSetEqual,
-    FcCharSetIntersect,
-    FcCharSetUnion,
-    FcCharSetSubtract,
-    FcCharSetMerge,
-    FcCharSetHasChar,
-    FcCharSetCount,
-    FcCharSetIntersectCount,
-    FcCharSetSubtractCount,
-    FcCharSetIsSubset,
-    FcCharSetFirstPage,
-    FcCharSetNextPage,
-/*
+    override void bindSymbols()
+    {
+        /* fcblanks.c */
+        bind!(FcBlanksCreate)();
+        bind!(FcBlanksDestroy)();
+        bind!(FcBlanksAdd)();
+        bind!(FcBlanksIsMember)();
+        /* fccache.c */
+        bind!(FcCacheDir)();
+        bind!(FcCacheCopySet)();
+        bind!(FcCacheSubdir)();
+        bind!(FcCacheNumSubdir)();
+        bind!(FcCacheNumFont)();
+        bind!(FcDirCacheUnlink)();
+        bind!(FcDirCacheValid)();
+        bind!(FcDirCacheClean)();
+        bind!(FcCacheCreateTagFile)();
+        /* fccfg.c */
+        bind!(FcConfigHome)();
+        bind!(FcConfigEnableHome)();
+        bind!(FcConfigFilename)();
+        bind!(FcConfigCreate)();
+        bind!(FcConfigReference)();
+        bind!(FcConfigDestroy)();
+        bind!(FcConfigSetCurrent)();
+        bind!(FcConfigGetCurrent)();
+        bind!(FcConfigUptoDate)();
+        bind!(FcConfigBuildFonts)();
+        bind!(FcConfigGetFontDirs)();
+        bind!(FcConfigGetConfigDirs)();
+        bind!(FcConfigGetConfigFiles)();
+        bind!(FcConfigGetCache)();
+        bind!(FcConfigGetBlanks)();
+        bind!(FcConfigGetCacheDirs)();
+        bind!(FcConfigGetRescanInterval)();
+        bind!(FcConfigSetRescanInterval)();
+        bind!(FcConfigGetFonts)();
+        bind!(FcConfigAppFontAddFile)();
+        bind!(FcConfigAppFontAddDir)();
+        bind!(FcConfigAppFontClear)();
+        bind!(FcConfigSubstituteWithPat)();
+        bind!(FcConfigSubstitute)();
+        bind!(FcConfigGetSysRoot)();
+        bind!(FcConfigSetSysRoot)();
+        /* fccharset.c */
+        bind!(FcCharSetCreate)();
+        bind!(FcCharSetDestroy)();
+        bind!(FcCharSetAddChar)();
+        bind!(FcCharSetDelChar)();
+        bind!(FcCharSetCopy)();
+        bind!(FcCharSetEqual)();
+        bind!(FcCharSetIntersect)();
+        bind!(FcCharSetUnion)();
+        bind!(FcCharSetSubtract)();
+        bind!(FcCharSetMerge)();
+        bind!(FcCharSetHasChar)();
+        bind!(FcCharSetCount)();
+        bind!(FcCharSetIntersectCount)();
+        bind!(FcCharSetSubtractCount)();
+        bind!(FcCharSetIsSubset)();
+        bind!(FcCharSetFirstPage)();
+        bind!(FcCharSetNextPage)();
+        /*
  * old coverage , rather hard to use correctly
  */
-    FcCharSetCoverage,
-/* fcdbg.c */
-    FcValuePrint,
-    FcPatternPrint,
-    FcFontSetPrint,
-/* fcdefault.c */
-    FcGetDefaultLangs,
-    FcDefaultSubstitute,
-/* fcdir.c */
-    FcFileIsDir,
-    FcFileScan,
-    FcDirScan,
-    FcDirSave,
-    FcDirCacheLoad,
-    FcDirCacheRescan,
-    FcDirCacheRead,
-//     FcDirCacheLoadFile,
-    FcDirCacheUnload,
-/* fcfreetype.c */
-    FcFreeTypeQuery,
-/* fcfs.c */
-    FcFontSetCreate,
-    FcFontSetDestroy,
-    FcFontSetAdd,
-/* fcinit.c */
-    FcInitLoadConfig,
-    FcInitLoadConfigAndFonts,
-    FcInit,
-    FcFini,
-    FcGetVersion,
-    FcInitReinitialize,
-    FcInitBringUptoDate,
-/* fclang.c */
-    FcGetLangs,
-    FcLangNormalize,
-    FcLangGetCharSet,
-    FcLangSetCreate,
-    FcLangSetDestroy,
-    FcLangSetCopy,
-    FcLangSetAdd,
-    FcLangSetDel,
-    FcLangSetHasLang,
-    FcLangSetCompare,
-    FcLangSetContains,
-    FcLangSetEqual,
-    FcLangSetHash,
-    FcLangSetGetLangs,
-    FcLangSetUnion,
-    FcLangSetSubtract,
-/* fclist.c */
-    FcObjectSetCreate,
-    FcObjectSetAdd,
-    FcObjectSetDestroy,
-//    FcObjectSetVaBuild,
-//    FcObjectSetBuild, // FC_ATTRIBUTE_SENTINEL()
-    FcFontSetList,
-    FcFontList,
-/* fcatomic.c */
-    FcAtomicCreate,
-    FcAtomicLock,
-    FcAtomicNewFile,
-    FcAtomicOrigFile,
-    FcAtomicReplaceOrig,
-    FcAtomicDeleteNew,
-    FcAtomicUnlock,
-    FcAtomicDestroy,
-/* fcmatch.c */
-    FcFontSetMatch,
-    FcFontMatch,
-    FcFontRenderPrepare,
-    FcFontSetSort,
-    FcFontSort,
-    FcFontSetSortDestroy,
-/* fcmatrix.c */
-    FcMatrixCopy,
-    FcMatrixEqual,
-    FcMatrixMultiply,
-    FcMatrixRotate,
-    FcMatrixScale,
-    FcMatrixShear,
-/* fcname.c */
-    FcNameGetConstant,
-    FcNameConstant,
-    FcNameParse,
-    FcNameUnparse,
-/* fcpat.c */
-    FcPatternCreate,
-    FcPatternDuplicate,
-    FcPatternReference,
-    FcPatternFilter,
-    FcValueDestroy,
-    FcValueEqual,
-    FcValueSave,
-    FcPatternDestroy,
-    FcPatternEqual,
-    FcPatternEqualSubset,
-    FcPatternHash,
-    FcPatternAdd,
-    FcPatternAddWeak,
-    FcPatternGet,
-    FcPatternDel,
-    FcPatternRemove,
-    FcPatternAddInteger,
-    FcPatternAddDouble,
-    FcPatternAddString,
-    FcPatternAddMatrix,
-    FcPatternAddCharSet,
-    FcPatternAddBool,
-    FcPatternAddLangSet,
-    FcPatternAddRange,
-    FcPatternGetInteger,
-    FcPatternGetDouble,
-    FcPatternGetString,
-    FcPatternGetMatrix,
-    FcPatternGetCharSet,
-    FcPatternGetBool,
-    FcPatternGetLangSet,
-    FcPatternGetRange,
-//     FcPatternVaBuild,
-//     FcPatternBuild, /*FC_ATTRIBUTE_SENTINEL()*/
-    FcPatternFormat,
-/* fcrange.c */
-    FcRangeCreateDouble,
-    FcRangeCreateInteger,
-    FcRangeDestroy,
-    FcRangeCopy,
-    FcRangeGetDouble,
-/* fcweight.c */
-    FcWeightFromOpenType,
-    FcWeightToOpenType,
-/* fcstr.c */
-    FcStrCopy,
-    FcStrCopyFilename,
-    FcStrPlus,
-    FcStrFree,
-    FcStrDowncase,
-    FcStrCmpIgnoreCase,
-    FcStrCmp,
-    FcStrStrIgnoreCase,
-    FcStrStr,
-    FcUtf8ToUcs4,
-    FcUtf8Len,
-    FcUcs4ToUtf8,
-    FcUtf16ToUcs4, /* in bytes */
-    FcUtf16Len,
-    FcStrDirname,
-    FcStrBasename,
-    FcStrSetCreate,
-    FcStrSetMember,
-    FcStrSetEqual,
-    FcStrSetAdd,
-    FcStrSetAddFilename,
-    FcStrSetDel,
-    FcStrSetDestroy,
-    FcStrListCreate,
-    FcStrListFirst,
-    FcStrListNext,
-    FcStrListDone,
-/* fcxml.c */
-    FcConfigParseAndLoad,
-);
+        bind!(FcCharSetCoverage)();
+        /* fcdbg.c */
+        bind!(FcValuePrint)();
+        bind!(FcPatternPrint)();
+        bind!(FcFontSetPrint)();
+        /* fcdefault.c */
+        bind!(FcGetDefaultLangs)();
+        bind!(FcDefaultSubstitute)();
+        /* fcdir.c */
+        bind!(FcFileIsDir)();
+        bind!(FcFileScan)();
+        bind!(FcDirScan)();
+        bind!(FcDirSave)();
+        bind!(FcDirCacheLoad)();
+        bind!(FcDirCacheRescan)();
+        bind!(FcDirCacheRead)();
+        //     bind!(FcDirCacheLoadFile)();
+        bind!(FcDirCacheUnload)();
+        /* fcfreetype.c */
+        bind!(FcFreeTypeQuery)();
+        /* fcfs.c */
+        bind!(FcFontSetCreate)();
+        bind!(FcFontSetDestroy)();
+        bind!(FcFontSetAdd)();
+        /* fcinit.c */
+        bind!(FcInitLoadConfig)();
+        bind!(FcInitLoadConfigAndFonts)();
+        bind!(FcInit)();
+        bind!(FcFini)();
+        bind!(FcGetVersion)();
+        bind!(FcInitReinitialize)();
+        bind!(FcInitBringUptoDate)();
+        /* fclang.c */
+        bind!(FcGetLangs)();
+        bind!(FcLangNormalize)();
+        bind!(FcLangGetCharSet)();
+        bind!(FcLangSetCreate)();
+        bind!(FcLangSetDestroy)();
+        bind!(FcLangSetCopy)();
+        bind!(FcLangSetAdd)();
+        bind!(FcLangSetDel)();
+        bind!(FcLangSetHasLang)();
+        bind!(FcLangSetCompare)();
+        bind!(FcLangSetContains)();
+        bind!(FcLangSetEqual)();
+        bind!(FcLangSetHash)();
+        bind!(FcLangSetGetLangs)();
+        bind!(FcLangSetUnion)();
+        bind!(FcLangSetSubtract)();
+        /* fclist.c */
+        bind!(FcObjectSetCreate)();
+        bind!(FcObjectSetAdd)();
+        bind!(FcObjectSetDestroy)();
+        //    bind!(FcObjectSetVaBuild)();
+        //    bind!(FcObjectSetBuild)(); // FC_ATTRIBUTE_SENTINEL()
+        bind!(FcFontSetList)();
+        bind!(FcFontList)();
+        /* fcatomic.c */
+        bind!(FcAtomicCreate)();
+        bind!(FcAtomicLock)();
+        bind!(FcAtomicNewFile)();
+        bind!(FcAtomicOrigFile)();
+        bind!(FcAtomicReplaceOrig)();
+        bind!(FcAtomicDeleteNew)();
+        bind!(FcAtomicUnlock)();
+        bind!(FcAtomicDestroy)();
+        /* fcmatch.c */
+        bind!(FcFontSetMatch)();
+        bind!(FcFontMatch)();
+        bind!(FcFontRenderPrepare)();
+        bind!(FcFontSetSort)();
+        bind!(FcFontSort)();
+        bind!(FcFontSetSortDestroy)();
+        /* fcmatrix.c */
+        bind!(FcMatrixCopy)();
+        bind!(FcMatrixEqual)();
+        bind!(FcMatrixMultiply)();
+        bind!(FcMatrixRotate)();
+        bind!(FcMatrixScale)();
+        bind!(FcMatrixShear)();
+        /* fcname.c */
+        bind!(FcNameGetConstant)();
+        bind!(FcNameConstant)();
+        bind!(FcNameParse)();
+        bind!(FcNameUnparse)();
+        /* fcpat.c */
+        bind!(FcPatternCreate)();
+        bind!(FcPatternDuplicate)();
+        bind!(FcPatternReference)();
+        bind!(FcPatternFilter)();
+        bind!(FcValueDestroy)();
+        bind!(FcValueEqual)();
+        bind!(FcValueSave)();
+        bind!(FcPatternDestroy)();
+        bind!(FcPatternEqual)();
+        bind!(FcPatternEqualSubset)();
+        bind!(FcPatternHash)();
+        bind!(FcPatternAdd)();
+        bind!(FcPatternAddWeak)();
+        bind!(FcPatternGet)();
+        bind!(FcPatternDel)();
+        bind!(FcPatternRemove)();
+        bind!(FcPatternAddInteger)();
+        bind!(FcPatternAddDouble)();
+        bind!(FcPatternAddString)();
+        bind!(FcPatternAddMatrix)();
+        bind!(FcPatternAddCharSet)();
+        bind!(FcPatternAddBool)();
+        bind!(FcPatternAddLangSet)();
+        bind!(FcPatternAddRange)();
+        bind!(FcPatternGetInteger)();
+        bind!(FcPatternGetDouble)();
+        bind!(FcPatternGetString)();
+        bind!(FcPatternGetMatrix)();
+        bind!(FcPatternGetCharSet)();
+        bind!(FcPatternGetBool)();
+        bind!(FcPatternGetLangSet)();
+        bind!(FcPatternGetRange)();
+        //     bind!(FcPatternVaBuild)();
+        //     bind!(FcPatternBuild)(); /*FC_ATTRIBUTE_SENTINEL()*/
+        bind!(FcPatternFormat)();
+        /* fcrange.c */
+        bind!(FcRangeCreateDouble)();
+        bind!(FcRangeCreateInteger)();
+        bind!(FcRangeDestroy)();
+        bind!(FcRangeCopy)();
+        bind!(FcRangeGetDouble)();
+        /* fcweight.c */
+        bind!(FcWeightFromOpenType)();
+        bind!(FcWeightToOpenType)();
+        /* fcstr.c */
+        bind!(FcStrCopy)();
+        bind!(FcStrCopyFilename)();
+        bind!(FcStrPlus)();
+        bind!(FcStrFree)();
+        bind!(FcStrDowncase)();
+        bind!(FcStrCmpIgnoreCase)();
+        bind!(FcStrCmp)();
+        bind!(FcStrStrIgnoreCase)();
+        bind!(FcStrStr)();
+        bind!(FcUtf8ToUcs4)();
+        bind!(FcUtf8Len)();
+        bind!(FcUcs4ToUtf8)();
+        bind!(FcUtf16ToUcs4)(); /* in bytes */
+        bind!(FcUtf16Len)();
+        bind!(FcStrDirname)();
+        bind!(FcStrBasename)();
+        bind!(FcStrSetCreate)();
+        bind!(FcStrSetMember)();
+        bind!(FcStrSetEqual)();
+        bind!(FcStrSetAdd)();
+        bind!(FcStrSetAddFilename)();
+        bind!(FcStrSetDel)();
+        bind!(FcStrSetDestroy)();
+        bind!(FcStrListCreate)();
+        bind!(FcStrListFirst)();
+        bind!(FcStrListNext)();
+        bind!(FcStrListDone)();
+        /* fcxml.c */
+        bind!(FcConfigParseAndLoad)();
+    }
+}
