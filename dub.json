@@ -16,6 +16,7 @@
 		"./bindings/turbojpeg",
 		"./bindings/fontconfig",
 		"./bindings/harfbuzz",
+		"./bindings/xcb-image",
 
 		"./examples/hello"
 	],
@@ -36,12 +37,13 @@
 			"name": "linux",
 			"platforms": ["linux"],
 			"dependencies": {
+				"dgt:xcb-image":	"*",
 				"xcb-d":			"~>2.1.0",
 				"xcb-util-wm-d":	"~>0.5.0",
 				"xkbcommon-d":      "~>0.5.1",
 				"xlib-d":           "~>0.1.1"
 			},
-			"libs" : ["xcb-xkb", "xcb-dri2", "xcb-dri3"]
+			"libs" : ["xcb-xkb", "xcb-dri2", "xcb-dri3", "xcb-shm"]
 		},
 		{
 			"name": "windows",

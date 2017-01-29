@@ -1,0 +1,16 @@
+{
+	"name": "xcb-image",
+	"targetType": "library",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"description": "D GUI Toolkit - Static bindings to libxcb-image",
+	"copyright": "Copyright © 2017, Rémi Thebault",
+	"license": "MIT",
+
+  "dependencies":	{
+		"xcb-d":			"~>2.1.0"
+  },
+
+	"libs": ["xcb", "xcb-shm", "xcb-image"]
+}

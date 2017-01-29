@@ -43,5 +43,22 @@ interface PlatformWindow
     @property IRect geometry() const;
     @property void geometry(IRect pos);
 
+    @property PlatformDrawingBuffer drawingBuffer();
+}
+
+/// A Platform native drawing buffer
+interface PlatformDrawingBuffer : Disposable
+{
+    @property inout(PlatformWindow) window() inout;
+    @property ISize size() const;
+    @property void size(in ISize size);
+
     @property VgSurface surface();
+
+    void flush();
+}
+
+VgSurface surface(PlatformWindow window)
+{
+    return window.drawingBuffer.surface;
 }

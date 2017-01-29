@@ -4,6 +4,7 @@ version(linux):
 
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
+import dgt.platform.xcb.drawing_buffer;
 import dgt.core.resource;
 import dgt.vg;
 import dgt.screen;
@@ -21,6 +22,7 @@ import X11.Xlib;
 import std.experimental.logger;
 import std.typecons : scoped;
 import std.string : toStringz;
+import std.exception : enforce;
 import core.stdc.stdlib : free;
 
 alias Window = dgt.window.Window;
@@ -37,11 +39,14 @@ class XcbWindow : PlatformWindow
         XcbPlatform _platform;
         xcb_window_t _xcbWin;
         xcb_visualid_t _visualId;
+        xcb_visualtype_t* _visual;
+        xcb_format_t* _format;
+        ubyte _depth;
         WindowState _lastKnownState = WindowState.hidden;
         IRect _rect;
         bool _created = false;
         bool _mapped;
-        Rc!CairoXcbSurface _surf;
+        XcbDrawingBuffer _drawingBuf;
     }
 
     this(Window w, XcbPlatform platform)
@@ -70,13 +75,17 @@ class XcbWindow : PlatformWindow
         _visualId = visualInfo.visualid;
         XFree(visualInfo);
 
+        _visual = getXcbVisualForId(_platform.xcbScreens, _visualId);
+        _depth = screen.rootDepth;
+        _format = _platform.formatForDepth(_depth);
+
         immutable cmap = xcb_generate_id(g_connection);
         _xcbWin = xcb_generate_id(g_connection);
 
         xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen.root, _visualId);
 
-        immutable mask = XCB_CW_BACK_PIXEL | XCB_CW_COLORMAP;
-        uint[] values = [screen.whitePixel, cmap, 0];
+        immutable mask = XCB_CW_COLORMAP;
+        uint[] values = [cmap, 0];
 
         auto cook = xcb_create_window_checked(g_connection, screen.rootDepth,
                 _xcbWin, screen.root, cast(short) pos.x, cast(short) pos.y,
@@ -102,7 +111,11 @@ class XcbWindow : PlatformWindow
 
     override void close()
     {
-        _surf.unload();
+        if (_drawingBuf)
+        {
+            _drawingBuf.dispose();
+            _drawingBuf = null;
+        }
         if (_mapped)
             xcb_unmap_window(g_connection, _xcbWin);
         xcb_destroy_window(g_connection, _xcbWin);
@@ -271,15 +284,13 @@ class XcbWindow : PlatformWindow
         return _win;
     }
 
-    override @property VgSurface surface()
+    override @property PlatformDrawingBuffer drawingBuffer()
     {
-        if (!_surf.loaded)
+        if (!_drawingBuf)
         {
-            auto visual = getXcbVisualForId(_platform.xcbScreens, _visualId);
-            auto rect = geometry;
-            _surf = makeRc!CairoXcbSurface(_xcbWin, visual, rect.width, rect.height);
+            _drawingBuf = new XcbDrawingBuffer(this);
         }
-        return _surf.obj;
+        return _drawingBuf;
     }
 
     package
@@ -287,6 +298,26 @@ class XcbWindow : PlatformWindow
         @property xcb_window_t xcbWin() const
         {
             return _xcbWin;
+        }
+
+        @property ubyte depth() const
+        {
+            return _depth;
+        }
+
+        @property uint xcbVisualId() const
+        {
+            return _visualId;
+        }
+
+        @property inout(xcb_visualtype_t)* xcbVisual() inout
+        {
+            return _visual;
+        }
+
+        @property inout(xcb_format_t)* xcbFormat() inout
+        {
+            return _format;
         }
 
         void processButtonEvent(xcb_button_press_event_t* e)
@@ -341,9 +372,9 @@ class XcbWindow : PlatformWindow
             }
             if (e.width != _rect.width || e.height != _rect.height)
             {
-                if (_surf.loaded)
+                if (_drawingBuf)
                 {
-                    _surf.resizeNotfiy(e.width, e.height);
+                    _drawingBuf.size = ISize(e.width, e.height);
                 }
                 _rect.size = ISize(e.width, e.height);
                 _win.handleEvent(scoped!WindowResizeEvent(_win, _rect.size));
@@ -547,57 +578,5 @@ class XcbWindow : PlatformWindow
             return pos;
         }
 
-    }
-}
-
-private:
-
-import dgt.bindings.cairo;
-import dgt.vg.backend.cairo;
-
-class CairoXcbSurface : CairoSurface
-{
-    mixin(rcCode);
-
-    private cairo_surface_t* _surf;
-    private ISize _size;
-
-    this(xcb_drawable_t drawable, xcb_visualtype_t* visual,
-            int width, int height)
-    {
-        _surf = cairo_xcb_surface_create(g_connection, drawable,
-                visual, width, height);
-        _size = ISize(width, height);
-    }
-
-    private void resizeNotfiy(in int width, in int height)
-    {
-        cairo_xcb_surface_set_size(_surf, width, height);
-        _size = ISize(width, height);
-    }
-
-    override void dispose()
-    {
-        cairo_surface_destroy(_surf);
-    }
-
-    override @property cairo_surface_t* cairoSurf()
-    {
-        return _surf;
-    }
-
-    override @property VgBackend backend()
-    {
-        return cairoBackend;
-    }
-
-    override @property ISize size() const
-    {
-        return _size;
-    }
-
-    override void flush()
-    {
-        cairo_surface_flush(_surf);
     }
 }
