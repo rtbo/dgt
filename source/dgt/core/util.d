@@ -170,3 +170,36 @@ if (is(U == class))
         }
     }
 }
+
+/// Generate a unique filename based on provided model.
+/// Every '%' in model will be replaced by a random hexa char (from 0 to f).
+/// The function checks that the proposed filename does not exist.
+string getUniqueTempFile(string model)
+{
+    import std.file : tempDir, exists, isDir;
+    import std.path : chainPath;
+    import std.conv : to;
+    import std.random : uniform;
+    import std.experimental.logger : error;
+
+    string result;
+    immutable td = tempDir();
+    enum maxAttempts = 32;
+    int attempts = 0;
+    do
+    {
+        auto fn = model.dup;
+        foreach (ref c; fn)
+        {
+            if (c == '%') c = "0123456789abcdef"[uniform(0, 15)];
+        }
+        result = chainPath(td, fn).to!string;
+        ++attempts;
+    }
+    while(attempts < maxAttempts && (!exists(result) || isDir(result)));
+
+    if (attempts >= maxAttempts)
+        error("Cannot generate a unique file name");
+
+    return result;
+}
