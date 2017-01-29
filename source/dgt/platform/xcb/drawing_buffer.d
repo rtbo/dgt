@@ -1,5 +1,7 @@
 module dgt.platform.xcb.drawing_buffer;
 
+version(linux):
+
 import dgt.platform.xcb;
 import dgt.platform.xcb.window;
 import dgt.platform;
