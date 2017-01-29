@@ -3,6 +3,7 @@ module dgt.platform.win32.window;
 version(Windows):
 
 import dgt.platform.win32;
+import dgt.platform.win32.drawing_buf;
 import dgt.platform;
 import dgt.core.resource;
 import dgt.window;
@@ -23,7 +24,8 @@ class Win32Window : PlatformWindow
 {
     private Window _win;
     private HWND _hWnd;
-    private HDC _hDc;
+    private HDC _paintEvDc;
+    private PlatformDrawingBuffer _drawingBuf;
     private IRect _rect;
     private WindowState _state;
     private bool _shownOnce;
@@ -74,6 +76,11 @@ class Win32Window : PlatformWindow
 
     override void close()
     {
+        if (_drawingBuf)
+        {
+            _drawingBuf.dispose();
+            _drawingBuf = null;
+        }
 		DestroyWindow(_hWnd);
 		Win32Platform.instance.unregisterWindow(_hWnd);
     }
@@ -132,15 +139,33 @@ class Win32Window : PlatformWindow
 		MoveWindow(_hWnd, r.left, r.top, r.right-r.left, r.bottom-r.top, true);
     }
 
-    override @property VgSurface surface()
+    override @property PlatformDrawingBuffer drawingBuffer()
     {
-        return new CairoWin32Surface(
-            enforce(_hDc, "Win32Window.surface called out of paint event")
-        );
+        if (!_drawingBuf)
+        {
+            _drawingBuf = new Win32DrawingBuffer(this);
+        }
+        return _drawingBuf;
     }
 
     package
     {
+        HDC getDC()
+        {
+            if (_paintEvDc) return _paintEvDc;
+            return GetDC(_hWnd);
+        }
+
+        void releaseDC(HDC dc)
+        {
+            if (_paintEvDc)
+            {
+                assert(dc is _paintEvDc);
+                return;
+            }
+            ReleaseDC(_hWnd, dc);
+        }
+
         bool handleClose()
         {
             auto ev = scoped!WindowCloseEvent(_win);
@@ -148,7 +173,7 @@ class Win32Window : PlatformWindow
             return true;
         }
 
-		bool handlePaint(UINT msg, WPARAM wParam, LPARAM lParam)
+		bool handlePaint(UINT msg, WPARAM /+wParam+/, LPARAM /+lParam+/)
 		{
 			if (!GetUpdateRect(_hWnd, null, false)) return false;
             if (msg == WM_ERASEBKGND) return true;
@@ -156,14 +181,25 @@ class Win32Window : PlatformWindow
 
 
 			PAINTSTRUCT ps;
-			_hDc = BeginPaint(_hWnd, &ps);
+			_paintEvDc = BeginPaint(_hWnd, &ps);
 			scope(exit) {
 				EndPaint(_hWnd, &ps);
+                _paintEvDc = null;
 			}
 
+            // {
+            //     import std.stdio;
+            //     writeln(_paintEvDc);
+
+            //     auto dc = GetDC(_hWnd);
+            //     writeln(_paintEvDc);
+            //     ReleaseDC(_hWnd, dc);
+            //     writeln();
+            // }
+
             immutable r = IRect(0, 0, geometry.size);
-            auto win32Rect = rectToWin32(r);
-            FillRect(_hDc, &win32Rect, cast(HBRUSH)(COLOR_WINDOW+1));
+            // auto win32Rect = rectToWin32(r);
+            // FillRect(_hDc, &win32Rect, cast(HBRUSH)(COLOR_WINDOW+1));
 
 			auto ev = scoped!WindowExposeEvent(_win, r);
 			_win.handleEvent(ev);
@@ -211,6 +247,10 @@ class Win32Window : PlatformWindow
             _rect = g;
 
             if (g.size != oldG.size) {
+                if (_drawingBuf)
+                {
+                    _drawingBuf.size = g.size;
+                }
                 auto ev = scoped!WindowResizeEvent(_win, g.size);
                 _win.handleEvent(ev);
             }
