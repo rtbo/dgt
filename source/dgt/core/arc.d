@@ -12,7 +12,106 @@ alias Arc(T) = GenRc!(T, Yes.atomic).Rc;
 alias Aweak(T) = GenRc!(T, Yes.atomic).Weak;
 
 
+
+version(unittest)
+{
+    import std.stdio : writeln;
+
+    int rcCount = 0;
+    int structCount = 0;
+
+    class RcClass : Disposable
+    {
+        this()
+        {
+            rcCount += 1;
+        }
+
+        override void dispose()
+        {
+            rcCount -= 1;
+        }
+    }
+
+    struct RcStruct
+    {
+        Rc!RcClass obj;
+    }
+
+    struct RcArrStruct
+    {
+        Rc!RcClass[] objs;
+
+        ~this()
+        {
+            foreach(ref o; objs)
+            {
+                o = Rc!RcClass.init;
+            }
+        }
+    }
+
+    struct RcArrIndStruct
+    {
+        RcStruct[] objs;
+
+        ~this()
+        {
+            foreach(ref o; objs)
+            {
+                o = RcStruct.init;
+            }
+        }
+    }
+
+    unittest
+    {
+        {
+            auto arr = RcArrStruct([Rc!RcClass.make(), Rc!RcClass.make()]);
+            assert(rcCount == 2);
+            foreach(obj; arr.objs)
+            {
+                assert(rcCount == 2);
+            }
+            assert(rcCount == 2);
+        }
+        assert(rcCount == 0);
+    }
+
+
+    unittest
+    {
+        {
+            auto obj = Rc!RcClass.make();
+            assert(rcCount == 1);
+        }
+        assert(rcCount == 0);
+    }
+
+    unittest
+    {
+        {
+            auto obj = Rc!RcClass(new RcClass);
+            assert(rcCount == 1);
+        }
+        assert(rcCount == 0);
+    }
+
+    unittest
+    {
+        {
+            auto obj = RcStruct(Rc!RcClass.make());
+            assert(rcCount == 1);
+        }
+        assert(rcCount == 0);
+    }
+}
+
+
 private:
+
+// general principle is same as libcxx memory, although weak count is not
+// tracked as actual memory is GC managed.
 
 template GenRc(T, Flag!"atomic" atomic)
 if (is(T : Disposable))
@@ -35,7 +134,7 @@ if (is(T : Disposable))
             _sc = sc;
         }
 
-        static GenRc make(Args...)(Args args)
+        static Rc make(Args...)(Args args)
         {
             alias ThisSC = SharedCountEmplace!(T, atomic);
             auto sc = new ThisSC(args);
@@ -171,8 +270,8 @@ if (is(T : Disposable))
         void opAssign(U)(GenRc!(U, atomic).Weak weak)
         if (is(U : T))
         {
-            _obj = rc._obj;
-            _sc = rc._sc;
+            _obj = weak._obj;
+            _sc = weak._sc;
         }
 
         Rc lock()
@@ -181,7 +280,7 @@ if (is(T : Disposable))
             rc._sc = _sc ? _sc.lock() : _sc;
             if (rc._sc)
             {
-                rc._obj = obj;
+                rc._obj = _obj;
             }
             return rc;
         }
@@ -301,7 +400,7 @@ abstract class SharedCount(Flag!"atomic" atomic)
     protected abstract void onZero();
 }
 
-class SharedCountRef(T, Flag!"atomic" atomic)
+class SharedCountRef(T, Flag!"atomic" atomic) : SharedCount!atomic
 if (is(T : Disposable))
 {
     T _obj;
@@ -319,10 +418,10 @@ if (is(T : Disposable))
 }
 
 
-class SharedCountEmplace(T, Flag!"atomic" atomic)
+class SharedCountEmplace(T, Flag!"atomic" atomic) : SharedCount!atomic
 if (is(T : Disposable))
 {
-    void[_traits(classInstanceSize, T)] _buf;
+    void[__traits(classInstanceSize, T)] _buf;
     T _obj;
 
     this(Args...)(Args args)
