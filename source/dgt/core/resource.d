@@ -16,12 +16,18 @@ interface RefCounted : Disposable
     /// The number of active references
     @property size_t refCount() const;
 
-    /// Increment the reference count
+    /// Increment the reference count.
     void retain();
 
-    /// Decrement the reference count and dispose if it reaches zero
+    /// Decrement the reference count and dispose if it reaches zero.
     void release()
     in { assert(refCount > 0); }
+
+    /// Get a copy of this RefCounted instance if the refCount >= 1.
+    /// This increases the refCount by 1. This should only be used to keep
+    /// weak reference and ensures that the resource is not disposed.
+    RefCounted rcLock()
+    out(res) { assert((res && refCount >= 2) || (!res && !refCount)); }
 
     override void dispose()
     in { assert(refCount == 0); } // add this additional contract
@@ -92,6 +98,335 @@ void reinit(T, K)(ref T[K] arr) if (is(T == struct))
     }
     arr = null;
 }
+
+
+
+/// A string that can be mixed-in a class declaration to implement RefCounted.
+/// Disposable implementation is not given.
+enum rcCode = buildRcCode!(No.atomic)();
+
+/// Atomic version of rcCode.
+enum atomicRcCode = buildRcCode!(Yes.atomic)();
+
+/// Helper that build a new instance of T and returns it within a Rc!T
+template makeRc(T) if (is(T : RefCounted))
+{
+    Rc!T makeRc(Args...)(Args args)
+    {
+        return Rc!T(new T(args));
+    }
+}
+
+/// Helper that places an instance of T within a Rc!T
+template rc(T) if (is(T : RefCounted))
+{
+    Rc!T rc(T obj)
+    {
+        return Rc!T(obj);
+    }
+}
+
+/// Helper struct that manages the reference count of an object using RAII.
+struct Rc(T) if (is(T:RefCounted))
+{
+    private T _obj;
+
+    /// Build a Rc instance with the provided resource
+    this(T obj)
+    {
+        assert(obj !is null);
+        _obj = obj;
+        _obj.retain();
+    }
+
+    /// Postblit adds a reference to the held reference.
+    this(this)
+    {
+        if (_obj) _obj.retain();
+    }
+
+    /// Removes a reference to the held reference.
+    ~this()
+    {
+        if(_obj) _obj.release();
+    }
+
+    /// Assign another resource. Release the previously held ref and retain the new one.
+    void opAssign(T obj)
+    {
+        if(_obj) _obj.release();
+        _obj = obj;
+        if(_obj) _obj.retain();
+    }
+
+    /// Check whether this Rc is assigned to a resource.
+    bool opCast(T : bool)() const
+    {
+        return loaded;
+    }
+
+    /// Check whether this Rc is assigned to a resource.
+    @property bool loaded() const
+    {
+        return _obj !is null;
+    }
+
+    /// Reset the resource.
+    void unload()
+    {
+        if(_obj)
+        {
+            _obj.release();
+            _obj = null;
+        }
+    }
+
+    /// Access to the held resource.
+    @property inout(T) obj() inout { return _obj; }
+
+    alias obj this;
+}
+
+/// Helper struct that keeps a weak reference to a Resource.
+struct Weak(T) if (is(T : Disposable))
+{
+    private T _obj;
+
+    /// Build a Weak instance.
+    this(T obj)
+    {
+        _obj = obj;
+    }
+
+    /// Reset the internal reference.
+    void reset()
+    {
+        _obj = null;
+    }
+
+    /// Check whether the resource has been disposed.
+    @property bool disposed() const
+    {
+        return !_obj || (_obj.refCount == 0);
+    }
+
+    /// Return a Rc that contain the underlying resource if it has not been disposed.
+    Rc!T lock()
+    {
+        Rc!T rc;
+        rc._obj = _obj ? _obj.rcLock() : null;
+        if (!rc._obj) _obj = null;
+        return rc;
+    }
+}
+
+
+private string buildRcCode(Flag!"atomic" atomic)()
+{
+    static if (atomic)
+    {
+        return q{
+            private shared size_t _refCount=0;
+
+            public override @property size_t refCount() const
+            {
+                import core.atomic : atomicLoad;
+                return atomicLoad(_refCount);
+            }
+
+            public override void retain()
+            {
+                import core.atomic : atomicOp;
+                immutable rc = atomicOp!"+="(_refCount, 1);
+                version(rcDebug)
+                {
+                    import std.experimental.logger : logf;
+                    logf("retain %s: %s", typeof(this).stringof, oldRc+1);
+                }
+            }
+
+            public override void release()
+            {
+                import core.atomic : cas;
+                immutable rc = atomicOp!"-="(_refCount, 1);
+
+                version(rcDebug)
+                {
+                    import std.experimental.logger : logf;
+                    logf("release %s: %s", typeof(this).stringof, rc);
+                }
+                if (rc == 0)
+                {
+                    version(rcDebug)
+                    {
+                        import std.experimental.logger : logf;
+                        logf("dispose %s", typeof(this).stringof);
+                    }
+                    dispose();
+                }
+            }
+
+            public override typeof(this) rcLock()
+            {
+                import core.atomic : atomicLoad, cas;
+                while (1)
+                {
+                    immutable c = atomicLoad(_refCount);
+
+                    if (c == 0) return null;
+                    if (cas(&_refCount, c, c+1)) return this;
+                }
+            }
+        };
+    }
+    else
+    {
+        return q{
+            private size_t _refCount=0;
+
+            public override @property size_t refCount() const { return _refCount; }
+
+            public override void retain()
+            {
+                _refCount += 1;
+                version(rcDebug)
+                {
+                    import std.experimental.logger : logf;
+                    logf("retain %s: %s", typeof(this).stringof, refCount);
+                }
+            }
+
+            public override void release()
+            {
+                _refCount -= 1;
+                version(rcDebug)
+                {
+                    import std.experimental.logger : logf;
+                    logf("release %s: %s", typeof(this).stringof, refCount);
+                }
+                if (!refCount)
+                {
+                    version(rcDebug)
+                    {
+                        import std.experimental.logger : logf;
+                        logf("dispose %s", typeof(this).stringof);
+                    }
+                    dispose();
+                }
+            }
+
+            public override typeof(this) rcLock()
+            {
+                if (_refCount)
+                {
+                    ++_refCount;
+                    return this;
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        };
+    }
+}
+
+
+version(unittest)
+{
+    import std.stdio : writeln;
+
+    int rcCount = 0;
+    int structCount = 0;
+
+    class RcClass : RefCounted
+    {
+        mixin(rcCode);
+
+        this()
+        {
+            rcCount += 1;
+        }
+
+        override void dispose()
+        {
+            rcCount -= 1;
+        }
+    }
+
+    struct RcStruct
+    {
+        Rc!RcClass obj;
+    }
+
+    struct RcArrStruct
+    {
+        Rc!RcClass[] objs;
+
+        ~this()
+        {
+            foreach(ref o; objs)
+            {
+                o = Rc!RcClass.init;
+            }
+        }
+    }
+
+    struct RcArrIndStruct
+    {
+        RcStruct[] objs;
+
+        ~this()
+        {
+            foreach(ref o; objs)
+            {
+                o = RcStruct.init;
+            }
+        }
+    }
+
+    unittest
+    {
+        {
+            auto arr = RcArrStruct([makeRc!RcClass(), makeRc!RcClass()]);
+            assert(rcCount == 2);
+            foreach(obj; arr.objs)
+            {
+                assert(rcCount == 2);
+            }
+            assert(rcCount == 2);
+        }
+        assert(rcCount == 0);
+    }
+
+
+    unittest
+    {
+        {
+            auto obj = makeRc!RcClass();
+            assert(rcCount == 1);
+        }
+        assert(rcCount == 0);
+    }
+
+    unittest
+    {
+        {
+            auto obj = RcStruct(makeRc!RcClass());
+            assert(rcCount == 1);
+        }
+        assert(rcCount == 0);
+    }
+}
+
+
+template isRuntimeRc(T)
+{
+    enum isRuntimeRc = is(T : RefCounted);
+}
+
+static assert(isRuntimeRc!RefCounted);
+
 
 
 /// Creates a new instance of $(D T) and returns it under a $(D Uniq!T).
@@ -305,269 +640,6 @@ version(unittest)
     }
 }
 
-/// A string that can be mixed-in a class declaration to implement RefCounted.
-/// Disposable implementation is not given.
-enum rcCode = buildRcCode!(No.atomic)();
-
-/// Atomic version of rcCode.
-enum atomicRcCode = buildRcCode!(Yes.atomic)();
-
-/// Helper that build a new instance of T and returns it within a Rc!T
-template makeRc(T) if (is(T : RefCounted))
-{
-    Rc!T makeRc(Args...)(Args args)
-    {
-        return Rc!T(new T(args));
-    }
-}
-
-/// Helper that places an instance of T within a Rc!T
-template rc(T) if (is(T : RefCounted))
-{
-    Rc!T rc(T obj)
-    {
-        return Rc!T(obj);
-    }
-}
-
-/// Helper struct that manages the reference count of an object using RAII.
-template Rc(T) if (is(T:RefCounted))
-{
-    struct Rc
-    {
-        private T _obj;
-
-        this(T obj)
-        {
-            assert(obj !is null);
-            _obj = obj;
-            _obj.retain();
-        }
-
-        this(this)
-        {
-            if (_obj) _obj.retain();
-        }
-
-        ~this()
-        {
-            if(_obj) _obj.release();
-        }
-
-        void opAssign(T obj)
-        {
-            if(_obj) _obj.release();
-            _obj = obj;
-            if(_obj) _obj.retain();
-        }
-
-        bool opCast(T : bool)() const
-        {
-            return loaded;
-        }
-
-        @property bool loaded() const
-        {
-            return _obj !is null;
-        }
-
-        void unload()
-        {
-            if(_obj)
-            {
-                _obj.release();
-                _obj = null;
-            }
-        }
-
-        @property inout(T) obj() inout { return _obj; }
-
-        alias obj this;
-    }
-}
-
-
-
-private string buildRcCode(Flag!"atomic" atomic)()
-{
-    static if (atomic)
-    {
-        return q{
-            private shared size_t _refCount=0;
-
-            public override @property size_t refCount() const
-            {
-                import core.atomic : atomicLoad;
-                return atomicLoad(_refCount);
-            }
-
-            public override void retain()
-            {
-                import core.atomic : atomicOp;
-                immutable rc = atomicOp!"+="(_refCount, 1);
-                version(rcDebug)
-                {
-                    import std.experimental.logger : logf;
-                    logf("retain %s: %s", typeof(this).stringof, oldRc+1);
-                }
-            }
-
-            public override void release()
-            {
-                import core.atomic : cas;
-                immutable rc = atomicOp!"-="(_refCount, 1);
-
-                version(rcDebug)
-                {
-                    import std.experimental.logger : logf;
-                    logf("release %s: %s", typeof(this).stringof, rc);
-                }
-                if (rc == 0)
-                {
-                    version(rcDebug)
-                    {
-                        import std.experimental.logger : logf;
-                        logf("dispose %s", typeof(this).stringof);
-                    }
-                    dispose();
-                }
-            }
-        };
-    }
-    else
-    {
-        return q{
-            private size_t _refCount=0;
-
-            public override @property size_t refCount() const { return _refCount; }
-
-            public override void retain()
-            {
-                _refCount += 1;
-                version(rcDebug)
-                {
-                    import std.experimental.logger : logf;
-                    logf("retain %s: %s", typeof(this).stringof, refCount);
-                }
-            }
-
-            public override void release()
-            {
-                _refCount -= 1;
-                version(rcDebug)
-                {
-                    import std.experimental.logger : logf;
-                    logf("release %s: %s", typeof(this).stringof, refCount);
-                }
-                if (!refCount)
-                {
-                    version(rcDebug)
-                    {
-                        import std.experimental.logger : logf;
-                        logf("dispose %s", typeof(this).stringof);
-                    }
-                    dispose();
-                }
-            }
-        };
-    }
-}
-
-
-version(unittest)
-{
-    import std.stdio : writeln;
-
-    int rcCount = 0;
-    int structCount = 0;
-
-    class RcClass : RefCounted
-    {
-        mixin(rcCode);
-
-        this()
-        {
-            rcCount += 1;
-        }
-
-        override void dispose()
-        {
-            rcCount -= 1;
-        }
-    }
-
-    struct RcStruct
-    {
-        Rc!RcClass obj;
-    }
-
-    struct RcArrStruct
-    {
-        Rc!RcClass[] objs;
-
-        ~this()
-        {
-            foreach(ref o; objs)
-            {
-                o = Rc!RcClass.init;
-            }
-        }
-    }
-
-    struct RcArrIndStruct
-    {
-        RcStruct[] objs;
-
-        ~this()
-        {
-            foreach(ref o; objs)
-            {
-                o = RcStruct.init;
-            }
-        }
-    }
-
-    unittest
-    {
-        {
-            auto arr = RcArrStruct([makeRc!RcClass(), makeRc!RcClass()]);
-            assert(rcCount == 2);
-            foreach(obj; arr.objs)
-            {
-                assert(rcCount == 2);
-            }
-            assert(rcCount == 2);
-        }
-        assert(rcCount == 0);
-    }
-
-
-    unittest
-    {
-        {
-            auto obj = makeRc!RcClass();
-            assert(rcCount == 1);
-        }
-        assert(rcCount == 0);
-    }
-
-    unittest
-    {
-        {
-            auto obj = RcStruct(makeRc!RcClass());
-            assert(rcCount == 1);
-        }
-        assert(rcCount == 0);
-    }
-}
-
-
-template isRuntimeRc(T)
-{
-    enum isRuntimeRc = is(T : RefCounted);
-}
-
-static assert(isRuntimeRc!RefCounted);
 
 private template hasMemberFunc(T, string fun)
 {
