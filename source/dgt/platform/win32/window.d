@@ -247,10 +247,6 @@ class Win32Window : PlatformWindow
             _rect = g;
 
             if (g.size != oldG.size) {
-                if (_drawingBuf)
-                {
-                    _drawingBuf.size = g.size;
-                }
                 auto ev = scoped!WindowResizeEvent(_win, g.size);
                 _win.handleEvent(ev);
             }

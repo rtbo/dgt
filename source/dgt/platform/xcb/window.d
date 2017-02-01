@@ -374,10 +374,6 @@ class XcbWindow : PlatformWindow
             }
             if (e.width != _rect.width || e.height != _rect.height)
             {
-                if (_drawingBuf)
-                {
-                    _drawingBuf.size = ISize(e.width, e.height);
-                }
                 _rect.size = ISize(e.width, e.height);
                 _win.handleEvent(scoped!WindowResizeEvent(_win, _rect.size));
             }

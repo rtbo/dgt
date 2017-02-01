@@ -237,8 +237,13 @@ class Window : Surface
         switch (wEv.type)
         {
         case EventType.windowExpose:
+            auto db = _platformWindow.drawingBuffer;
+            if (db.size != _size)
+            {
+                db.size = _size;
+            }
             _onExpose.fire(cast(WindowExposeEvent) wEv);
-            _platformWindow.drawingBuffer.flush();
+            db.flush();
             break;
         case EventType.windowMove:
             auto wmEv = cast(WindowMoveEvent) wEv;
