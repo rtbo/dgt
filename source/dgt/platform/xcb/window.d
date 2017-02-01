@@ -100,6 +100,8 @@ class XcbWindow : PlatformWindow
             throw new Exception(format("DGT-XCB: could not create window: %s", err.error_code));
         }
 
+        this.title = _win.title;
+
         prepareEvents();
 
         _platform.registerWindow(this);

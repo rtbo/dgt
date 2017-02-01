@@ -83,6 +83,29 @@ class Window : Surface
         Application.instance.registerWindow(this);
     }
 
+    this(string title)
+    {
+        this();
+        _title = title;
+    }
+
+    @property string title() const
+    {
+        return _title;
+    }
+
+    @property void title(in string title)
+    {
+        if (title != _title)
+        {
+            _title = title;
+            if (_platformWindow.created)
+            {
+                _platformWindow.title = title;
+            }
+        }
+    }
+
     @property IPoint position() const
     {
         return _position;
@@ -279,6 +302,7 @@ class Window : Surface
 
     private
     {
+        string _title;
         IPoint _position = IPoint(-1, -1);
         ISize _size;
         SurfaceAttribs _attribs;

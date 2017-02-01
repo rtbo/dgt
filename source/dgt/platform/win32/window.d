@@ -56,7 +56,7 @@ class Win32Window : PlatformWindow
 		_hWnd = CreateWindowEx(
 					WS_EX_CLIENTEDGE,
 					clsName.toUTF16z,
-					"".toUTF16z,
+					_win.title.toUTF16z,
 					WS_OVERLAPPEDWINDOW,
 					useG ? g.point.x : CW_USEDEFAULT,
 					useG ? g.point.y : CW_USEDEFAULT,

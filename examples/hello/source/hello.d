@@ -20,7 +20,7 @@ import std.math : PI;
 int main()
 {
     auto app = makeUniq!Application();
-    auto win = new Window();
+    auto win = new Window("Hello DGT");
     win.onKeyDown += (WindowKeyEvent ev) {
         switch (ev.sym)
         {
