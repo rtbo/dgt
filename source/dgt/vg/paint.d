@@ -2,6 +2,7 @@ module dgt.vg.paint;
 
 import dgt.vg;
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.math.vec;
 
 /// The type of a paint.
@@ -42,12 +43,10 @@ enum SpreadMode
 
 /// Paint defines the material that fills and strokes paths.
 /// It can hold one of the different paint types.
-abstract class Paint : RefCounted
+abstract class Paint : Disposable
 {
-    mixin(rcCode);
-
     private PaintType _type;
-    package(dgt) Rc!RefCounted _backendData;
+    package(dgt) Rc!Disposable _backendData;
     package(dgt) size_t _backendDataOwner;
     package(dgt) bool _backendDataDirty = true;
 
@@ -58,7 +57,7 @@ abstract class Paint : RefCounted
 
     override void dispose()
     {
-        _backendData.unload();
+        _backendData.reset();
         _backendDataOwner = 0;
         _backendDataDirty = true;
     }
@@ -68,13 +67,13 @@ abstract class Paint : RefCounted
         return _type;
     }
 
-    package(dgt) RefCounted backendData(in size_t owner)
+    package(dgt) Rc!Disposable backendData(in size_t owner)
     {
-        if (owner == _backendDataOwner) return _backendData.obj;
-        else return null;
+        if (owner == _backendDataOwner) return _backendData;
+        else return Rc!Disposable.init;
     }
 
-    package(dgt) void setBackendData(in size_t owner, RefCounted data)
+    package(dgt) void setBackendData(in size_t owner, Rc!Disposable data)
     {
         _backendDataOwner = owner;
         _backendData = data;
@@ -268,7 +267,8 @@ class TexturePaint : Paint
     {
         super(PaintType.texture);
     }
-    this(VgTexture tex)
+
+    this(Rc!VgTexture tex)
     {
         super(PaintType.texture);
         _tex = tex;
@@ -276,15 +276,15 @@ class TexturePaint : Paint
 
     override void dispose()
     {
-        _tex.unload();
+        _tex.reset();
         super.dispose();
     }
 
-    @property inout(VgTexture) texture() inout
+    @property Rc!VgTexture texture()
     {
-        return _tex.obj;
+        return _tex;
     }
-    @property void texture(VgTexture texture)
+    @property void texture(Rc!VgTexture texture)
     {
         _tex = texture;
         _backendDataDirty = true;

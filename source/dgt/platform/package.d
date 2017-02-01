@@ -1,6 +1,7 @@
 module dgt.platform;
 
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.geometry;
 import dgt.screen;
 import dgt.window;
@@ -53,12 +54,12 @@ interface PlatformDrawingBuffer : Disposable
     @property ISize size() const;
     @property void size(in ISize size);
 
-    @property VgSurface surface();
+    @property Rc!VgSurface surface();
 
     void flush();
 }
 
-VgSurface surface(PlatformWindow window)
+Rc!VgSurface surface(PlatformWindow window)
 {
     return window.drawingBuffer.surface;
 }

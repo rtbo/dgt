@@ -4,6 +4,7 @@ import dgt.text.fontcache;
 import dgt.image;
 import dgt.math.vec;
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.core.util;
 import dgt.bindings.harfbuzz;
 import dgt.vg;
@@ -97,10 +98,8 @@ struct FontMetrics
 
 /// A scaled font object that hold font information and will lazily load and
 /// cache glyphs into memory.
-class Font : RefCounted
+class Font : Disposable
 {
-    mixin(rcCode);
-
     this(in FontResult res)
     {
         _filename = res.filename;
@@ -133,7 +132,7 @@ class Font : RefCounted
         FT_Done_Face(_ftFace);
         foreach(ref cache; _glyphCache)
         {
-            if (cache.rasterized) cache.rasterized.release();
+            if (cache.rasterized) cache.rasterized.dispose();
         }
     }
 
@@ -205,7 +204,6 @@ class Font : RefCounted
         auto rasterized = rasterize(glyphIndex, backend);
         if (rasterized)
         {
-            rasterized.retain();
             cache.rasterized = rasterized;
         }
         else
@@ -340,15 +338,13 @@ struct GlyphMetrics
 }
 
 /// A glyph rasterized in a bitmap
-class RasterizedGlyph : RefCounted
+class RasterizedGlyph : Disposable
 {
-    mixin(rcCode);
-
     private Rc!VgTexture _bitmapTex;
     private @property IVec2 _bearing;
     private size_t backendUid;
 
-    this (VgTexture bitmapTex, in IVec2 bearing, in size_t backendUid)
+    this (Rc!VgTexture bitmapTex, in IVec2 bearing, in size_t backendUid)
     {
         _bitmapTex = bitmapTex;
         _bearing = bearing;
@@ -357,10 +353,10 @@ class RasterizedGlyph : RefCounted
 
     override void dispose()
     {
-        _bitmapTex.unload();
+        _bitmapTex.reset();
     }
 
-    @property inout(VgTexture) bitmapTex() inout
+    @property Rc!VgTexture bitmapTex()
     {
         return _bitmapTex;
     }

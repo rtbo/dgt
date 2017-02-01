@@ -6,6 +6,7 @@ import dgt.platform.xcb;
 import dgt.platform.xcb.window;
 import dgt.platform;
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.geometry;
 import dgt.vg;
 import dgt.image;
@@ -119,7 +120,7 @@ class XcbDrawingBuffer : PlatformDrawingBuffer
     private xcb_visualtype_t* _visual;
     private XcbWindow _window;
     private XcbShmImage _shmImage;
-    private VgSurface _surface;
+    private Rc!VgSurface _surface;
 
     private xcb_gcontext_t _gc;
 
@@ -132,8 +133,6 @@ class XcbDrawingBuffer : PlatformDrawingBuffer
 
         _shmImage = new XcbShmImage(_size, window.xcbFormat);
         _surface = _shmImage._img.makeVgSurface();
-        _surface.retain();
-
 
         immutable uint mask = XCB_GC_GRAPHICS_EXPOSURES;
         immutable uint values = 0;
@@ -154,22 +153,19 @@ class XcbDrawingBuffer : PlatformDrawingBuffer
         _size = size;
         _shmImage.dispose();
         _surface.flush();
-        _surface.release();
 
         _shmImage = new XcbShmImage(_size, _window.xcbFormat);
         _surface = _shmImage._img.makeVgSurface();
-        _surface.retain();
     }
 
     override void dispose()
     {
         _shmImage.dispose();
-        _surface.release();
         _shmImage = null;
-        _surface = null;
+        _surface.reset();
     }
 
-    override @property VgSurface surface()
+    override @property Rc!VgSurface surface()
     {
         return _surface;
     }

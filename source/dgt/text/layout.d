@@ -3,6 +3,7 @@ module dgt.text.layout;
 import dgt.text.fontcache;
 import dgt.text.font;
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.vg.context;
 import dgt.image;
 import dgt.math.vec;
@@ -78,9 +79,8 @@ struct TextMetrics
 }
 
 /// A single line text layout
-class TextLayout : RefCounted
+class TextLayout : Disposable
 {
-    mixin(rcCode);
     /// Builds a layout
     this(string text, TextFormat format, FontRequest font)
     {
@@ -118,7 +118,7 @@ class TextLayout : RefCounted
 
         // only plain text single item support
         _items = [TextItem(
-            _text, makeRc!Font(mf[0]), ImageFormat.a8, 0,
+            _text, Rc!Font.make(mf[0]), ImageFormat.a8, 0,
         )];
         foreach(ref i; _items)
         {

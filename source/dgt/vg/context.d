@@ -1,6 +1,7 @@
 module dgt.vg.context;
 
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.vg;
 import dgt.image;
 import dgt.math.mat;
@@ -61,7 +62,7 @@ if (isCallable!drawDg)
 }
 
 /// A vector graphics context.
-interface VgContext : RefCounted
+interface VgContext : Disposable
 {
     /// Get the backend associated with this context.
     @property inout(VgBackend) backend() inout;
@@ -118,18 +119,18 @@ interface VgContext : RefCounted
     void resetClip();
 
     @property inout(Paint) fillPaint() inout;
-    @property void fillPaint(Paint paint);
+    @property void fillPaint(Rc!Paint paint);
 
     @property inout(Paint) strokePaint() inout;
-    @property void strokePaint(Paint paint);
+    @property void strokePaint(Rc!Paint paint);
 
     /// Mask the surface with the alpha plane of the texture and paint it
     /// with the current fill paint. tex.format must be either ImageFormat.a1 or
     /// ImageFormat.a8.
-    void mask(VgTexture tex);
+    void mask(Rc!VgTexture tex);
 
     /// Draw the texture to the surface.
-    void drawTexture(VgTexture tex);
+    void drawTexture(Rc!VgTexture tex);
 
     /// Clear the whole clipping area with the provided color.
     /// This is equivalent has filling the clip path with a color Paint,

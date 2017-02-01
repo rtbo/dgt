@@ -2,6 +2,7 @@ module dgt.vg.backend.cairo;
 
 import dgt.vg;
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.math.vec;
 import dgt.core.typecons : hash;
 import dgt.surface;
@@ -65,14 +66,14 @@ private class CairoBackend : VgBackend
         return false;
     }
 
-    override VgContext createContext(VgSurface surf)
+    override Rc!VgContext createContext(Rc!VgSurface surf)
     {
-        return new CairoContext(this, enforce(cast(CairoSurface) surf));
+        return cast(Rc!VgContext)(Rc!CairoContext.make(this, enforce(cast(Rc!CairoSurface) surf)));
     }
 
-    override VgTexture createTexture(Image image)
+    override Rc!VgTexture createTexture(Image image)
     {
-        return new CairoImgSurf(image);
+        return cast(Rc!VgTexture)(Rc!CairoImgSurf.make(image));
     }
 }
 
@@ -91,8 +92,6 @@ class CairoContext : VgContext
 {
     import dgt.core.typecons : GrowableStack;
 
-    mixin(rcCode);
-
     private CairoBackend _backend;
     private Rc!CairoSurface _surface;
     private cairo_t* _cairo;
@@ -100,23 +99,23 @@ class CairoContext : VgContext
     private State _currentState;
     private GrowableStack!State _stateStack;
 
-    this(CairoBackend backend, CairoSurface surface)
+    this(CairoBackend backend, Rc!CairoSurface surface)
     {
         _backend = backend;
         _surface = surface;
         _cairo = cairo_create(_surface.cairoSurf);
 
         auto defaultSrc = cairo_get_source(_cairo);
-        Paint defaultPaint;
+        Rc!Paint defaultPaint;
         if (defaultSrc)
         {
             defaultPaint = paintFromCairoPattern(
-                new CairoPattern(defaultSrc, Yes.addRef)
+                Rc!CairoPattern.make(defaultSrc, Yes.addRef)
             );
         }
         else
         {
-            defaultPaint = new ColorPaint( fvec(0, 0, 0, 1) );
+            defaultPaint = Rc!ColorPaint.make( fvec(0, 0, 0, 1) );
         }
 
         _currentState.fill = defaultPaint;
@@ -154,7 +153,7 @@ class CairoContext : VgContext
         }
         _currentState = State.init; // release the state
         cairo_destroy(_cairo);
-        _surface.unload();
+        _surface.reset();
     }
 
     override @property inout(VgBackend) backend() inout
@@ -288,7 +287,7 @@ class CairoContext : VgContext
         return _currentState.fill;
     }
 
-    override @property void fillPaint(Paint paint)
+    override @property void fillPaint(Rc!Paint paint)
     {
         _currentState.fill = paint;
     }
@@ -298,7 +297,7 @@ class CairoContext : VgContext
         return _currentState.stroke;
     }
 
-    override @property void strokePaint(Paint paint)
+    override @property void strokePaint(Rc!Paint paint)
     {
         _currentState.stroke = paint;
     }
@@ -315,9 +314,9 @@ class CairoContext : VgContext
         cairo_reset_clip(cairo);
     }
 
-    override void mask(VgTexture tex)
+    override void mask(Rc!VgTexture tex)
     {
-        auto cis = enforce(cast(CairoImgSurf)tex,
+        auto cis = enforce(cast(Rc!CairoImgSurf)tex,
             "VgTexture of type "~typeid(tex).toString()~
             " is not usable with a cairo context"
         );
@@ -326,13 +325,13 @@ class CairoContext : VgContext
         scope(exit)
             cairo_pattern_destroy(patt);
 
-        setPaint(_currentState.fill.obj);
+        setPaint(_currentState.fill);
         cairo_mask(cairo, patt);
     }
 
-    override void drawTexture(VgTexture tex)
+    override void drawTexture(Rc!VgTexture tex)
     {
-        auto cis = enforce(cast(CairoImgSurf)tex,
+        auto cis = enforce(cast(Rc!CairoImgSurf)tex,
             "VgTexture of type "~typeid(tex).toString()~
             " is not usable with a cairo context"
         );
@@ -354,7 +353,7 @@ class CairoContext : VgContext
         // FIXME: pattern transform at cairo_set_source time
         if (fill)
         {
-            setPaint(_currentState.fill.obj);
+            setPaint(_currentState.fill);
             if (stroke)
                 cairo_fill_preserve(cairo);
             else
@@ -362,7 +361,7 @@ class CairoContext : VgContext
         }
         if (stroke)
         {
-            setPaint(_currentState.stroke.obj);
+            setPaint(_currentState.stroke);
             cairo_stroke(cairo);
         }
     }
@@ -413,9 +412,9 @@ class CairoContext : VgContext
         }
     }
 
-    private void setPaint(Paint paint)
+    private void setPaint(Rc!Paint paint)
     {
-        assert(paint !is null);
+        assert(paint);
         auto cp = cairoPatternFromPaint(paint);
         cairo_set_source(cairo, cp.pattern);
     }
@@ -428,8 +427,7 @@ class CairoContext : VgContext
 /// otherwise, a copy of the data is made.
 class CairoImgSurf : CairoSurface, VgTexture
 {
-    mixin(rcCode);
-
+    mixin SelfRc!(CairoImgSurf);
     private Image _img;
     private cairo_surface_t* _surf;
 
@@ -475,9 +473,9 @@ class CairoImgSurf : CairoSurface, VgTexture
     override void updatePixels(Image pixels, in IRect fromArea, in IRect toArea)
     {}
 
-    override @property VgSurface surface()
+    override @property Rc!VgSurface surface()
     {
-        return this;
+        return cast(Rc!VgSurface)selfRc;
     }
 
     private void updateImage(Image img)
@@ -712,22 +710,22 @@ private cairo_extend_t paintPatternExtend(in SpreadMode mode)
     }
 }
 
-private Paint paintFromCairoPattern(CairoPattern cp)
+private Rc!Paint paintFromCairoPattern(Rc!CairoPattern cp)
 {
     cairo_pattern_t* patt = cp.pattern;
-    Paint paint;
+    Rc!Paint paint;
     final switch(cairo_pattern_get_type(patt))
     {
     case CAIRO_PATTERN_TYPE_SOLID:
         double r=void, g=void, b=void, a=void;
         cairo_pattern_get_rgba(patt, &r, &g, &b, &a);
-        paint = new ColorPaint(fvec(r, g, b, a));
+        paint = Rc!ColorPaint.make(fvec(r, g, b, a));
         break;
     case CAIRO_PATTERN_TYPE_LINEAR:
         auto stops = patternGetStops(patt);
         double xs=void, ys=void, xe=void, ye=void;
         cairo_pattern_get_linear_points(patt, &xs, &ys, &xe, &ye);
-        auto lgp = new LinearGradientPaint(fvec(xs, ys), fvec(xe, ye), stops);
+        auto lgp = Rc!LinearGradientPaint.make(fvec(xs, ys), fvec(xe, ye), stops);
         lgp.spreadMode = patternSpreadMode(
             cairo_pattern_get_extend(patt)
         );
@@ -740,7 +738,7 @@ private Paint paintFromCairoPattern(CairoPattern cp)
         double r0 = void, r1 = void;
         cairo_pattern_get_radial_circles(patt, &x0, &y0, &r0, &x1, &y1, &r1);
         assert(approxUlpAndAbs(r0, 0.0));
-        auto rgp = new RadialGradientPaint(fvec(x0, y0), fvec(x1, y1), cast(float)r1, stops);
+        auto rgp = Rc!RadialGradientPaint.make(fvec(x0, y0), fvec(x1, y1), cast(float)r1, stops);
         rgp.spreadMode = patternSpreadMode(
             cairo_pattern_get_extend(patt)
         );
@@ -753,18 +751,18 @@ private Paint paintFromCairoPattern(CairoPattern cp)
     case CAIRO_PATTERN_TYPE_RASTER_SOURCE:
         assert(false, "unsupported");
     }
-    paint.setBackendData(cairoUid, cp);
+    paint.setBackendData(cairoUid, cast(Rc!Disposable)cp);
     paint._backendDataDirty = false;
     return paint;
 }
 
-private CairoPattern cairoPatternFromPaint(Paint paint)
+private Rc!CairoPattern cairoPatternFromPaint(Rc!Paint paint)
 {
     import dgt.core.util : unsafeCast;
     auto pbd = paint.backendData(cairoUid);
     if (pbd && !paint._backendDataDirty)
     {
-        return unsafeCast!CairoPattern(pbd);
+        return cast(Rc!CairoPattern)pbd;
     }
     else
     {
@@ -773,19 +771,19 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
         switch (paint.type)
         {
         case PaintType.color:
-            auto cp = unsafeCast!ColorPaint(paint);
+            auto cp = cast(Rc!ColorPaint)paint;
             immutable c = cp.color;
             patt = cairo_pattern_create_rgba(c[0], c[1], c[2], c[3]);
             break;
         case PaintType.linearGradient:
-            auto lgp = unsafeCast!LinearGradientPaint(paint);
+            auto lgp = cast(Rc!LinearGradientPaint)paint;
             immutable s = lgp.start;
             immutable e = lgp.end;
             patt = cairo_pattern_create_linear(s[0], s[1], e[0], e[1]);
             patternAddStops(patt, lgp.stops);
             break;
         case PaintType.radialGradient:
-            auto rgp = unsafeCast!RadialGradientPaint(paint);
+            auto rgp = cast(Rc!RadialGradientPaint)paint;
             immutable f = rgp.focal;
             immutable c = rgp.center;
             immutable r = rgp.radius;
@@ -793,8 +791,8 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
             patternAddStops(patt, rgp.stops);
             break;
         case PaintType.texture:
-            auto tp =  unsafeCast!TexturePaint(paint);
-            auto img = enforce(cast(CairoImgSurf)tp.texture);
+            auto tp =  cast(Rc!TexturePaint)paint;
+            auto img = enforce(cast(Rc!CairoImgSurf)tp.texture);
             patt = cairo_pattern_create_for_surface(img.cairoSurf);
             import std.stdio;
             writefln("pattern with img %s x %s",
@@ -804,17 +802,15 @@ private CairoPattern cairoPatternFromPaint(Paint paint)
         default:
             assert(false, "unimplemented");
         }
-        auto cp = new CairoPattern(patt, No.addRef);
-        paint.setBackendData(cairoUid, cp);
+        auto cp = Rc!CairoPattern.make(patt, No.addRef);
+        paint.setBackendData(cairoUid, cast(Rc!Disposable)cp);
         paint._backendDataDirty = false;
         return cp;
     }
 }
 
-private class CairoPattern : RefCounted
+private class CairoPattern : Disposable
 {
-    mixin(rcCode);
-
     private cairo_pattern_t* pattern;
 
     this(cairo_pattern_t* pattern, Flag!"addRef" addRef)

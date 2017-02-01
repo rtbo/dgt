@@ -1,6 +1,7 @@
 module hello;
 
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.application;
 import dgt.window;
 import dgt.event;
@@ -45,19 +46,19 @@ int main()
     };
 
     // preparing drawing
-    auto fillPaint = makeRc!ColorPaint();
-    auto strokePaint = makeRc!ColorPaint(fvec(0.8, 0.2, 0.2, 1));
-    auto textPaint = makeRc!ColorPaint(fvec(0, 0, 1, 1));
+    auto fillPaint = Rc!ColorPaint.make();
+    auto strokePaint = Rc!ColorPaint.make(fvec(0.8, 0.2, 0.2, 1));
+    auto textPaint = Rc!ColorPaint.make(fvec(0, 0, 1, 1));
     Rc!VgTexture tex;
 
     // preparing text
     FontRequest font;
     font.family = "serif";
     font.size = FontSize.pts(100);
-    auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
+    auto layout = Rc!TextLayout.make("Hello", TextFormat.plain, font);
     layout.layout();
     // This is "hello" for those who wonder.
-    auto arLayout = makeRc!TextLayout("مرحبا", TextFormat.plain, font);
+    auto arLayout = Rc!TextLayout.make("مرحبا", TextFormat.plain, font);
     arLayout.layout();
 
     auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
@@ -68,8 +69,8 @@ int main()
 
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
-        auto surf = win.surface.rc;
-        auto ctx = createContext(surf).rc;
+        auto surf = win.surface;
+        auto ctx = createContext(surf);
 
         if (!tex.loaded)
         {

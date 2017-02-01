@@ -4,11 +4,12 @@ public import dgt.vg.context;
 public import dgt.vg.paint;
 public import dgt.vg.path;
 import dgt.core.resource;
+import dgt.core.arc;
 import dgt.geometry;
 import dgt.image;
 
 /// A surface to render vector graphics on.
-interface VgSurface : RefCounted
+interface VgSurface : Disposable
 {
     /// Vector graphics backend associated with this surface.
     @property VgBackend backend();
@@ -21,7 +22,7 @@ interface VgSurface : RefCounted
 }
 
 /// A texture contains image data that can be painted onto surfaces.
-interface VgTexture : RefCounted
+interface VgTexture : Disposable
 {
     /// The pixel format of the texture
     @property ImageFormat format() const;
@@ -34,7 +35,7 @@ interface VgTexture : RefCounted
     /// Get a surface to paint into this texture.
     /// Surface.flush must be called to ensure that graphics are transferred
     /// on the texture.
-    @property VgSurface surface();
+    @property Rc!VgSurface surface();
 }
 
 /// A vector graphics backend.
@@ -55,24 +56,24 @@ interface VgBackend : Disposable
     /// If the backend do not support the surface, an exception is thrown.
     /// Surface.backend is guaranteed to support the surface it is issued from,
     /// though there could be other backends supporting it.
-    VgContext createContext(VgSurface surf);
+    Rc!VgContext createContext(Rc!VgSurface surf);
 
     /// Create a texture from the provided image.
     /// In case of a software renderer (hardwareAccelerated == false),
     /// the image needs to have same constraints than for Image.makeVgSurface.
-    VgTexture createTexture(Image image);
+    Rc!VgTexture createTexture(Image image);
 }
 
 /// Create a graphics context associated with a surface.
 /// It basically calls $(D_CODE surf.backend.createContext(surf)).
-VgContext createContext(VgSurface surf)
+Rc!VgContext createContext(Rc!VgSurface surf)
 {
     return surf.backend.createContext(surf);
 }
 
 /// Create a texture to be used on a surface.
 /// Shortcut for $(D_CODE surf.backend.createTexture(image)).
-VgTexture createTexture(VgSurface surf, Image image)
+Rc!VgTexture createTexture(Rc!VgSurface surf, Image image)
 {
     return surf.backend.createTexture(image);
 }

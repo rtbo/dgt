@@ -6,6 +6,7 @@ import dgt.surface;
 import dgt.geometry;
 import dgt.event;
 import dgt.core.signal;
+import dgt.core.arc;
 import dgt.core.util;
 import dgt.vg;
 
@@ -272,7 +273,7 @@ class Window : Surface
     }
 
     /// Return a vector graphics surface to draw into this window.
-    @property VgSurface surface()
+    @property Rc!VgSurface surface()
     {
         return _platformWindow.surface;
     }

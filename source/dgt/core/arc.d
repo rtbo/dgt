@@ -6,11 +6,53 @@ import dgt.core.resource : Disposable;
 import std.typecons : Flag, Yes, No;
 
 
-alias Rc(T) = GenRc!(T, No.atomic).Rc;
-alias Weak(T) = GenRc!(T, No.atomic).Weak;
-alias Arc(T) = GenRc!(T, Yes.atomic).Rc;
-alias Aweak(T) = GenRc!(T, Yes.atomic).Weak;
+alias Rc(T) = GenRc!(T, No.atomic);
+alias Weak(T) = GenWeak!(T, No.atomic);
+alias Arc(T) = GenRc!(T, Yes.atomic);
+alias Aweak(T) = GenWeak!(T, Yes.atomic);
 
+
+struct SelfRcSeal(T, Flag!"atomic" atomic)
+{
+    private GenWeak!(T, atomic) _selfWeak;
+
+    public @property GenRc!(T, atomic) selfRc()
+    {
+        return _selfWeak.lock;
+    }
+}
+
+mixin template SelfRc(T)
+if (is(T : Disposable))
+{
+    private SelfRcSeal!(T, No.atomic) _selfRcSeal;
+
+    public @property ref SelfRcSeal!(T, No.atomic) selfRcSeal()
+    {
+        return _selfRcSeal;
+    }
+
+    public @property Rc!T selfRc()
+    {
+        return _selfRcSeal.selfRc;
+    }
+}
+
+mixin template SelfArc(T)
+if (is(T : Disposable))
+{
+    private SelfRcSeal!(T, Yes.atomic) _selfRcSeal;
+
+    public @property ref SelfRcSeal!(T, Yes.atomic) selfRcSeal()
+    {
+        return _selfRcSeal;
+    }
+
+    public @property Rc!T selfArc()
+    {
+        return _selfRcSeal.selfRc;
+    }
+}
 
 
 version(unittest)
@@ -108,192 +150,189 @@ version(unittest)
 }
 
 
-private:
-
 // general principle is same as libcxx memory, although weak count is not
 // tracked as actual memory is GC managed.
 
-template GenRc(T, Flag!"atomic" atomic)
+struct GenRc(T, Flag!"atomic" atomic)
 if (is(T : Disposable))
 {
-    alias SC = SharedCount!(atomic);
+    alias Rc = GenRc!(T, atomic);
+    alias Weak = GenWeak!(T, atomic);
+    private alias SC = SharedCount!(atomic);
 
-    struct Rc
+    private T _obj;
+    private SC _sc;
+
+    invariant()
     {
-        private T _obj;
-        private SC _sc;
-
-        invariant()
-        {
-            assert((_obj is null) == (_sc is null));
-        }
-
-        private this(T obj, SC sc)
-        {
-            _obj = obj;
-            _sc = sc;
-        }
-
-        static Rc make(Args...)(Args args)
-        {
-            alias ThisSC = SharedCountEmplace!(T, atomic);
-            auto sc = new ThisSC(args);
-            sc.retain();
-            return Rc(sc._obj, sc);
-        }
-
-        this (U)(U obj)
-        if (is(U : T))
-        {
-            if (obj)
-            {
-                alias ThisSC = SharedCountRef!(U, atomic);
-                _obj = obj;
-                _sc = new ThisSC(obj);
-                _sc.retain();
-            }
-        }
-
-        this(this)
-        {
-            if (_sc) _sc.retain();
-        }
-
-        ~this()
-        {
-            if (_sc && _sc.release())
-            {
-                _obj = null;
-                _sc = null;
-            }
-        }
-
-        void opAssign(U)(U obj)
-        if (is(U : T))
-        {
-            reset(obj);
-        }
-
-        void opAssign(U)(GenRc!(U, atomic).Rc rc)
-        if (is(U : T))
-        {
-            reset();
-            if (rc)
-            {
-                _obj = rc._obj;
-                _sc = rc._sc;
-                _sc.retain();
-            }
-        }
-
-        bool opCast(T : bool)() const
-        {
-            return (_sc !is null);
-        }
-
-        void reset()
-        {
-            if(_sc)
-            {
-                _sc.release();
-                _obj = null;
-                _sc = null;
-            }
-        }
-
-        void reset(U)(U obj)
-        if (is(U : T))
-        {
-            reset();
-
-            if (obj)
-            {
-                alias ThisSC = SharedCountRef!(U, atomic);
-                _obj = obj;
-                _sc = new ThisSC(obj);
-                _sc.retain();
-            }
-        }
-
-        @property inout(T) obj() inout
-        {
-            return _obj;
-        }
-
-        alias obj this;
+        assert((_obj is null) == (_sc is null));
     }
 
-
-    struct Weak
+    static Rc make(Args...)(Args args)
     {
-        private T _obj;
-        private SC _sc;
-
-        invariant()
+        alias ThisSC = SharedCountEmplace!(T, atomic);
+        auto sc = new ThisSC(args);
+        sc.retain();
+        auto rc = Rc(sc._obj, sc);
+        static if (__traits(compiles, _obj.selfRcSeal))
         {
-            assert((_obj is null) == (_sc is null));
+            rc._obj.selfRcSeal._selfWeak = GenWeak!(T, atomic)(rc);
         }
+        return rc;
+    }
 
-        this(Rc rc)
-        {
-            _obj = rc._obj;
-            _sc = rc._sc;
-        }
+    this(this)
+    {
+        if (_sc) _sc.retain();
+    }
 
-        this(U)(GenRc!(U, atomic).Rc rc)
-        if (is(U : T))
+    ~this()
+    {
+        if (_sc)
         {
-            _obj = rc._obj;
-            _sc = rc._sc;
-        }
-
-        this(U)(GenRc!(U, atomic).Weak weak)
-        if (is(U : T))
-        {
-            _obj = rc._obj;
-            _sc = rc._sc;
-        }
-
-        void opAssign(Rc rc)
-        {
-            _obj = rc._obj;
-            _sc = rc._sc;
-        }
-
-        void opAssign(U)(GenRc!(U, atomic).Rc rc)
-        if (is(U : T))
-        {
-            _obj = rc._obj;
-            _sc = rc._sc;
-        }
-
-        void opAssign(U)(GenRc!(U, atomic).Weak weak)
-        if (is(U : T))
-        {
-            _obj = weak._obj;
-            _sc = weak._sc;
-        }
-
-        Rc lock()
-        {
-            Rc rc;
-            rc._sc = _sc ? _sc.lock() : _sc;
-            if (rc._sc)
-            {
-                rc._obj = _obj;
-            }
-            return rc;
-        }
-
-        void reset()
-        {
+            _sc.release();
             _obj = null;
             _sc = null;
         }
     }
+
+    void opAssign(Rc rc)
+    {
+        import std.algorithm : swap;
+        swap(rc, this);
+    }
+
+    void opAssign(U)(GenRc!(U, atomic) rc)
+    if (is(U : T))
+    {
+        reset();
+        if (rc)
+        {
+            _obj = rc._obj;
+            _sc = rc._sc;
+        }
+    }
+
+    bool opCast(T : bool)() const
+    {
+        return (_sc !is null);
+    }
+
+    U opCast(U : GenRc!(V, atomic), V)()
+    if (is(typeof(cast(V)T.init)))
+    {
+        if (_sc)
+        {
+            _sc.retain();
+            return U(cast(V)_obj, _sc);
+        }
+        else
+        {
+            return U.init;
+        }
+    }
+
+    void reset()
+    {
+        if(_sc)
+        {
+            _sc.release();
+            _obj = null;
+            _sc = null;
+        }
+    }
+
+    @property inout(T) obj() inout
+    {
+        return _obj;
+    }
+
+    alias obj this;
 }
 
 
+struct GenWeak(T, Flag!"atomic" atomic)
+if (is(T : Disposable))
+{
+    alias Rc = GenRc!(T, atomic);
+    alias Weak = GenWeak!(T, atomic);
+    private alias SC = SharedCount!(atomic);
+
+    private T _obj;
+    private SC _sc;
+
+    invariant()
+    {
+        assert((_obj is null) == (_sc is null));
+    }
+
+    this(Rc rc)
+    {
+        _obj = rc._obj;
+        _sc = rc._sc;
+    }
+
+    this(U)(GenRc!(U, atomic) rc)
+    if (is(U : T))
+    {
+        _obj = rc._obj;
+        _sc = rc._sc;
+    }
+
+    this(U)(GenWeak!(U, atomic) weak)
+    if (is(U : T))
+    {
+        _obj = rc._obj;
+        _sc = rc._sc;
+    }
+
+    void opAssign(Rc rc)
+    {
+        _obj = rc._obj;
+        _sc = rc._sc;
+    }
+
+    void opAssign(U)(GenRc!(U, atomic) rc)
+    if (is(U : T))
+    {
+        _obj = rc._obj;
+        _sc = rc._sc;
+    }
+
+    void opAssign(U)(GenWeak!(U, atomic) weak)
+    if (is(U : T))
+    {
+        _obj = weak._obj;
+        _sc = weak._sc;
+    }
+
+    Rc lock()
+    {
+        Rc rc;
+        rc._sc = _sc ? _sc.lock() : _sc;
+        if (rc._sc)
+        {
+            rc._obj = _obj;
+        }
+        else
+        {
+            _obj = null;
+            _sc = null;
+        }
+        return rc;
+    }
+
+    void reset()
+    {
+        _obj = null;
+        _sc = null;
+    }
+}
+
+
+
+
+private:
 
 import core.atomic;
 
@@ -414,6 +453,7 @@ if (is(T : Disposable))
     protected override void onZero()
     {
         _obj.dispose();
+        _obj = null;
     }
 }
 
@@ -433,5 +473,7 @@ if (is(T : Disposable))
     protected override void onZero()
     {
         _obj.dispose();
+        destroy(_obj);
+        _buf = typeof(_buf).init;
     }
 }

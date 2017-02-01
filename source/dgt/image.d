@@ -1,5 +1,6 @@
 module dgt.image;
 
+import dgt.core.arc;
 import dgt.geometry;
 import dgt.vg;
 
@@ -240,7 +241,7 @@ class Image
     /// Yes.autoConvert can be passed to convert the image to a compatible format.
     /// vgCompatible can be used to check if an image is compatible for vg rendering.
     /// makeVgCompatible can be used to make a compatible image from another one.
-    VgSurface makeVgSurface(Flag!"autoConvert" autoConvert = No.autoConvert)
+    Rc!VgSurface makeVgSurface(Flag!"autoConvert" autoConvert = No.autoConvert)
     {
         import dgt.vg.backend.cairo : CairoImgSurf;
         if (autoConvert && !vgCompatible(this))
@@ -253,7 +254,7 @@ class Image
             _stride = img.stride;
             _data = img.data;
         }
-        return new CairoImgSurf(this);
+        return cast(Rc!VgSurface)(Rc!CairoImgSurf.make(this));
     }
 
     /// Read the file specified by filename and load into an Image.
