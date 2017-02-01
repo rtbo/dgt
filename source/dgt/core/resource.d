@@ -403,14 +403,10 @@ private string buildRcCode(Flag!"atomic" atomic)()
 
             public override void retain()
             {
-                import core.atomic : cas;
-                int oldRc = void;
-                do
+                import core.atomic : atomicOp;
+                immutable rc = atomicOp!"+="(_refCount, 1);
+                version(rcDebug)
                 {
-                    oldRc = _refCount;
-                }
-                while(!cas(&_refCount, oldRc, oldRc+1));
-                version(rcDebug) {
                     import std.experimental.logger : logf;
                     logf("retain %s: %s", typeof(this).stringof, oldRc+1);
                 }
@@ -419,18 +415,14 @@ private string buildRcCode(Flag!"atomic" atomic)()
             public override void release()
             {
                 import core.atomic : cas;
-                int oldRc = void;
-                do
-                {
-                    oldRc = _refCount;
-                }
-                while(!cas(&_refCount, oldRc, oldRc-1));
+                immutable rc = atomicOp!"-="(_refCount, 1);
+
                 version(rcDebug)
                 {
                     import std.experimental.logger : logf;
-                    logf("release %s: %s", typeof(this).stringof, oldRc-1);
+                    logf("release %s: %s", typeof(this).stringof, rc);
                 }
-                if (oldRc == 1)
+                if (rc == 0)
                 {
                     version(rcDebug)
                     {
