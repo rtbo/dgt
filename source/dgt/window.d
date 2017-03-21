@@ -20,6 +20,16 @@ enum WindowState
     hidden
 }
 
+interface OnWindowShowHandler
+{
+    void onWindowMove(WindowShowEvent ev);
+}
+
+interface OnWindowHideHandler
+{
+    void onWindowHide(WindowHideEvent ev);
+}
+
 interface OnWindowMoveHandler
 {
     void onWindowMove(WindowMoveEvent ev);
@@ -195,6 +205,8 @@ class Window : Surface
     }
 
     mixin SignalMixin!("onTitleChange", string);
+    mixin EventHandlerSignalMixin!("onShow", OnWindowShowHandler);
+    mixin EventHandlerSignalMixin!("onHide", OnWindowHideHandler);
     mixin EventHandlerSignalMixin!("onMove", OnWindowMoveHandler);
     mixin EventHandlerSignalMixin!("onResize", OnWindowResizeHandler);
     mixin EventHandlerSignalMixin!("onMouse", OnWindowMouseHandler);
@@ -216,6 +228,12 @@ class Window : Surface
         case EventType.windowExpose:
             _onExpose.fire(cast(WindowExposeEvent) wEv);
             _platformWindow.drawingBuffer.flush();
+            break;
+        case EventType.windowShow:
+            _onShow.fire(cast(WindowShowEvent)wEv);
+            break;
+        case EventType.windowHide:
+            _onHide.fire(cast(WindowHideEvent)wEv);
             break;
         case EventType.windowMove:
             auto wmEv = cast(WindowMoveEvent) wEv;
