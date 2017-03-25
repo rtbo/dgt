@@ -29,6 +29,9 @@ class Win32Window : PlatformWindow
     private IRect _rect;
     private WindowState _state;
     private bool _shownOnce;
+    private bool _paintEvPackage;
+    private bool _sentFstResize;
+    private bool _sentFstShow;
     private bool _mouseOut;
     private IPoint _mousePos;
     private MouseState _mouseState;
@@ -175,10 +178,12 @@ class Win32Window : PlatformWindow
 
 		bool handlePaint(UINT msg, WPARAM /+wParam+/, LPARAM /+lParam+/)
 		{
+            if (!_paintEvPackage) {
+                handlePaintEvPackage();
+            }
 			if (!GetUpdateRect(_hWnd, null, false)) return false;
             if (msg == WM_ERASEBKGND) return true;
             if (geometry.area == 0) return true;
-
 
 			PAINTSTRUCT ps;
 			_paintEvDc = BeginPaint(_hWnd, &ps);
@@ -186,16 +191,6 @@ class Win32Window : PlatformWindow
 				EndPaint(_hWnd, &ps);
                 _paintEvDc = null;
 			}
-
-            // {
-            //     import std.stdio;
-            //     writeln(_paintEvDc);
-
-            //     auto dc = GetDC(_hWnd);
-            //     writeln(_paintEvDc);
-            //     ReleaseDC(_hWnd, dc);
-            //     writeln();
-            // }
 
             immutable r = IRect(0, 0, geometry.size);
             // auto win32Rect = rectToWin32(r);
@@ -249,6 +244,7 @@ class Win32Window : PlatformWindow
             if (g.size != oldG.size) {
                 auto ev = scoped!WindowResizeEvent(_win, g.size);
                 _win.handleEvent(ev);
+                _sentFstResize = true;
             }
             if (g.point != oldG.point) {
                 auto ev = scoped!WindowMoveEvent(_win, g.point);
@@ -265,6 +261,7 @@ class Win32Window : PlatformWindow
             if (wParam) {
                 auto ev = scoped!WindowShowEvent(_win);
                 _win.handleEvent(ev);
+                _sentFstShow = true;
             }
             else {
                 auto ev = scoped!WindowHideEvent(_win);
@@ -478,6 +475,26 @@ class Win32Window : PlatformWindow
                 return str.idup;
             }
             return "";
+        }
+
+        void handlePaintEvPackage()
+        {
+            immutable state = sysState;
+            immutable geom = sysGeometry;
+
+            immutable stateCond = state != WindowState.hidden && state != WindowState.minimized;
+            immutable geomCond = geom.area != 0;
+
+            if (!_sentFstShow && stateCond) {
+                writeln("forced show");
+                auto ev = scoped!WindowShowEvent(_win);
+                _win.handleEvent(ev);
+            }
+            if (!_sentFstResize && geomCond) {
+                handleGeometryChange();
+            }
+
+            if (stateCond && geomCond) _paintEvPackage = true;
         }
 
         static IRect rectFromWin32(in RECT r) pure
