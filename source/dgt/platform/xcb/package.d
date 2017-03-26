@@ -126,10 +126,10 @@ class XcbPlatform : Platform
     /// ditto
     override @property PlatformCapsFlags caps() const
     {
-        PlatformCapsFlags res = PlaformCaps.none;
+        PlatformCapsFlags res = PlatformCaps.none;
         if (hasDRI2 || hasDRI3)
         {
-            res |= PlaformCaps.openGL;
+            res |= PlatformCaps.openGL;
         }
         return res;
     }

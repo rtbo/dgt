@@ -44,7 +44,7 @@ class Win32Platform : Platform
 
     override @property PlatformCapsFlags caps() const
     {
-        PlatformCapsFlags res = PlaformCaps.none;
+        PlatformCapsFlags res = PlatformCaps.none;
         return res;
     }
 

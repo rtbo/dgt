@@ -8,7 +8,7 @@ import dgt.vg;
 
 import std.typecons : BitFlags;
 
-enum PlaformCaps
+enum PlatformCaps
 {
     none = 0,
     openGL = 1,
@@ -16,7 +16,7 @@ enum PlaformCaps
     openVG = 4,
 }
 
-alias PlatformCapsFlags = BitFlags!PlaformCaps;
+alias PlatformCapsFlags = BitFlags!PlatformCaps;
 
 interface Platform : Disposable
 {
