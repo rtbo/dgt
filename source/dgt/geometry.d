@@ -79,14 +79,12 @@ struct TMargins(T) if (isNumeric!T)
 
 unittest
 {
-
     auto md = Margins(3, 5, 5, 6);
     auto mi = IMargins(4, 15, 2, 5);
 
     static assert(__traits(compiles, md = mi));
     static assert(!__traits(compiles, mi = md));
     static assert(__traits(compiles, mi = cast(IMargins) md));
-
 }
 
 /// Represents a rectangular area
@@ -105,6 +103,21 @@ struct TRect(T) if (isNumeric!T)
         assert(_w >= 0 && _h >= 0);
     }
 
+    this(in T x, in T y, in T w, in T h)
+    {
+        _x = x; _y = y; _w = w; _h = h;
+    }
+
+    this(in T x, in T y, in TSize!T s)
+    {
+        _x = x; _y = y; _w = s.width; _h = s.height;
+    }
+
+    this(in TPoint!T p, in T w, in T h)
+    {
+        _x = p.x; _y = p.y; _w = w; _h = h;
+    }
+
     this(TPoint!T p, TSize!T s)
     {
         _x = p.x;
@@ -113,28 +126,12 @@ struct TRect(T) if (isNumeric!T)
         _h = s.height;
     }
 
-    this(T x, T y, T w, T h)
+    this(TPoint!T topLeft, TPoint!T bottomRight)
     {
-        _x = x;
-        _y = y;
-        _w = w;
-        _h = h;
-    }
-
-    this(TPoint!T p, T w, T h)
-    {
-        _x = p.x;
-        _y = p.y;
-        _w = w;
-        _h = h;
-    }
-
-    this(T x, T y, TSize!T s)
-    {
-        _x = x;
-        _y = y;
-        _w = s.width;
-        _h = s.height;
+        _x = topLeft.x;
+        _y = topLeft.y;
+        _w = bottomRight.x - topLeft.x;
+        _h = bottomRight.y - topLeft.y;
     }
 
     @property T x() const
@@ -227,8 +224,11 @@ struct TRect(T) if (isNumeric!T)
     }
 
     @property void right(T val)
-    {
-        _w = max(0, val - _x);
+    in {
+        assert(val >= _x);
+    }
+    body {
+        _w = val - _x;
     }
 
     @property T bottom() const
@@ -237,8 +237,11 @@ struct TRect(T) if (isNumeric!T)
     }
 
     @property void bottom(T val)
-    {
-        _h = max(0, val - _y);
+    in {
+        assert(val >= _y);
+    }
+    body {
+        _h = val - _y;
     }
 
     @property TPoint!T topLeft() const
