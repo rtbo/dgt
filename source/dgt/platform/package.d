@@ -57,8 +57,3 @@ interface PlatformDrawingBuffer : Disposable
 
     void flush();
 }
-
-VgSurface surface(PlatformWindow window)
-{
-    return window.drawingBuffer.surface;
-}

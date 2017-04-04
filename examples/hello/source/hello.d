@@ -68,7 +68,7 @@ int main()
 
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
-        auto surf = win.surface.rc;
+        auto surf = win.beginFrame().rc;
         auto ctx = createContext(surf).rc;
 
         if (!tex.loaded)
@@ -116,7 +116,7 @@ int main()
             ctx.drawTexture(tex);
         });
 
-        surf.flush();
+        win.endFrame(surf);
     };
 
     win.show();

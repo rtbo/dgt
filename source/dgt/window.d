@@ -317,10 +317,23 @@ class Window : Surface
         }
     }
 
-    /// Return a vector graphics surface to draw into this window.
-    @property VgSurface surface()
+    VgSurface beginFrame()
     {
-        return _platformWindow.surface;
+        enforce(!_dwgBuf, "cannot call Window.beginFrame without a " ~
+                            "Window.endFrame");
+        _dwgBuf = _platformWindow.drawingBuffer;
+        _surf = _dwgBuf.surface;
+        return _surf;
+    }
+
+    void endFrame(VgSurface surf)
+    {
+        enforce(surf && surf is _surf, "must call Window.endFrame with a " ~
+                                        "surface matching Window.beginFrame");
+        _surf.flush();
+        _dwgBuf.flush();
+        _surf = null;
+        _dwgBuf = null;
     }
 
     private
@@ -330,5 +343,9 @@ class Window : Surface
         ISize _size;
         SurfaceAttribs _attribs;
         PlatformWindow _platformWindow;
+
+        // transient rendering state
+        PlatformDrawingBuffer _dwgBuf;
+        VgSurface _surf;
     }
 }
