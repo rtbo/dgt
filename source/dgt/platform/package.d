@@ -4,7 +4,7 @@ import dgt.core.resource;
 import dgt.geometry;
 import dgt.screen;
 import dgt.window;
-import dgt.vg;
+import dgt.image;
 
 import std.typecons : BitFlags;
 
@@ -43,17 +43,22 @@ interface PlatformWindow
     @property IRect geometry() const;
     @property void geometry(IRect pos);
 
-    @property PlatformDrawingBuffer drawingBuffer();
+    PlatformWindowBuffer makeBuffer(in ISize size);
 }
 
-/// A Platform native drawing buffer
-interface PlatformDrawingBuffer : Disposable
+/// A native buffer image suitable for blitting pixels on screen.
+/// Top left corner of this buffer image fit with the top left corner of the
+/// window.
+interface PlatformWindowBuffer : Disposable
 {
+    /// The window associated to the buffer.
     @property inout(PlatformWindow) window() inout;
-    @property ISize size() const;
-    @property void size(in ISize size);
 
-    @property VgSurface surface();
+    /// The buffer data encapsulated as image.
+    @property inout(Image) image() inout;
 
-    void flush();
+    /// Blits the image pixels into the window native surface.
+    /// Orig is at the same time the source and destination offset for
+    /// reading and writing.
+    void blit(in IPoint orig, in ISize size);
 }

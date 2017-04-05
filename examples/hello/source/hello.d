@@ -68,12 +68,12 @@ int main()
 
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
-        auto surf = win.beginFrame().rc;
-        auto ctx = createContext(surf).rc;
+        auto buf = win.beginFrame();
+        auto ctx = createContext(buf.surface).rc;
 
         if (!tex.loaded)
         {
-            tex = createTexture(surf, img);
+            tex = createTexture(buf.surface, img);
         }
 
         immutable size = win.size;
@@ -116,7 +116,7 @@ int main()
             ctx.drawTexture(tex);
         });
 
-        win.endFrame(surf);
+        win.endFrame(buf);
     };
 
     win.show();

@@ -349,6 +349,11 @@ struct TRect(T) if (isNumeric!T)
 
 }
 
+bool contains(T)(in TSize!T big, in TSize!T small)
+{
+    return big.width >= small.width && big.height >= small.height;
+}
+
 bool contains(T)(in TRect!T r, in TPoint!T p)
 {
     return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;

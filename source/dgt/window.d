@@ -1,15 +1,18 @@
 module dgt.window;
 
+import dgt.core.resource;
+import dgt.core.signal;
+import dgt.core.util;
 import dgt.platform;
 import dgt.application;
 import dgt.surface;
 import dgt.geometry;
 import dgt.event;
-import dgt.core.signal;
-import dgt.core.util;
+import dgt.image;
 import dgt.vg;
 
 import std.exception : enforce;
+import std.stdio;
 
 enum WindowState
 {
@@ -249,13 +252,7 @@ class Window : Surface
         switch (wEv.type)
         {
         case EventType.windowExpose:
-            auto db = _platformWindow.drawingBuffer;
-            if (db.size != _size)
-            {
-                db.size = _size;
-            }
             _onExpose.fire(cast(WindowExposeEvent) wEv);
-            db.flush();
             break;
         case EventType.windowShow:
             _onShow.fire(cast(WindowShowEvent)wEv);
@@ -269,9 +266,7 @@ class Window : Surface
             _onMove.fire(cast(WindowMoveEvent) wEv);
             break;
         case EventType.windowResize:
-            auto rsEv = cast(WindowResizeEvent) wEv;
-            _size = rsEv.size;
-            _onResize.fire(rsEv);
+            handleResize(cast(WindowResizeEvent) wEv);
             break;
         case EventType.windowMouseDown:
             _onMouse.fire(cast(WindowMouseEvent) wEv);
@@ -317,27 +312,34 @@ class Window : Surface
         }
     }
 
-    VgSurface beginFrame()
+    WindowBuffer beginFrame()
     {
-        enforce(!_dwgBuf, "cannot call Window.beginFrame without a " ~
+        enforce(!_buf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
-        _dwgBuf = _platformWindow.drawingBuffer;
-        _surf = _dwgBuf.surface;
-        return _surf;
+        _buf = new WindowBuffer(this, _platformWindow.makeBuffer(_size));
+        return _buf;
     }
 
-    void endFrame(VgSurface surf)
+    void endFrame(WindowBuffer buf)
     {
-        enforce(surf && surf is _surf, "must call Window.endFrame with a " ~
-                                        "surface matching Window.beginFrame");
-        _surf.flush();
-        _dwgBuf.flush();
-        _surf = null;
-        _dwgBuf = null;
+        enforce(_buf && _buf is buf, "must call Window.endFrame with a " ~
+                              "surface matching Window.beginFrame");
+        assert(buf.size.contains(_size));
+        _buf._surface.flush();
+        _buf._buffer.blit(IPoint(0, 0), _size);
+        _buf.dispose();
+        _buf = null;
     }
 
     private
     {
+        void handleResize(WindowResizeEvent ev)
+        {
+            immutable newSize = ev.size;
+            _size = newSize;
+            _onResize.fire(ev);
+        }
+
         string _title;
         IPoint _position = IPoint(-1, -1);
         ISize _size;
@@ -345,7 +347,47 @@ class Window : Surface
         PlatformWindow _platformWindow;
 
         // transient rendering state
-        PlatformDrawingBuffer _dwgBuf;
-        VgSurface _surf;
+        WindowBuffer _buf;
+    }
+}
+
+final class WindowBuffer : Disposable
+{
+    private Window _window;
+    private PlatformWindowBuffer _buffer;
+    private VgSurface _surface;
+
+    private this(Window window, PlatformWindowBuffer buffer)
+    {
+        _window = window;
+        _buffer = buffer;
+        _surface = _buffer.image.makeVgSurface();
+        _surface.retain();
+    }
+
+    override void dispose()
+    {
+        _buffer.dispose();
+        _surface.release();
+    }
+
+    @property inout(Window) window() inout
+    {
+        return _window;
+    }
+
+    @property inout(VgSurface) surface() inout
+    {
+        return _surface;
+    }
+
+    @property inout(Image) image() inout
+    {
+        return _buffer.image;
+    }
+
+    @property ISize size() const
+    {
+        return image.size;
     }
 }

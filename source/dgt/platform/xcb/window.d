@@ -4,7 +4,7 @@ version(linux):
 
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
-import dgt.platform.xcb.drawing_buffer;
+import dgt.platform.xcb.buffer;
 import dgt.core.resource;
 import dgt.vg;
 import dgt.screen;
@@ -41,12 +41,12 @@ class XcbWindow : PlatformWindow
         xcb_visualid_t _visualId;
         xcb_visualtype_t* _visual;
         xcb_format_t* _format;
+        xcb_gcontext_t _gc;
         ubyte _depth;
         WindowState _lastKnownState = WindowState.hidden;
         IRect _rect;
         bool _created = false;
         bool _mapped;
-        XcbDrawingBuffer _drawingBuf;
     }
 
     this(Window w, XcbPlatform platform)
@@ -103,6 +103,7 @@ class XcbWindow : PlatformWindow
         this.title = _win.title;
 
         prepareEvents();
+        prepareGc();
 
         _platform.registerWindow(this);
 
@@ -113,11 +114,6 @@ class XcbWindow : PlatformWindow
 
     override void close()
     {
-        if (_drawingBuf)
-        {
-            _drawingBuf.dispose();
-            _drawingBuf = null;
-        }
         if (_mapped)
             xcb_unmap_window(g_connection, _xcbWin);
         xcb_destroy_window(g_connection, _xcbWin);
@@ -286,13 +282,9 @@ class XcbWindow : PlatformWindow
         return _win;
     }
 
-    override @property PlatformDrawingBuffer drawingBuffer()
+    override PlatformWindowBuffer makeBuffer(in ISize size)
     {
-        if (!_drawingBuf)
-        {
-            _drawingBuf = new XcbDrawingBuffer(this);
-        }
-        return _drawingBuf;
+        return new XcbWindowBuffer(this, size);
     }
 
     package
@@ -300,6 +292,11 @@ class XcbWindow : PlatformWindow
         @property xcb_window_t xcbWin() const
         {
             return _xcbWin;
+        }
+
+        @property xcb_gcontext_t xcbGc() const
+        {
+            return _gc;
         }
 
         @property ubyte depth() const
@@ -456,6 +453,15 @@ class XcbWindow : PlatformWindow
                 xcb_change_property(g_connection, XCB_PROP_MODE_REPLACE, _xcbWin,
                         atom(Atom.WM_PROTOCOLS), XCB_ATOM_ATOM, 32, 1, &values[0]);
             }
+        }
+
+        void prepareGc()
+        {
+            immutable uint mask = XCB_GC_GRAPHICS_EXPOSURES;
+            immutable uint values = 0;
+
+            _gc = xcb_generate_id(g_connection);
+            xcb_create_gc(g_connection, _gc, xcbWin, mask, &values);
         }
 
         enum NetWmStates
