@@ -1,4 +1,4 @@
-module dgt.platform.win32.drawing_buf;
+module dgt.platform.win32.buffer;
 
 version(Windows):
 
@@ -23,15 +23,20 @@ private HDC createDc()
 }
 
 
-class DibImage : Disposable
+class Win32WindowBuffer : PlatformWindowBuffer
 {
+    private Win32Window _window;
+    private ISize _size;
+
     private HDC _hdc;
     private HBITMAP _bitmap;
     private HBITMAP _prevBitmap;
     private Image _img;
 
-    this(ISize size)
+    this(Win32Window win, in ISize size)
     {
+        _window = win;
+        _size = size;
         _hdc = createDc();
 
         BITMAPINFO bmi;
@@ -62,70 +67,30 @@ class DibImage : Disposable
         _prevBitmap = null;
         _img = null;
     }
-}
-
-
-class Win32DrawingBuffer : PlatformDrawingBuffer
-{
-    private ISize _size;
-    private Win32Window _window;
-    private DibImage _dibImg;
-    private VgSurface _surf;
-
-    this(Win32Window win)
-    {
-        _size = win.geometry.size;
-        _window = win;
-        _dibImg = new DibImage(_size);
-        _surf = _dibImg._img.makeVgSurface();
-        _surf.retain();
-    }
-
-    override void dispose()
-    {
-        _surf.release();
-        _dibImg.dispose();
-
-        _surf = null;
-        _dibImg = null;
-    }
 
     override @property inout(PlatformWindow) window() inout
     {
         return _window;
     }
 
-    override @property ISize size() const
+    override @property inout(Image) image() inout
     {
-        return _size;
+        return _img;
     }
 
-    override @property void size(in ISize size)
-    {
-        if (_size == size) return;
-
-        _size = size;
-        _surf.release();
-        _dibImg.dispose();
-
-        _dibImg = new DibImage(_size);
-        _surf = _dibImg._img.makeVgSurface();
-        _surf.retain();
+    override void blit(in IPoint orig, in ISize size)
+    in {
+        assert(orig.x + size.width <= _size.width);
+        assert(orig.y + size.height <= _size.height);
     }
-
-    override @property VgSurface surface()
-    {
-        return _surf;
-    }
-
-    override void flush()
+    body
     {
         auto dc = _window.getDC();
         scope(exit) _window.releaseDC(dc);
 
         BitBlt(
-            dc, 0, 0, _size.width, _size.height,
-            _dibImg._hdc, 0, 0,
+            dc, orig.x, orig.y, size.width, size.height,
+            _hdc, orig.x, orig.y,
             SRCCOPY
         );
     }

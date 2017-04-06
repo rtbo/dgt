@@ -3,7 +3,7 @@ module dgt.platform.win32.window;
 version(Windows):
 
 import dgt.platform.win32;
-import dgt.platform.win32.drawing_buf;
+import dgt.platform.win32.buffer;
 import dgt.platform;
 import dgt.core.resource;
 import dgt.window;
@@ -25,7 +25,6 @@ class Win32Window : PlatformWindow
     private Window _win;
     private HWND _hWnd;
     private HDC _paintEvDc;
-    private PlatformDrawingBuffer _drawingBuf;
     private IRect _rect;
     private WindowState _state;
     private bool _shownOnce;
@@ -79,11 +78,6 @@ class Win32Window : PlatformWindow
 
     override void close()
     {
-        if (_drawingBuf)
-        {
-            _drawingBuf.dispose();
-            _drawingBuf = null;
-        }
 		DestroyWindow(_hWnd);
 		Win32Platform.instance.unregisterWindow(_hWnd);
     }
@@ -142,13 +136,9 @@ class Win32Window : PlatformWindow
 		MoveWindow(_hWnd, r.left, r.top, r.right-r.left, r.bottom-r.top, true);
     }
 
-    override @property PlatformDrawingBuffer drawingBuffer()
+    override PlatformWindowBuffer makeBuffer(in ISize size)
     {
-        if (!_drawingBuf)
-        {
-            _drawingBuf = new Win32DrawingBuffer(this);
-        }
-        return _drawingBuf;
+        return new Win32WindowBuffer(this, size);
     }
 
     package
@@ -486,7 +476,6 @@ class Win32Window : PlatformWindow
             immutable geomCond = geom.area != 0;
 
             if (!_sentFstShow && stateCond) {
-                writeln("forced show");
                 auto ev = scoped!WindowShowEvent(_win);
                 _win.handleEvent(ev);
             }
