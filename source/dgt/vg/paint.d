@@ -1,8 +1,8 @@
 module dgt.vg.paint;
 
-import dgt.vg;
 import dgt.core.resource;
 import dgt.math.vec;
+import dgt.image;
 
 /// The type of a paint.
 enum PaintType
@@ -14,7 +14,7 @@ enum PaintType
     /// gradient that interpolate a set of colors from one point to a circle.
     radialGradient,
     /// paint from image data
-    texture,
+    image,
 }
 
 /// A gradient stop.
@@ -42,42 +42,18 @@ enum SpreadMode
 
 /// Paint defines the material that fills and strokes paths.
 /// It can hold one of the different paint types.
-abstract class Paint : RefCounted
+abstract class Paint
 {
-    mixin(rcCode);
-
     private PaintType _type;
-    package(dgt) Rc!RefCounted _backendData;
-    package(dgt) size_t _backendDataOwner;
-    package(dgt) bool _backendDataDirty = true;
 
     private this (PaintType type)
     {
         _type = type;
     }
 
-    override void dispose()
-    {
-        _backendData.unload();
-        _backendDataOwner = 0;
-        _backendDataDirty = true;
-    }
-
     final @property PaintType type() const
     {
         return _type;
-    }
-
-    package(dgt) RefCounted backendData(in size_t owner)
-    {
-        if (owner == _backendDataOwner) return _backendData.obj;
-        else return null;
-    }
-
-    package(dgt) void setBackendData(in size_t owner, RefCounted data)
-    {
-        _backendDataOwner = owner;
-        _backendData = data;
     }
 }
 
@@ -115,13 +91,11 @@ class ColorPaint : Paint
     @property void color(in float[4] color)
     {
         _color = vec(color);
-        _backendDataDirty = true;
     }
     /// Set the color.
     @property void color(in FVec4 color)
     {
         _color = color;
-        _backendDataDirty = true;
     }
 }
 
@@ -145,7 +119,6 @@ abstract class GradientPaint : Paint
     @property void stops (GradientStop[] stops)
     {
         _stops = stops;
-        _backendDataDirty = true;
     }
 
     /// Get the spread mode.
@@ -157,7 +130,6 @@ abstract class GradientPaint : Paint
     @property void spreadMode(in SpreadMode spreadMode)
     {
         _spreadMode = spreadMode;
-        _backendDataDirty = true;
     }
 }
 
@@ -190,7 +162,6 @@ class LinearGradientPaint : GradientPaint
     @property void start(in FVec2 start)
     {
         _start = start;
-        _backendDataDirty = true;
     }
 
     /// Get the end point (offset 1).
@@ -202,7 +173,6 @@ class LinearGradientPaint : GradientPaint
     @property void end(in FVec2 end)
     {
         _end = end;
-        _backendDataDirty = true;
     }
 }
 
@@ -235,7 +205,6 @@ class RadialGradientPaint : GradientPaint
     @property void focal(in FVec2 focal)
     {
         _focal = focal;
-        _backendDataDirty = true;
     }
 
     @property FVec2 center() const
@@ -245,7 +214,6 @@ class RadialGradientPaint : GradientPaint
     @property void center(in FVec2 center)
     {
         _center = center;
-        _backendDataDirty = true;
     }
 
     @property float radius() const
@@ -255,38 +223,26 @@ class RadialGradientPaint : GradientPaint
     @property void radius(in float radius)
     {
         _radius = radius;
-        _backendDataDirty = true;
     }
 }
 
 /// A Paint that will paint image data (a.k.a. texture).
-class TexturePaint : Paint
+class ImagePaint : Paint
 {
-    private Rc!VgTexture _tex;
+    private Image _image;
 
     this()
     {
-        super(PaintType.texture);
+        super(PaintType.image);
     }
-    this(VgTexture tex)
+    this(Image image)
     {
-        super(PaintType.texture);
-        _tex = tex;
-    }
-
-    override void dispose()
-    {
-        _tex.unload();
-        super.dispose();
+        super(PaintType.image);
+        _image = image;
     }
 
-    @property inout(VgTexture) texture() inout
+    @property inout(Image) image() inout
     {
-        return _tex.obj;
-    }
-    @property void texture(VgTexture texture)
-    {
-        _tex = texture;
-        _backendDataDirty = true;
+        return _image;
     }
 }

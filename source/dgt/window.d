@@ -325,7 +325,6 @@ class Window : Surface
         enforce(_buf && _buf is buf, "must call Window.endFrame with a " ~
                               "surface matching Window.beginFrame");
         assert(buf.size.contains(_size));
-        _buf._surface.flush();
         _buf._buffer.blit(IPoint(0, 0), _size);
         _buf.dispose();
         _buf = null;
@@ -355,30 +354,21 @@ final class WindowBuffer : Disposable
 {
     private Window _window;
     private PlatformWindowBuffer _buffer;
-    private VgSurface _surface;
 
     private this(Window window, PlatformWindowBuffer buffer)
     {
         _window = window;
         _buffer = buffer;
-        _surface = _buffer.image.makeVgSurface();
-        _surface.retain();
     }
 
     override void dispose()
     {
         _buffer.dispose();
-        _surface.release();
     }
 
     @property inout(Window) window() inout
     {
         return _window;
-    }
-
-    @property inout(VgSurface) surface() inout
-    {
-        return _surface;
     }
 
     @property inout(Image) image() inout

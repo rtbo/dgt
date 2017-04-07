@@ -13,15 +13,6 @@ import std.typecons : Flag, Yes, No;
 import std.exception : enforce;
 import std.experimental.logger;
 
-/// A surface for the cairo backend.
-/// Implementation is required to retain a reference to the underlying cairo
-/// surface and to release it when disposed.
-interface CairoSurface : VgSurface
-{
-    /// Retrieve the cairo_surface_t object held by implementation.
-    @property cairo_surface_t* cairoSurf();
-}
-
 private __gshared CairoBackend _cairoBackend;
 
 shared static this()
@@ -60,19 +51,9 @@ private class CairoBackend : VgBackend
         return "cairo";
     }
 
-    override @property bool hardwareAccelerated() const
+    override VgContext createContext(Image image)
     {
-        return false;
-    }
-
-    override VgContext createContext(VgSurface surf)
-    {
-        return new CairoContext(this, enforce(cast(CairoSurface) surf));
-    }
-
-    override VgTexture createTexture(Image image)
-    {
-        return new CairoImgSurf(image);
+        return new CairoContext(this, image);
     }
 }
 
@@ -81,8 +62,8 @@ private class CairoBackend : VgBackend
 /// or just easier to track that way.
 private struct State
 {
-    Rc!Paint fill;
-    Rc!Paint stroke;
+    Paint fill;
+    Paint stroke;
     Transform transform;
 }
 
@@ -91,28 +72,26 @@ class CairoContext : VgContext
 {
     import dgt.core.typecons : GrowableStack;
 
-    mixin(rcCode);
-
     private CairoBackend _backend;
-    private Rc!CairoSurface _surface;
+    private Image _image;
+    private cairo_surface_t* _surf;
     private cairo_t* _cairo;
-    private Rc!Paint _defaultPaint;
+    private Paint _defaultPaint;
     private State _currentState;
     private GrowableStack!State _stateStack;
 
-    this(CairoBackend backend, CairoSurface surface)
+    this(CairoBackend backend, Image image)
     {
         _backend = backend;
-        _surface = surface;
-        _cairo = cairo_create(_surface.cairoSurf);
+        _image = image;
+        _surf = makeCairoSurface(image);
+        _cairo = cairo_create(_surf);
 
         auto defaultSrc = cairo_get_source(_cairo);
         Paint defaultPaint;
         if (defaultSrc)
         {
-            defaultPaint = paintFromCairoPattern(
-                new CairoPattern(defaultSrc, Yes.addRef)
-            );
+            defaultPaint = paintFromCairoPattern(defaultSrc);
         }
         else
         {
@@ -144,6 +123,7 @@ class CairoContext : VgContext
 
     override void dispose()
     {
+        cairo_surface_flush(_surf);
         if (!_stateStack.empty)
         {
             warning("CairoContext disposed with state stack not empty");
@@ -154,7 +134,7 @@ class CairoContext : VgContext
         }
         _currentState = State.init; // release the state
         cairo_destroy(_cairo);
-        _surface.unload();
+        cairo_surface_destroy(_surf);
     }
 
     override @property inout(VgBackend) backend() inout
@@ -162,9 +142,9 @@ class CairoContext : VgContext
         return _backend;
     }
 
-    override @property inout(VgSurface) surface() inout
+    override @property inout(Image) image() inout
     {
-        return _surface;
+        return _image;
     }
 
     override void save()
@@ -315,29 +295,26 @@ class CairoContext : VgContext
         cairo_reset_clip(cairo);
     }
 
-    override void mask(VgTexture tex)
+    override void mask(Image img)
     {
-        auto cis = enforce(cast(CairoImgSurf)tex,
-            "VgTexture of type "~typeid(tex).toString()~
-            " is not usable with a cairo context"
-        );
+        auto surf = makeCairoSurface(img.makeVgCompatible());
+        auto patt = cairo_pattern_create_for_surface(surf);
 
-        auto patt = cairo_pattern_create_for_surface(cis.cairoSurf);
-        scope(exit)
-            cairo_pattern_destroy(patt);
-
-        setPaint(_currentState.fill.obj);
+        setPaint(_currentState.fill);
         cairo_mask(cairo, patt);
+
+        cairo_pattern_destroy(patt);
+        cairo_surface_destroy(surf);
     }
 
-    override void drawTexture(VgTexture tex)
+    override void drawImage(Image img)
     {
-        auto cis = enforce(cast(CairoImgSurf)tex,
-            "VgTexture of type "~typeid(tex).toString()~
-            " is not usable with a cairo context"
-        );
-        cairo_set_source_surface(cairo, cis.cairoSurf, 0, 0);
+        auto surf = makeCairoSurface(img.makeVgCompatible());
+
+        cairo_set_source_surface(cairo, surf, 0, 0);
         cairo_paint(cairo);
+
+        cairo_surface_destroy(surf);
     }
 
     override void clear(in float[4] color)
@@ -354,7 +331,7 @@ class CairoContext : VgContext
         // FIXME: pattern transform at cairo_set_source time
         if (fill)
         {
-            setPaint(_currentState.fill.obj);
+            setPaint(_currentState.fill);
             if (stroke)
                 cairo_fill_preserve(cairo);
             else
@@ -362,7 +339,7 @@ class CairoContext : VgContext
         }
         if (stroke)
         {
-            setPaint(_currentState.stroke.obj);
+            setPaint(_currentState.stroke);
             cairo_stroke(cairo);
         }
     }
@@ -416,137 +393,22 @@ class CairoContext : VgContext
     private void setPaint(Paint paint)
     {
         assert(paint !is null);
-        auto cp = cairoPatternFromPaint(paint);
-        cairo_set_source(cairo, cp.pattern);
+        auto patt = cairoPatternFromPaint(paint);
+        cairo_set_source(cairo, patt);
     }
 }
 
-
-/// Adaptator from Image to cairo_surface_t.
-/// Cairo requires 4 bytes alignement on each row and a subset of ImageFormat.
-/// If supplied Image is compatible for cairo, its data is used directly,
-/// otherwise, a copy of the data is made.
-class CairoImgSurf : CairoSurface, VgTexture
-{
-    mixin(rcCode);
-
-    private Image _img;
-    private cairo_surface_t* _surf;
-
-    this (Image img)
-    {
-        updateImage(img);
-    }
-
-    override @property cairo_surface_t* cairoSurf()
-    {
-        return _surf;
-    }
-
-    override void dispose()
-    {
-        cairo_surface_destroy(_surf);
-        _surf = null;
-    }
-
-    override @property VgBackend backend()
-    {
-        return cairoBackend;
-    }
-
-    override @property ISize size() const
-    {
-        return _img.size;
-    }
-
-    override void flush()
-    {
-        cairo_surface_flush(_surf);
-    }
-
-    override @property ImageFormat format() const
-    {
-        return _img.format;
-    }
-
-    override void setPixels(Image pixels)
-    {}
-
-    override void updatePixels(Image pixels, in IRect fromArea, in IRect toArea)
-    {}
-
-    override @property VgSurface surface()
-    {
-        return this;
-    }
-
-    private void updateImage(Image img)
-    {
-        _img = makeCairoCompatible(img);
-        if (_surf) cairo_surface_destroy(_surf);
-        _surf = cairo_image_surface_create_for_data (
-            _img.data.ptr, cairoFormat(_img.format),
-            _img.width, _img.height, cast(int)_img.stride
-        );
-    }
-}
-
-/// Check compatibility with Cairo.
-@property bool cairoCompatible(in Image img)
-{
-    return img.format != ImageFormat.argb &&
-            img.stride >= cairo_format_stride_for_width(
-                cairoFormat(img.format), img.width
-            );
-
-}
-
-/// Returns img if compatible, otherwise a compatible image built from img.
-Image makeCairoCompatible(Image img)
-out(res)
-{
-    assert(cairoCompatible(img));
+cairo_surface_t* makeCairoSurface(Image image)
+in {
+    assert(image && image.vgCompatible);
 }
 body
 {
-    if (cairoCompatible(img)) return img;
-
-    auto ifmt = img.format;
-    bool premult = false;
-    if (ifmt == ImageFormat.argb)
-    {
-        ifmt = ImageFormat.argbPremult;
-        premult = true;
-    }
-
-    immutable stride = cairo_format_stride_for_width(cairoFormat(ifmt),
-            img.width);
-    ubyte[] data;
-    if (stride == img.stride)
-    {
-        data = img.data.dup;
-    }
-    else
-    {
-        import std.algorithm : min;
-        data = new ubyte[stride * img.height];
-        const srcData = img.data;
-        immutable srcStride = img.stride;
-        immutable copyStride = min(stride, srcStride);
-        foreach (l; 0 .. img.height)
-        {
-            data[l*stride .. l*stride+copyStride] =
-                srcData[l*srcStride .. l*srcStride+copyStride];
-        }
-    }
-    auto newImg = new Image(data, ifmt, img.width, stride);
-    if (premult)
-    {
-        newImg.apply!premultiply();
-    }
-    return newImg;
+    return cairo_image_surface_create_for_data(
+        image.data.ptr, cairoFormat(image.format),
+        image.width, image.height, cast(int)image.stride
+    );
 }
-
 
 pure @safe
 {
@@ -712,9 +574,8 @@ private cairo_extend_t paintPatternExtend(in SpreadMode mode)
     }
 }
 
-private Paint paintFromCairoPattern(CairoPattern cp)
+private Paint paintFromCairoPattern(cairo_pattern_t* patt)
 {
-    cairo_pattern_t* patt = cp.pattern;
     Paint paint;
     final switch(cairo_pattern_get_type(patt))
     {
@@ -753,82 +614,45 @@ private Paint paintFromCairoPattern(CairoPattern cp)
     case CAIRO_PATTERN_TYPE_RASTER_SOURCE:
         assert(false, "unsupported");
     }
-    paint.setBackendData(cairoUid, cp);
-    paint._backendDataDirty = false;
     return paint;
 }
 
-private CairoPattern cairoPatternFromPaint(Paint paint)
+private cairo_pattern_t* cairoPatternFromPaint(Paint paint)
 {
     import dgt.core.util : unsafeCast;
-    auto pbd = paint.backendData(cairoUid);
-    if (pbd && !paint._backendDataDirty)
+
+    cairo_pattern_t* patt;
+
+    switch (paint.type)
     {
-        return unsafeCast!CairoPattern(pbd);
+    case PaintType.color:
+        auto cp = unsafeCast!ColorPaint(paint);
+        immutable c = cp.color;
+        patt = cairo_pattern_create_rgba(c[0], c[1], c[2], c[3]);
+        break;
+    case PaintType.linearGradient:
+        auto lgp = unsafeCast!LinearGradientPaint(paint);
+        immutable s = lgp.start;
+        immutable e = lgp.end;
+        patt = cairo_pattern_create_linear(s[0], s[1], e[0], e[1]);
+        patternAddStops(patt, lgp.stops);
+        break;
+    case PaintType.radialGradient:
+        auto rgp = unsafeCast!RadialGradientPaint(paint);
+        immutable f = rgp.focal;
+        immutable c = rgp.center;
+        immutable r = rgp.radius;
+        patt = cairo_pattern_create_radial(f[0], f[1], 0.0, c[0], c[1], r);
+        patternAddStops(patt, rgp.stops);
+        break;
+    case PaintType.image:
+        auto ip =  unsafeCast!ImagePaint(paint);
+        auto surf = makeCairoSurface(ip.image);
+        patt = cairo_pattern_create_for_surface(surf);
+        cairo_surface_destroy(surf);
+        break;
+    default:
+        assert(false, "unimplemented");
     }
-    else
-    {
-        cairo_pattern_t* patt;
-
-        switch (paint.type)
-        {
-        case PaintType.color:
-            auto cp = unsafeCast!ColorPaint(paint);
-            immutable c = cp.color;
-            patt = cairo_pattern_create_rgba(c[0], c[1], c[2], c[3]);
-            break;
-        case PaintType.linearGradient:
-            auto lgp = unsafeCast!LinearGradientPaint(paint);
-            immutable s = lgp.start;
-            immutable e = lgp.end;
-            patt = cairo_pattern_create_linear(s[0], s[1], e[0], e[1]);
-            patternAddStops(patt, lgp.stops);
-            break;
-        case PaintType.radialGradient:
-            auto rgp = unsafeCast!RadialGradientPaint(paint);
-            immutable f = rgp.focal;
-            immutable c = rgp.center;
-            immutable r = rgp.radius;
-            patt = cairo_pattern_create_radial(f[0], f[1], 0.0, c[0], c[1], r);
-            patternAddStops(patt, rgp.stops);
-            break;
-        case PaintType.texture:
-            auto tp =  unsafeCast!TexturePaint(paint);
-            auto img = enforce(cast(CairoImgSurf)tp.texture);
-            patt = cairo_pattern_create_for_surface(img.cairoSurf);
-            import std.stdio;
-            writefln("pattern with img %s x %s",
-                    cairo_image_surface_get_width (img.cairoSurf),
-                    cairo_image_surface_get_height (img.cairoSurf));
-            break;
-        default:
-            assert(false, "unimplemented");
-        }
-        auto cp = new CairoPattern(patt, No.addRef);
-        paint.setBackendData(cairoUid, cp);
-        paint._backendDataDirty = false;
-        return cp;
-    }
-}
-
-private class CairoPattern : RefCounted
-{
-    mixin(rcCode);
-
-    private cairo_pattern_t* pattern;
-
-    this(cairo_pattern_t* pattern, Flag!"addRef" addRef)
-    {
-        this.pattern = pattern;
-        if (addRef) cairo_pattern_reference(pattern);
-    }
-
-    override void dispose()
-    {
-        if (pattern)
-        {
-            cairo_pattern_destroy(pattern);
-            pattern = null;
-        }
-    }
+    return patt;
 }

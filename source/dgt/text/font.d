@@ -131,10 +131,6 @@ class Font : RefCounted
     {
         hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
-        foreach(ref cache; _glyphCache)
-        {
-            if (cache.rasterized) cache.rasterized.release();
-        }
     }
 
     /// Retrieve the scaled font metrics, with or without hinting.
@@ -205,7 +201,6 @@ class Font : RefCounted
         auto rasterized = rasterize(glyphIndex, backend);
         if (rasterized)
         {
-            rasterized.retain();
             cache.rasterized = rasterized;
         }
         else
@@ -272,9 +267,8 @@ class Font : RefCounted
                     srcData[srcOffset .. srcOffset+copyStride];
         }
         auto img = new Image(destData, fmt, width, destStride);
-        auto tex = backend.createTexture(img);
         return new RasterizedGlyph(
-            tex, vec(slot.bitmap_left, slot.bitmap_top), backend.uid
+            img, vec(slot.bitmap_left, slot.bitmap_top), backend.uid
         );
     }
 
@@ -290,6 +284,7 @@ private enum CacheFlags
     metricsSet  = 1,
     isWhitespace = 2,
 }
+
 private struct GlyphCache
 {
     CacheFlags flags;
@@ -340,29 +335,22 @@ struct GlyphMetrics
 }
 
 /// A glyph rasterized in a bitmap
-class RasterizedGlyph : RefCounted
+class RasterizedGlyph
 {
-    mixin(rcCode);
-
-    private Rc!VgTexture _bitmapTex;
+    private Image _img;
     private @property IVec2 _bearing;
     private size_t backendUid;
 
-    this (VgTexture bitmapTex, in IVec2 bearing, in size_t backendUid)
+    this (Image img, in IVec2 bearing, in size_t backendUid)
     {
-        _bitmapTex = bitmapTex;
+        _img = img;
         _bearing = bearing;
         this.backendUid = backendUid;
     }
 
-    override void dispose()
+    @property inout(Image) image() inout
     {
-        _bitmapTex.unload();
-    }
-
-    @property inout(VgTexture) bitmapTex() inout
-    {
-        return _bitmapTex;
+        return _img;
     }
 
     @property IVec2 bearing() const

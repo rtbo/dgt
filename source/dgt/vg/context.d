@@ -61,13 +61,14 @@ if (isCallable!drawDg)
 }
 
 /// A vector graphics context.
-interface VgContext : RefCounted
+/// The graphics operations are flushed when the context is disposed.
+interface VgContext : Disposable
 {
     /// Get the backend associated with this context.
     @property inout(VgBackend) backend() inout;
 
-    /// Get the surface this context is drawing on.
-    @property inout(VgSurface) surface() inout;
+    /// Get the image this context is drawing on.
+    @property inout(Image) image() inout;
 
     /// Save and restore the context state.
     /// The state include the following properties:
@@ -123,13 +124,13 @@ interface VgContext : RefCounted
     @property inout(Paint) strokePaint() inout;
     @property void strokePaint(Paint paint);
 
-    /// Mask the surface with the alpha plane of the texture and paint it
-    /// with the current fill paint. tex.format must be either ImageFormat.a1 or
+    /// Mask the surface with the alpha plane of the image and paint it
+    /// with the current fill paint. img.format must be either ImageFormat.a1 or
     /// ImageFormat.a8.
-    void mask(VgTexture tex);
+    void mask(Image img);
 
-    /// Draw the texture to the surface.
-    void drawTexture(VgTexture tex);
+    /// Draw the image to the underlying image.
+    void drawImage(Image img);
 
     /// Clear the whole clipping area with the provided color.
     /// This is equivalent has filling the clip path with a color Paint,

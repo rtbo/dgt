@@ -45,10 +45,9 @@ int main()
     };
 
     // preparing drawing
-    auto fillPaint = makeRc!ColorPaint();
-    auto strokePaint = makeRc!ColorPaint(fvec(0.8, 0.2, 0.2, 1));
-    auto textPaint = makeRc!ColorPaint(fvec(0, 0, 1, 1));
-    Rc!VgTexture tex;
+    auto fillPaint = new ColorPaint();
+    auto strokePaint = new ColorPaint(fvec(0.8, 0.2, 0.2, 1));
+    auto textPaint = new ColorPaint(fvec(0, 0, 1, 1));
 
     // preparing text
     FontRequest font;
@@ -69,12 +68,8 @@ int main()
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
         auto buf = win.beginFrame();
-        auto ctx = createContext(buf.surface).rc;
-
-        if (!tex.loaded)
-        {
-            tex = createTexture(buf.surface, img);
-        }
+        auto ctx = createContext(buf.image);
+        scope(exit) ctx.dispose();
 
         immutable size = win.size;
 
@@ -113,7 +108,7 @@ int main()
                 size.width - img.width - 10,
                 size.height - img.height - 10
             );
-            ctx.drawTexture(tex);
+            ctx.drawImage(img);
         });
 
         win.endFrame(buf);

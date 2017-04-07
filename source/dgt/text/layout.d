@@ -193,7 +193,7 @@ class TextLayout : RefCounted
                         ivec(rg.bearing.x, -rg.bearing.y) +
                         ivec(floor(advance.x), floor(advance.y))
                     );
-                    context.mask(rg.bitmapTex);
+                    context.mask(rg.image);
                 }
                 advance += gi.advance;
             }

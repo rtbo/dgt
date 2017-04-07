@@ -57,62 +57,13 @@ enum ImageFormat
         return 32;
     }
 }
+
 /// Get minimum image stride for a format and a width
 size_t minStrideForWidth(in ImageFormat fmt, in size_t width) pure
 {
     immutable bits = fmt.bpp * width;
     return (bits + 7) / 8;
 }
-
-/// Required bytes alignment for stride (one row of pixels) of an Image
-/// that can be used as vector graphics surface.
-enum vgStrideAlignment = 4;
-
-/// The minimum number of bytes an image must have for a row of pixels to be
-/// usable as a vector graphics surface.
-/// This gives number of bytes for a row of image including a 4 bytes alignement.
-size_t vgBytesForWidth(in ImageFormat format, in size_t width) pure
-{
-    immutable size_t bits = format.bpp * width;
-    return (((bits + 7) / 8) + vgStrideAlignment-1) & (-vgStrideAlignment);
-}
-
-unittest
-{
-    assert(ImageFormat.a1.vgBytesForWidth(0) == 0);
-    assert(ImageFormat.a1.vgBytesForWidth(1) == vgStrideAlignment);
-    assert(ImageFormat.a1.vgBytesForWidth(5) == vgStrideAlignment);
-    assert(ImageFormat.a1.vgBytesForWidth(48) == 2*vgStrideAlignment);
-    assert(ImageFormat.a1.vgBytesForWidth(64) == 2*vgStrideAlignment);
-    assert(ImageFormat.a1.vgBytesForWidth(65) == 3*vgStrideAlignment);
-
-    assert(ImageFormat.a8.vgBytesForWidth(1) == vgStrideAlignment);
-    assert(ImageFormat.a8.vgBytesForWidth(3) == vgStrideAlignment);
-    assert(ImageFormat.a8.vgBytesForWidth(4) == vgStrideAlignment);
-    assert(ImageFormat.a8.vgBytesForWidth(5) == 2*vgStrideAlignment);
-    assert(ImageFormat.a8.vgBytesForWidth(8) == 2*vgStrideAlignment);
-    assert(ImageFormat.a8.vgBytesForWidth(9) == 3*vgStrideAlignment);
-
-    assert(ImageFormat.argb.vgBytesForWidth(1) == vgStrideAlignment);
-    assert(ImageFormat.argb.vgBytesForWidth(2) == 2*vgStrideAlignment);
-    assert(ImageFormat.argb.vgBytesForWidth(3) == 3*vgStrideAlignment);
-    assert(ImageFormat.argb.vgBytesForWidth(4) == 4*vgStrideAlignment);
-    assert(ImageFormat.argb.vgBytesForWidth(5) == 5*vgStrideAlignment);
-}
-
-bool vgCompatible(in Image img)
-{
-    import dgt.vg.backend.cairo : cairoCompatible;
-    return cairoCompatible(img);
-}
-
-/// Returns img if compatible, otherwise a compatible image built from img.
-Image makeVgCompatible(Image img)
-{
-    import dgt.vg.backend.cairo : makeCairoCompatible;
-    return makeCairoCompatible(img);
-}
-
 
 /// Check if a size is usable for an image
 @property bool isValidImageSize(in Size size) pure
@@ -228,32 +179,6 @@ class Image
     @property size_t stride() const
     {
         return _stride;
-    }
-
-    /// Make a surface that can be used to draw directly into the image data.
-    /// As image data resides in main memory, the surface will be associated
-    /// with a software rasterizer.
-    /// There are some requirements to this:
-    ///   - ImageFormat.argb is not supported.
-    ///   - stride must be 4 bytes aligned.
-    ///
-    /// Yes.autoConvert can be passed to convert the image to a compatible format.
-    /// vgCompatible can be used to check if an image is compatible for vg rendering.
-    /// makeVgCompatible can be used to make a compatible image from another one.
-    VgSurface makeVgSurface(Flag!"autoConvert" autoConvert = No.autoConvert)
-    {
-        import dgt.vg.backend.cairo : CairoImgSurf;
-        if (autoConvert && !vgCompatible(this))
-        {
-            // FIXME: do not waste Image.sizeof
-            auto img = makeVgCompatible(this);
-            assert(_width == img.width);
-            assert(_height == img.height);
-            _format = img.format;
-            _stride = img.stride;
-            _data = img.data;
-        }
-        return new CairoImgSurf(this);
     }
 
     /// Read the file specified by filename and load into an Image.
