@@ -68,7 +68,7 @@ int main()
     win.onExpose += (WindowExposeEvent /+ev+/)
     {
         auto buf = win.beginFrame();
-        auto ctx = createContext(buf.image);
+        auto ctx = createContext(buf);
         scope(exit) ctx.dispose();
 
         immutable size = win.size;

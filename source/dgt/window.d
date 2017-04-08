@@ -338,22 +338,30 @@ class Window
         }
     }
 
-    WindowBuffer beginFrame()
+    Image beginFrame()
     {
-        enforce(!_buf, "cannot call Window.beginFrame without a " ~
+        enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
-        _buf = new WindowBuffer(this, _platformWindow.makeBuffer(_size));
-        return _buf;
+        immutable format = ImageFormat.argbPremult;
+        _renderBuf = new MallocImage(format, _size, format.vgBytesForWidth(_size.width));
+        return _renderBuf;
     }
 
-    void endFrame(WindowBuffer buf)
+    void endFrame(Image img)
     {
-        enforce(_buf && _buf is buf, "must call Window.endFrame with a " ~
+        enforce(_renderBuf && _renderBuf.img is img, "must call Window.endFrame with a " ~
                               "surface matching Window.beginFrame");
-        assert(buf.size.contains(_size));
-        _buf._buffer.blit(IPoint(0, 0), _size);
-        _buf.dispose();
-        _buf = null;
+        assert(img.size.contains(_size));
+        if (!_context) {
+            _context = new GlContext;
+            _context.attribs = attribs;
+        }
+        _context.makeCurrent(this);
+
+
+        _renderBuf.dispose();
+        _renderBuf = null;
+        _context.doneCurrent();
     }
 
     package(dgt)
@@ -379,40 +387,9 @@ class Window
         ISize _size;
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
+        GlContext _context;
 
         // transient rendering state
-        WindowBuffer _buf;
-    }
-}
-
-final class WindowBuffer : Disposable
-{
-    private Window _window;
-    private PlatformWindowBuffer _buffer;
-
-    private this(Window window, PlatformWindowBuffer buffer)
-    {
-        _window = window;
-        _buffer = buffer;
-    }
-
-    override void dispose()
-    {
-        _buffer.dispose();
-    }
-
-    @property inout(Window) window() inout
-    {
-        return _window;
-    }
-
-    @property inout(Image) image() inout
-    {
-        return _buffer.image;
-    }
-
-    @property ISize size() const
-    {
-        return image.size;
+        MallocImage _renderBuf;
     }
 }
