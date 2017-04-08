@@ -1,4 +1,5 @@
 module dgt.platform.win32.context;
+version(Windows):
 
 import dgt.platform;
 import dgt.platform.win32;
