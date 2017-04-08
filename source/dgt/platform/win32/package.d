@@ -4,6 +4,7 @@ version(Windows):
 
 import dgt.platform.win32.window;
 import dgt.platform.win32.screen;
+import dgt.platform.win32.context;
 import dgt.platform;
 import dgt.screen;
 import dgt.window;
@@ -30,6 +31,8 @@ class Win32Platform : Platform
     {
         assert(_w32Inst is null);
         _w32Inst = this;
+
+        //initWin32Gl();
     }
 
     override void dispose()
@@ -42,10 +45,9 @@ class Win32Platform : Platform
         return "win32";
     }
 
-    override @property PlatformCapsFlags caps() const
+    override PlatformGlContext createGlContext()
     {
-        PlatformCapsFlags res = PlatformCaps.none;
-        return res;
+        return new Win32GlContext;
     }
 
     override @property inout(Screen) defaultScreen() inout
@@ -93,7 +95,7 @@ class Win32Platform : Platform
 
 		WNDCLASSEX wc;
 		wc.cbSize        = WNDCLASSEX.sizeof;
-		wc.style         = 0;
+		wc.style         = CS_OWNDC;
 		wc.lpfnWndProc   = &win32WndProc;
 		wc.cbClsExtra    = 0;
 		wc.cbWndExtra    = 0;

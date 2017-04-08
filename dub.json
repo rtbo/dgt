@@ -48,7 +48,7 @@
 		{
 			"name": "windows",
 			"platforms": ["windows"],
-			"libs": ["gdi32"]
+			"libs": ["gdi32", "opengl32"]
 		}
 	]
 }

@@ -40,6 +40,11 @@ class Win32Window : PlatformWindow
         _win = w;
     }
 
+    override inout(Window) window() inout
+    {
+        return _win;
+    }
+
     override bool created() const
     {
         return _hWnd !is null;
@@ -522,52 +527,5 @@ class Win32Window : PlatformWindow
 
             return mods;
         }
-    }
-}
-
-
-private:
-
-import dgt.bindings.cairo;
-import dgt.vg.backend.cairo;
-
-class CairoWin32Surface : CairoSurface
-{
-    mixin(rcCode);
-
-    private cairo_surface_t* _surf;
-    private HDC _hDc;
-
-    this(HDC hdc)
-    {
-        _surf = cairo_win32_surface_create(hdc);
-    }
-
-    override void dispose()
-    {
-        cairo_surface_destroy(_surf);
-    }
-
-    override @property cairo_surface_t* cairoSurf()
-    {
-        return _surf;
-    }
-
-    override @property VgBackend backend()
-    {
-        return cairoBackend;
-    }
-
-    override @property ISize size() const
-    {
-        return ISize(
-            GetDeviceCaps(cast(HDC)_hDc, HORZRES),
-            GetDeviceCaps(cast(HDC)_hDc, VERTRES)
-        );
-    }
-
-    override void flush()
-    {
-        cairo_surface_flush(_surf);
     }
 }

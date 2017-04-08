@@ -20,20 +20,42 @@ struct GlAttribs
     enum profile = GlProfile.core;
     enum doublebuffer = true;
 
-    mixin ValueProperty!("majorVersion", int, 3);
-    mixin ValueProperty!("minorVersion", int, 0);
+    mixin ValueProperty!("majorVersion", byte, 3);
+    mixin ValueProperty!("minorVersion", byte, 0);
 
-    mixin ValueProperty!("redSize", int, 8);
-    mixin ValueProperty!("greenSize", int, 8);
-    mixin ValueProperty!("blueSize", int, 8);
-    mixin ValueProperty!("alphaSize", int, 8);
+    mixin ValueProperty!("redSize", byte, 8);
+    mixin ValueProperty!("greenSize", byte, 8);
+    mixin ValueProperty!("blueSize", byte, 8);
+    mixin ValueProperty!("alphaSize", byte, 8);
 
-    mixin ValueProperty!("depthSize", int, 24);
-    mixin ValueProperty!("stencilSize", int, 8);
+    mixin ValueProperty!("depthSize", byte, 24);
+    mixin ValueProperty!("stencilSize", byte, 8);
 
-    mixin ValueProperty!("samples", int);
+    mixin ValueProperty!("samples", byte);
 
     mixin ValueProperty!("debugContext", bool);
+
+    @property byte colorSize() const
+    {
+        return cast(byte)(redSize + greenSize + blueSize + alphaSize);
+    }
+
+    @property byte redShift() const
+    {
+        return cast(byte)(greenShift + greenSize);
+    }
+
+    @property byte greenShift() const
+    {
+        return cast(byte)(blueShift + blueSize);
+    }
+
+    @property byte blueShift() const
+    {
+        return cast(byte)(alphaShift + alphaSize);
+    }
+
+    enum byte alphaShift = 0;
 
     @property bool hasAlpha() const
     {
