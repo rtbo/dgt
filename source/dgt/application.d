@@ -4,6 +4,8 @@ import dgt.core.resource;
 import dgt.platform;
 import dgt.window;
 
+import std.experimental.logger;
+
 /// Singleton class that must be built by the client application
 class Application : Disposable
 {
@@ -73,8 +75,9 @@ class Application : Disposable
         // init platform
         if (!platform) platform = makeDefaultPlatform();
         _platform = platform;
+        _platform.initialize();
 
-        // init singletons
+        // init other singletons
         {
             import dgt.text.font : FontEngine;
             import dgt.text.fontcache : FontCache;
@@ -88,6 +91,7 @@ class Application : Disposable
     {
         import std.algorithm : canFind;
         assert(!_windows.canFind(w), "tentative to register registered window");
+        logf(`register window: 0x%08x "%s"`, cast(void*)w, w.title);
         _windows ~= w;
     }
 
@@ -96,9 +100,14 @@ class Application : Disposable
         import std.algorithm : canFind, remove, SwapStrategy;
         assert(_windows.canFind(w), "tentative to unregister unregistered window");
         _windows = _windows.remove!(win => win is w, SwapStrategy.unstable)();
+        logf(`unregister window: 0x%08x "%s"`, cast(void*)w, w.title);
+
+        // do not exit for a dummy window (they can be created and closed before event loop starts)
+        if (w.flags & WindowFlags.dummy) return;
 
         if (!_windows.length && !_exitFlag)
         {
+            logf("last window exit!");
             exit(0);
         }
     }

@@ -23,6 +23,12 @@ enum WindowState
     hidden
 }
 
+enum WindowFlags
+{
+    none = 0,
+    dummy = 1,
+}
+
 interface OnWindowShowHandler
 {
     void onWindowMove(WindowShowEvent ev);
@@ -90,16 +96,17 @@ interface OnWindowExposeHandler
 
 class Window
 {
-    this()
+    this(WindowFlags flags=WindowFlags.none)
     {
+        _flags = flags;
         _platformWindow = Application.platform.createWindow(this);
         Application.instance.registerWindow(this);
     }
 
-    this(string title)
+    this(string title, WindowFlags flags=WindowFlags.none)
     {
-        this();
         _title = title;
+        this(flags);
     }
 
     @property string title() const
@@ -183,6 +190,25 @@ class Window
     @property GlAttribs attribs() const
     {
         return _attribs;
+    }
+
+    @property void attribs(GlAttribs)
+    in { assert(!_platformWindow.created); }
+    body
+    {
+        _attribs = attribs;
+    }
+
+    @property WindowFlags flags() const
+    {
+        return _flags;
+    }
+
+    @property void flags(WindowFlags flags)
+    in { assert(!_platformWindow.created); }
+    body
+    {
+        _flags = flags;
     }
 
     void showMaximized()
@@ -347,6 +373,7 @@ class Window
             _onResize.fire(ev);
         }
 
+        WindowFlags _flags;
         string _title;
         IPoint _position = IPoint(-1, -1);
         ISize _size;

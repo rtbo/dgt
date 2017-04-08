@@ -11,15 +11,17 @@ import dgt.screen;
 import derelict.opengl3.gl3;
 import derelict.opengl3.wglext;
 
+import std.exception;
+import std.experimental.logger;
 import core.sys.windows.wingdi;
 
 package void initWin32Gl()
 {
     DerelictGL3.load();
 
-    auto dummy = new Window;
-    dummy.hide();
-    auto pDummy = unsafeCast!Win32Window(dummy.platformWindow);
+    auto dummy = new Window("Dummy context window", WindowFlags.dummy);
+    dummy.show();
+
     immutable attribs = dummy.attribs;
 
     PIXELFORMATDESCRIPTOR pfd;
@@ -45,6 +47,7 @@ package void initWin32Gl()
 
     pfd.iLayerType = PFD_MAIN_PLANE;
 
+    auto pDummy = unsafeCast!Win32Window(dummy.platformWindow);
     auto dc = pDummy.getDC();
     auto chosen = ChoosePixelFormat(dc, &pfd);
     SetPixelFormat(dc, chosen, &pfd);
@@ -56,6 +59,10 @@ package void initWin32Gl()
 
     wglMakeCurrent(null, null);
     wglDeleteContext(glrc);
+
+    enforce(wglCreateContextAttribsARB);
+
+    dummy.close();
 }
 
 

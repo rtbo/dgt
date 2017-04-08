@@ -77,14 +77,13 @@ class Win32Window : PlatformWindow
 
         _state = WindowState.hidden;
         this.state = state;
-
-		Win32Platform.instance.registerWindow(_hWnd, this);
+        Win32Platform.instance.registerWindow(_hWnd, this);
     }
 
     override void close()
     {
 		DestroyWindow(_hWnd);
-		Win32Platform.instance.unregisterWindow(_hWnd);
+        Win32Platform.instance.unregisterWindow(_hWnd);
     }
 
     override @property string title() const
@@ -108,6 +107,8 @@ class Win32Window : PlatformWindow
 
     override @property void state(WindowState state)
     {
+        if (_win.flags & WindowFlags.dummy) return;
+
         final switch(state)
         {
         case WindowState.normal:

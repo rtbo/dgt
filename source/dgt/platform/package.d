@@ -11,6 +11,8 @@ import std.typecons : BitFlags;
 
 interface Platform : Disposable
 {
+    void initialize();
+
     @property string name() const;
 
     PlatformGlContext createGlContext();

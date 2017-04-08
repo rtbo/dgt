@@ -88,8 +88,11 @@ class XcbPlatform : Platform
         XcbWindow[xcb_window_t] _windows;
     }
 
-    /// Builds and initialize XcbPlatform
+    /// Builds an XcbPlatform
     this()
+    {}
+
+    override void initialize()
     {
         g_display = XOpenDisplay(null);
         enforce(g_display, "can't open X display");
@@ -110,7 +113,6 @@ class XcbPlatform : Platform
         initializeVG();
     }
 
-    /// Platform implementation
     override void dispose()
     {
         XCloseDisplay(g_display);
@@ -373,7 +375,6 @@ class XcbPlatform : Platform
 
         void initializeVG()
         {
-            import dgt.bindings.cairo.load : cairoHasXcb;
             import xcb.shm : xcb_shm_id;
             {
                 xcb_prefetch_extension_data(g_connection, &xcb_shm_id);
@@ -381,7 +382,6 @@ class XcbPlatform : Platform
                 const reply = xcb_get_extension_data(g_connection, &xcb_shm_id);
                 enforce(reply && reply.present, "XCB-SHM extension is not found");
             }
-            enforce(cairoHasXcb);
         }
 
         void processWindowEvent(SpecializedEvent, string processingMethod, string seField = "event")(

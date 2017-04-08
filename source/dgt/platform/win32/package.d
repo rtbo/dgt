@@ -31,8 +31,11 @@ class Win32Platform : Platform
     {
         assert(_w32Inst is null);
         _w32Inst = this;
+    }
 
-        //initWin32Gl();
+    override void initialize()
+    {
+        initWin32Gl();
     }
 
     override void dispose()
