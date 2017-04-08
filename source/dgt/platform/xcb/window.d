@@ -9,7 +9,7 @@ import dgt.core.resource;
 import dgt.vg;
 import dgt.screen;
 import dgt.platform;
-import dgt.surface;
+import dgt.gfx;
 import dgt.window;
 import dgt.geometry;
 import dgt.event;
@@ -53,6 +53,11 @@ class XcbWindow : PlatformWindow
     {
         _win = w;
         _platform = platform;
+    }
+
+    override @property inout(Window) window() inout
+    {
+        return _win;
     }
 
     override bool created() const
@@ -104,6 +109,9 @@ class XcbWindow : PlatformWindow
 
         prepareEvents();
         prepareGc();
+
+        auto context = new XcbGlContext;
+        context.realize(_win.attribs, this, null, null);
 
         _platform.registerWindow(this);
 
@@ -275,11 +283,6 @@ class XcbWindow : PlatformWindow
             free(err);
         }
         xcb_flush(g_connection);
-    }
-
-    @property inout(Window) window() inout
-    {
-        return _win;
     }
 
     override PlatformWindowBuffer makeBuffer(in ISize size)

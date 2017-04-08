@@ -4,7 +4,6 @@ import dgt.vg;
 import dgt.core.resource;
 import dgt.math.vec;
 import dgt.core.typecons : hash;
-import dgt.surface;
 import dgt.image;
 import dgt.geometry;
 import dgt.bindings.cairo;

@@ -5,10 +5,10 @@ import dgt.core.signal;
 import dgt.core.util;
 import dgt.platform;
 import dgt.application;
-import dgt.surface;
 import dgt.geometry;
 import dgt.event;
 import dgt.image;
+import dgt.gfx;
 import dgt.vg;
 
 import std.exception : enforce;
@@ -88,7 +88,7 @@ interface OnWindowExposeHandler
     void onWindowExpose(WindowExposeEvent ev);
 }
 
-class Window : Surface
+class Window
 {
     this()
     {
@@ -139,7 +139,7 @@ class Window : Surface
         }
     }
 
-    override @property ISize size() const
+    @property ISize size() const
     {
         return _size;
     }
@@ -180,7 +180,7 @@ class Window : Surface
         }
     }
 
-    @property SurfaceAttribs attribs() const
+    @property GlAttribs attribs() const
     {
         return _attribs;
     }
@@ -330,6 +330,14 @@ class Window : Surface
         _buf = null;
     }
 
+    package(dgt)
+    {
+        @property inout(PlatformWindow) platformWindow() inout
+        {
+            return _platformWindow;
+        }
+    }
+
     private
     {
         void handleResize(WindowResizeEvent ev)
@@ -342,7 +350,7 @@ class Window : Surface
         string _title;
         IPoint _position = IPoint(-1, -1);
         ISize _size;
-        SurfaceAttribs _attribs;
+        GlAttribs _attribs;
         PlatformWindow _platformWindow;
 
         // transient rendering state

@@ -5,23 +5,16 @@ import dgt.geometry;
 import dgt.screen;
 import dgt.window;
 import dgt.image;
+import dgt.gfx;
 
 import std.typecons : BitFlags;
-
-enum PlatformCaps
-{
-    none = 0,
-    openGL = 1,
-    openGLES = 2,
-    openVG = 4,
-}
-
-alias PlatformCapsFlags = BitFlags!PlatformCaps;
 
 interface Platform : Disposable
 {
     @property string name() const;
-    @property PlatformCapsFlags caps() const;
+
+    PlatformGlContext createGlContext();
+
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
@@ -30,6 +23,8 @@ interface Platform : Disposable
 
 interface PlatformWindow
 {
+    @property inout(Window) window() inout;
+
     bool created() const;
     void create(WindowState state);
     void close();
@@ -44,6 +39,18 @@ interface PlatformWindow
     @property void geometry(IRect pos);
 
     PlatformWindowBuffer makeBuffer(in ISize size);
+}
+
+/// Per platform implementation of a GL context
+interface PlatformGlContext
+{
+    bool realize(GlAttribs attribs,
+                    PlatformWindow window,
+                    PlatformGlContext sharedCtx,
+                    Screen screen);
+    bool makeCurrent(PlatformWindow window);
+    void doneCurrent();
+    void swapBuffers(PlatformWindow window);
 }
 
 /// A native buffer image suitable for blitting pixels on screen.

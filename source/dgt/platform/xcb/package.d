@@ -5,6 +5,7 @@ version(linux):
 import dgt.platform.xcb.keyboard;
 import dgt.platform.xcb.screen;
 import dgt.platform.xcb.window;
+import dgt.platform.xcb.context;
 import dgt.platform;
 import dgt.window;
 import dgt.screen;
@@ -117,42 +118,31 @@ class XcbPlatform : Platform
         g_connection = null;
     }
 
-    /// ditto
     override @property string name() const
     {
         return "xcb";
     }
 
-    /// ditto
-    override @property PlatformCapsFlags caps() const
+    override PlatformGlContext createGlContext()
     {
-        PlatformCapsFlags res = PlatformCaps.none;
-        if (hasDRI2 || hasDRI3)
-        {
-            res |= PlatformCaps.openGL;
-        }
-        return res;
+        return new XcbGlContext;
     }
 
-    /// ditto
     override @property inout(Screen) defaultScreen() inout
     {
         return _screens[_defaultScreen];
     }
 
-    /// ditto
     override @property inout(Screen)[] screens() inout
     {
         return _screens;
     }
 
-    /// ditto
     override PlatformWindow createWindow(Window window)
     {
         return new XcbWindow(window, this);
     }
 
-    /// ditto
     override void processNextEvent()
     {
         xcb_generic_event_t* e = xcb_wait_for_event(g_connection);
