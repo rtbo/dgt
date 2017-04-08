@@ -1,5 +1,6 @@
 module dgt.image;
 
+import dgt.core.resource;
 import dgt.geometry;
 import dgt.vg;
 
@@ -89,14 +90,16 @@ class Image
     private size_t _stride; // in bytes
 
     /// Allocates an image with format and size.
+    /// Image stride is given by max(minStride, format.minStrideForWidth(size.width))
     /// The pixel content is not initialized.
-    this(ImageFormat format, ISize size)
+    this(ImageFormat format, ISize size, size_t minStride=0)
     {
         import std.array : uninitializedArray;
+        import std.algorithm : max;
         enforce(size.isValidImageSize);
         _width = cast(ushort)size.width;
         _height = cast(ushort)size.height;
-        _stride = format.minStrideForWidth(size.width);
+        _stride = max(minStride, format.minStrideForWidth(size.width));
         _data = uninitializedArray!(ubyte[])(_stride * _height);
     }
 
@@ -316,7 +319,43 @@ class Image
         }
         return res;
     }
+}
 
+/// Replicate of Image that allocates with malloc and frees in dispose
+class MallocImage : Disposable
+{
+    private Image _img;
+
+    /// Allocates an image with format and size.
+    /// Image stride is given by max(minStride, format.minStrideForWidth(size.width))
+    /// The pixel content is not initialized.
+    this(ImageFormat format, ISize size, size_t minStride=0)
+    {
+        import std.array : uninitializedArray;
+        import std.algorithm : max;
+        import core.stdc.stdlib : malloc;
+        enforce(size.isValidImageSize);
+        immutable width = cast(ushort)size.width;
+        immutable height = cast(ushort)size.height;
+        immutable stride = max(minStride, format.minStrideForWidth(width));
+
+        immutable dataSize = height * stride;
+        auto data = cast(ubyte[])(malloc(dataSize)[0 .. dataSize]);
+
+        _img = new Image(data, format, width, height, stride);
+    }
+
+    @property inout(Image) img() inout { return _img; }
+
+    alias img this;
+
+    override void dispose()
+    {
+        import core.stdc.stdlib : free;
+        free(cast(void*)_img._data.ptr);
+        _img._data = [];
+        _img = null;
+    }
 }
 
 private void fourBytesConv(alias convFn)(const(Image) from, Image to)
