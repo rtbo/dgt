@@ -20,11 +20,6 @@ import std.exception : enforce;
 import std.experimental.logger;
 
 alias GfxDevice = gfx.device.Device;
-alias GfxSize = gfx.device.Size;
-alias GfxRect = gfx.device.Rect;
-alias GfxRc = gfx.foundation.rc.Rc;
-alias gfxRc = gfx.foundation.rc.rc;
-alias gfxMakeRc = gfx.foundation.rc.makeRc;
 
 enum WindowState
 {
@@ -368,7 +363,7 @@ class Window
         immutable format = ImageFormat.argbPremult;
         _renderBuf = new MallocImage(format, _size, format.vgBytesForWidth(_size.width));
 
-        _encoder.setViewport(GfxRect(0, 0, cast(ushort)_size.width, cast(ushort)_size.height));
+        _encoder.setViewport(0, 0, cast(ushort)_size.width, cast(ushort)_size.height);
 
         return _renderBuf;
     }
@@ -379,7 +374,7 @@ class Window
                               "surface matching Window.beginFrame");
         assert(img.size.contains(_size));
 
-        _surf.updateSize(GfxSize(cast(ushort)_size.width, cast(ushort)_size.height));
+        _surf.updateSize(cast(ushort)_size.width, cast(ushort)_size.height);
 
         _encoder.clear!Rgba8(_rtv, [0.3f, 0.4f, 0.5f, 1f]);
 
@@ -417,7 +412,7 @@ class Window
 
             _surf = new BuiltinSurface!Rgba8(
                 _device.builtinSurface,
-                GfxSize(cast(ushort)_size.width, cast(ushort)_size.height),
+                cast(ushort)_size.width, cast(ushort)_size.height,
                 attribs.samples
             );
             _surf.retain();
@@ -452,21 +447,15 @@ class Window
 
         void blitAsTexture(Image img)
         {
-            auto pixels = retypeSlice!(ubyte[4])(img.data);
+            auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
             TexUsageFlags usage = TextureUsage.ShaderResource;
-            auto tex = new Texture2D!Rgba8(
-                usage, 1, cast(ushort)size.width, cast(ushort)size.height, [pixels]
+            auto tex = makeRc!(Texture2D!Rgba8)(
+                usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
             );
-            tex.retain();
-            scope(exit) tex.release();
-
-            auto srv = tex.viewAsShaderResource(0, 0, newSwizzle());
-            srv.retain();
-            scope(exit) srv.release();
-
-            auto sampler = new Sampler(srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init));
-            sampler.retain();
-            scope(exit) sampler.release();
+            auto srv = tex.viewAsShaderResource(0, 0, newSwizzle()).rc();
+            auto sampler = makeRc!Sampler(
+                srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+            );
 
             auto quadVerts = [
                 TexBlitVertex([-1f, -1f], [0f, 1f]),
@@ -475,14 +464,12 @@ class Window
                 TexBlitVertex([-1f, 1f], [0f, 0f])
             ];
             ushort[] quadInds = [0, 1, 2, 0, 2, 3];
-            auto vbuf = new VertexBuffer!TexBlitVertex(quadVerts);
-            vbuf.retain();
-            scope(exit) vbuf.release();
+            auto vbuf = makeRc!(VertexBuffer!TexBlitVertex)(quadVerts);
 
             auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
 
             auto data = TexBlitPipeline.Data(
-                gfxRc(vbuf), gfxRc(srv), gfxRc(sampler), gfxRc(_rtv)
+                vbuf, srv, sampler, rc(_rtv)
             );
 
             _encoder.draw!TexBlitPipeMeta(slice, _pso, data);
