@@ -26,7 +26,7 @@ import gfx.core.pso;
 import gfx.core.pso.meta;
 
 import std.exception : enforce;
-import std.stdio;
+import std.experimental.logger;
 
 alias GfxDevice = gfx.core.Device;
 alias GfxSize = gfx.core.Size;
@@ -394,6 +394,8 @@ class Window
 
         blitAsTexture(img);
 
+        _encoder.flush(_device);
+
         _renderBuf.dispose();
         _renderBuf = null;
         _context.doneCurrent();
@@ -493,7 +495,6 @@ class Window
             );
 
             _encoder.draw!TexBlitPipeMeta(slice, _pso, data);
-            _encoder.flush(_device);
         }
 
         WindowFlags _flags;
