@@ -11,29 +11,20 @@ import dgt.image;
 import dgt.gfx;
 import dgt.vg;
 
-import gfx.backend.gl3;
-import gfx.core;
-import gfx.core.buffer;
-import gfx.core.encoder;
-import gfx.core.format;
-import gfx.core.program;
-import gfx.core.state;
-import gfx.core.surface;
-import gfx.core.texture;
-import gfx.core.view;
-import gfx.core.util;
-import gfx.core.pso;
-import gfx.core.pso.meta;
+import gfx.device.gl3;
+import gfx.device;
+import gfx.pipeline;
+import gfx.foundation.util;
 
 import std.exception : enforce;
 import std.experimental.logger;
 
-alias GfxDevice = gfx.core.Device;
-alias GfxSize = gfx.core.Size;
-alias GfxRect = gfx.core.Rect;
-alias GfxRc = gfx.core.rc.Rc;
-alias gfxRc = gfx.core.rc.rc;
-alias gfxMakeRc = gfx.core.rc.makeRc;
+alias GfxDevice = gfx.device.Device;
+alias GfxSize = gfx.device.Size;
+alias GfxRect = gfx.device.Rect;
+alias GfxRc = gfx.foundation.rc.Rc;
+alias gfxRc = gfx.foundation.rc.rc;
+alias gfxMakeRc = gfx.foundation.rc.makeRc;
 
 enum WindowState
 {
