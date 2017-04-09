@@ -19,7 +19,9 @@ import std.math : PI;
 
 int main()
 {
-    auto app = makeUniq!Application();
+    auto app = new Application();
+    scope(exit) app.dispose();
+
     auto win = new Window("Hello DGT");
     win.onKeyDown += (WindowKeyEvent ev) {
         switch (ev.sym)

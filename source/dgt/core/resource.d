@@ -428,218 +428,219 @@ template isRuntimeRc(T)
 static assert(isRuntimeRc!RefCounted);
 
 
-
-/// Creates a new instance of $(D T) and returns it under a $(D Uniq!T).
-template makeUniq(T)
-if (is(T : Disposable))
+static if(false)
 {
-    Uniq!T makeUniq(Args...)(Args args)
+    /// Creates a new instance of $(D T) and returns it under a $(D Uniq!T).
+    template makeUniq(T)
+    if (is(T : Disposable))
     {
-        return Uniq!T(new T (args));
-    }
-}
-
-debug(Uniq)
-{
-    import std.stdio;
-}
-
-/// A helper struct that manage the lifetime of a Disposable using RAII.
-/// Note: dlang has capability to enforce a parameter be a lvalue (ref param)
-/// but has no mechanism such as c++ rvalue reference which would enforce
-/// true uniqueness by the compiler. Uniq gives additional robustness, but it is
-/// up to the programmer to make sure that the values passed in by rvalue are
-/// not referenced somewhere else in the code
-struct Uniq(T)
-if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
-{
-    private T _obj;
-    alias Resource = T;
-
-    // prevent using Uniq with Refcounted
-    // (invariant handles runtime polymorphism)
-    static assert(!is(T : RefCounted), "Use Rc helper for RefCounted objects");
-    invariant()
-    {
-        // if obj is assigned, it must not cast to a RefCounted
-        assert(!_obj || !(cast(RefCounted)_obj), "Use Rc helper for RefCounted objects");
-    }
-
-    /// Constructor taking rvalue. Uniqueness is achieve only if there is no
-    /// aliases of the passed reference.
-    this(T obj)
-    {
-        debug(Uniq)
+        Uniq!T makeUniq(Args...)(Args args)
         {
-            writefln("build a Uniq!%s from rvalue", T.stringof);
+            return Uniq!T(new T (args));
         }
-        _obj = obj;
     }
 
-    /// Constructor taking lvalue. Uniqueness is achieve only if there is no
-    /// other copies of the passed reference.
-    this(ref T obj)
+    debug(Uniq)
     {
-        debug(Uniq)
+        import std.stdio;
+    }
+
+    /// A helper struct that manage the lifetime of a Disposable using RAII.
+    /// Note: dlang has capability to enforce a parameter be a lvalue (ref param)
+    /// but has no mechanism such as c++ rvalue reference which would enforce
+    /// true uniqueness by the compiler. Uniq gives additional robustness, but it is
+    /// up to the programmer to make sure that the values passed in by rvalue are
+    /// not referenced somewhere else in the code
+    struct Uniq(T)
+    if (is(T : Disposable) && !hasMemberFunc!(T, "release"))
+    {
+        private T _obj;
+        alias Resource = T;
+
+        // prevent using Uniq with Refcounted
+        // (invariant handles runtime polymorphism)
+        static assert(!is(T : RefCounted), "Use Rc helper for RefCounted objects");
+        invariant()
         {
-            writefln("build a Uniq!%s from lvalue", T.stringof);
+            // if obj is assigned, it must not cast to a RefCounted
+            assert(!_obj || !(cast(RefCounted)_obj), "Use Rc helper for RefCounted objects");
         }
-        _obj = obj;
-        obj = null;
-    }
 
-    /// Constructor that take a rvalue.
-    /// $(D u) can only be a rvalue because postblit is disabled.
-    this(U)(Uniq!U u)
-    if (is(U : T))
-    {
-        debug(Uniq)
-        {
-            writefln("cast building a Uniq from rvalue from %s to %s",
-                U.stringof, T.stringof
-            );
-        }
-        _obj = u._obj;
-    }
-
-    /// Transfer ownership from a Uniq of a type that is convertible to our type.
-    /// $(D u) can only be a rvalue because postblit is disabled.
-    void opAssign(U)(Uniq!U u)
-    if (is(U : T))
-    {
-        debug(Uniq)
-        {
-            writefln("opAssign a Uniq from rvalue from %s to %s",
-                U.stringof, T.stringof
-            );
-        }
-        if (_obj)
-        {
-            _obj.dispose();
-        }
-        _obj = u._obj;
-        u._obj = null;
-    }
-
-    /// Shortcut to assigned
-    bool opCast(U : bool)() const
-    {
-        return assigned;
-    }
-
-    /// Destructor that disposes the resource.
-    ~this()
-    {
-        debug(Uniq)
-        {
-            writefln("dtor of Uniq!%s", T.stringof);
-        }
-        dispose();
-    }
-
-    /// A view on the underlying object.
-    @property inout(T) obj() inout
-    {
-        return _obj;
-    }
-
-    /// Forwarding method calls and member access to the underlying object.
-    alias obj this;
-
-    /// Transfer the ownership.
-    Uniq release()
-    {
-        debug(Uniq)
-        {
-            writefln("release of Uniq!%s", T.stringof);
-        }
-        auto u = Uniq(_obj);
-        assert(_obj is null);
-        return u;
-    }
-
-    /// Explicitely ispose the underlying resource.
-    void dispose()
-    {
-        // Same method than Disposeable on purpose as it disables alias this.
-        // One cannot shortcut Uniq to dispose the resource.
-        if (_obj)
+        /// Constructor taking rvalue. Uniqueness is achieve only if there is no
+        /// aliases of the passed reference.
+        this(T obj)
         {
             debug(Uniq)
             {
-                writefln("dispose of Uniq!%s", T.stringof);
+                writefln("build a Uniq!%s from rvalue", T.stringof);
             }
-            _obj.dispose();
-            _obj = null;
+            _obj = obj;
         }
-    }
 
-    /// Checks whether a resource is assigned.
-    bool assigned() const
-    {
-        return _obj !is null;
-    }
-
-    // disable copying
-    @disable this(this);
-}
-
-version(unittest)
-{
-    private int disposeCount;
-
-    private class UniqTest : Disposable
-    {
-        override void dispose()
+        /// Constructor taking lvalue. Uniqueness is achieve only if there is no
+        /// other copies of the passed reference.
+        this(ref T obj)
         {
-            disposeCount += 1;
+            debug(Uniq)
+            {
+                writefln("build a Uniq!%s from lvalue", T.stringof);
+            }
+            _obj = obj;
+            obj = null;
         }
-    }
 
-    private Uniq!UniqTest produce1()
-    {
-        auto u = makeUniq!UniqTest();
-        // Returning without release is fine?
-        // It compiles and passes the test, but not recommended.
-        // return u;
-        return u.release();
-    }
-
-    private Uniq!UniqTest produce2()
-    {
-        return makeUniq!UniqTest();
-    }
-
-    private void consume(Uniq!UniqTest /+u+/)
-    {
-    }
-
-    unittest
-    {
-        disposeCount = 0;
-        auto u = makeUniq!UniqTest();
-        assert(disposeCount == 0);
-        static assert (!__traits(compiles, consume(u)));
-        consume(u.release());
-        assert(disposeCount == 1);
-
+        /// Constructor that take a rvalue.
+        /// $(D u) can only be a rvalue because postblit is disabled.
+        this(U)(Uniq!U u)
+        if (is(U : T))
         {
-            auto v = makeUniq!UniqTest();
+            debug(Uniq)
+            {
+                writefln("cast building a Uniq from rvalue from %s to %s",
+                    U.stringof, T.stringof
+                );
+            }
+            _obj = u._obj;
         }
-        assert(disposeCount == 2);
 
-        consume(produce1());
-        assert(disposeCount == 3);
+        /// Transfer ownership from a Uniq of a type that is convertible to our type.
+        /// $(D u) can only be a rvalue because postblit is disabled.
+        void opAssign(U)(Uniq!U u)
+        if (is(U : T))
+        {
+            debug(Uniq)
+            {
+                writefln("opAssign a Uniq from rvalue from %s to %s",
+                    U.stringof, T.stringof
+                );
+            }
+            if (_obj)
+            {
+                _obj.dispose();
+            }
+            _obj = u._obj;
+            u._obj = null;
+        }
 
-        consume(produce2());
-        assert(disposeCount == 4);
+        /// Shortcut to assigned
+        bool opCast(U : bool)() const
+        {
+            return assigned;
+        }
 
-        auto w = makeUniq!UniqTest();
-        w.dispose();
-        assert(disposeCount == 5);
+        /// Destructor that disposes the resource.
+        ~this()
+        {
+            debug(Uniq)
+            {
+                writefln("dtor of Uniq!%s", T.stringof);
+            }
+            dispose();
+        }
+
+        /// A view on the underlying object.
+        @property inout(T) obj() inout
+        {
+            return _obj;
+        }
+
+        /// Forwarding method calls and member access to the underlying object.
+        alias obj this;
+
+        /// Transfer the ownership.
+        Uniq release()
+        {
+            debug(Uniq)
+            {
+                writefln("release of Uniq!%s", T.stringof);
+            }
+            auto u = Uniq(_obj);
+            assert(_obj is null);
+            return u;
+        }
+
+        /// Explicitely ispose the underlying resource.
+        void dispose()
+        {
+            // Same method than Disposeable on purpose as it disables alias this.
+            // One cannot shortcut Uniq to dispose the resource.
+            if (_obj)
+            {
+                debug(Uniq)
+                {
+                    writefln("dispose of Uniq!%s", T.stringof);
+                }
+                _obj.dispose();
+                _obj = null;
+            }
+        }
+
+        /// Checks whether a resource is assigned.
+        bool assigned() const
+        {
+            return _obj !is null;
+        }
+
+        // disable copying
+        @disable this(this);
+    }
+
+    version(unittest)
+    {
+        private int disposeCount;
+
+        private class UniqTest : Disposable
+        {
+            override void dispose()
+            {
+                disposeCount += 1;
+            }
+        }
+
+        private Uniq!UniqTest produce1()
+        {
+            auto u = makeUniq!UniqTest();
+            // Returning without release is fine?
+            // It compiles and passes the test, but not recommended.
+            // return u;
+            return u.release();
+        }
+
+        private Uniq!UniqTest produce2()
+        {
+            return makeUniq!UniqTest();
+        }
+
+        private void consume(Uniq!UniqTest /+u+/)
+        {
+        }
+
+        unittest
+        {
+            disposeCount = 0;
+            auto u = makeUniq!UniqTest();
+            assert(disposeCount == 0);
+            static assert (!__traits(compiles, consume(u)));
+            consume(u.release());
+            assert(disposeCount == 1);
+
+            {
+                auto v = makeUniq!UniqTest();
+            }
+            assert(disposeCount == 2);
+
+            consume(produce1());
+            assert(disposeCount == 3);
+
+            consume(produce2());
+            assert(disposeCount == 4);
+
+            auto w = makeUniq!UniqTest();
+            w.dispose();
+            assert(disposeCount == 5);
+        }
     }
 }
-
 
 private template hasMemberFunc(T, string fun)
 {
