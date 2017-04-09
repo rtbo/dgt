@@ -3,6 +3,15 @@ module dgt.core.util;
 
 import std.traits : Unqual, hasIndirections;
 
+/// Computes a string hash at compile time.
+template hash(string s, size_t sofar=0)
+{
+    static if (s.length == 0)
+        enum hash = sofar;
+    else
+        enum hash = hash!(s[1 .. $], sofar * 11 + s[0]);
+}
+
 // GC utilities
 
 void hideFromGC(void* location)
@@ -135,40 +144,6 @@ version (unittest)
     static assert(isReference!Exception);
     static assert(!isReference!int);
     static assert(isReference!(const(char)*));
-}
-
-/// Down cast of a reference to a child class reference.
-/// Runtime check is disabled in release build.
-template unsafeCast(U)
-if (is(U == class))
-{
-    U unsafeCast (T)(T obj)
-    if (isReference!T && is(U : T) && !is(T == const))
-    {
-        debug
-        {
-            auto uObj = cast(U)obj;
-            assert(uObj, "unsafeCast from "~T.stringof~" to "~U.stringof~" failed");
-            return uObj;
-        }
-        else
-        {
-            return cast(U)(cast(void*)(cast(Object)obj));
-        }
-    }
-
-    const(U) unsafeCast(T)(const(T) obj)
-    if (isReference!T && is(U : T))
-    {
-        debug {
-            auto uObj = cast(const(U))obj;
-            assert(uObj, "unsafeCast from "~T.stringof~" to "~U.stringof~" failed");
-            return uObj;
-        }
-        else {
-            return cast(const(U))(cast(const(void*))(cast(const(Object))obj));
-        }
-    }
 }
 
 /// Generate a unique filename based on provided model.

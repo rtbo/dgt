@@ -2,11 +2,12 @@ module dgt.vg.backend.cairo;
 
 import dgt.vg;
 import dgt.core.resource;
-import dgt.math.vec;
-import dgt.core.typecons : hash;
+import dgt.core.util : hash;
 import dgt.image;
 import dgt.geometry;
 import dgt.bindings.cairo;
+
+import gfx.math.vec;
 
 import std.typecons : Flag, Yes, No;
 import std.exception : enforce;
@@ -69,7 +70,7 @@ private struct State
 /// VgContext implementation for cairo graphics library
 class CairoContext : VgContext
 {
-    import dgt.core.typecons : GrowableStack;
+    import dgt.container : GrowableStack;
 
     private CairoBackend _backend;
     private Image _image;
@@ -236,18 +237,18 @@ class CairoContext : VgContext
 
     override @property void transformData(in float[] data)
     {
-        import dgt.math.approx : approxUlp;
+        import gfx.math.approx : approxUlp;
         import std.exception : enforce;
 
         if (data.length == 9)
         {
             debug {
-                import dgt.math.approx : approxUlp, approxUlpAndAbs;
+                import gfx.math.approx : approxUlp, approxUlpAndAbs;
                 if ( ! (approxUlpAndAbs(data[6], 0) &&
                         approxUlpAndAbs(data[7], 0) &&
                         approxUlp(data[8], 1)))
                 {
-                    import dgt.math.mat : FMat3;
+                    import gfx.math.mat : FMat3;
                     warningf("Supplied matrix is not affine: %s", FMat3(data));
                 }
             }
@@ -594,7 +595,7 @@ private Paint paintFromCairoPattern(cairo_pattern_t* patt)
         paint = lgp;
         break;
     case CAIRO_PATTERN_TYPE_RADIAL:
-        import dgt.math.approx : approxUlpAndAbs;
+        import gfx.math.approx : approxUlpAndAbs;
         auto stops = patternGetStops(patt);
         double x0 = void, y0 = void, x1 = void, y1 = void;
         double r0 = void, r1 = void;
@@ -618,7 +619,7 @@ private Paint paintFromCairoPattern(cairo_pattern_t* patt)
 
 private cairo_pattern_t* cairoPatternFromPaint(Paint paint)
 {
-    import dgt.core.util : unsafeCast;
+    import gfx.foundation.util : unsafeCast;
 
     cairo_pattern_t* patt;
 

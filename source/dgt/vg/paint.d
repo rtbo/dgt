@@ -1,7 +1,7 @@
 module dgt.vg.paint;
 
 import dgt.core.resource;
-import dgt.math.vec;
+import gfx.math.vec;
 import dgt.image;
 
 /// The type of a paint.

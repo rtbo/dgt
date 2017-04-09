@@ -6,9 +6,10 @@ import dgt.platform;
 import dgt.platform.xcb;
 import dgt.platform.xcb.screen;
 import dgt.platform.xcb.window;
-import dgt.core.util;
 import dgt.gfx;
 import dgt.screen;
+
+import gfx.foundation.util : unsafeCast;
 
 import X11.Xlib;
 import xcb.xcb;
