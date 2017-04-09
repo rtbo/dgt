@@ -71,6 +71,7 @@ class XcbGlContext : PlatformGlContext
         auto fbc = getGlxFBConfig(g_display, _screenNum, attribs);
 
         auto xWin = unsafeCast!XcbWindow(window);
+
         if (!glXCreateContextAttribsARB) {
             auto dummyCtx = enforce(
                 glXCreateNewContext(g_display, fbc, GLX_RGBA_TYPE, null, true)

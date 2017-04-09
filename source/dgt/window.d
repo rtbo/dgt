@@ -11,8 +11,29 @@ import dgt.image;
 import dgt.gfx;
 import dgt.vg;
 
+import gfx.backend.gl3;
+import gfx.core;
+import gfx.core.buffer;
+import gfx.core.encoder;
+import gfx.core.format;
+import gfx.core.program;
+import gfx.core.state;
+import gfx.core.surface;
+import gfx.core.texture;
+import gfx.core.view;
+import gfx.core.util;
+import gfx.core.pso;
+import gfx.core.pso.meta;
+
 import std.exception : enforce;
 import std.stdio;
+
+alias GfxDevice = gfx.core.Device;
+alias GfxSize = gfx.core.Size;
+alias GfxRect = gfx.core.Rect;
+alias GfxRc = gfx.core.rc.Rc;
+alias gfxRc = gfx.core.rc.rc;
+alias gfxMakeRc = gfx.core.rc.makeRc;
 
 enum WindowState
 {
@@ -251,6 +272,7 @@ class Window
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
+        disposeGfx();
         _platformWindow.close();
         _onClosed.fire(this);
         Application.instance.unregisterWindow(this);
@@ -342,8 +364,21 @@ class Window
     {
         enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
+        if (!_context) {
+            _context = new GlContext;
+            _context.attribs = attribs;
+        }
+        enforce(_context.makeCurrent(this));
+
+        if (!_device) {
+            prepareGfx();
+        }
+
         immutable format = ImageFormat.argbPremult;
         _renderBuf = new MallocImage(format, _size, format.vgBytesForWidth(_size.width));
+
+        _encoder.setViewport(GfxRect(0, 0, cast(ushort)_size.width, cast(ushort)_size.height));
+
         return _renderBuf;
     }
 
@@ -352,16 +387,17 @@ class Window
         enforce(_renderBuf && _renderBuf.img is img, "must call Window.endFrame with a " ~
                               "surface matching Window.beginFrame");
         assert(img.size.contains(_size));
-        if (!_context) {
-            _context = new GlContext;
-            _context.attribs = attribs;
-        }
-        _context.makeCurrent(this);
 
+        _surf.updateSize(GfxSize(cast(ushort)_size.width, cast(ushort)_size.height));
+
+        _encoder.clear!Rgba8(_rtv, [0.3f, 0.4f, 0.5f, 1f]);
+
+        blitAsTexture(img);
 
         _renderBuf.dispose();
         _renderBuf = null;
         _context.doneCurrent();
+        _context.swapBuffers(this);
     }
 
     package(dgt)
@@ -381,6 +417,85 @@ class Window
             _onResize.fire(ev);
         }
 
+        void prepareGfx()
+        {
+            _device = createGlDevice();
+            _device.addRef();
+
+            _surf = new BuiltinSurface!Rgba8(
+                _device.builtinSurface,
+                GfxSize(cast(ushort)_size.width, cast(ushort)_size.height),
+                attribs.samples
+            );
+            _surf.addRef();
+
+            _rtv = _surf.viewAsRenderTarget();
+            _rtv.addRef();
+
+            _prog = new Program(ShaderSet.vertexPixel(
+                texBlitVShader, texBlitFShader
+            ));
+            _prog.addRef();
+
+            _pso = new TexBlitPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
+            _pso.addRef();
+
+            _encoder = Encoder(_device.makeCommandBuffer());
+        }
+
+        void disposeGfx()
+        {
+            if (!_device) return;
+            assert(_context);
+            _context.makeCurrent(this);
+            scope(exit) _context.doneCurrent();
+
+            _encoder = Encoder.init;
+            _pso.release();
+            _prog.release();
+            _rtv.release();
+            _surf.release();
+        }
+
+        void blitAsTexture(Image img)
+        {
+            auto pixels = retypeSlice!(ubyte[4])(img.data);
+            TexUsageFlags usage = TextureUsage.ShaderResource;
+            auto tex = new Texture2D!Rgba8(
+                usage, 1, cast(ushort)size.width, cast(ushort)size.height, [pixels]
+            );
+            tex.addRef();
+            scope(exit) tex.release();
+
+            auto srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+            srv.addRef();
+            scope(exit) srv.release();
+
+            auto sampler = new Sampler(srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init));
+            sampler.addRef();
+            scope(exit) sampler.release();
+
+            auto quadVerts = [
+                TexBlitVertex([-1f, -1f], [0f, 1f]),
+                TexBlitVertex([1f, -1f], [1f, 1f]),
+                TexBlitVertex([1f, 1f], [1f, 0f]),
+                TexBlitVertex([-1f, 1f], [0f, 0f])
+            ];
+            ushort[] quadInds = [0, 1, 2, 0, 2, 3];
+            auto vbuf = new VertexBuffer!TexBlitVertex(quadVerts);
+            vbuf.addRef();
+            scope(exit) vbuf.release();
+
+            auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
+
+            auto data = TexBlitPipeline.Data(
+                gfxRc(vbuf), gfxRc(srv), gfxRc(sampler), gfxRc(_rtv)
+            );
+
+            _encoder.draw!TexBlitPipeMeta(slice, _pso, data);
+            _encoder.flush(_device);
+        }
+
         WindowFlags _flags;
         string _title;
         IPoint _position = IPoint(-1, -1);
@@ -389,7 +504,81 @@ class Window
         PlatformWindow _platformWindow;
         GlContext _context;
 
+        GfxDevice _device;
+        BuiltinSurface!Rgba8 _surf;
+        RenderTargetView!Rgba8 _rtv;
+        Program _prog;
+        TexBlitPipeline _pso;
+        Encoder _encoder;
+
         // transient rendering state
         MallocImage _renderBuf;
     }
+}
+
+struct TexBlitVertex {
+    @GfxName("a_Pos")       float[2] pos;
+    @GfxName("a_TexCoord")  float[2] texCoord;
+}
+
+struct TexBlitPipeMeta {
+    VertexInput!TexBlitVertex   input;
+
+    @GfxName("t_Sampler")
+    ResourceView!Rgba8          texture;
+
+    @GfxName("t_Sampler")
+    ResourceSampler             sampler;
+
+    @GfxName("o_Color")
+    ColorOutput!Rgba8           outColor;
+}
+
+alias TexBlitPipeline = PipelineState!TexBlitPipeMeta;
+
+enum texBlitVShader = `
+    #version 330
+    in vec2 a_Pos;
+    in vec2 a_TexCoord;
+
+    out vec2 v_TexCoord;
+
+    void main() {
+        v_TexCoord = a_TexCoord;
+        gl_Position = vec4(a_Pos, 0.0, 1.0);
+    }
+`;
+version(LittleEndian)
+{
+    // ImageFormat order is argb, in native order (that is actually bgra)
+    // the framebuffer order is rgba, so some swizzling is needed
+    enum texBlitFShader = `
+        #version 330
+
+        in vec2 v_TexCoord;
+        out vec4 o_Color;
+        uniform sampler2D t_Sampler;
+
+        void main() {
+            vec4 sample = texture(t_Sampler, v_TexCoord);
+            o_Color = sample.bgra;
+        }
+    `;
+}
+version(BigEndian)
+{
+    // ImageFormat order is argb, in native order
+    // the framebuffer order is rgba, so a left shift is needed
+    enum texBlitFShader = `
+        #version 330
+
+        in vec2 v_TexCoord;
+        out vec4 o_Color;
+        uniform sampler2D t_Sampler;
+
+        void main() {
+            vec4 sample = texture(t_Sampler, v_TexCoord);
+            o_Color = sample.gbar;
+        }
+    `;
 }

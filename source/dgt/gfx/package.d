@@ -6,6 +6,8 @@ import dgt.geometry : ISize;
 import dgt.screen;
 import dgt.window;
 
+import derelict.opengl3.gl3;
+
 import std.experimental.logger;
 
 
@@ -21,7 +23,7 @@ struct GlAttribs
     enum doublebuffer = true;
 
     mixin ValueProperty!("majorVersion", byte, 3);
-    mixin ValueProperty!("minorVersion", byte, 0);
+    mixin ValueProperty!("minorVersion", byte, 3);
 
     mixin ValueProperty!("redSize", byte, 8);
     mixin ValueProperty!("greenSize", byte, 8);
@@ -89,8 +91,8 @@ final class GlContext
     private GlAttribs _attribs;
     private GlContext _sharedCtx;
     private Screen _screen;
-    private string[] _extensions;
     private bool _realized;
+    private bool _reloaded;
 
     private PlatformGlContext _platformCtx;
 
@@ -164,7 +166,12 @@ final class GlContext
     bool makeCurrent(Window w)
     {
         if (!_realized) realize(w);
-        return _platformCtx.makeCurrent(w.platformWindow);
+        auto res = _platformCtx.makeCurrent(w.platformWindow);
+        if (res && !_reloaded) {
+            DerelictGL3.reload();
+            _reloaded = true;
+        }
+        return res;
     }
 
     void doneCurrent()

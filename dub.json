@@ -28,6 +28,11 @@
 		"dgt:turbojpeg":	"*",
 		"dgt:fontconfig":	"*",
 		"dgt:harfbuzz":		"*",
+
+		"gfx-d": {
+			"path": "3rdparty/gfx-d"
+		},
+
 		"derelict-gl3":		"~>1.0.19",
 		"derelict-ft":		"~>1.1.3"
     },

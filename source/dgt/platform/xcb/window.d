@@ -110,9 +110,6 @@ class XcbWindow : PlatformWindow
         prepareEvents();
         prepareGc();
 
-        auto context = new XcbGlContext;
-        context.realize(_win.attribs, this, null, null);
-
         _platform.registerWindow(this);
 
         _lastKnownState = WindowState.hidden;
