@@ -1,14 +1,14 @@
 module dgt.window;
 
 import gfx.foundation.rc;
-import dgt.core.signal;
-import dgt.core.util;
+import dgt.signal;
+import dgt.util;
 import dgt.platform;
 import dgt.application;
 import dgt.geometry;
 import dgt.event;
 import dgt.image;
-import dgt.gfx;
+import dgt.context;
 import dgt.vg;
 
 import gfx.device.gl3;

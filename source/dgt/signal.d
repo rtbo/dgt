@@ -2,7 +2,7 @@
 ///
 /// SMI stands for Single Method Interface
 /// concept similar to functional interface in Java 8
-module dgt.core.signal;
+module dgt.signal;
 
 import dgt.event : Event;
 

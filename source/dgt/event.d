@@ -1,6 +1,6 @@
 module dgt.event;
 
-import dgt.core.signal;
+import dgt.signal;
 import dgt.window : Window, WindowState;
 import dgt.geometry : IPoint, ISize, IRect;
 import dgt.enums;
@@ -505,7 +505,7 @@ final class FireableEventHandlerSignal(HandlerT) if (isEventHandler!HandlerT)
 /// property in the current scope
 mixin template EventHandlerSignalMixin(string __name, HandlerT)
 {
-    import dgt.core.signal;
+    import dgt.signal;
 
     mixin("private FireableEventHandlerSignal!HandlerT _" ~ __name ~ " =\n"
             ~ "    new FireableEventHandlerSignal!HandlerT;");

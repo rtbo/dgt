@@ -4,8 +4,8 @@ version(Windows):
 import dgt.platform;
 import dgt.platform.win32;
 import dgt.platform.win32.window;
-import dgt.core.util;
-import dgt.gfx;
+import dgt.util;
+import dgt.context;
 import dgt.window;
 import dgt.screen;
 

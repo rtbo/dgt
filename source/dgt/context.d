@@ -1,7 +1,7 @@
-module dgt.gfx;
+module dgt.context;
 
 import dgt.platform;
-import dgt.core.util : ValueProperty;
+import dgt.util : ValueProperty;
 import dgt.geometry : ISize;
 import dgt.screen;
 import dgt.window;

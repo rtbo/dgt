@@ -1,5 +1,5 @@
 /// The obligatory junk module with unsortable and essential utilities.
-module dgt.core.util;
+module dgt.util;
 
 import std.traits : Unqual, hasIndirections;
 
@@ -66,7 +66,7 @@ mixin template ReadOnlyValueProperty(T, string __name, T defaultVal = T.init)
 ///
 mixin template SignalValueProperty(string __name, T, T defaultVal = T.init)
 {
-    import dgt.core.signal;
+    import dgt.signal;
     import std.traits;
 
     // the present value type definition is "type without aliasing"
@@ -87,7 +87,7 @@ mixin template SignalValueProperty(string __name, T, T defaultVal = T.init)
 
 mixin template SmiSignalMixin(string __name, Iface)
 {
-    import dgt.core.signal;
+    import dgt.signal;
 
     static assert(isSmi!Iface, "SmiSignalMixin must be used with 'Single Method Interface's");
 
@@ -98,7 +98,7 @@ mixin template SmiSignalMixin(string __name, Iface)
 
 mixin template SignalMixin(string __name, T...)
 {
-    import dgt.core.signal;
+    import dgt.signal;
 
     mixin("private FireableSignal!T _" ~ __name ~ " = new FireableSignal!T;");
 

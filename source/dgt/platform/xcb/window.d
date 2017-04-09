@@ -9,7 +9,7 @@ import gfx.foundation.rc;
 import dgt.vg;
 import dgt.screen;
 import dgt.platform;
-import dgt.gfx;
+import dgt.context;
 import dgt.window;
 import dgt.geometry;
 import dgt.event;

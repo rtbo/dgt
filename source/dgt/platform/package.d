@@ -5,7 +5,7 @@ import dgt.geometry;
 import dgt.screen;
 import dgt.window;
 import dgt.image;
-import dgt.gfx;
+import dgt.context;
 
 import std.typecons : BitFlags;
 

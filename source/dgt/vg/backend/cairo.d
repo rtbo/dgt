@@ -2,7 +2,7 @@ module dgt.vg.backend.cairo;
 
 import dgt.vg;
 import gfx.foundation.rc;
-import dgt.core.util : hash;
+import dgt.util : hash;
 import dgt.image;
 import dgt.geometry;
 import dgt.bindings.cairo;
