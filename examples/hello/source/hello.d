@@ -1,6 +1,6 @@
 module hello;
 
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.application;
 import dgt.window;
 import dgt.event;

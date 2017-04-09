@@ -2,7 +2,7 @@ module dgt.text.layout;
 
 import dgt.text.fontcache;
 import dgt.text.font;
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.vg.context;
 import dgt.image;
 import gfx.math.vec;

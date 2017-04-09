@@ -3,7 +3,7 @@ module dgt.vg;
 public import dgt.vg.context;
 public import dgt.vg.paint;
 public import dgt.vg.path;
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.image;
 
 

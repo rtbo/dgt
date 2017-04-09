@@ -1,6 +1,6 @@
 module dgt.application;
 
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.platform;
 import dgt.window;
 

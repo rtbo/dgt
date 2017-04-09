@@ -2,7 +2,7 @@ module dgt.text.fontcache;
 
 import dgt.text.font;
 import dgt.bindings.fontconfig;
-import dgt.core.resource;
+import gfx.foundation.rc;
 
 import std.exception;
 import std.string;

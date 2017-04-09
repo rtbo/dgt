@@ -1,6 +1,6 @@
 module dgt.vg.context;
 
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.vg;
 import dgt.image;
 import gfx.math.mat;

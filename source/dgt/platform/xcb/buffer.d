@@ -1,16 +1,14 @@
 module dgt.platform.xcb.buffer;
-
 version(linux):
 
 import dgt.platform.xcb;
 import dgt.platform.xcb.window;
 import dgt.platform;
-import dgt.core.resource;
 import dgt.geometry;
 import dgt.vg;
 import dgt.image;
 
-import dgt.bindings.cairo;
+import gfx.foundation.rc;
 
 import xcb.xcb;
 import xcb.shm;

@@ -1,7 +1,7 @@
 module dgt.vg.backend.cairo;
 
 import dgt.vg;
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.core.util : hash;
 import dgt.image;
 import dgt.geometry;

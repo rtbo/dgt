@@ -5,7 +5,7 @@ version(linux):
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
 import dgt.platform.xcb.buffer;
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.vg;
 import dgt.screen;
 import dgt.platform;

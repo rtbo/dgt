@@ -1,6 +1,6 @@
 module dgt.vg.paint;
 
-import dgt.core.resource;
+import gfx.foundation.rc;
 import gfx.math.vec;
 import dgt.image;
 

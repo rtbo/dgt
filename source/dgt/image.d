@@ -1,6 +1,6 @@
 module dgt.image;
 
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.geometry;
 import dgt.vg;
 

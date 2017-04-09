@@ -7,7 +7,7 @@ import dgt.platform;
 import dgt.geometry;
 import dgt.image;
 import dgt.vg;
-import dgt.core.resource;
+import gfx.foundation.rc;
 
 import std.exception;
 import core.sys.windows.windows;

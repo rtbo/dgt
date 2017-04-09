@@ -3,7 +3,7 @@ module dgt.text.font;
 import dgt.text.fontcache;
 import dgt.image;
 import gfx.math.vec;
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.core.util;
 import dgt.bindings.harfbuzz;
 import dgt.vg;

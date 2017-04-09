@@ -1,6 +1,6 @@
 module dgt.window;
 
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.core.signal;
 import dgt.core.util;
 import dgt.platform;
@@ -413,25 +413,25 @@ class Window
         void prepareGfx()
         {
             _device = createGlDevice();
-            _device.addRef();
+            _device.retain();
 
             _surf = new BuiltinSurface!Rgba8(
                 _device.builtinSurface,
                 GfxSize(cast(ushort)_size.width, cast(ushort)_size.height),
                 attribs.samples
             );
-            _surf.addRef();
+            _surf.retain();
 
             _rtv = _surf.viewAsRenderTarget();
-            _rtv.addRef();
+            _rtv.retain();
 
             _prog = new Program(ShaderSet.vertexPixel(
                 texBlitVShader, texBlitFShader
             ));
-            _prog.addRef();
+            _prog.retain();
 
             _pso = new TexBlitPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
-            _pso.addRef();
+            _pso.retain();
 
             _encoder = Encoder(_device.makeCommandBuffer());
         }
@@ -457,15 +457,15 @@ class Window
             auto tex = new Texture2D!Rgba8(
                 usage, 1, cast(ushort)size.width, cast(ushort)size.height, [pixels]
             );
-            tex.addRef();
+            tex.retain();
             scope(exit) tex.release();
 
             auto srv = tex.viewAsShaderResource(0, 0, newSwizzle());
-            srv.addRef();
+            srv.retain();
             scope(exit) srv.release();
 
             auto sampler = new Sampler(srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init));
-            sampler.addRef();
+            sampler.retain();
             scope(exit) sampler.release();
 
             auto quadVerts = [
@@ -476,7 +476,7 @@ class Window
             ];
             ushort[] quadInds = [0, 1, 2, 0, 2, 3];
             auto vbuf = new VertexBuffer!TexBlitVertex(quadVerts);
-            vbuf.addRef();
+            vbuf.retain();
             scope(exit) vbuf.release();
 
             auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));

@@ -5,7 +5,7 @@ version(Windows):
 import dgt.platform.win32;
 import dgt.platform.win32.buffer;
 import dgt.platform;
-import dgt.core.resource;
+import gfx.foundation.rc;
 import dgt.window;
 import dgt.geometry;
 import dgt.event;
