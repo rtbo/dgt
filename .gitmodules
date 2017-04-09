@@ -1,0 +1,3 @@
+[submodule "3rdparty/gfx-d"]
+	path = 3rdparty/gfx-d
+	url = https://github.com/rtbo/gfx-d.git
