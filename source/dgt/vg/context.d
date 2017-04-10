@@ -3,7 +3,7 @@ module dgt.vg.context;
 import gfx.foundation.rc;
 import dgt.vg;
 import dgt.image;
-import gfx.math.mat;
+import dgt.math.mat;
 
 import std.typecons : BitFlags, Flag, No;
 import std.traits : isCallable;

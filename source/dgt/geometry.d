@@ -1,6 +1,6 @@
 module dgt.geometry;
 
-import gfx.math.vec;
+import dgt.math.vec;
 
 import std.traits : isNumeric;
 import std.algorithm : min, max;

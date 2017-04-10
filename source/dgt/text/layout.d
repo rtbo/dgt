@@ -5,9 +5,9 @@ import dgt.text.font;
 import gfx.foundation.rc;
 import dgt.vg.context;
 import dgt.image;
-import gfx.math.vec;
-import gfx.math.mat;
-import gfx.math.transform;
+import dgt.math.vec;
+import dgt.math.mat;
+import dgt.math.transform;
 import dgt.bindings.harfbuzz;
 
 import std.exception;

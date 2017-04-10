@@ -7,7 +7,7 @@ import dgt.image;
 import dgt.geometry;
 import dgt.bindings.cairo;
 
-import gfx.math.vec;
+import dgt.math.vec;
 
 import std.typecons : Flag, Yes, No;
 import std.exception : enforce;
@@ -237,18 +237,18 @@ class CairoContext : VgContext
 
     override @property void transformData(in float[] data)
     {
-        import gfx.math.approx : approxUlp;
+        import dgt.math.approx : approxUlp;
         import std.exception : enforce;
 
         if (data.length == 9)
         {
             debug {
-                import gfx.math.approx : approxUlp, approxUlpAndAbs;
+                import dgt.math.approx : approxUlp, approxUlpAndAbs;
                 if ( ! (approxUlpAndAbs(data[6], 0) &&
                         approxUlpAndAbs(data[7], 0) &&
                         approxUlp(data[8], 1)))
                 {
-                    import gfx.math.mat : FMat3;
+                    import dgt.math.mat : FMat3;
                     warningf("Supplied matrix is not affine: %s", FMat3(data));
                 }
             }
@@ -595,7 +595,7 @@ private Paint paintFromCairoPattern(cairo_pattern_t* patt)
         paint = lgp;
         break;
     case CAIRO_PATTERN_TYPE_RADIAL:
-        import gfx.math.approx : approxUlpAndAbs;
+        import dgt.math.approx : approxUlpAndAbs;
         auto stops = patternGetStops(patt);
         double x0 = void, y0 = void, x1 = void, y1 = void;
         double r0 = void, r1 = void;
