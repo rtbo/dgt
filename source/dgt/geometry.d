@@ -1,9 +1,10 @@
 module dgt.geometry;
 
-import dgt.math.vec;
+import dgt.math;
 
 import std.traits : isNumeric;
 import std.algorithm : min, max;
+import std.range;
 
 alias TPoint(T) = Vec2!T;
 alias Point = TPoint!float;
@@ -97,6 +98,8 @@ struct TRect(T) if (isNumeric!T)
         T _w;
         T _h;
     }
+
+    alias Scalar = T;
 
     invariant()
     {
@@ -380,6 +383,16 @@ TRect!T intersection(T)(in TRect!T r1, in TRect!T r2)
     return r;
 }
 
+TRect!T extents(T)(in TRect!T r1, in TRect!T r2)
+{
+    TRect!T r;
+    r.left = min(r1.left, r2.left);
+    r.right = max(r1.right, r2.right);
+    r.top = min(r1.top, r2.top);
+    r.bottom = max(r1.bottom, r2.bottom);
+    return r;
+}
+
 @property T area(T)(in TSize!T s)
 {
     return s.width * s.height;
@@ -416,4 +429,39 @@ unittest
     assert(!ri.overlaps(IRect(5, 14, 3, 3)));
     assert(!ri.overlaps(IRect(7, 5, 3, 3)));
     assert(ri.intersection(IRect(5, 5, 3, 3)) == IRect(5, 7, 1, 1));
+}
+
+
+auto computeRectsExtents(R)(R rects)
+if (isInputRange!R)
+{
+    alias RectT = ElementType!R;
+    if (rects.empty) return RectT.init;
+    RectT r = rects.front;
+    while (!rects.empty) {
+        r = extents(r, rects.front);
+        rects.popFront();
+    }
+    return r;
+}
+
+
+Rect transformBounds(in Rect bounds, FMat4 mat)
+{
+    return transformBoundsPriv!float(bounds, mat);
+}
+
+private TRect!T transformBoundsPriv(T)(in TRect!T bounds, in Mat4!T mat)
+{
+    immutable tl = (mat * vec(bounds.topLeft, 0, 1)).xy;
+    immutable tr = (mat * vec(bounds.topRight, 0, 1)).xy;
+    immutable bl = (mat * vec(bounds.bottomLeft, 0, 1)).xy;
+    immutable br = (mat * vec(bounds.bottomRight, 0, 1)).xy;
+
+    immutable minX = min(tl.x, tr.x, bl.x, br.x);
+    immutable maxX = max(tl.x, tr.x, bl.x, br.x);
+    immutable minY = min(tl.y, tr.y, bl.y, br.y);
+    immutable maxY = max(tl.y, tr.y, bl.y, br.y);
+
+    return TRect!T(minX, minY, maxX-minX, maxY-minY);
 }
