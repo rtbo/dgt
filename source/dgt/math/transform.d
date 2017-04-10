@@ -654,6 +654,12 @@ if (isVec!(3, V) && isMat!(3, 4, M))
 {
     return m * vec(v, 1);
 }
+/// ditto
+auto transform(V, M)(in V v, in M m)
+if (isVec!(4, V) && isMat!(4, 4, M))
+{
+    return m * v;
+}
 
 unittest
 {
