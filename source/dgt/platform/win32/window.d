@@ -80,6 +80,11 @@ class Win32Window : PlatformWindow
         Win32Platform.instance.registerWindow(_hWnd, this);
     }
 
+    override @property size_t nativeHandle() const
+    {
+        return cast(size_t)_hWnd;
+    }
+
     override void close()
     {
 		DestroyWindow(_hWnd);

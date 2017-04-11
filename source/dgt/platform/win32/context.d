@@ -4,10 +4,11 @@ version(Windows):
 import dgt.platform;
 import dgt.platform.win32;
 import dgt.platform.win32.window;
-import dgt.util;
 import dgt.context;
 import dgt.window;
 import dgt.screen;
+
+import gfx.foundation.util : unsafeCast;
 
 import derelict.opengl3.gl3;
 import derelict.opengl3.wglext;
@@ -77,7 +78,7 @@ class Win32GlContext : PlatformGlContext
         return false;
     }
 
-    override bool makeCurrent(PlatformWindow window)
+    override bool makeCurrent(size_t nativeHandle)
     {
         return false;
     }
@@ -87,7 +88,7 @@ class Win32GlContext : PlatformGlContext
 
     }
 
-    override void swapBuffers(PlatformWindow window)
+    override void swapBuffers(size_t nativeHandle)
     {
 
     }
