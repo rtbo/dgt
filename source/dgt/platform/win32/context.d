@@ -25,7 +25,7 @@ package void initWin32Gl()
 
     immutable attribs = GlAttribs.init;
 
-    PIXELFORMATDESCRIPTOR pfd;
+    PIXELFORMATDESCRIPTOR pfd = void;
     setupPFD(attribs, pfd);
 
     auto dummy = new Window("Dummy context window", WindowFlags.dummy);
@@ -84,7 +84,7 @@ class Win32GlContext : PlatformGlContext
         wglChoosePixelFormatARB(dc, attribList.ptr, null, 1, &pixelFormat, &numFormats);
 
         enforce(numFormats > 0);
-        PIXELFORMATDESCRIPTOR pfd;
+        PIXELFORMATDESCRIPTOR pfd = void;
         setupPFD(attribs, pfd);
         SetPixelFormat(dc, pixelFormat, &pfd);
 
