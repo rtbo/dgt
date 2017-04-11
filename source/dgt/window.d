@@ -357,7 +357,7 @@ class Window
         enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
         if (!_context) {
-            _context = new shared(GlContext)(this);
+            _context = createGlContext(this);
         }
         enforce(_context.makeCurrent(_platformWindow.nativeHandle));
 
@@ -408,6 +408,11 @@ class Window
             immutable newSize = ev.size;
             _size = newSize;
             _onResize.fire(ev);
+        }
+
+        void handleExpose(WindowExposeEvent ev)
+        {
+
         }
 
         void prepareGfx()

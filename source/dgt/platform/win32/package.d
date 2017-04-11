@@ -8,6 +8,7 @@ import dgt.platform.win32.context;
 import dgt.platform;
 import dgt.screen;
 import dgt.window;
+import dgt.context;
 
 import std.experimental.logger;
 import core.sys.windows.windows;
@@ -48,9 +49,11 @@ class Win32Platform : Platform
         return "win32";
     }
 
-    override shared(PlatformGlContext) createGlContext()
+    override shared(GlContext) createGlContext(
+                GlAttribs attribs, PlatformWindow window,
+                shared(GlContext) sharedCtx, Screen screen)
     {
-        return new shared(Win32GlContext);
+        return createWin32GlContext(attribs, window, sharedCtx, screen);
     }
 
     override @property inout(Screen) defaultScreen() inout

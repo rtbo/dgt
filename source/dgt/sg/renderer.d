@@ -16,7 +16,7 @@ private:
 
 void renderLoop(shared(GlContext) context)
 {
-
+    auto renderer = new Renderer(context);
 }
 
 

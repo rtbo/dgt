@@ -86,65 +86,50 @@ struct GlAttribs
     }
 }
 
-
-final shared class GlContext
+synchronized interface GlContext
 {
-    private PlatformGlContext _platformCtx;
-    private bool _reloaded;
+    bool makeCurrent(size_t nativeHandle);
+    void doneCurrent();
+    void swapBuffers(size_t nativeHandle);
+}
 
-    this(Window window=null, GlContext sharedCtx=null, Screen screen=null)
-    {
-        GlAttribs attribs = window ? window.attribs : GlAttribs.init;
-        realize(attribs, window, sharedCtx, screen);
-    }
+shared(GlContext) createGlContext(GlAttribs attribs,
+                                  shared(GlContext) sharedCtx=null,
+                                  Screen screen=null)
+{
+    return createGlContext(
+        attribs, null, sharedCtx, screen
+    );
+}
 
-    this (GlAttribs attribs, GlContext sharedCtx=null, Screen screen=null)
-    {
-        realize(attribs, null, sharedCtx, screen);
-    }
-
-    private void realize(GlAttribs attribs, Window window,
-                         GlContext sharedCtx, Screen screen)
-    {
-        Window dummy;
-        if (!window) {
-            window = new Window("Dummy!", WindowFlags.dummy);
-            window.hide();
-            dummy = window;
-        }
-        scope(exit) {
-            if (dummy) dummy.close();
-        }
-
-        import dgt.application : Application;
-        _platformCtx = Application.platform.createGlContext();
-        enforce(_platformCtx.realize (
-            attribs,
-            window.platformWindow,
-            sharedCtx ? sharedCtx._platformCtx : null,
-            screen
-        ));
-    }
-
-    bool makeCurrent(size_t nativeHandle)
-    {
-        auto res = _platformCtx.makeCurrent(nativeHandle);
-        if (res && !_reloaded) {
-            DerelictGL3.reload();
-            _reloaded = true;
-        }
-        return res;
-    }
-
-    void doneCurrent()
-    {
-        _platformCtx.doneCurrent();
-    }
-
-    void swapBuffers(size_t nativeHandle)
-    {
-        _platformCtx.swapBuffers(nativeHandle);
-    }
+shared(GlContext) createGlContext(Window window=null,
+                                  shared(GlContext) sharedCtx=null,
+                                  Screen screen=null)
+{
+    return createGlContext(
+        window ? window.attribs : GlAttribs.init,
+        window, sharedCtx, screen
+    );
 }
 
 
+private:
+
+shared(GlContext) createGlContext(GlAttribs attribs, Window window,
+                                  shared(GlContext) sharedCtx, Screen screen)
+{
+    Window dummy;
+    if (!window) {
+        window = new Window("Dummy!", WindowFlags.dummy);
+        window.hide();
+        dummy = window;
+    }
+    scope(exit) {
+        if (dummy) dummy.close();
+    }
+
+    import dgt.application : Application;
+    return enforce(Application.platform.createGlContext (
+        attribs, window.platformWindow, sharedCtx, screen
+    ));
+}

@@ -15,7 +15,9 @@ interface Platform : Disposable
 
     @property string name() const;
 
-    shared(PlatformGlContext) createGlContext();
+    shared(GlContext) createGlContext(
+                GlAttribs attribs, PlatformWindow window,
+                shared(GlContext) sharedCtx, Screen screen);
 
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
@@ -43,18 +45,6 @@ interface PlatformWindow
     @property void geometry(IRect pos);
 
     PlatformWindowBuffer makeBuffer(in ISize size);
-}
-
-/// Per platform implementation of a GL context
-shared interface PlatformGlContext
-{
-    bool realize(GlAttribs attribs,
-                    PlatformWindow window,
-                    shared(PlatformGlContext) sharedCtx,
-                    Screen screen);
-    bool makeCurrent(size_t nativeHandle);
-    void doneCurrent();
-    void swapBuffers(size_t nativeHandle);
 }
 
 /// A native buffer image suitable for blitting pixels on screen.
