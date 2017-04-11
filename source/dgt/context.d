@@ -87,7 +87,7 @@ struct GlAttribs
 }
 
 
-final class GlContext
+final shared class GlContext
 {
     private PlatformGlContext _platformCtx;
     private bool _reloaded;

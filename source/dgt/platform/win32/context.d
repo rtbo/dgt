@@ -51,13 +51,13 @@ package void initWin32Gl()
 }
 
 
-class Win32GlContext : PlatformGlContext
+shared class Win32GlContext : PlatformGlContext
 {
     private HGLRC _glrc;
 
     override bool realize(GlAttribs attribs,
                     PlatformWindow window,
-                    PlatformGlContext sharedCtx,
+                    shared(PlatformGlContext) sharedCtx,
                     Screen screen)
     {
         auto w32 = unsafeCast!Win32Window(window);
@@ -103,9 +103,9 @@ class Win32GlContext : PlatformGlContext
         }
         ctxAttribs ~= 0;
 
-        auto w32gl = unsafeCast!(Win32GlContext)(sharedCtx);
-        HGLRC sharedGlrc = w32gl ? w32gl._glrc : null;
-        _glrc = wglCreateContextAttribsARB(dc, sharedGlrc, ctxAttribs.ptr);
+        auto w32gl = unsafeCast!(shared(Win32GlContext))(sharedCtx);
+        HGLRC sharedGlrc = w32gl ? cast(HGLRC)w32gl._glrc : null;
+        _glrc = cast(shared(HGLRC))wglCreateContextAttribsARB(dc, sharedGlrc, ctxAttribs.ptr);
         return _glrc != null;
     }
 
@@ -114,7 +114,7 @@ class Win32GlContext : PlatformGlContext
         auto wnd = cast(HWND)nativeHandle;
         auto dc = GetDC(wnd);
         scope(exit) ReleaseDC(wnd, dc);
-        return wglMakeCurrent(dc, _glrc) != 0;
+        return wglMakeCurrent(dc, cast(HGLRC)_glrc) != 0;
     }
 
     override void doneCurrent()

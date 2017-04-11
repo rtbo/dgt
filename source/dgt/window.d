@@ -357,7 +357,7 @@ class Window
         enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
         if (!_context) {
-            _context = new GlContext(this);
+            _context = new shared(GlContext)(this);
         }
         enforce(_context.makeCurrent(_platformWindow.nativeHandle));
 
@@ -486,7 +486,7 @@ class Window
         ISize _size;
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
-        GlContext _context;
+        shared(GlContext) _context;
 
         GfxDevice _device;
         BuiltinSurface!Rgba8 _surf;

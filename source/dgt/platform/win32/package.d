@@ -48,9 +48,9 @@ class Win32Platform : Platform
         return "win32";
     }
 
-    override PlatformGlContext createGlContext()
+    override shared(PlatformGlContext) createGlContext()
     {
-        return new Win32GlContext;
+        return new shared(Win32GlContext);
     }
 
     override @property inout(Screen) defaultScreen() inout

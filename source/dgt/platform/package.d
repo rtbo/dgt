@@ -15,7 +15,7 @@ interface Platform : Disposable
 
     @property string name() const;
 
-    PlatformGlContext createGlContext();
+    shared(PlatformGlContext) createGlContext();
 
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
@@ -46,11 +46,11 @@ interface PlatformWindow
 }
 
 /// Per platform implementation of a GL context
-interface PlatformGlContext
+shared interface PlatformGlContext
 {
     bool realize(GlAttribs attribs,
                     PlatformWindow window,
-                    PlatformGlContext sharedCtx,
+                    shared(PlatformGlContext) sharedCtx,
                     Screen screen);
     bool makeCurrent(size_t nativeHandle);
     void doneCurrent();
