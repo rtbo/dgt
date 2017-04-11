@@ -31,6 +31,8 @@ interface PlatformWindow
     void create(WindowState state);
     void close();
 
+    @property size_t nativeHandle() const;
+
     @property string title() const;
     @property void title(string title);
 
@@ -50,9 +52,9 @@ interface PlatformGlContext
                     PlatformWindow window,
                     PlatformGlContext sharedCtx,
                     Screen screen);
-    bool makeCurrent(PlatformWindow window);
+    bool makeCurrent(size_t nativeHandle);
     void doneCurrent();
-    void swapBuffers(PlatformWindow window);
+    void swapBuffers(size_t nativeHandle);
 }
 
 /// A native buffer image suitable for blitting pixels on screen.

@@ -114,10 +114,10 @@ class XcbGlContext : PlatformGlContext
         return _context != null;
     }
 
-    override bool makeCurrent(PlatformWindow window)
+    override bool makeCurrent(size_t nativeHandle)
     {
-        auto xWin = unsafeCast!XcbWindow(window);
-        return glXMakeCurrent(g_display, xWin.xcbWin, _context) != 0;
+        auto xWin = cast(xcb_window_t)nativeHandle;
+        return glXMakeCurrent(g_display, xWin, _context) != 0;
     }
 
     override void doneCurrent()
@@ -125,10 +125,10 @@ class XcbGlContext : PlatformGlContext
         glXMakeCurrent(g_display, 0, null);
     }
 
-    override void swapBuffers(PlatformWindow window)
+    override void swapBuffers(size_t nativeHandle)
     {
-        auto xWin = unsafeCast!XcbWindow(window);
-        glXSwapBuffers(g_display, xWin.xcbWin);
+        auto xWin = cast(xcb_window_t)nativeHandle;
+        glXSwapBuffers(g_display, xWin);
     }
 }
 

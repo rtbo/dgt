@@ -117,6 +117,11 @@ class XcbWindow : PlatformWindow
         _created = true;
     }
 
+    override @property size_t nativeHandle() const
+    {
+        return _xcbWin;
+    }
+
     override void close()
     {
         if (_mapped)

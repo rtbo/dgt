@@ -264,6 +264,12 @@ class Window
         Application.instance.unregisterWindow(this);
     }
 
+    @property size_t nativeHandle() const
+    {
+        enforce(_platformWindow.created);
+        return _platformWindow.created;
+    }
+
     mixin SignalMixin!("onTitleChange", string);
     mixin EventHandlerSignalMixin!("onShow", OnWindowShowHandler);
     mixin EventHandlerSignalMixin!("onHide", OnWindowHideHandler);
@@ -351,10 +357,9 @@ class Window
         enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
         if (!_context) {
-            _context = new GlContext;
-            _context.attribs = attribs;
+            _context = new GlContext(this);
         }
-        enforce(_context.makeCurrent(this));
+        enforce(_context.makeCurrent(_platformWindow.nativeHandle));
 
         if (!_device) {
             prepareGfx();
@@ -385,7 +390,7 @@ class Window
         _renderBuf.dispose();
         _renderBuf = null;
         _context.doneCurrent();
-        _context.swapBuffers(this);
+        _context.swapBuffers(_platformWindow.nativeHandle);
     }
 
     package(dgt)
@@ -435,7 +440,7 @@ class Window
         {
             if (!_device) return;
             assert(_context);
-            _context.makeCurrent(this);
+            _context.makeCurrent(_platformWindow.nativeHandle);
             scope(exit) _context.doneCurrent();
 
             _encoder = Encoder.init;

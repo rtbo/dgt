@@ -8,6 +8,7 @@ import dgt.window;
 
 import derelict.opengl3.gl3;
 
+import std.exception;
 import std.experimental.logger;
 
 
@@ -88,85 +89,46 @@ struct GlAttribs
 
 final class GlContext
 {
-    private GlAttribs _attribs;
-    private GlContext _sharedCtx;
-    private Screen _screen;
-    private bool _realized;
+    private PlatformGlContext _platformCtx;
     private bool _reloaded;
 
-    private PlatformGlContext _platformCtx;
-
-    this()
+    this(Window window=null, GlContext sharedCtx=null, Screen screen=null)
     {
-        import dgt.application;
-        _platformCtx = Application.platform.createGlContext();
+        GlAttribs attribs = window ? window.attribs : GlAttribs.init;
+        realize(attribs, window, sharedCtx, screen);
     }
 
-    @property GlAttribs attribs() const
+    this (GlAttribs attribs, GlContext sharedCtx=null, Screen screen=null)
     {
-        return _attribs;
+        realize(attribs, null, sharedCtx, screen);
     }
 
-    @property void attribs(GlAttribs attribs)
-    in { assert(!_realized); }
-    body
+    private void realize(GlAttribs attribs, Window window,
+                         GlContext sharedCtx, Screen screen)
     {
-        _attribs = attribs;
-    }
-
-    @property GlContext sharedCtx()
-    {
-        return _sharedCtx;
-    }
-    @property void sharedCtx(GlContext shCtx)
-    in { assert(!_realized); }
-    body {
-        _sharedCtx = shCtx;
-    }
-
-    @property Screen screen()
-    {
-        return _screen;
-    }
-    @property void screen(Screen screen)
-    in { assert(!_realized); }
-    body {
-        screen = screen;
-    }
-
-
-    bool realize (Window w)
-    {
-        if (_realized) {
-            warning("DGT: try to realise a realized Gl context");
-            return true;
-        }
-
         Window dummy;
-        if (!w) {
-            w = new Window;
-            w.hide();
-            dummy = w;
+        if (!window) {
+            window = new Window("Dummy!", WindowFlags.dummy);
+            window.hide();
+            dummy = window;
+        }
+        scope(exit) {
+            if (dummy) dummy.close();
         }
 
-        _realized = _platformCtx.realize (
-            _attribs,
-            w.platformWindow,
-            _sharedCtx ? _sharedCtx._platformCtx : null,
-            _screen
-        );
-
-        if (dummy) {
-            dummy.close();
-        }
-
-        return _realized;
+        import dgt.application : Application;
+        _platformCtx = Application.platform.createGlContext();
+        enforce(_platformCtx.realize (
+            attribs,
+            window.platformWindow,
+            sharedCtx ? sharedCtx._platformCtx : null,
+            screen
+        ));
     }
 
-    bool makeCurrent(Window w)
+    bool makeCurrent(size_t nativeHandle)
     {
-        if (!_realized) realize(w);
-        auto res = _platformCtx.makeCurrent(w.platformWindow);
+        auto res = _platformCtx.makeCurrent(nativeHandle);
         if (res && !_reloaded) {
             DerelictGL3.reload();
             _reloaded = true;
@@ -179,9 +141,9 @@ final class GlContext
         _platformCtx.doneCurrent();
     }
 
-    void swapBuffers(Window w)
+    void swapBuffers(size_t nativeHandle)
     {
-        _platformCtx.swapBuffers(w.platformWindow);
+        _platformCtx.swapBuffers(nativeHandle);
     }
 }
 
