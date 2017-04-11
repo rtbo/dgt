@@ -77,6 +77,8 @@ class Application : Disposable
         _platform = platform;
         _platform.initialize();
 
+        log("platform initialization done");
+
         // init other singletons
         {
             import dgt.text.font : FontEngine;
@@ -84,7 +86,7 @@ class Application : Disposable
             FontEngine.initialize();
             FontCache.initialize();
         }
-
+        log("ending initialization");
     }
 
     package void registerWindow(Window w)

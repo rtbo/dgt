@@ -82,6 +82,7 @@ class FontCache : Disposable
 
     private this()
     {
+        log("loading font cache");
         enforce(FcInit());
         _config = enforce(FcConfigGetCurrent());
     }
