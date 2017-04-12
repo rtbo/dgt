@@ -88,6 +88,7 @@ struct GlAttribs
 
 synchronized interface GlContext
 {
+    @property GlAttribs attribs() const;
     bool makeCurrent(size_t nativeHandle);
     void doneCurrent();
     void swapBuffers(size_t nativeHandle);

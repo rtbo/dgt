@@ -104,7 +104,7 @@ shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
     auto glrc = wglCreateContextAttribsARB(dc, sharedGlrc, ctxAttribs.ptr);
 
     if (glrc) {
-        auto ctx = new shared(Win32GlContext)(glrc);
+        auto ctx = new shared(Win32GlContext)(glrc, attribs);
         ctx.makeCurrent(window.nativeHandle);
         scope(exit) ctx.doneCurrent();
 
@@ -123,10 +123,14 @@ private:
 final synchronized class Win32GlContext : GlContext
 {
     private HGLRC _glrc;
+    private GlAttribs _attribs;
 
-    this(HGLRC glrc) {
+    this(HGLRC glrc, GlAttribs attribs) {
         _glrc = cast(shared(HGLRC))glrc;
+        _attribs = attribs;
     }
+
+    override @property GlAttribs attribs() const { return _attribs; }
 
     override bool makeCurrent(size_t nativeHandle)
     {
