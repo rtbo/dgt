@@ -22,6 +22,8 @@ import std.exception;
 import std.format;
 import std.experimental.logger;
 
+package:
+
 alias Screen = dgt.screen.Screen;
 
 xcb_visualtype_t* getXcbVisualForId(in XcbScreen screen, xcb_visualid_t visualId)
@@ -57,67 +59,78 @@ XVisualInfo* getXlibVisualInfo(Display* dpy, int screenNum, in GlAttribs attribs
     return glXGetVisualFromFBConfig(dpy, fbc);
 }
 
+shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
+                                     shared(GlContext)sharedCtx, Screen screen)
+{
+    auto screenNum = screen ? screen.num() : XDefaultScreen(g_display);
+    auto fbc = getGlxFBConfig(g_display, screenNum, attribs);
 
-class XcbGlContext : PlatformGlContext
+    if (!glXCreateContextAttribsARB) {
+        auto dummyCtx = enforce(
+            glXCreateNewContext(g_display, fbc, GLX_RGBA_TYPE, null, true)
+        );
+        glXMakeCurrent(g_display, cast(xcb_window_t)window.nativeHandle, dummyCtx);
+
+        DerelictGL3.reload();
+
+        glXMakeCurrent(g_display, 0, null);
+        glXDestroyContext(g_display, dummyCtx);
+    }
+
+    enforce(GLX_ARB_create_context);
+
+    int[] ctxAttribs = [
+        GLX_CONTEXT_MAJOR_VERSION_ARB, attribs.majorVersion,
+        GLX_CONTEXT_MINOR_VERSION_ARB, attribs.minorVersion
+    ];
+    if (attribs.decimalVersion >= 32) {
+        ctxAttribs ~= GLX_CONTEXT_PROFILE_MASK_ARB;
+        if (attribs.profile == GlProfile.core) {
+            ctxAttribs ~= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
+        }
+        else {
+            ctxAttribs ~= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
+        }
+    }
+    ctxAttribs ~= 0;
+
+    auto xcbCtx = cast(shared(XcbGlContext))sharedCtx;
+    auto shCtx = xcbCtx ? xcbCtx._context : null;
+    auto glxCtx = enforce(
+        glXCreateContextAttribsARB(g_display, fbc, cast(GLXContext)shCtx, 1, &ctxAttribs[0])
+    );
+
+    XSync(g_display, false);
+
+    if (glxCtx) {
+        auto ctx = new shared(XcbGlContext)(glxCtx);
+        ctx.makeCurrent(window.nativeHandle);
+        scope(exit) ctx.doneCurrent();
+
+        DerelictGL3.reload();
+
+        return ctx;
+    }
+    else {
+        return null;
+    }
+}
+
+private:
+
+final synchronized class XcbGlContext : GlContext
 {
     private GLXContext _context;
-    private int _screenNum;
 
-    override bool realize(GlAttribs attribs,
-                    PlatformWindow window,
-                    PlatformGlContext sharedCtx,
-                    Screen screen)
+    this (GLXContext context)
     {
-        _screenNum = screen ? screen.num() : XDefaultScreen(g_display);
-        auto fbc = getGlxFBConfig(g_display, _screenNum, attribs);
-
-        auto xWin = unsafeCast!XcbWindow(window);
-
-        if (!glXCreateContextAttribsARB) {
-            auto dummyCtx = enforce(
-                glXCreateNewContext(g_display, fbc, GLX_RGBA_TYPE, null, true)
-            );
-            glXMakeCurrent(g_display, xWin.xcbWin, dummyCtx);
-
-            DerelictGL3.reload();
-
-            glXMakeCurrent(g_display, 0, null);
-            glXDestroyContext(g_display, dummyCtx);
-        }
-
-        enforce(GLX_ARB_create_context);
-
-        int[] ctxAttribs = [
-            GLX_CONTEXT_MAJOR_VERSION_ARB, attribs.majorVersion,
-            GLX_CONTEXT_MINOR_VERSION_ARB, attribs.minorVersion
-        ];
-        if (attribs.decimalVersion >= 32) {
-            ctxAttribs ~= GLX_CONTEXT_PROFILE_MASK_ARB;
-            if (attribs.profile == GlProfile.core) {
-                ctxAttribs ~= GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
-            }
-            else {
-                ctxAttribs ~= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
-            }
-        }
-        ctxAttribs ~= 0;
-
-        GLXContext shCtx = sharedCtx ?
-                unsafeCast!XcbGlContext(sharedCtx)._context :
-                null;
-        _context = enforce(
-            glXCreateContextAttribsARB(g_display, fbc, shCtx, 1, &ctxAttribs[0])
-        );
-
-        XSync(g_display, false);
-
-        return _context != null;
+        _context = cast(shared(GLXContext))context;
     }
 
     override bool makeCurrent(size_t nativeHandle)
     {
         auto xWin = cast(xcb_window_t)nativeHandle;
-        return glXMakeCurrent(g_display, xWin, _context) != 0;
+        return glXMakeCurrent(g_display, xWin, cast(GLXContext)_context) != 0;
     }
 
     override void doneCurrent()
@@ -133,7 +146,7 @@ class XcbGlContext : PlatformGlContext
 }
 
 
-private GLXFBConfig getGlxFBConfig(Display* dpy, int screenNum, in GlAttribs attribs)
+GLXFBConfig getGlxFBConfig(Display* dpy, int screenNum, in GlAttribs attribs)
 {
     auto glxAttribs = getGlxAttribs(attribs);
 
@@ -151,7 +164,7 @@ private GLXFBConfig getGlxFBConfig(Display* dpy, int screenNum, in GlAttribs att
     return fbConfigs[0];
 }
 
-private xcb_visualtype_t* findXcbVisualInScreen(in XcbScreen screen, xcb_visualid_t visualId)
+xcb_visualtype_t* findXcbVisualInScreen(in XcbScreen screen, xcb_visualid_t visualId)
 {
     auto depthIter = xcb_screen_allowed_depths_iterator(screen.xcbScreen);
     while (depthIter.rem)
@@ -168,7 +181,7 @@ private xcb_visualtype_t* findXcbVisualInScreen(in XcbScreen screen, xcb_visuali
     return null;
 }
 
-private int[] getGlxAttribs(in GlAttribs attribs)
+int[] getGlxAttribs(in GlAttribs attribs)
 {
     int[] glxAttribs = [
         GLX_X_RENDERABLE,   1,

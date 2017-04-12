@@ -8,6 +8,7 @@ import dgt.platform.xcb.window;
 import dgt.platform.xcb.context;
 import dgt.platform;
 import dgt.window;
+import dgt.context;
 import dgt.screen;
 import dgt.geometry;
 import dgt.enums;
@@ -125,9 +126,11 @@ class XcbPlatform : Platform
         return "xcb";
     }
 
-    override PlatformGlContext createGlContext()
+    override shared(GlContext) createGlContext(
+                GlAttribs attribs, PlatformWindow window,
+                shared(GlContext) sharedCtx, Screen screen)
     {
-        return new XcbGlContext;
+        return createXcbGlContext(attribs, window, sharedCtx, screen);
     }
 
     override @property inout(Screen) defaultScreen() inout
