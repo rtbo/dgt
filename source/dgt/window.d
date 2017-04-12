@@ -10,6 +10,7 @@ import dgt.event;
 import dgt.image;
 import dgt.context;
 import dgt.vg;
+import dgt.sg.renderframe;
 
 import gfx.device.gl3;
 import gfx.device;
@@ -285,6 +286,7 @@ class Window
     mixin EventHandlerSignalMixin!("onExpose", OnWindowExposeHandler);
     mixin EventHandlerSignalMixin!("onClose", OnWindowCloseHandler);
     mixin SignalMixin!("onClosed", Window);
+    mixin SignalMixin!("onPopulateFrame", RenderFrame);
 
     void handleEvent(WindowEvent wEv)
     {
@@ -292,7 +294,7 @@ class Window
         switch (wEv.type)
         {
         case EventType.windowExpose:
-            _onExpose.fire(cast(WindowExposeEvent) wEv);
+            handleExpose(cast(WindowExposeEvent)wEv);
             break;
         case EventType.windowShow:
             _onShow.fire(cast(WindowShowEvent)wEv);
@@ -412,7 +414,10 @@ class Window
 
         void handleExpose(WindowExposeEvent ev)
         {
-
+            _onExpose.fire(cast(WindowExposeEvent) wEv);
+            auto f = new RenderFrame(IRect(0, 0, size));
+            _onPopulateFrame.fire(f);
+            // send to render event
         }
 
         void prepareGfx()
