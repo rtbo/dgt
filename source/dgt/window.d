@@ -10,15 +10,18 @@ import dgt.event;
 import dgt.image;
 import dgt.context;
 import dgt.vg;
+import dgt.math;
 import dgt.sg.renderframe;
+import dgt.sg.renderer;
 
 import gfx.device.gl3;
 import gfx.device;
 import gfx.pipeline;
 import gfx.foundation.util;
 
-import std.exception : enforce;
+import std.exception;
 import std.experimental.logger;
+import std.concurrency : Tid;
 
 alias GfxDevice = gfx.device.Device;
 
@@ -101,6 +104,7 @@ interface OnWindowExposeHandler
 {
     void onWindowExpose(WindowExposeEvent ev);
 }
+
 
 class Window
 {
@@ -286,7 +290,17 @@ class Window
     mixin EventHandlerSignalMixin!("onExpose", OnWindowExposeHandler);
     mixin EventHandlerSignalMixin!("onClose", OnWindowCloseHandler);
     mixin SignalMixin!("onClosed", Window);
-    mixin SignalMixin!("onPopulateFrame", RenderFrame);
+
+    alias FrameRequestHandler = immutable(RenderFrame) delegate();
+    @property void onRequestFrame(FrameRequestHandler handler)
+    {
+        if (_onRequestFrame) {
+            warning("overriding RequestFrameHandler");
+        }
+        _onRequestFrame = handler;
+    }
+
+
 
     void handleEvent(WindowEvent wEv)
     {
@@ -358,19 +372,19 @@ class Window
     {
         enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
-        if (!_context) {
-            _context = createGlContext(this);
-        }
-        enforce(_context.makeCurrent(_platformWindow.nativeHandle));
+        // if (!_context) {
+        //     _context = createGlContext(this);
+        // }
+        // enforce(_context.makeCurrent(_platformWindow.nativeHandle));
 
-        if (!_device) {
-            prepareGfx();
-        }
+        // if (!_device) {
+        //     prepareGfx();
+        // }
 
         immutable format = ImageFormat.argbPremult;
         _renderBuf = new MallocImage(format, _size, format.vgBytesForWidth(_size.width));
 
-        _encoder.setViewport(0, 0, cast(ushort)_size.width, cast(ushort)_size.height);
+        // _encoder.setViewport(0, 0, cast(ushort)_size.width, cast(ushort)_size.height);
 
         return _renderBuf;
     }
@@ -381,18 +395,31 @@ class Window
                               "surface matching Window.beginFrame");
         assert(img.size.contains(_size));
 
-        _surf.updateSize(cast(ushort)_size.width, cast(ushort)_size.height);
 
-        _encoder.clear!Rgba8(_rtv, [0.3f, 0.4f, 0.5f, 1f]);
+        if (!_context) {
+            _context = createGlContext(this);
+        }
+        if (!_rendererRunning) {
+            _renderTid = startRenderLoop(_context);
+            _rendererRunning = true;
+        }
 
-        blitAsTexture(img);
+        renderFrame(_renderTid, new immutable(RenderFrame)(
+            nativeHandle, IRect(0, 0, size), fvec(0.3f, 0.4f, 0.5f, 1f)
+        ));
 
-        _encoder.flush(_device);
+        // _surf.updateSize(cast(ushort)_size.width, cast(ushort)_size.height);
+
+        // _encoder.clear!Rgba8(_rtv, [0.3f, 0.4f, 0.5f, 1f]);
+
+         // blitAsTexture(img);
+
+        // _encoder.flush(_device);
 
         _renderBuf.dispose();
         _renderBuf = null;
-        _context.doneCurrent();
-        _context.swapBuffers(_platformWindow.nativeHandle);
+        // _context.doneCurrent();
+        // _context.swapBuffers(_platformWindow.nativeHandle);
     }
 
     package(dgt)
@@ -414,10 +441,20 @@ class Window
 
         void handleExpose(WindowExposeEvent ev)
         {
-            _onExpose.fire(cast(WindowExposeEvent) wEv);
-            auto f = new RenderFrame(IRect(0, 0, size));
-            _onPopulateFrame.fire(f);
-            // send to render event
+            _onExpose.fire(ev);
+
+            // if (!_context) {
+            //     _context = createGlContext(this);
+            // }
+            // if (!_renderStarted) {
+            //     _renderTid = startRenderLoop(_context);
+            //     _rendererRunning = true;
+            // }
+
+            // auto f = new RenderFrame(IRect(0, 0, size), nativeHandle);
+            // _onPopulateFrame.fire(f);
+
+            // renderFrame(_renderTid, assumeUnique(f));
         }
 
         void prepareGfx()
@@ -497,6 +534,9 @@ class Window
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
         shared(GlContext) _context;
+        Tid _renderTid;
+        bool _rendererRunning;
+        FrameRequestHandler _onRequestFrame;
 
         GfxDevice _device;
         BuiltinSurface!Rgba8 _surf;
