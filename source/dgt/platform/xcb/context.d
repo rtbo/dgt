@@ -103,7 +103,7 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
     XSync(g_display, false);
 
     if (glxCtx) {
-        auto ctx = new shared(XcbGlContext)(glxCtx);
+        auto ctx = new shared(XcbGlContext)(glxCtx, attribs);
         ctx.makeCurrent(window.nativeHandle);
         scope(exit) ctx.doneCurrent();
 
@@ -121,10 +121,17 @@ private:
 final synchronized class XcbGlContext : GlContext
 {
     private GLXContext _context;
+    private GlAttribs _attribs;
 
-    this (GLXContext context)
+    this (GLXContext context, GlAttribs attribs)
     {
         _context = cast(shared(GLXContext))context;
+        _attribs = attribs;
+    }
+
+    override @property GlAttribs attribs() const
+    {
+        return _attribs;
     }
 
     override bool makeCurrent(size_t nativeHandle)
