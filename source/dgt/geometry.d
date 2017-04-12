@@ -133,8 +133,8 @@ struct TRect(T) if (isNumeric!T)
     {
         _x = topLeft.x;
         _y = topLeft.y;
-        _w = bottomRight.x - topLeft.x;
-        _h = bottomRight.y - topLeft.y;
+        _w = cast(T)(bottomRight.x - topLeft.x);
+        _h = cast(T)(bottomRight.y - topLeft.y);
     }
 
     @property T x() const
@@ -164,7 +164,7 @@ struct TRect(T) if (isNumeric!T)
 
     @property void width(T val)
     {
-        _w = max(0, val);
+        _w = cast(T)max(0, val);
     }
 
     @property T height() const
@@ -174,7 +174,7 @@ struct TRect(T) if (isNumeric!T)
 
     @property void height(T val)
     {
-        _h = max(0, val);
+        _h = cast(T)max(0, val);
     }
 
     @property TPoint!T point() const
@@ -206,7 +206,7 @@ struct TRect(T) if (isNumeric!T)
 
     @property void left(T val)
     {
-        _w = max(0, _w - (val - _x));
+        _w = cast(T)max(0, _w - (val - _x));
         _x = val;
     }
 
@@ -217,13 +217,13 @@ struct TRect(T) if (isNumeric!T)
 
     @property void top(T val)
     {
-        _h = max(0, _h - (val - _y));
+        _h = cast(T)max(0, _h - (val - _y));
         _y = val;
     }
 
     @property T right() const
     {
-        return _x + _w;
+        return cast(T)(_x + _w);
     }
 
     @property void right(T val)
@@ -231,12 +231,12 @@ struct TRect(T) if (isNumeric!T)
         assert(val >= _x);
     }
     body {
-        _w = val - _x;
+        _w = cast(T)(val - _x);
     }
 
     @property T bottom() const
     {
-        return _y + _h;
+        return cast(T)(_y + _h);
     }
 
     @property void bottom(T val)
@@ -244,7 +244,7 @@ struct TRect(T) if (isNumeric!T)
         assert(val >= _y);
     }
     body {
-        _h = val - _y;
+        _h = cast(T)(val - _y);
     }
 
     @property TPoint!T topLeft() const
