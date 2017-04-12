@@ -272,7 +272,7 @@ class Window
     @property size_t nativeHandle() const
     {
         enforce(_platformWindow.created);
-        return _platformWindow.created;
+        return _platformWindow.nativeHandle;
     }
 
     mixin SignalMixin!("onTitleChange", string);

@@ -22,14 +22,10 @@ Tid startRenderLoop(shared(GlContext) context)
 bool renderFrame(Tid renderLoopTid, immutable(RenderFrame) frame)
 {
     import core.time : dur;
-    writeln("main: will call receive");
     if (!receiveTimeout(dur!"msecs"(15), (ReadyToRender rr){})) {
-        writeln("main: timed out!");
         return false;
     }
-    writeln("main: will call send");
     send(renderLoopTid, frame);
-    writeln("main: done");
     return true;
 }
 
@@ -44,14 +40,10 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 
     while (true)
     {
-        writeln("render: will call send");
         send(mainLoopTid, ReadyToRender());
-        writeln("render: done!\nrender: will call receive");
         receive(
             (immutable(RenderFrame) frame) {
-                writeln("render: received frame!");
                 renderer.renderFrame(frame);
-                writeln("render: rendered frame!");
             }
         );
     }
