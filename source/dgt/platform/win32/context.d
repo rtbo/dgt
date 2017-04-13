@@ -105,8 +105,9 @@ shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
 
     if (glrc) {
         auto ctx = new shared(Win32GlContext)(glrc, attribs);
-        ctx.makeCurrent(window.nativeHandle);
-        scope(exit) ctx.doneCurrent();
+        auto mutCtx = cast(Win32GlContext)ctx;
+        mutCtx.makeCurrent(window.nativeHandle);
+        scope(exit) mutCtx.doneCurrent();
 
         DerelictGL3.reload();
 
@@ -120,12 +121,12 @@ shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
 
 private:
 
-final synchronized class Win32GlContext : GlContext
+final class Win32GlContext : GlContext
 {
     private HGLRC _glrc;
     private GlAttribs _attribs;
 
-    this(HGLRC glrc, GlAttribs attribs) {
+    shared this(HGLRC glrc, GlAttribs attribs) {
         _glrc = cast(shared(HGLRC))glrc;
         _attribs = attribs;
     }
@@ -137,7 +138,7 @@ final synchronized class Win32GlContext : GlContext
         auto wnd = cast(HWND)nativeHandle;
         auto dc = GetDC(wnd);
         scope(exit) ReleaseDC(wnd, dc);
-        return wglMakeCurrent(dc, cast(HGLRC)_glrc) != 0;
+        return wglMakeCurrent(dc, _glrc) != 0;
     }
 
     override void doneCurrent()

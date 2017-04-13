@@ -86,7 +86,7 @@ struct GlAttribs
     }
 }
 
-synchronized interface GlContext
+interface GlContext
 {
     @property GlAttribs attribs() const;
     bool makeCurrent(size_t nativeHandle);

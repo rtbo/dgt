@@ -52,7 +52,7 @@ struct Finalized {}
 
 void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 {
-    auto renderer = new Renderer(context);
+    auto renderer = new Renderer(cast(GlContext)context);
 
     bool exit;
     while (!exit)
@@ -75,7 +75,7 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 
 class Renderer
 {
-    shared(GlContext) _context;
+    GlContext _context;
     Device _device;
     Encoder _encoder;
     BuiltinSurface!Rgba8 _surf;
@@ -86,7 +86,7 @@ class Renderer
 
     FMat4 _transform;
 
-    this(shared(GlContext) context)
+    this(GlContext context)
     {
         _context = context;
     }
@@ -128,32 +128,35 @@ class Renderer
 
     void renderFrame(immutable(RenderFrame) frame)
     {
-        if (!_context.makeCurrent(frame.windowHandle)) {
-            error("could not make rendering context current!");
-            return;
+        synchronized(_context)
+        {
+            if (!_context.makeCurrent(frame.windowHandle)) {
+                error("could not make rendering context current!");
+                return;
+            }
+            scope(exit) _context.doneCurrent();
+
+            _size = frame.viewport.size;
+            if (!_device) {
+                initialize();
+                log("renderer initialized");
+            }
+
+            immutable vp = cast(TRect!ushort)frame.viewport;
+            _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
+
+            if (frame.hasClearColor) {
+                auto col = frame.clearColor;
+                _encoder.clear!Rgba8(_rtv, [col.r, col.g, col.b, col.a]);
+            }
+
+            if (frame.root) {
+                renderNode(frame.root);
+            }
+
+            _encoder.flush(_device);
+            _context.swapBuffers(frame.windowHandle);
         }
-        scope(exit) _context.doneCurrent();
-
-        _size = frame.viewport.size;
-        if (!_device) {
-            initialize();
-            log("renderer initialized");
-        }
-
-        immutable vp = cast(TRect!ushort)frame.viewport;
-        _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
-
-        if (frame.hasClearColor) {
-            auto col = frame.clearColor;
-            _encoder.clear!Rgba8(_rtv, [col.r, col.g, col.b, col.a]);
-        }
-
-        if (frame.root) {
-            renderNode(frame.root);
-        }
-
-        _encoder.flush(_device);
-        _context.swapBuffers(frame.windowHandle);
     }
 
     void renderNode(immutable(RenderNode) node)

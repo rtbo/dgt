@@ -104,8 +104,9 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
 
     if (glxCtx) {
         auto ctx = new shared(XcbGlContext)(glxCtx, attribs);
-        ctx.makeCurrent(window.nativeHandle);
-        scope(exit) ctx.doneCurrent();
+        auto mutCtx = cast(XcbGlContext)ctx;
+        mutCtx.makeCurrent(window.nativeHandle);
+        scope(exit) mutCtx.doneCurrent();
 
         DerelictGL3.reload();
 
@@ -118,12 +119,12 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
 
 private:
 
-final synchronized class XcbGlContext : GlContext
+final class XcbGlContext : GlContext
 {
     private GLXContext _context;
     private GlAttribs _attribs;
 
-    this (GLXContext context, GlAttribs attribs)
+    shared this (GLXContext context, GlAttribs attribs)
     {
         _context = cast(shared(GLXContext))context;
         _attribs = attribs;
@@ -137,7 +138,7 @@ final synchronized class XcbGlContext : GlContext
     override bool makeCurrent(size_t nativeHandle)
     {
         auto xWin = cast(xcb_window_t)nativeHandle;
-        return glXMakeCurrent(g_display, xWin, cast(GLXContext)_context) != 0;
+        return glXMakeCurrent(g_display, xWin, _context) != 0;
     }
 
     override void doneCurrent()
