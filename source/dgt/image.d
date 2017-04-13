@@ -97,6 +97,7 @@ class Image
         import std.array : uninitializedArray;
         import std.algorithm : max;
         enforce(size.isValidImageSize);
+        _format = format;
         _width = cast(ushort)size.width;
         _height = cast(ushort)size.height;
         _stride = max(minStride, format.minStrideForWidth(size.width));
