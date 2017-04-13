@@ -383,7 +383,7 @@ class Window
         enforce(_renderBuf && _renderBuf is img, "must call Window.endFrame with a " ~
                               "surface matching Window.beginFrame");
         assert(img.size.contains(_size));
-
+        img = null; // still have _renderBuf
 
         if (!_context) {
             _context = createGlContext(this);
@@ -394,14 +394,12 @@ class Window
         }
 
         immutable node = new immutable ImageRenderNode(
-            fvec(0, 0), cast(immutable(Image))img
+            fvec(0, 0), assumeUnique(_renderBuf)
         );
 
         renderFrame(_renderTid, new immutable(RenderFrame)(
             nativeHandle, IRect(0, 0, size), fvec(0.3f, 0.4f, 0.5f, 1), node
         ));
-
-        _renderBuf = null;
     }
 
     package(dgt)

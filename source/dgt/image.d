@@ -125,15 +125,37 @@ class Image
         );
         enforce(isValidImageSize(size(this)));
 
-        _width = cast(ushort)width;
-        _height = cast(ushort)height;
-        _stride = stride;
-        _format = fmt;
-        _data = data;
+        this(data, fmt, cast(ushort)width, cast(ushort)height, stride);
+    }
+
+    /// ditto
+    immutable this(immutable(ubyte)[] data, in ImageFormat fmt, in size_t width, in size_t stride)
+    {
+        import std.format : format;
+        immutable minStride = fmt.minStrideForWidth(width);
+        immutable height = data.length / stride;
+        enforce(
+            stride >= minStride,
+            format("provided stride is %s, minimum requested is %s",
+                stride, minStride)
+        );
+        enforce(isValidImageSize(size(this)));
+
+        this(data, fmt, cast(ushort)width, cast(ushort)height, stride);
     }
 
     private this(ubyte[] data, ImageFormat format, ushort width, ushort height,
                     size_t stride)
+    {
+        _data = data;
+        _format = format;
+        _width = width;
+        _height = height;
+        _stride = stride;
+    }
+
+    private immutable this (immutable(ubyte)[] data, ImageFormat format,
+                            ushort width, ushort height, size_t stride)
     {
         _data = data;
         _format = format;
@@ -236,6 +258,12 @@ class Image
         return new Image(_data.dup, _format, _width, _height, _stride);
     }
 
+    /// Duplicates the image into an immutable image
+    @property immutable(Image) idup() const
+    {
+        return new immutable Image(_data.idup, _format, _width, _height, _stride);
+    }
+
     /// Convert the image into another format. If format is the same, dup is returned.
     /// It is only possible to convert between a1 and a8 or between one of the
     /// rgb formats. An unsupported conversion tentative will throw.
@@ -321,6 +349,27 @@ class Image
         return res;
     }
 }
+
+/// Assumes the image is unique and converts it into an immutable image
+immutable(Image) assumeUnique(ref Image img)
+{
+    import std.exception : assumeUnique;
+    immutable res = new immutable(Image)(
+        assumeUnique(img.data), img.format, img.width, img.height, img.stride
+    );
+    img = null;
+    return res;
+}
+
+/// ditto
+immutable(Image) assumeUnique(Image img)
+{
+    import std.exception : assumeUnique;
+    return new immutable(Image)(
+        assumeUnique(img.data), img.format, img.width, img.height, img.stride
+    );
+}
+
 
 /// Replicate of Image that allocates with malloc and frees in dispose
 class MallocImage : Disposable
