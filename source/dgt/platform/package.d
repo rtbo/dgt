@@ -30,7 +30,11 @@ interface PlatformWindow
     @property inout(Window) window() inout;
 
     bool created() const;
-    void create(WindowState state);
+
+    void create()
+    in { assert(!created); }
+    out { assert(created); }
+
     void close();
 
     @property size_t nativeHandle() const;

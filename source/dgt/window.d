@@ -246,23 +246,21 @@ class Window
 
     void show(WindowState state = WindowState.normal)
     {
-        if (!_platformWindow.created)
-        {
-            _platformWindow.create(state);
+        if (!_platformWindow.created) {
+            _platformWindow.create();
+            if (!(_flags & WindowFlags.dummy)) {
+                assert(!_gfxRunning);
+                initializeGfx();
+            }
         }
-        else
-        {
-            _platformWindow.state = state;
-        }
+
+        _platformWindow.state = state;
     }
 
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
-        if (_rendererRunning) {
-            finalizeRenderLoop(_renderTid);
-            _rendererRunning = false;
-        }
+        if (_gfxRunning) finalizeGfx();
         _platformWindow.close();
         _onClosed.fire(this);
         Application.instance.unregisterWindow(this);
@@ -385,13 +383,6 @@ class Window
         assert(img.size.contains(_size));
         img = null; // still have _renderBuf
 
-        if (!_context) {
-            _context = createGlContext(this);
-        }
-        if (!_rendererRunning) {
-            _renderTid = startRenderLoop(_context);
-            _rendererRunning = true;
-        }
 
         immutable node = new immutable ImageRenderNode(
             fvec(0, 0), assumeUnique(_renderBuf)
@@ -412,6 +403,19 @@ class Window
 
     private
     {
+        void initializeGfx()
+        {
+            shared ctx = createGlContext(this);
+            _renderTid = startRenderLoop(ctx);
+            _gfxRunning = true;
+        }
+
+        void finalizeGfx()
+        {
+            finalizeRenderLoop(_renderTid);
+            _gfxRunning = false;
+        }
+
         void handleResize(WindowResizeEvent ev)
         {
             immutable newSize = ev.size;
@@ -442,7 +446,7 @@ class Window
         PlatformWindow _platformWindow;
         shared(GlContext) _context;
         Tid _renderTid;
-        bool _rendererRunning;
+        bool _gfxRunning;
         FrameRequestHandler _onRequestFrame;
 
         // transient rendering state

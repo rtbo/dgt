@@ -50,7 +50,7 @@ class Win32Window : PlatformWindow
         return _hWnd !is null;
     }
 
-    override void create(WindowState state)
+    override void create()
     {
         import std.conv : to;
 
@@ -76,7 +76,6 @@ class Win32Window : PlatformWindow
 		}
 
         _state = WindowState.hidden;
-        this.state = state;
         Win32Platform.instance.registerWindow(_hWnd, this);
     }
 

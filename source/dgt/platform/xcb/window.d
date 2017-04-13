@@ -65,7 +65,7 @@ class XcbWindow : PlatformWindow
         return _created;
     }
 
-    override void create(WindowState state)
+    override void create()
     {
         const screen = _platform.defaultXcbScreen;
         immutable screenNum = screen.num;
@@ -113,7 +113,6 @@ class XcbWindow : PlatformWindow
         _platform.registerWindow(this);
 
         _lastKnownState = WindowState.hidden;
-        this.state = state; // actually show the window
         _created = true;
     }
 
