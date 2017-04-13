@@ -29,11 +29,7 @@ abstract class RenderNode
     private Rect _bounds;
     private Type _type;
 
-    this(in Type type)
-    {
-        _type = type;
-    }
-    this(in Type type, in Rect bounds)
+    immutable this(in Type type, in Rect bounds)
     {
         _type = type;
         _bounds = bounds;
@@ -49,12 +45,12 @@ class GroupRenderNode : RenderNode
 {
     private immutable(RenderNode)[] _children;
 
-    this(in Rect bounds, immutable(RenderNode)[] children)
+    immutable this(in Rect bounds, immutable(RenderNode)[] children)
     {
         _children = children;
         super(Type.group, bounds);
     }
-    this(immutable(RenderNode)[] children)
+    immutable this(immutable(RenderNode)[] children)
     {
         import std.algorithm : map;
         _children = children;
@@ -63,7 +59,7 @@ class GroupRenderNode : RenderNode
         ));
     }
 
-    immutable(RenderNode)[] children() const { return _children; }
+    @property immutable(RenderNode)[] children() const { return _children; }
 }
 
 class TransformRenderNode : RenderNode
@@ -71,12 +67,14 @@ class TransformRenderNode : RenderNode
     private FMat4 _transform;
     private immutable(RenderNode) _child;
 
-    this(in FMat4 transform, immutable(RenderNode) child)
+    immutable this(in FMat4 transform, immutable(RenderNode) child)
     {
         _transform = transform;
         _child = child;
         super(Type.transform, transformBounds(child.bounds, transform)); // bounds
     }
+
+    @property FMat4 transform() const { return _transform; }
 }
 
 
@@ -84,22 +82,26 @@ class ColorRenderNode : RenderNode
 {
     private FVec4 _color;
 
-    this(in FVec4 color, in Rect bounds)
+    immutable this(in FVec4 color, in Rect bounds)
     {
         _color = color;
         super(Type.color, bounds);
     }
+
+    @property FVec4 color() const { return _color; }
 }
 
 class ImageRenderNode : RenderNode
 {
     private immutable(Image) _img;
 
-    this (in Point topLeft, immutable(Image) img)
+    immutable this (in Point topLeft, immutable(Image) img)
     {
         _img = img;
         super(Type.image, Rect(topLeft, cast(Size)img.size));
     }
+
+    @property immutable(Image) image() const { return _img; }
 }
 
 

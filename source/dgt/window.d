@@ -12,12 +12,8 @@ import dgt.context;
 import dgt.vg;
 import dgt.math;
 import dgt.sg.renderframe;
+import dgt.sg.rendernode;
 import dgt.sg.renderer;
-
-import gfx.device.gl3;
-import gfx.device;
-import gfx.pipeline;
-import gfx.foundation.util;
 
 import std.exception;
 import std.experimental.logger;
@@ -263,7 +259,10 @@ class Window
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
-        disposeGfx();
+        if (_rendererRunning) {
+            finalizeRenderLoop(_renderTid);
+            _rendererRunning = false;
+        }
         _platformWindow.close();
         _onClosed.fire(this);
         Application.instance.unregisterWindow(this);
@@ -372,26 +371,16 @@ class Window
     {
         enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
                             "Window.endFrame");
-        // if (!_context) {
-        //     _context = createGlContext(this);
-        // }
-        // enforce(_context.makeCurrent(_platformWindow.nativeHandle));
-
-        // if (!_device) {
-        //     prepareGfx();
-        // }
 
         immutable format = ImageFormat.argbPremult;
-        _renderBuf = new MallocImage(format, _size, format.vgBytesForWidth(_size.width));
-
-        // _encoder.setViewport(0, 0, cast(ushort)_size.width, cast(ushort)_size.height);
+        _renderBuf = new Image(format, _size, format.vgBytesForWidth(_size.width));
 
         return _renderBuf;
     }
 
     void endFrame(Image img)
     {
-        enforce(_renderBuf && _renderBuf.img is img, "must call Window.endFrame with a " ~
+        enforce(_renderBuf && _renderBuf is img, "must call Window.endFrame with a " ~
                               "surface matching Window.beginFrame");
         assert(img.size.contains(_size));
 
@@ -404,22 +393,15 @@ class Window
             _rendererRunning = true;
         }
 
+        immutable node = new immutable ImageRenderNode(
+            fvec(0, 0), cast(immutable(Image))img
+        );
+
         renderFrame(_renderTid, new immutable(RenderFrame)(
-            nativeHandle, IRect(0, 0, size), fvec(0.3f, 0.4f, 0.5f, 1f)
+            nativeHandle, IRect(0, 0, size), fvec(0.3f, 0.4f, 0.5f, 1), node
         ));
 
-        // _surf.updateSize(cast(ushort)_size.width, cast(ushort)_size.height);
-
-        // _encoder.clear!Rgba8(_rtv, [0.3f, 0.4f, 0.5f, 1f]);
-
-         // blitAsTexture(img);
-
-        // _encoder.flush(_device);
-
-        _renderBuf.dispose();
         _renderBuf = null;
-        // _context.doneCurrent();
-        // _context.swapBuffers(_platformWindow.nativeHandle);
     }
 
     package(dgt)
@@ -451,80 +433,7 @@ class Window
             //     _rendererRunning = true;
             // }
 
-            // auto f = new RenderFrame(IRect(0, 0, size), nativeHandle);
-            // _onPopulateFrame.fire(f);
-
-            // renderFrame(_renderTid, assumeUnique(f));
-        }
-
-        void prepareGfx()
-        {
-            _device = createGlDevice();
-            _device.retain();
-
-            _surf = new BuiltinSurface!Rgba8(
-                _device.builtinSurface,
-                cast(ushort)_size.width, cast(ushort)_size.height,
-                attribs.samples
-            );
-            _surf.retain();
-
-            _rtv = _surf.viewAsRenderTarget();
-            _rtv.retain();
-
-            _prog = new Program(ShaderSet.vertexPixel(
-                texBlitVShader, texBlitFShader
-            ));
-            _prog.retain();
-
-            _pso = new TexBlitPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
-            _pso.retain();
-
-            _encoder = Encoder(_device.makeCommandBuffer());
-        }
-
-        void disposeGfx()
-        {
-            if (!_device) return;
-            assert(_context);
-            _context.makeCurrent(_platformWindow.nativeHandle);
-            scope(exit) _context.doneCurrent();
-
-            _encoder = Encoder.init;
-            _pso.release();
-            _prog.release();
-            _rtv.release();
-            _surf.release();
-        }
-
-        void blitAsTexture(Image img)
-        {
-            auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
-            TexUsageFlags usage = TextureUsage.ShaderResource;
-            auto tex = makeRc!(Texture2D!Rgba8)(
-                usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
-            );
-            auto srv = tex.viewAsShaderResource(0, 0, newSwizzle()).rc();
-            auto sampler = makeRc!Sampler(
-                srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
-            );
-
-            auto quadVerts = [
-                TexBlitVertex([-1f, -1f], [0f, 1f]),
-                TexBlitVertex([1f, -1f], [1f, 1f]),
-                TexBlitVertex([1f, 1f], [1f, 0f]),
-                TexBlitVertex([-1f, 1f], [0f, 0f])
-            ];
-            ushort[] quadInds = [0, 1, 2, 0, 2, 3];
-            auto vbuf = makeRc!(VertexBuffer!TexBlitVertex)(quadVerts);
-
-            auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
-
-            auto data = TexBlitPipeline.Data(
-                vbuf, srv, sampler, rc(_rtv)
-            );
-
-            _encoder.draw!TexBlitPipeMeta(slice, _pso, data);
+            // Render frame!
         }
 
         WindowFlags _flags;
@@ -538,81 +447,8 @@ class Window
         bool _rendererRunning;
         FrameRequestHandler _onRequestFrame;
 
-        GfxDevice _device;
-        BuiltinSurface!Rgba8 _surf;
-        RenderTargetView!Rgba8 _rtv;
-        Program _prog;
-        TexBlitPipeline _pso;
-        Encoder _encoder;
-
         // transient rendering state
-        MallocImage _renderBuf;
+        Image _renderBuf;
+
     }
-}
-
-struct TexBlitVertex {
-    @GfxName("a_Pos")       float[2] pos;
-    @GfxName("a_TexCoord")  float[2] texCoord;
-}
-
-struct TexBlitPipeMeta {
-    VertexInput!TexBlitVertex   input;
-
-    @GfxName("t_Sampler")
-    ResourceView!Rgba8          texture;
-
-    @GfxName("t_Sampler")
-    ResourceSampler             sampler;
-
-    @GfxName("o_Color")
-    ColorOutput!Rgba8           outColor;
-}
-
-alias TexBlitPipeline = PipelineState!TexBlitPipeMeta;
-
-enum texBlitVShader = `
-    #version 330
-    in vec2 a_Pos;
-    in vec2 a_TexCoord;
-
-    out vec2 v_TexCoord;
-
-    void main() {
-        v_TexCoord = a_TexCoord;
-        gl_Position = vec4(a_Pos, 0.0, 1.0);
-    }
-`;
-version(LittleEndian)
-{
-    // ImageFormat order is argb, in native order (that is actually bgra)
-    // the framebuffer order is rgba, so some swizzling is needed
-    enum texBlitFShader = `
-        #version 330
-
-        in vec2 v_TexCoord;
-        out vec4 o_Color;
-        uniform sampler2D t_Sampler;
-
-        void main() {
-            vec4 sample = texture(t_Sampler, v_TexCoord);
-            o_Color = sample.bgra;
-        }
-    `;
-}
-version(BigEndian)
-{
-    // ImageFormat order is argb, in native order
-    // the framebuffer order is rgba, so a left shift is needed
-    enum texBlitFShader = `
-        #version 330
-
-        in vec2 v_TexCoord;
-        out vec4 o_Color;
-        uniform sampler2D t_Sampler;
-
-        void main() {
-            vec4 sample = texture(t_Sampler, v_TexCoord);
-            o_Color = sample.gbar;
-        }
-    `;
 }
