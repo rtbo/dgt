@@ -75,7 +75,7 @@ int main()
             auto ctx = createContext(frameImg);
             scope(exit) ctx.dispose();
 
-            ctx.clear([1, 1, 1, 1]);
+            ctx.clear([1, 1, 1, 0]);
 
             ctx.sandbox!({
                 fillPaint.color = fvec(size.width/1300f, 0.8, 0.2, 1);
@@ -114,13 +114,19 @@ int main()
             });
         }
 
+        // import std.format : format;
+        // static int num;
+        // frameImg.convert(ImageFormat.argb).saveToFile(format("img%s.png",++num));
+
         import dgt.sg.rendernode : ImageRenderNode;
         import dgt.sg.renderframe : RenderFrame;
 
         immutable node = new immutable ImageRenderNode (
             fvec(0, 0), assumeUnique(frameImg)
         );
-        return new immutable RenderFrame(win.nativeHandle, IRect(0, 0, size), fvec(0.3, 0.4, 0.5, 1), node);
+        return new immutable RenderFrame(
+            win.nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), node
+        );
     };
 
     win.show();
