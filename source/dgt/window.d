@@ -259,7 +259,8 @@ class Window
             }
         }
 
-        _platformWindow.state = state;
+        if (!(_flags & WindowFlags.dummy))
+            _platformWindow.state = state;
     }
 
     void close()
