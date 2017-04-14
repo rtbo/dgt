@@ -96,11 +96,6 @@ interface OnWindowCloseHandler
     void onWindowClose(WindowCloseEvent ev);
 }
 
-interface OnWindowExposeHandler
-{
-    void onWindowExpose(WindowExposeEvent ev);
-}
-
 
 class Window
 {
@@ -290,7 +285,6 @@ class Window
     mixin EventHandlerSignalMixin!("onKeyDown", OnWindowKeyDownHandler);
     mixin EventHandlerSignalMixin!("onKeyUp", OnWindowKeyUpHandler);
     mixin EventHandlerSignalMixin!("onStateChange", OnWindowStateChangeHandler);
-    mixin EventHandlerSignalMixin!("onExpose", OnWindowExposeHandler);
     mixin EventHandlerSignalMixin!("onClose", OnWindowCloseHandler);
     mixin SignalMixin!("onClosed", Window);
 
@@ -371,34 +365,6 @@ class Window
         }
     }
 
-    Image beginFrame()
-    {
-        enforce(!_renderBuf, "cannot call Window.beginFrame without a " ~
-                            "Window.endFrame");
-
-        immutable format = ImageFormat.argbPremult;
-        _renderBuf = new Image(format, _size, format.vgBytesForWidth(_size.width));
-
-        return _renderBuf;
-    }
-
-    void endFrame(Image img)
-    {
-        enforce(_renderBuf && _renderBuf is img, "must call Window.endFrame with a " ~
-                              "surface matching Window.beginFrame");
-        assert(img.size.contains(_size));
-        img = null; // still have _renderBuf
-
-
-        immutable node = new immutable ImageRenderNode(
-            fvec(0, 0), assumeUnique(_renderBuf)
-        );
-
-        renderFrame(_renderTid, new immutable(RenderFrame)(
-            nativeHandle, IRect(0, 0, size), fvec(0.3f, 0.4f, 0.5f, 1), node
-        ));
-    }
-
     package(dgt)
     {
         @property inout(PlatformWindow) platformWindow() inout
@@ -431,17 +397,12 @@ class Window
 
         void handleExpose(WindowExposeEvent ev)
         {
-            _onExpose.fire(ev);
+            assert(_gfxRunning);
 
-            // if (!_context) {
-            //     _context = createGlContext(this);
-            // }
-            // if (!_renderStarted) {
-            //     _renderTid = startRenderLoop(_context);
-            //     _rendererRunning = true;
-            // }
-
-            // Render frame!
+            if (_onRequestFrame) {
+                immutable f = _onRequestFrame();
+                renderFrame(_renderTid, f);
+            }
         }
 
         WindowFlags _flags;
