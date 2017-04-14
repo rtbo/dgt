@@ -9,6 +9,7 @@ import dgt.sg.renderframe;
 
 import gfx.foundation.rc;
 import gfx.foundation.util;
+import gfx.foundation.typecons;
 import gfx.pipeline;
 import gfx.device;
 import gfx.device.gl3;
@@ -89,7 +90,7 @@ class Renderer
     BuiltinSurface!Rgba8 _surf;
     RenderTargetView!Rgba8 _rtv;
     Program _prog;
-    TexBlitPipeline _pso;
+    TexPipeline _texPso;
     ISize _size;
 
     FMat4 _transform;
@@ -114,12 +115,12 @@ class Renderer
         _rtv.retain();
 
         _prog = new Program(ShaderSet.vertexPixel(
-            texBlitVShader, texBlitFShader
+            texVShader, texFShader
         ));
         _prog.retain();
 
-        _pso = new TexBlitPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
-        _pso.retain();
+        _texPso = new TexPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
+        _texPso.retain();
 
         _encoder = Encoder(_device.makeCommandBuffer());
     }
@@ -129,7 +130,7 @@ class Renderer
         synchronized(_context) {
             _context.makeCurrent(nativeHandle);
             _encoder = Encoder.init;
-            _pso.release();
+            _texPso.release();
             _prog.release();
             _rtv.release();
             _surf.release();
@@ -217,31 +218,59 @@ class Renderer
         );
 
         auto quadVerts = [
-            TexBlitVertex([-1f, -1f], [0f, 1f]),
-            TexBlitVertex([1f, -1f], [1f, 1f]),
-            TexBlitVertex([1f, 1f], [1f, 0f]),
-            TexBlitVertex([-1f, 1f], [0f, 0f])
+            TexVertex([-1f, -1f], [0f, 1f]),
+            TexVertex([1f, -1f], [1f, 1f]),
+            TexVertex([1f, 1f], [1f, 0f]),
+            TexVertex([-1f, 1f], [0f, 0f])
         ];
         ushort[] quadInds = [0, 1, 2, 0, 2, 3];
-        auto vbuf = makeRc!(VertexBuffer!TexBlitVertex)(quadVerts);
+        auto vbuf = makeRc!(VertexBuffer!TexVertex)(quadVerts);
 
         auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
 
-        auto data = TexBlitPipeline.Data(
-            vbuf, srv, sampler, rc(_rtv)
-        );
-
-        _encoder.draw!TexBlitPipeMeta(slice, _pso, data);
+        switch (img.format) {
+        case ImageFormat.rgb:
+            _texPso.outColor.info.blend = none!Blend;
+            auto data = TexPipeline.Data(
+                vbuf, srv, sampler, rc(_rtv)
+            );
+            _encoder.draw!TexPipeMeta(slice, _texPso, data);
+            break;
+        case ImageFormat.argb:
+            _texPso.outColor.info.blend = some(Blend(
+                Equation.Add,
+                Factor.makeZeroPlus(BlendValue.SourceAlpha),
+                Factor.makeOneMinus(BlendValue.SourceAlpha)
+            ));
+            auto data = TexPipeline.Data(
+                vbuf, srv, sampler, rc(_rtv)
+            );
+            _encoder.draw!TexPipeMeta(slice, _texPso, data);
+            break;
+        case ImageFormat.argbPremult:
+            _texPso.outColor.info.blend = some(Blend(
+                Equation.Add,
+                Factor.makeOne(),
+                Factor.makeOneMinus(BlendValue.SourceAlpha)
+            ));
+            auto data = TexPipeline.Data(
+                vbuf, srv, sampler, rc(_rtv)
+            );
+            _encoder.draw!TexPipeMeta(slice, _texPso, data);
+            break;
+        default:
+            assert(false, "unimplemented image format");
+        }
     }
 }
 
-struct TexBlitVertex {
+struct TexVertex {
     @GfxName("a_Pos")       float[2] pos;
     @GfxName("a_TexCoord")  float[2] texCoord;
 }
 
-struct TexBlitPipeMeta {
-    VertexInput!TexBlitVertex   input;
+struct TexPipeMeta {
+    VertexInput!TexVertex   input;
 
     @GfxName("t_Sampler")
     ResourceView!Rgba8          texture;
@@ -252,10 +281,9 @@ struct TexBlitPipeMeta {
     @GfxName("o_Color")
     ColorOutput!Rgba8           outColor;
 }
+alias TexPipeline = PipelineState!TexPipeMeta;
 
-alias TexBlitPipeline = PipelineState!TexBlitPipeMeta;
-
-enum texBlitVShader = `
+enum texVShader = `
     #version 330
     in vec2 a_Pos;
     in vec2 a_TexCoord;
@@ -271,7 +299,7 @@ version(LittleEndian)
 {
     // ImageFormat order is argb, in native order (that is actually bgra)
     // the framebuffer order is rgba, so some swizzling is needed
-    enum texBlitFShader = `
+    enum texFShader = `
         #version 330
 
         in vec2 v_TexCoord;
@@ -288,7 +316,7 @@ version(BigEndian)
 {
     // ImageFormat order is argb, in native order
     // the framebuffer order is rgba, so a left shift is needed
-    enum texBlitFShader = `
+    enum texFShader = `
         #version 330
 
         in vec2 v_TexCoord;
