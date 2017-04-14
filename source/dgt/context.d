@@ -6,6 +6,8 @@ import dgt.geometry : ISize;
 import dgt.screen;
 import dgt.window;
 
+import gfx.foundation.rc;
+
 import derelict.opengl3.gl3;
 
 import std.exception;
@@ -86,7 +88,7 @@ struct GlAttribs
     }
 }
 
-interface GlContext
+interface GlContext : Disposable
 {
     @property GlAttribs attribs() const;
     bool makeCurrent(size_t nativeHandle);

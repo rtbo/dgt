@@ -33,11 +33,11 @@ bool renderFrame(Tid renderLoopTid, immutable(RenderFrame) frame)
     return true;
 }
 
-void finalizeRenderLoop(Tid renderLoopTid)
+void finalizeRenderLoop(Tid renderLoopTid, size_t nativeHandle)
 {
     import core.time : dur;
     trace("terminating render loop");
-    prioritySend(renderLoopTid, Finalize());
+    prioritySend(renderLoopTid, Finalize(nativeHandle));
     if (!receiveTimeout(dur!"msecs"(100), (Finalized f) {})) {
         error("no proper termination of renderer!");
     }
@@ -46,7 +46,9 @@ void finalizeRenderLoop(Tid renderLoopTid)
 private:
 
 struct ReadyToRender {}
-struct Finalize {}
+struct Finalize {
+    size_t nativeHandle;
+}
 struct Finalized {}
 
 
@@ -63,12 +65,12 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
                 renderer.renderFrame(frame);
             },
             (Finalize f) {
+                renderer.finalize(f.nativeHandle);
                 exit = true;
             }
         );
     }
 
-    renderer.finalize();
     prioritySend(mainLoopTid, Finalized());
 }
 
@@ -116,14 +118,19 @@ class Renderer
         _encoder = Encoder(_device.makeCommandBuffer());
     }
 
-    void finalize()
+    void finalize(size_t nativeHandle)
     {
-        _encoder = Encoder.init;
-        _pso.release();
-        _prog.release();
-        _rtv.release();
-        _surf.release();
-        _device.release();
+        synchronized(_context) {
+            _context.makeCurrent(nativeHandle);
+            _encoder = Encoder.init;
+            _pso.release();
+            _prog.release();
+            _rtv.release();
+            _surf.release();
+            _device.release();
+            _context.doneCurrent();
+        }
+        _context.dispose();
     }
 
     void renderFrame(immutable(RenderFrame) frame)

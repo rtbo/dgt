@@ -130,6 +130,12 @@ final class XcbGlContext : GlContext
         _attribs = attribs;
     }
 
+    override void dispose()
+    {
+        glXDestroyContext(g_display, _context);
+        _context = null;
+    }
+
     override @property GlAttribs attribs() const
     {
         return _attribs;

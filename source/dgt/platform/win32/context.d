@@ -131,6 +131,11 @@ final class Win32GlContext : GlContext
         _attribs = attribs;
     }
 
+    override void dispose()
+    {
+        wglDeleteContext(_glrc);
+    }
+
     override @property GlAttribs attribs() const { return _attribs; }
 
     override bool makeCurrent(size_t nativeHandle)

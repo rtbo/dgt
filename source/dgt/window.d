@@ -412,7 +412,7 @@ class Window
 
         void finalizeGfx()
         {
-            finalizeRenderLoop(_renderTid);
+            finalizeRenderLoop(_renderTid, nativeHandle);
             _gfxRunning = false;
         }
 
