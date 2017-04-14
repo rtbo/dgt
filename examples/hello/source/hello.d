@@ -75,7 +75,7 @@ int main()
             auto ctx = createContext(frameImg);
             scope(exit) ctx.dispose();
 
-            ctx.clear([1, 1, 1, 0]);
+            ctx.clear([0, 0, 0, 0]);
 
             ctx.sandbox!({
                 fillPaint.color = fvec(size.width/1300f, 0.8, 0.2, 1);

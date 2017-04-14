@@ -319,8 +319,19 @@ class CairoContext : VgContext
 
     override void clear(in float[4] color)
     {
-        cairo_set_source_rgba(cairo, color[0], color[1], color[2], color[3]);
+        cairo_save(cairo);
+        if (color[3] == 1) {
+            cairo_set_source_rgba(cairo, color[0], color[1], color[2], color[3]);
+        }
+        else if (color[3] == 0) {
+            cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
+        }
+        else {
+            cairo_set_source_rgba(cairo, color[0], color[1], color[2], color[3]);
+            cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+        }
         cairo_paint(cairo);
+        cairo_restore(cairo);
     }
 
     override void drawPath(in Path path, in PaintMode paintMode)
