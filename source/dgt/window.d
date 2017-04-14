@@ -247,6 +247,11 @@ class Window
     void show(WindowState state = WindowState.normal)
     {
         if (!_platformWindow.created) {
+
+            if (_size.area == 0) {
+                _size = ISize(640, 480);
+            }
+
             _platformWindow.create();
             if (!(_flags & WindowFlags.dummy)) {
                 assert(!_gfxRunning);
