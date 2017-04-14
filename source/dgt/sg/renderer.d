@@ -17,12 +17,15 @@ import std.concurrency;
 import std.exception;
 import std.experimental.logger;
 
+/// Start a rendering thread that will use the context passed in argument
+/// Returns the Tid of the rendering thread.
 Tid startRenderLoop(shared(GlContext) context)
 {
     trace("starting rendering loop");
     return spawn(&renderLoop, context, thisTid);
 }
 
+/// Render a frame with rendering thread identified with renderLoopTid.
 bool renderFrame(Tid renderLoopTid, immutable(RenderFrame) frame)
 {
     import core.time : dur;
@@ -33,6 +36,9 @@ bool renderFrame(Tid renderLoopTid, immutable(RenderFrame) frame)
     return true;
 }
 
+/// End the rendering thread identified by renderLoopTid.
+/// The native handle is used to make a context current in order to
+/// free held graphics resources.
 void finalizeRenderLoop(Tid renderLoopTid, size_t nativeHandle)
 {
     import core.time : dur;
