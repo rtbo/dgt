@@ -49,8 +49,9 @@ struct GlyphInfo
 struct TextMetrics
 {
     /// Offset of the text bounding box to the pen start position.
-    /// Positive in x means that pen start position is left of the bounding box.
-    /// Positive in y means that pen start position is lower than the bounding box.
+    /// Bounding box origin is top-left
+    /// Positive in x means that pen start position is right of the bounding box origin.
+    /// Positive in y means that pen start position is lower than the bounding box origin.
     IVec2 bearing;
     /// Size of the text bounding box
     IVec2 size;
@@ -146,7 +147,7 @@ class TextLayout : RefCounted
                 immutable gm = ts.font.glyphMetrics(gi.index);
                 if (i == 0)
                 {
-                    bearingX = gm.horBearing.x;
+                    bearingX = -gm.horBearing.x;
                     width = -gm.horBearing.x;
                 }
                 if (i == ts.glyphs.length-1)
