@@ -90,10 +90,11 @@ class Renderer
     BuiltinSurface!Rgba8 _surf;
     RenderTargetView!Rgba8 _rtv;
     Program _prog;
+    ConstBuffer!MVP _mvpBlk;
     TexPipeline _texPso;
+    FMat4 _viewProj;
     ISize _size;
 
-    FMat4 _transform;
 
     this(GlContext context)
     {
@@ -119,6 +120,9 @@ class Renderer
         ));
         _prog.retain();
 
+        _mvpBlk = new ConstBuffer!MVP(1);
+        _mvpBlk.retain();
+
         _texPso = new TexPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
         _texPso.retain();
 
@@ -131,6 +135,7 @@ class Renderer
             _context.makeCurrent(nativeHandle);
             _encoder = Encoder.init;
             _texPso.release();
+            _mvpBlk.release();
             _prog.release();
             _rtv.release();
             _surf.release();
@@ -165,7 +170,11 @@ class Renderer
             }
 
             if (frame.root) {
-                renderNode(frame.root);
+                _viewProj = orthoProj(0, vp.width, vp.height, 0, 1, -1); // Y=0 at the top
+                renderNode(frame.root, FMat4.identity);
+                // renderNode(frame.root,
+                    // orthoProj(0, vp.width, 0, vp.height, 1, -1)
+                // );
             }
 
             _encoder.flush(_device);
@@ -173,37 +182,38 @@ class Renderer
         }
     }
 
-    void renderNode(immutable(RenderNode) node)
+    void renderNode(immutable(RenderNode) node, in FMat4 mvp)
     {
         final switch(node.type)
         {
         case RenderNode.Type.group:
             immutable grNode = unsafeCast!(immutable(GroupRenderNode))(node);
             foreach (immutable n; grNode.children) {
-                renderNode(n);
+                renderNode(n, mvp);
             }
             break;
         case RenderNode.Type.transform:
             immutable trNode = unsafeCast!(immutable(TransformRenderNode))(node);
-            _transform = trNode.transform * _transform;
+            renderNode(trNode.child, mvp * trNode.transform);
             break;
         case RenderNode.Type.color:
-            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node));
+            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node), mvp);
             break;
         case RenderNode.Type.image:
-            renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node));
+            renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), mvp);
             break;
         }
     }
 
-    void renderColorNode(immutable(ColorRenderNode) node)
+    void renderColorNode(immutable(ColorRenderNode) node, in FMat4 mvp)
     {
 
     }
 
-    void renderImageNode(immutable(ImageRenderNode) node)
+    void renderImageNode(immutable(ImageRenderNode) node, in FMat4 mvp)
     {
         immutable img = node.image;
+        immutable size = img.size;
         enforce(img.format == ImageFormat.argb ||
                 img.format == ImageFormat.argbPremult);
 
@@ -217,22 +227,25 @@ class Renderer
             srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
         );
 
+        immutable rect = node.bounds;
         auto quadVerts = [
-            TexVertex([-1f, -1f], [0f, 1f]),
-            TexVertex([1f, -1f], [1f, 1f]),
-            TexVertex([1f, 1f], [1f, 0f]),
-            TexVertex([-1f, 1f], [0f, 0f])
+            TexVertex([rect.left, rect.top], [0f, 0f]),
+            TexVertex([rect.right, rect.top], [1f, 0f]),
+            TexVertex([rect.right, rect.bottom], [1f, 1f]),
+            TexVertex([rect.left, rect.bottom], [0f, 1f]),
         ];
         ushort[] quadInds = [0, 1, 2, 0, 2, 3];
         auto vbuf = makeRc!(VertexBuffer!TexVertex)(quadVerts);
 
         auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
 
+        _encoder.updateConstBuffer(_mvpBlk, MVP(transpose(_viewProj * mvp)));
+
         switch (img.format) {
         case ImageFormat.rgb:
             _texPso.outColor.info.blend = none!Blend;
             auto data = TexPipeline.Data(
-                vbuf, srv, sampler, rc(_rtv)
+                vbuf, rc(_mvpBlk), srv, sampler, rc(_rtv)
             );
             _encoder.draw!TexPipeMeta(slice, _texPso, data);
             break;
@@ -243,7 +256,7 @@ class Renderer
                 Factor.makeOneMinus(BlendValue.SourceAlpha)
             ));
             auto data = TexPipeline.Data(
-                vbuf, srv, sampler, rc(_rtv)
+                vbuf, rc(_mvpBlk), srv, sampler, rc(_rtv)
             );
             _encoder.draw!TexPipeMeta(slice, _texPso, data);
             break;
@@ -254,7 +267,7 @@ class Renderer
                 Factor.makeOneMinus(BlendValue.SourceAlpha)
             ));
             auto data = TexPipeline.Data(
-                vbuf, srv, sampler, rc(_rtv)
+                vbuf, rc(_mvpBlk), srv, sampler, rc(_rtv)
             );
             _encoder.draw!TexPipeMeta(slice, _texPso, data);
             break;
@@ -264,13 +277,31 @@ class Renderer
     }
 }
 
+
+FMat4 orthoProj(float l, float r, float b, float t, float n, float f)
+{
+    return FMat4(
+        2f/(r-l), 0, 0, -(r+l)/(r-l),
+        0, 2f/(t-b), 0, -(t+b)/(t-b),
+        0, 0, -2f/(f-n), -(f+n)/(f-n),
+        0, 0, 0, 1
+    );
+}
+
 struct TexVertex {
     @GfxName("a_Pos")       float[2] pos;
     @GfxName("a_TexCoord")  float[2] texCoord;
 }
 
+struct MVP {
+    FMat4 mvp;
+}
+
 struct TexPipeMeta {
     VertexInput!TexVertex   input;
+
+    @GfxName("MVP")
+    ConstantBlock!MVP       mvp;
 
     @GfxName("t_Sampler")
     ResourceView!Rgba8          texture;
@@ -288,11 +319,15 @@ enum texVShader = `
     in vec2 a_Pos;
     in vec2 a_TexCoord;
 
+    uniform MVP {
+        mat4 u_mvpMat;
+    };
+
     out vec2 v_TexCoord;
 
     void main() {
         v_TexCoord = a_TexCoord;
-        gl_Position = vec4(a_Pos, 0.0, 1.0);
+        gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
     }
 `;
 version(LittleEndian)
