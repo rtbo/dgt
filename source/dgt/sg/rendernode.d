@@ -54,9 +54,10 @@ class GroupRenderNode : RenderNode
     {
         import std.algorithm : map;
         _children = children;
-        super(Type.group, computeRectsExtents(
-            children.map!(c => c.bounds)
-        ));
+        super(Type.group, IRect.init);
+        //super(Type.group, computeRectsExtents(
+            //children.map!(c => c.bounds)
+        //));
     }
 
     @property immutable(RenderNode)[] children() const { return _children; }
@@ -75,6 +76,7 @@ class TransformRenderNode : RenderNode
     }
 
     @property FMat4 transform() const { return _transform; }
+    @property immutable(RenderNode) child() const { return _child; }
 }
 
 
