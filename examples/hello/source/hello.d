@@ -13,6 +13,8 @@ import dgt.text.font;
 import dgt.text.layout;
 import dgt.image;
 import dgt.geometry;
+import dgt.sg.rendernode;
+import dgt.sg.renderframe;
 
 import std.typecons : scoped;
 import std.stdio;
@@ -56,76 +58,39 @@ int main()
     FontRequest font;
     font.family = "serif";
     font.size = FontSize.pts(100);
-    auto layout = makeRc!TextLayout("Hello", TextFormat.plain, font);
-    layout.layout();
-    // This is "hello" for those who wonder.
-    auto arLayout = makeRc!TextLayout("مرحبا", TextFormat.plain, font);
-    arLayout.layout();
 
-    auto img = Image.loadFromImport!"dlang_logo.png"(ImageFormat.argbPremult);
+    immutable helloNode = textNode("Hello", font, textPaint);
+    // This is "hello" for those who wonder.
+    immutable arHelloNode = textNode("مرحبا", font, textPaint);
+
+    immutable logoImg = assumeUnique(Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb));
+    immutable logoNode = new immutable ImageRenderNode(Point(0, 0), logoImg);
 
     auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
     auto treePath = new Path([0, 0]);
     treePath.lineTo([branchVec.x, branchVec.y]);
 
     win.onRequestFrame = () {
+        import dgt.math.mat : FMat4;
+
         immutable size = win.size;
-        auto frameImg = new Image(ImageFormat.argbPremult, size);
-        {
-            auto ctx = createContext(frameImg);
-            scope(exit) ctx.dispose();
 
-            ctx.clear([0, 0, 0, 0]);
+        immutable renderTree = new immutable GroupRenderNode([
+            new immutable TransformRenderNode(
+                FMat4.identity.translate(50, size.height-50, 0), helloNode
+            ),
+            new immutable TransformRenderNode(
+                FMat4.identity.translate(size.width-350, 150, 0), arHelloNode
+            ),
+            new immutable TransformRenderNode(
+                FMat4.identity.translate(size.width-logoImg.width-10,
+                                size.height-logoImg.height-10, 0),
+                logoNode
+            )
+        ]);
 
-            ctx.sandbox!({
-                fillPaint.color = fvec(size.width/1300f, 0.8, 0.2, 1);
-                ctx.fillPaint = fillPaint;
-                ctx.strokePaint = strokePaint;
-                ctx.lineWidth = 5f;
-                auto p = new Path([size.width-10, 10]);
-                p.lineTo([size.width-10, 400]);
-                p.lineTo([size.width-400, 10]);
-                ctx.drawPath(p, PaintMode.fill | PaintMode.stroke);
-            });
-
-            ctx.sandbox!({
-                ctx.lineWidth = 5f;
-                tree.draw(treePath, ctx);
-            });
-
-            ctx.sandbox!({
-                ctx.fillPaint = textPaint;
-                ctx.transform = ctx.transform.translate(30, size.height-30);
-                layout.renderInto(ctx);
-            });
-
-            ctx.sandbox!({
-                ctx.fillPaint = textPaint;
-                ctx.transform = ctx.transform.translate(size.width-400, 150);
-                arLayout.renderInto(ctx);
-            });
-
-            ctx.sandbox!({
-                ctx.transform = ctx.transform.translate(
-                    size.width - img.width - 10,
-                    size.height - img.height - 10
-                );
-                ctx.drawImage(img);
-            });
-        }
-
-        // import std.format : format;
-        // static int num;
-        // frameImg.convert(ImageFormat.argb).saveToFile(format("img%s.png",++num));
-
-        import dgt.sg.rendernode : ImageRenderNode;
-        import dgt.sg.renderframe : RenderFrame;
-
-        immutable node = new immutable ImageRenderNode (
-            fvec(0, 0), assumeUnique(frameImg)
-        );
         return new immutable RenderFrame(
-            win.nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), node
+            win.nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), renderTree
         );
     };
 
@@ -134,6 +99,25 @@ int main()
 }
 
 private:
+
+
+immutable(RenderNode) textNode(string text, FontRequest font, Paint paint)
+{
+    auto layout = makeRc!TextLayout(text, TextFormat.plain, font);
+    layout.layout();
+    immutable metrics = layout.metrics;
+    auto img = new Image(ImageFormat.argbPremult, ISize(metrics.size));
+    {
+        auto ctx = createContext(img);
+        scope(exit) ctx.dispose();
+
+        ctx.transform = Transform.identity.translate(metrics.bearing);
+        ctx.fillPaint = paint;
+        layout.renderInto(ctx);
+    }
+    return new immutable ImageRenderNode(cast(FVec2)(-metrics.bearing), assumeUnique(img));
+}
+
 
 enum branchScale = 0.7f;
 enum branchAngle = PI / 8;
