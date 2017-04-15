@@ -25,6 +25,18 @@ struct TSize(T) if (isNumeric!T)
     T width;
     T height;
 
+    this(in T width, in T height)
+    {
+        this.width = width;
+        this.height = height;
+    }
+
+    this (in Vec2!T vec)
+    {
+        width = vec.x;
+        height = vec.y;
+    }
+
     U opCast(U : TSize!V, V)() const
     {
         return TSize!V(cast(V) width, cast(V) height);
