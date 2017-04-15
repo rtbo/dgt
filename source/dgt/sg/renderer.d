@@ -89,9 +89,14 @@ class Renderer
     Encoder _encoder;
     BuiltinSurface!Rgba8 _surf;
     RenderTargetView!Rgba8 _rtv;
-    Program _prog;
-    ConstBuffer!MVP _mvpBlk;
+
+    SolidPipeline _solidPso;
+    ConstBuffer!MVP _solidMvpBlk;
+    ConstBuffer!Color _solidColBlk;
+
     TexPipeline _texPso;
+    ConstBuffer!MVP _texMvpBlk;
+
     FMat4 _viewProj;
     ISize _size;
 
@@ -115,16 +120,29 @@ class Renderer
         _rtv = _surf.viewAsRenderTarget();
         _rtv.retain();
 
-        _prog = new Program(ShaderSet.vertexPixel(
-            texVShader, texFShader
-        ));
-        _prog.retain();
+        _solidMvpBlk = new ConstBuffer!MVP(1);
+        _solidMvpBlk.retain();
+        _solidColBlk = new ConstBuffer!Color(1);
+        _solidColBlk.retain();
+        _texMvpBlk = new ConstBuffer!MVP(1);
+        _texMvpBlk.retain();
 
-        _mvpBlk = new ConstBuffer!MVP(1);
-        _mvpBlk.retain();
+        {
+            auto prog = makeRc!Program(ShaderSet.vertexPixel(
+                solidVShader, solidFShader
+            ));
 
-        _texPso = new TexPipeline(_prog, Primitive.Triangles, Rasterizer.fill.withSamples());
-        _texPso.retain();
+            _solidPso = new SolidPipeline(prog.obj, Primitive.Triangles, Rasterizer.fill.withSamples());
+            _solidPso.retain();
+        }
+        {
+            auto prog = makeRc!Program(ShaderSet.vertexPixel(
+                texVShader, texFShader
+            ));
+
+            _texPso = new TexPipeline(prog.obj, Primitive.Triangles, Rasterizer.fill.withSamples());
+            _texPso.retain();
+        }
 
         _encoder = Encoder(_device.makeCommandBuffer());
     }
@@ -134,9 +152,11 @@ class Renderer
         synchronized(_context) {
             _context.makeCurrent(nativeHandle);
             _encoder = Encoder.init;
+            _solidPso.release();
+            _solidMvpBlk.release();
+            _solidColBlk.release();
             _texPso.release();
-            _mvpBlk.release();
-            _prog.release();
+            _texMvpBlk.release();
             _rtv.release();
             _surf.release();
             _device.release();
@@ -172,9 +192,6 @@ class Renderer
             if (frame.root) {
                 _viewProj = orthoProj(0, vp.width, vp.height, 0, 1, -1); // Y=0 at the top
                 renderNode(frame.root, FMat4.identity);
-                // renderNode(frame.root,
-                    // orthoProj(0, vp.width, 0, vp.height, 1, -1)
-                // );
             }
 
             _encoder.flush(_device);
@@ -182,38 +199,66 @@ class Renderer
         }
     }
 
-    void renderNode(immutable(RenderNode) node, in FMat4 mvp)
+    void renderNode(immutable(RenderNode) node, in FMat4 model)
     {
         final switch(node.type)
         {
         case RenderNode.Type.group:
             immutable grNode = unsafeCast!(immutable(GroupRenderNode))(node);
             foreach (immutable n; grNode.children) {
-                renderNode(n, mvp);
+                renderNode(n, model);
             }
             break;
         case RenderNode.Type.transform:
             immutable trNode = unsafeCast!(immutable(TransformRenderNode))(node);
-            renderNode(trNode.child, mvp * trNode.transform);
+            renderNode(trNode.child, model * trNode.transform);
             break;
         case RenderNode.Type.color:
-            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node), mvp);
+            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node), model);
             break;
         case RenderNode.Type.image:
-            renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), mvp);
+            renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), model);
             break;
         }
     }
 
-    void renderColorNode(immutable(ColorRenderNode) node, in FMat4 mvp)
+    void renderColorNode(immutable(ColorRenderNode) node, in FMat4 model)
     {
+        immutable rect = node.bounds;
+        immutable color = node.color;
+        auto quadVerts = [
+            SolidVertex([rect.left, rect.top]),
+            SolidVertex([rect.right, rect.top]),
+            SolidVertex([rect.right, rect.bottom]),
+            SolidVertex([rect.left, rect.bottom]),
+        ];
+        ushort[] quadInds = [0, 1, 2, 0, 2, 3];
+        auto vbuf = makeRc!(VertexBuffer!SolidVertex)(quadVerts);
+        auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
 
+        _encoder.updateConstBuffer(_solidMvpBlk, MVP(transpose(_viewProj * model)));
+        _encoder.updateConstBuffer(_solidColBlk, Color(color));
+
+        if (color.a == 1f) {
+            _solidPso.outColor.info.blend = none!Blend;
+        }
+        else {
+            _solidPso.outColor.info.blend = some(Blend(
+                Equation.Add,
+                Factor.makeZeroPlus(BlendValue.SourceAlpha),
+                Factor.makeOneMinus(BlendValue.SourceAlpha)
+            ));
+        }
+
+        auto data = SolidPipeline.Data(
+            vbuf, rc(_solidMvpBlk), rc(_solidColBlk), rc(_rtv)
+        );
+        _encoder.draw!SolidPipeMeta(slice, _solidPso, data);
     }
 
-    void renderImageNode(immutable(ImageRenderNode) node, in FMat4 mvp)
+    void renderImageNode(immutable(ImageRenderNode) node, in FMat4 model)
     {
         immutable img = node.image;
-        immutable size = img.size;
         enforce(img.format == ImageFormat.argb ||
                 img.format == ImageFormat.argbPremult);
 
@@ -238,14 +283,13 @@ class Renderer
         auto vbuf = makeRc!(VertexBuffer!TexVertex)(quadVerts);
 
         auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
-
-        _encoder.updateConstBuffer(_mvpBlk, MVP(transpose(_viewProj * mvp)));
+        _encoder.updateConstBuffer(_texMvpBlk, MVP(transpose(_viewProj * model)));
 
         switch (img.format) {
         case ImageFormat.rgb:
             _texPso.outColor.info.blend = none!Blend;
             auto data = TexPipeline.Data(
-                vbuf, rc(_mvpBlk), srv, sampler, rc(_rtv)
+                vbuf, rc(_texMvpBlk), srv, sampler, rc(_rtv)
             );
             _encoder.draw!TexPipeMeta(slice, _texPso, data);
             break;
@@ -256,7 +300,7 @@ class Renderer
                 Factor.makeOneMinus(BlendValue.SourceAlpha)
             ));
             auto data = TexPipeline.Data(
-                vbuf, rc(_mvpBlk), srv, sampler, rc(_rtv)
+                vbuf, rc(_texMvpBlk), srv, sampler, rc(_rtv)
             );
             _encoder.draw!TexPipeMeta(slice, _texPso, data);
             break;
@@ -267,7 +311,7 @@ class Renderer
                 Factor.makeOneMinus(BlendValue.SourceAlpha)
             ));
             auto data = TexPipeline.Data(
-                vbuf, rc(_mvpBlk), srv, sampler, rc(_rtv)
+                vbuf, rc(_texMvpBlk), srv, sampler, rc(_rtv)
             );
             _encoder.draw!TexPipeMeta(slice, _texPso, data);
             break;
@@ -288,13 +332,63 @@ FMat4 orthoProj(float l, float r, float b, float t, float n, float f)
     );
 }
 
+struct MVP {
+    FMat4 mvp;
+}
+
+struct Color {
+    FVec4 color;
+}
+
+struct SolidVertex {
+    @GfxName("a_Pos")   float[2] pos;
+}
+
+struct SolidPipeMeta {
+    VertexInput!SolidVertex   input;
+
+    @GfxName("MVP")
+    ConstantBlock!MVP       mvp;
+
+    @GfxName("Color")
+    ConstantBlock!Color       matColor;
+
+    @GfxName("o_Color")
+    ColorOutput!Rgba8           outColor;
+}
+alias SolidPipeline = PipelineState!SolidPipeMeta;
+
+enum solidVShader = `
+    #version 330
+    in vec2 a_Pos;
+
+    uniform MVP {
+        mat4 u_mvpMat;
+    };
+
+    void main() {
+        gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
+    }
+`;
+enum solidFShader = `
+    #version 330
+
+    uniform Color {
+        vec4 u_matColor;
+    };
+
+    out vec4 o_Color;
+
+    void main() {
+        o_Color = u_matColor;
+    }
+`;
+
+
+
 struct TexVertex {
     @GfxName("a_Pos")       float[2] pos;
     @GfxName("a_TexCoord")  float[2] texCoord;
-}
-
-struct MVP {
-    FMat4 mvp;
 }
 
 struct TexPipeMeta {

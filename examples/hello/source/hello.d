@@ -79,14 +79,20 @@ int main()
             new immutable TransformRenderNode(
                 FMat4.identity.translate(50, size.height-50, 0), helloNode
             ),
+            new immutable ColorRenderNode(
+                fvec(1, 1, 1, 0.5), Rect(50+helloNode.bounds.left, size.height-45, helloNode.bounds.width, 5)
+            ),
             new immutable TransformRenderNode(
                 FMat4.identity.translate(size.width-350, 150, 0), arHelloNode
+            ),
+            new immutable ColorRenderNode(
+                fvec(1, 1, 1, 0.5), Rect(size.width-350+arHelloNode.bounds.left, 155, arHelloNode.bounds.width, 5)
             ),
             new immutable TransformRenderNode(
                 FMat4.identity.translate(size.width-logoImg.width-10,
                                 size.height-logoImg.height-10, 0),
                 logoNode
-            )
+            ),
         ]);
 
         return new immutable RenderFrame(
