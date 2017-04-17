@@ -132,7 +132,10 @@ class Renderer
                 solidVShader, solidFShader
             ));
 
-            _solidPso = new SolidPipeline(prog.obj, Primitive.Triangles, Rasterizer.fill.withSamples());
+            _solidPso = new SolidPipeline(
+                prog.obj, Primitive.Triangles,
+                Rasterizer.fill.withCullBack().withSamples()
+            );
             _solidPso.retain();
         }
         {
@@ -140,7 +143,10 @@ class Renderer
                 texVShader, texFShader
             ));
 
-            _texPso = new TexPipeline(prog.obj, Primitive.Triangles, Rasterizer.fill.withSamples());
+            _texPso = new TexPipeline(
+                prog.obj, Primitive.Triangles,
+                Rasterizer.fill.withCullBack().withSamples()
+            );
             _texPso.retain();
         }
 
@@ -228,9 +234,9 @@ class Renderer
         immutable color = node.color;
         auto quadVerts = [
             SolidVertex([rect.left, rect.top]),
-            SolidVertex([rect.right, rect.top]),
-            SolidVertex([rect.right, rect.bottom]),
             SolidVertex([rect.left, rect.bottom]),
+            SolidVertex([rect.right, rect.bottom]),
+            SolidVertex([rect.right, rect.top]),
         ];
         ushort[] quadInds = [0, 1, 2, 0, 2, 3];
         auto vbuf = makeRc!(VertexBuffer!SolidVertex)(quadVerts);
@@ -275,9 +281,9 @@ class Renderer
         immutable rect = node.bounds;
         auto quadVerts = [
             TexVertex([rect.left, rect.top], [0f, 0f]),
-            TexVertex([rect.right, rect.top], [1f, 0f]),
-            TexVertex([rect.right, rect.bottom], [1f, 1f]),
             TexVertex([rect.left, rect.bottom], [0f, 1f]),
+            TexVertex([rect.right, rect.bottom], [1f, 1f]),
+            TexVertex([rect.right, rect.top], [1f, 0f]),
         ];
         ushort[] quadInds = [0, 1, 2, 0, 2, 3];
         auto vbuf = makeRc!(VertexBuffer!TexVertex)(quadVerts);
