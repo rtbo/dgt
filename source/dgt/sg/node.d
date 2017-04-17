@@ -5,6 +5,8 @@ import dgt.geometry;
 import dgt.math;
 
 import std.exception;
+import std.range;
+import std.typecons;
 
 /// A node for a 2D scene-graph
 class SgNode
@@ -51,6 +53,18 @@ class SgNode
     @property inout(SgNode) nextSibling() inout
     {
         return nextSibling;
+    }
+
+    /// A bidirectional range of this nodes children
+    @property auto children()
+    {
+        return SgSiblingNodeRange!SgNode(_firstChild, _lastChild);
+    }
+    
+    /// A bidirectional range of this nodes children
+    @property auto children() const
+    {
+        return SgSiblingNodeRange!(const(SgNode))(_firstChild, _lastChild);
     }
 
     /// Appends the given node to this node children list.
@@ -162,3 +176,50 @@ class SgNode
     private SgNode _prevSibling;
     private SgNode _nextSibling;
 }
+
+
+private:
+
+/// Bidirectional range that traverses a sibling node list
+struct SgSiblingNodeRange(NodeT)
+{
+    Rebindable!NodeT _first;
+    Rebindable!NodeT _last;
+
+    this (NodeT first, NodeT last)
+    {
+        _first = first;
+        _last = last;
+    }
+
+    @property bool empty() { return _first !is null; }
+    @property NodeT front() { return _first; }
+    void popFront() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _first = _first._nextSibling;
+        }
+    }
+
+    @property auto save()
+    {
+        return SgSiblingNodeRange(_first, _last);
+    }
+
+    @property NodeT back() { return _last; }
+    void popBack() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _last = _last._prevSibling;
+        }
+    }
+}
+
+static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
+static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
