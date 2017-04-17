@@ -181,7 +181,7 @@ class Renderer
                 log("renderer initialized");
             }
 
-            immutable vp = cast(TRect!ushort)frame.viewport;
+            immutable vp = cast(Rect!ushort)frame.viewport;
             _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
 
             if (frame.hasClearColor) {

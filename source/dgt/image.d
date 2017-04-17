@@ -67,7 +67,7 @@ size_t minStrideForWidth(in ImageFormat fmt, in size_t width) pure
 }
 
 /// Check if a size is usable for an image
-@property bool isValidImageSize(in Size size) pure
+@property bool isValidImageSize(in ISize size) pure
 {
     return size.width >= 0 && size.height >= 0 &&
         size.width < ushort.max && size.height < ushort.max;

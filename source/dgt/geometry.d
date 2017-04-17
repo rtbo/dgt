@@ -6,21 +6,21 @@ import std.traits : isNumeric;
 import std.algorithm : min, max;
 import std.range;
 
-alias TPoint(T) = Vec2!T;
-alias Point = TPoint!float;
-alias IPoint = TPoint!int;
+alias Point(T) = Vec2!T;
+alias FPoint = Point!float;
+alias IPoint = Point!int;
 
-alias Size = TSize!float;
-alias ISize = TSize!int;
+alias FSize = Size!float;
+alias ISize = Size!int;
 
-alias Margins = TMargins!float;
-alias IMargins = TMargins!int;
+alias FMargins = Margins!float;
+alias IMargins = Margins!int;
 
-alias Rect = TRect!float;
-alias IRect = TRect!int;
+alias FRect = Rect!float;
+alias IRect = Rect!int;
 
 /// Represents a two dimensional size
-struct TSize(T) if (isNumeric!T)
+struct Size(T) if (isNumeric!T)
 {
     T width;
     T height;
@@ -37,25 +37,15 @@ struct TSize(T) if (isNumeric!T)
         height = vec.y;
     }
 
-    U opCast(U : TSize!V, V)() const
+    U opCast(U : Size!V, V)() const
     {
-        return TSize!V(cast(V) width, cast(V) height);
-    }
-
-    static if (is(T == int))
-    {
-        @property Size toDouble() const
-        {
-            return Size(width, height);
-        }
-
-        alias toDouble this;
+        return Size!V(cast(V) width, cast(V) height);
     }
 }
 
 unittest
 {
-    auto sd = Size(3, 5);
+    auto sd = FSize(3, 5);
     assert(sd.area == 15);
 
     auto si = ISize(4, 15);
@@ -67,32 +57,22 @@ unittest
 }
 
 /// Represents margins around a rectangular area
-struct TMargins(T) if (isNumeric!T)
+struct Margins(T) if (isNumeric!T)
 {
     T left;
     T top;
     T right;
     T bottom;
 
-    U opCast(U : TMargins!V, V)() const
+    U opCast(U : Margins!V, V)() const
     {
-        return TMargins!V(cast(V) left, cast(V) top, cast(V) right, cast(V) bottom);
-    }
-
-    static if (is(T == int))
-    {
-        @property Margins toDouble() const
-        {
-            return Margins(left, top, right, bottom);
-        }
-
-        alias toDouble this;
+        return Margins!V(cast(V) left, cast(V) top, cast(V) right, cast(V) bottom);
     }
 }
 
 unittest
 {
-    auto md = Margins(3, 5, 5, 6);
+    auto md = FMargins(3, 5, 5, 6);
     auto mi = IMargins(4, 15, 2, 5);
 
     static assert(__traits(compiles, md = mi));
@@ -101,7 +81,7 @@ unittest
 }
 
 /// Represents a rectangular area
-struct TRect(T) if (isNumeric!T)
+struct Rect(T) if (isNumeric!T)
 {
     private
     {
@@ -123,17 +103,17 @@ struct TRect(T) if (isNumeric!T)
         _x = x; _y = y; _w = w; _h = h;
     }
 
-    this(in T x, in T y, in TSize!T s)
+    this(in T x, in T y, in Size!T s)
     {
         _x = x; _y = y; _w = s.width; _h = s.height;
     }
 
-    this(in TPoint!T p, in T w, in T h)
+    this(in Point!T p, in T w, in T h)
     {
         _x = p.x; _y = p.y; _w = w; _h = h;
     }
 
-    this(TPoint!T p, TSize!T s)
+    this(Point!T p, Size!T s)
     {
         _x = p.x;
         _y = p.y;
@@ -141,7 +121,7 @@ struct TRect(T) if (isNumeric!T)
         _h = s.height;
     }
 
-    this(TPoint!T topLeft, TPoint!T bottomRight)
+    this(Point!T topLeft, Point!T bottomRight)
     {
         _x = topLeft.x;
         _y = topLeft.y;
@@ -189,23 +169,23 @@ struct TRect(T) if (isNumeric!T)
         _h = cast(T)max(0, val);
     }
 
-    @property TPoint!T point() const
+    @property Point!T point() const
     {
-        return TPoint!T(_x, _y);
+        return Point!T(_x, _y);
     }
 
-    @property void point(TPoint!T p)
+    @property void point(Point!T p)
     {
         _x = p.x;
         _y = p.y;
     }
 
-    @property TSize!T size() const
+    @property Size!T size() const
     {
-        return TSize!T(width, height);
+        return Size!T(width, height);
     }
 
-    @property void size(TSize!T s)
+    @property void size(Size!T s)
     {
         width = s.width;
         height = s.height;
@@ -259,51 +239,51 @@ struct TRect(T) if (isNumeric!T)
         _h = cast(T)(val - _y);
     }
 
-    @property TPoint!T topLeft() const
+    @property Point!T topLeft() const
     {
-        return TPoint!T(left, top);
+        return Point!T(left, top);
     }
 
-    @property void topLeft(TPoint!T p)
+    @property void topLeft(Point!T p)
     {
         left = p.x;
         top = p.y;
     }
 
-    @property TPoint!T topRight() const
+    @property Point!T topRight() const
     {
-        return TPoint!T(right, top);
+        return Point!T(right, top);
     }
 
-    @property void topRight(TPoint!T p)
+    @property void topRight(Point!T p)
     {
         right = p.x;
         top = p.y;
     }
 
-    @property TPoint!T bottomLeft() const
+    @property Point!T bottomLeft() const
     {
-        return TPoint!T(left, bottom);
+        return Point!T(left, bottom);
     }
 
-    @property void bottomLeft(TPoint!T p)
+    @property void bottomLeft(Point!T p)
     {
         left = p.x;
         bottom = p.y;
     }
 
-    @property TPoint!T bottomRight() const
+    @property Point!T bottomRight() const
     {
-        return TPoint!T(right, bottom);
+        return Point!T(right, bottom);
     }
 
-    @property void bottomRight(TPoint!T p)
+    @property void bottomRight(Point!T p)
     {
         right = p.x;
         bottom = p.y;
     }
 
-    ref TRect!T opOpAssign(string op)(Margins rhs) if (op == "+")
+    ref Rect!T opOpAssign(string op)(FMargins rhs) if (op == "+")
     {
         left -= rhs.left;
         top -= rhs.top;
@@ -312,7 +292,7 @@ struct TRect(T) if (isNumeric!T)
         return this;
     }
 
-    ref TRect!T opOpAssign(string op)(Margins rhs) if (op == "-")
+    ref Rect!T opOpAssign(string op)(FMargins rhs) if (op == "-")
     {
         left += rhs.left;
         top += rhs.top;
@@ -321,73 +301,62 @@ struct TRect(T) if (isNumeric!T)
         return this;
     }
 
-    ref TRect!T opOpAssign(string op : "+")(TPoint!T rhs)
+    ref Rect!T opOpAssign(string op : "+")(Point!T rhs)
     {
         point = point + rhs;
         return this;
     }
 
-    ref TRect!T opOpAssign(string op : "-")(TPoint!T rhs)
+    ref Rect!T opOpAssign(string op : "-")(Point!T rhs)
     {
         point = point - rhs;
         return this;
     }
 
-    TRect!T opBinary(string op)(TMargins!T rhs) if (op == "+" || op == "-")
+    Rect!T opBinary(string op)(Margins!T rhs) if (op == "+" || op == "-")
     {
-        TRect!T ret = this;
+        Rect!T ret = this;
         mixin("ret " ~ op ~ "= rhs;");
         return ret;
     }
 
-    TRect!T opBinary(string op)(TPoint!T rhs) if (op == "+" || op == "-")
+    Rect!T opBinary(string op)(Point!T rhs) if (op == "+" || op == "-")
     {
-        TRect!T ret = this;
+        Rect!T ret = this;
         mixin("ret " ~ op ~ "= rhs;");
         return ret;
     }
 
-    U opCast(U : TRect!V, V)() const
+    U opCast(U : Rect!V, V)() const
     {
-        return TRect!V(cast(V) x, cast(V) y, cast(V) width, cast(V) height);
+        return Rect!V(cast(V) x, cast(V) y, cast(V) width, cast(V) height);
     }
-
-    static if (is(T == int))
-    {
-        @property Rect toDouble() const
-        {
-            return Rect(x, y, width, height);
-        }
-
-        alias toDouble this;
-    }
-
 }
 
-bool contains(T)(in TSize!T big, in TSize!T small)
+bool contains(T)(in Size!T big, in Size!T small)
 {
     return big.width >= small.width && big.height >= small.height;
 }
 
-bool contains(T)(in TRect!T r, in TPoint!T p)
+bool contains(T)(in Rect!T r, in Point!T p)
 {
     return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
 }
 
-bool contains(T)(in TRect!T rl, in TRect!T rr)
+bool contains(T)(in Rect!T rl, in Rect!T rr)
 {
     // is rr fully within rl?
     return rr.left >= rl.left && rr.right <= rl.right && rr.top >= rl.top && rr.bottom <= rl.bottom;
 }
 
-bool overlaps(T)(in TRect!T rl, in TRect!T rr)
+bool overlaps(T)(in Rect!T rl, in Rect!T rr)
 {
     return rl.right >= rr.left && rl.left <= rr.right && rl.bottom >= rr.top && rl.top <= rr.bottom;
 }
 
-TRect!T intersection(T)(in TRect!T r1, in TRect!T r2)
+Rect!T intersection(T)(in Rect!T r1, in Rect!T r2)
 {
-    TRect!T r;
+    Rect!T r;
     r.left = max(r1.left, r2.left);
     r.right = max(min(r1.right, r2.right), r.left);
     r.top = max(r1.top, r2.top);
@@ -395,9 +364,9 @@ TRect!T intersection(T)(in TRect!T r1, in TRect!T r2)
     return r;
 }
 
-TRect!T extents(T)(in TRect!T r1, in TRect!T r2)
+Rect!T extents(T)(in Rect!T r1, in Rect!T r2)
 {
-    TRect!T r;
+    Rect!T r;
     r.left = min(r1.left, r2.left);
     r.right = max(r1.right, r2.right);
     r.top = min(r1.top, r2.top);
@@ -405,12 +374,12 @@ TRect!T extents(T)(in TRect!T r1, in TRect!T r2)
     return r;
 }
 
-@property T area(T)(in TSize!T s)
+@property T area(T)(in Size!T s)
 {
     return s.width * s.height;
 }
 
-@property T area(T)(in TRect!T r)
+@property T area(T)(in Rect!T r)
 {
     return r.size.area;
 }
@@ -418,7 +387,7 @@ TRect!T extents(T)(in TRect!T r1, in TRect!T r2)
 unittest
 {
 
-    auto rd = Rect(3, 5, 5, 6);
+    auto rd = FRect(3, 5, 5, 6);
     auto ri = IRect(4, 15, 2, 5);
 
     static assert(__traits(compiles, rd = ri));
@@ -458,12 +427,12 @@ if (isInputRange!R)
 }
 
 
-Rect transformBounds(in Rect bounds, FMat4 mat)
+FRect transformBounds(in FRect bounds, FMat4 mat)
 {
     return transformBoundsPriv!float(bounds, mat);
 }
 
-private TRect!T transformBoundsPriv(T)(in TRect!T bounds, in Mat4!T mat)
+private Rect!T transformBoundsPriv(T)(in Rect!T bounds, in Mat4!T mat)
 {
     immutable tl = (mat * vec(bounds.topLeft, 0, 1)).xy;
     immutable tr = (mat * vec(bounds.topRight, 0, 1)).xy;
@@ -475,5 +444,5 @@ private TRect!T transformBoundsPriv(T)(in TRect!T bounds, in Mat4!T mat)
     immutable minY = min(tl.y, tr.y, bl.y, br.y);
     immutable maxY = max(tl.y, tr.y, bl.y, br.y);
 
-    return TRect!T(minX, minY, maxX-minX, maxY-minY);
+    return Rect!T(minX, minY, maxX-minX, maxY-minY);
 }

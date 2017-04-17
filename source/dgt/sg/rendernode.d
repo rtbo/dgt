@@ -26,10 +26,10 @@ abstract class RenderNode
         image,
     }
 
-    private Rect _bounds;
+    private FRect _bounds;
     private Type _type;
 
-    immutable this(in Type type, in Rect bounds)
+    immutable this(in Type type, in FRect bounds)
     {
         _type = type;
         _bounds = bounds;
@@ -37,7 +37,7 @@ abstract class RenderNode
 
     @property Type type() const { return _type; }
 
-    @property Rect bounds() const { return _bounds; }
+    @property FRect bounds() const { return _bounds; }
 }
 
 
@@ -45,7 +45,7 @@ class GroupRenderNode : RenderNode
 {
     private immutable(RenderNode)[] _children;
 
-    immutable this(in Rect bounds, immutable(RenderNode)[] children)
+    immutable this(in FRect bounds, immutable(RenderNode)[] children)
     {
         _children = children;
         super(Type.group, bounds);
@@ -54,7 +54,7 @@ class GroupRenderNode : RenderNode
     {
         import std.algorithm : map;
         _children = children;
-        super(Type.group, IRect.init);
+        super(Type.group, FRect.init);
         //super(Type.group, computeRectsExtents(
             //children.map!(c => c.bounds)
         //));
@@ -84,7 +84,7 @@ class ColorRenderNode : RenderNode
 {
     private FVec4 _color;
 
-    immutable this(in FVec4 color, in Rect bounds)
+    immutable this(in FVec4 color, in FRect bounds)
     {
         _color = color;
         super(Type.color, bounds);
@@ -97,10 +97,10 @@ class ImageRenderNode : RenderNode
 {
     private immutable(Image) _img;
 
-    immutable this (in Point topLeft, immutable(Image) img)
+    immutable this (in FPoint topLeft, immutable(Image) img)
     {
         _img = img;
-        super(Type.image, Rect(topLeft, cast(Size)img.size));
+        super(Type.image, FRect(topLeft, cast(FSize)img.size));
     }
 
     @property immutable(Image) image() const { return _img; }

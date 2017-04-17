@@ -60,11 +60,10 @@ int main()
     font.size = FontSize.pts(100);
 
     immutable helloNode = textNode("Hello", font, textPaint);
-    // This is "hello" for those who wonder.
     immutable arHelloNode = textNode("مرحبا", font, textPaint);
 
     immutable logoImg = assumeUnique(Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb));
-    immutable logoNode = new immutable ImageRenderNode(Point(0, 0), logoImg);
+    immutable logoNode = new immutable ImageRenderNode(FPoint(0, 0), logoImg);
 
     auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
     auto treePath = new Path([0, 0]);
@@ -80,13 +79,13 @@ int main()
                 FMat4.identity.translate(50, size.height-50, 0), helloNode
             ),
             new immutable ColorRenderNode(
-                fvec(1, 1, 1, 0.5), Rect(50+helloNode.bounds.left, size.height-45, helloNode.bounds.width, 5)
+                fvec(1, 1, 1, 0.5), FRect(50+helloNode.bounds.left, size.height-45, helloNode.bounds.width, 5)
             ),
             new immutable TransformRenderNode(
                 FMat4.identity.translate(size.width-350, 150, 0), arHelloNode
             ),
             new immutable ColorRenderNode(
-                fvec(1, 1, 1, 0.5), Rect(size.width-350+arHelloNode.bounds.left, 155, arHelloNode.bounds.width, 5)
+                fvec(1, 1, 1, 0.5), FRect(size.width-350+arHelloNode.bounds.left, 155, arHelloNode.bounds.width, 5)
             ),
             new immutable TransformRenderNode(
                 FMat4.identity.translate(size.width-logoImg.width-10,
