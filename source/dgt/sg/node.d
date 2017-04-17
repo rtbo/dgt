@@ -151,6 +151,44 @@ class SgNode
         --_childCount;
     }
 
+
+    /// The bounds of this nodes in local node coordinates.
+    @property FRect bounds() const { return _bounds; }
+
+    /// The bounds of the children of this node in local coordinates.
+    @property FRect childrenBounds() const { return _childrenBounds; }
+
+    /// The bounds of this nodes in global screen coordinates
+    @property FRect screenBounds() const { return _screenBounds; }
+
+    /// The transform affecting this node and its children.
+    /// Define the transform from parent coordinates to local coordinates.
+    @property FMat4 transform() const { return _transform; }
+
+    /// ditto
+    @property void transform(in FMat4 transform)
+    {
+        _transform = transform;
+        _hasTransform = transform != FMat4.identity;
+    }
+
+    /// Whether this node has a transform set. (Other than identity)
+    @property bool hasTransform() const { return _hasTransform; }
+
+    abstract immutable(RenderNode) collectRenderNode();
+
+    protected immutable(RenderNode) collectChildrenRenderNodes()
+    {
+        import std.algorithm : map;
+        import std.array : array;
+        if (!_childCount) return null;
+        else return new immutable(GroupRenderNode)(
+            childrenBounds,
+            children.map!(c => c.collectRenderNode())
+                    .array()
+        );
+    }
+
     invariant()
     {
         assert(!_firstChild || _firstChild.parent is this);
@@ -175,6 +213,13 @@ class SgNode
 
     private SgNode _prevSibling;
     private SgNode _nextSibling;
+
+    FRect _bounds;
+    FRect _screenBounds;
+    FRect _childrenBounds;
+
+    FMat4 _transform = FMat4.identity;
+    bool _hasTransform;
 }
 
 
