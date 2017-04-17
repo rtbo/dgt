@@ -30,7 +30,7 @@
 		"dgt:harfbuzz":		"*",
 
 		"gfx-d": {
-			"path": "3rdparty/gfx-d"
+			"path": "gfx-d"
 		},
 
 		"derelict-gl3":		"~>1.0.19",
