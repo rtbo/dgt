@@ -386,7 +386,6 @@ Rect!T extents(T)(in Rect!T r1, in Rect!T r2)
 
 unittest
 {
-
     auto rd = FRect(3, 5, 5, 6);
     auto ri = IRect(4, 15, 2, 5);
 
@@ -413,6 +412,7 @@ unittest
 }
 
 
+/// Compute the extents of an input range of rects.
 auto computeRectsExtents(R)(R rects)
 if (isInputRange!R)
 {
@@ -427,6 +427,7 @@ if (isInputRange!R)
 }
 
 
+/// Compute screen-aligned bounds of a rect transformation
 FRect transformBounds(in FRect bounds, FMat4 mat)
 {
     return transformBoundsPriv!float(bounds, mat);
