@@ -85,10 +85,10 @@ struct Rect(T) if (isNumeric!T)
 {
     private
     {
-        T _x;
-        T _y;
-        T _w;
-        T _h;
+        T _x=0;
+        T _y=0;
+        T _w=0;
+        T _h=0;
     }
 
     alias Scalar = T;

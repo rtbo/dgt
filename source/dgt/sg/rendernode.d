@@ -54,10 +54,8 @@ class GroupRenderNode : RenderNode
     {
         import std.algorithm : map;
         _children = children;
-        super(Type.group, FRect.init);
-        //super(Type.group, computeRectsExtents(
-            //children.map!(c => c.bounds)
-        //));
+        //super(Type.group, FRect.init);
+        super(Type.group, computeRectsExtents(children.map!(c => c.bounds)));
     }
 
     @property immutable(RenderNode)[] children() const { return _children; }
