@@ -237,7 +237,7 @@ struct SgSiblingNodeRange(NodeT)
         _last = last;
     }
 
-    @property bool empty() { return _first !is null; }
+    @property bool empty() { return _first is null; }
     @property NodeT front() { return _first; }
     void popFront() {
         if (_first is _last) {
@@ -268,3 +268,29 @@ struct SgSiblingNodeRange(NodeT)
 
 static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
 static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
+
+
+unittest 
+{
+    import std.algorithm : equal;
+
+    auto root = new SgNode;
+    auto c1 = new SgNode;
+    auto c2 = new SgNode;
+    root.name = "root";
+    c1.name = "c1";
+    c2.name = "c2";
+    root.appendChild(c1);
+    root.appendChild(c2);
+
+    assert(c1.parent is root);
+    assert(c2.parent is root);
+    assert(root.firstChild is c1);
+    assert(root.lastChild is c2);
+
+    string[] names;
+    foreach(c; root.children) {
+        names ~= c.name;
+    }
+    assert(equal(names, ["c1", "c2"]));
+}
