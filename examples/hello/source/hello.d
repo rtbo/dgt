@@ -6,13 +6,13 @@ import dgt.window;
 import dgt.event;
 import key = dgt.keys;
 import dgt.vg;
-import dgt.math.transform;
-import dgt.math.vec;
+import dgt.math;
 import dgt.text.fontcache;
 import dgt.text.font;
 import dgt.text.layout;
 import dgt.image;
 import dgt.geometry;
+import dgt.sg.node;
 import dgt.sg.rendernode;
 import dgt.sg.renderframe;
 
@@ -59,12 +59,32 @@ int main()
     font.family = "serif";
     font.size = FontSize.pts(100);
 
-    immutable helloNode = textNode("Hello", font, textPaint);
-    immutable arHelloNode = textNode("مرحبا", font, textPaint);
+    auto helloNode = textNode("Hello", font, textPaint);
+    helloNode.name = "hello-en";
+    auto arHelloNode = textNode("مرحبا", font, textPaint);
+    arHelloNode.name = "hello-ar";
 
     immutable logoImg = assumeUnique(Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb));
-    immutable logoNode = new immutable ImageRenderNode(FPoint(0, 0), logoImg);
+    auto logoNode = new SgImageNode;
+    logoNode.image = logoImg;
+    logoNode.name = "logo";
 
+    auto root = new SgNode;
+    root.name = "root";
+    root.appendChild(helloNode);
+    root.appendChild(arHelloNode);
+    root.appendChild(logoNode);
+
+
+    writeln(root.toString());
+
+    win.onResize += (WindowResizeEvent ev) {
+        helloNode.transform = FMat4.identity.translate(50, ev.size.height-50, 0);   
+        arHelloNode.transform = FMat4.identity.translate(ev.size.width-350, 150, 0);
+        logoNode.transform = FMat4.identity.translate(
+            ev.size.width-logoImg.width-10, ev.size.height-logoImg.height-10, 0
+        );
+    };
     auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
     auto treePath = new Path([0, 0]);
     treePath.lineTo([branchVec.x, branchVec.y]);
@@ -74,28 +94,8 @@ int main()
 
         immutable size = win.size;
 
-        immutable renderTree = new immutable GroupRenderNode([
-            new immutable TransformRenderNode(
-                FMat4.identity.translate(50, size.height-50, 0), helloNode
-            ),
-            new immutable ColorRenderNode(
-                fvec(1, 1, 1, 0.5), FRect(50+helloNode.bounds.left, size.height-45, helloNode.bounds.width, 5)
-            ),
-            new immutable TransformRenderNode(
-                FMat4.identity.translate(size.width-350, 150, 0), arHelloNode
-            ),
-            new immutable ColorRenderNode(
-                fvec(1, 1, 1, 0.5), FRect(size.width-350+arHelloNode.bounds.left, 155, arHelloNode.bounds.width, 5)
-            ),
-            new immutable TransformRenderNode(
-                FMat4.identity.translate(size.width-logoImg.width-10,
-                                size.height-logoImg.height-10, 0),
-                logoNode
-            ),
-        ]);
-
         return new immutable RenderFrame(
-            win.nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), renderTree
+            win.nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), root.collectRenderNode()
         );
     };
 
@@ -106,7 +106,7 @@ int main()
 private:
 
 
-immutable(RenderNode) textNode(string text, FontRequest font, Paint paint)
+SgImageNode textNode(string text, FontRequest font, Paint paint)
 {
     auto layout = makeRc!TextLayout(text, TextFormat.plain, font);
     layout.layout();
@@ -120,7 +120,20 @@ immutable(RenderNode) textNode(string text, FontRequest font, Paint paint)
         ctx.fillPaint = paint;
         layout.renderInto(ctx);
     }
-    return new immutable ImageRenderNode(cast(FVec2)(-metrics.bearing), assumeUnique(img));
+
+    immutable topLeft = cast(FVec2)(-metrics.bearing);
+
+    auto imgNode = new SgImageNode;
+    imgNode.topLeft = topLeft;
+    imgNode.image = assumeUnique(img);
+
+    auto ulNode = new SgColorRectNode;
+    ulNode.color = fvec(1, 1, 1, 0.5);
+    ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
+
+    imgNode.appendChild(ulNode);
+    
+    return imgNode;
 }
 
 

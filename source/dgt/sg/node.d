@@ -3,6 +3,7 @@ module dgt.sg.node;
 import dgt.sg.rendernode;
 import dgt.geometry;
 import dgt.math;
+import dgt.image;
 
 import std.exception;
 import std.range;
@@ -175,19 +176,102 @@ class SgNode
     /// Whether this node has a transform set. (Other than identity)
     @property bool hasTransform() const { return _hasTransform; }
 
-    abstract immutable(RenderNode) collectRenderNode();
-
-    protected immutable(RenderNode) collectChildrenRenderNodes()
+    /// Collect the render node for this node.
+    immutable(RenderNode) collectRenderNode()
     {
-        import std.algorithm : map;
+        immutable childrenNode = collectChildrenRenderNode();
+        immutable localNode = collectLocalRenderNode();
+        immutable toBeTransformed = 
+            (childrenNode && localNode) ? new immutable GroupRenderNode(
+                [localNode, childrenNode]
+            ) :
+            (localNode ? localNode : 
+            (childrenNode ? childrenNode : null));
+
+        if (!toBeTransformed) return null;
+        else if (hasTransform) {
+            return new immutable TransformRenderNode(
+                _transform, toBeTransformed
+            );
+        }
+        else {
+            return toBeTransformed;
+        }
+    }
+
+    /// Collect the local render node for this node.
+    /// Local means already transformed and without children.
+    protected immutable(RenderNode) collectLocalRenderNode()
+    {
+        return null;
+    }
+
+    /// Collect a node grouping the children together.
+    protected immutable(RenderNode) collectChildrenRenderNode()
+    {
+        import std.algorithm : map, filter;
         import std.array : array;
         if (!_childCount) return null;
         else return new immutable(GroupRenderNode)(
             childrenBounds,
             children.map!(c => c.collectRenderNode())
+                    .filter!(rn => rn !is null)
                     .array()
         );
     }
+
+
+    @property string name() const { return _name; }    
+    @property void name(string name) 
+    {
+        _name = name;
+    }
+
+    string typeName() const
+    {
+        return "SgNode";
+    }
+
+    string[2][] properties() const
+    {
+        import std.format : format;
+        string[2][] props;
+        if (name.length) {
+            props ~= ["name", format("'%s'", name)];
+        }
+        props ~= ["bounds", format("%s", _bounds)];
+        return props;
+    }
+
+    protected string toStringInternal(size_t indent)
+    {
+        import std.array : array;
+        import std.format : format;
+        import std.range : repeat;
+        auto indentStr = repeat(' ', indent*4).array;
+        string res;
+        res = format("%s%s { %(%-(%s:%), %) ", indentStr, typeName, properties);
+        if (hasChildren) {
+            res ~= format("[\n");
+            size_t ind=0;
+            foreach(c; children) {
+                res ~= c.toStringInternal(indent+1);
+                if (ind != _childCount-1) {
+                    res ~= ",\n";
+                }
+                ++ind;
+            }
+            res ~= format("\n%s]", indentStr);
+        }
+        res ~= "}";
+        return res;
+    }
+
+    override string toString()
+    {
+        return toStringInternal(0);
+    }
+
 
     invariant()
     {
@@ -220,6 +304,85 @@ class SgNode
 
     FMat4 _transform = FMat4.identity;
     bool _hasTransform;
+
+    string _name;
+}
+
+
+class SgColorRectNode : SgNode
+{
+    this() {}
+
+    @property FVec4 color() const { return _color; }
+    @property void color(in FVec4 color)
+    {
+        _color = color;
+    }
+
+    @property FRect rect() const { return _bounds; }
+    @property void rect(in FRect rect)
+    {
+        _bounds = rect;
+    }
+
+    override protected immutable(RenderNode) collectLocalRenderNode()
+    {
+        return new immutable ColorRenderNode(_color, bounds);
+    }
+
+    override string typeName() const
+    {
+        return "SgColorRectNode";
+    }
+
+    private FVec4 _color;
+}
+
+
+class SgImageNode : SgNode
+{
+    this() {}
+
+    @property inout(Image) image() inout { return _image; }
+    @property void image(Image image) {
+        _image = image;
+        _immutImg = null;
+    }
+    @property void image(immutable(Image) image)
+    {
+        _image = null;
+        _immutImg = image;
+    }
+
+    @property FPoint topLeft() const { return _topLeft; }
+    @property void topLeft(in FPoint topLeft)
+    {
+        _topLeft = topLeft;
+    }
+
+    override protected immutable(RenderNode) collectLocalRenderNode()
+    {
+        if (_image && !_immutImg) _immutImg = _image.idup;
+
+        if (_immutImg) {
+            return new immutable ImageRenderNode (
+                _topLeft, _immutImg
+            );
+        }
+        else {
+            return null;
+        }
+    }
+
+    override string typeName() const
+    {
+        return "SgImageNode";
+    }
+
+    
+    private Image _image;
+    private FPoint _topLeft;
+    private Rebindable!(immutable(Image)) _immutImg;
 }
 
 
