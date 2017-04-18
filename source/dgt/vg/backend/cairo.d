@@ -388,12 +388,6 @@ class CairoContext : VgContext
                 cairo_curve_to(cairo, seg.data[0],
                         seg.data[1], seg.data[2], seg.data[3], seg.data[4], seg.data[5]);
                 break;
-            case PathSeg.shortCcwArcTo:
-            case PathSeg.shortCwArcTo:
-            case PathSeg.largeCcwArcTo:
-            case PathSeg.largeCwArcTo:
-                // FIXME: impl with transforms and cairo_arc
-                assert(false, "implemented");
             case PathSeg.close:
                 cairo_close_path(cairo);
                 break;

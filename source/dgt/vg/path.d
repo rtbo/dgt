@@ -10,10 +10,6 @@ enum PathSeg
     lineTo,
     quadTo,
     cubicTo,
-    shortCcwArcTo,
-    shortCwArcTo,
-    largeCcwArcTo,
-    largeCwArcTo,
     close,
 }
 
@@ -30,11 +26,6 @@ size_t numComponents(in PathSeg seg)
         return 4;
     case PathSeg.cubicTo:
         return 6;
-    case PathSeg.shortCcwArcTo:
-    case PathSeg.shortCwArcTo:
-    case PathSeg.largeCcwArcTo:
-    case PathSeg.largeCwArcTo:
-        return 5;
     case PathSeg.close:
         return 0;
     }
@@ -167,34 +158,26 @@ class Path
 
     void shortCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        _segments ~= PathSeg.shortCcwArcTo;
-        _data ~= [rh, rv, rot, point[0], point[1]];
-        _lastControl[] = float.nan;
-        _lastPoint = point;
+        // TODO: implement with quad or cubic
+        assert(false, "unimplemented");
     }
 
     void shortCwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        _segments ~= PathSeg.shortCwArcTo;
-        _data ~= [rh, rv, rot, point[0], point[1]];
-        _lastControl[] = float.nan;
-        _lastPoint = point;
+        // TODO: implement with quad or cubic
+        assert(false, "unimplemented");
     }
 
     void largeCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        _segments ~= PathSeg.largeCcwArcTo;
-        _data ~= [rh, rv, rot, point[0], point[1]];
-        _lastControl[] = float.nan;
-        _lastPoint = point;
+        // TODO: implement with quad or cubic
+        assert(false, "unimplemented");
     }
 
     void largeCwArcTo(float rh, float rv, float rot, float[2] point)
     {
-        _segments ~= PathSeg.largeCwArcTo;
-        _data ~= [rh, rv, rot, point[0], point[1]];
-        _lastControl[] = float.nan;
-        _lastPoint = point;
+        // TODO: implement with quad or cubic
+        assert(false, "unimplemented");
     }
 
     /// Throws: Exception if no moveTo can be found before this call.
@@ -310,13 +293,6 @@ struct SegmentDataRange
         case PathSeg.cubicTo:
             previousControl = data[2 .. 4];
             previousPoint = data[4 .. 6];
-            break;
-        case PathSeg.shortCcwArcTo:
-        case PathSeg.shortCwArcTo:
-        case PathSeg.largeCcwArcTo:
-        case PathSeg.largeCwArcTo:
-            previousControl[] = float.nan;
-            previousPoint = data[3 .. 5];
             break;
         case PathSeg.close:
             previousControl[] = float.nan;
