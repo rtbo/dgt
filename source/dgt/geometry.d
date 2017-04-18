@@ -93,7 +93,7 @@ struct Rect(T) if (isNumeric!T)
 
     invariant()
     {
-        assert(_w >= 0 && _h >= 0);
+        //assert(_w >= 0 && _h >= 0);
     }
 
     this(in T x, in T y, in T w, in T h)
