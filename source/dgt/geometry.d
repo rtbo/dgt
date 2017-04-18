@@ -22,8 +22,8 @@ alias IRect = Rect!int;
 /// Represents a two dimensional size
 struct Size(T) if (isNumeric!T)
 {
-    T width;
-    T height;
+    T width =0;
+    T height =0;
 
     this(in T width, in T height)
     {
@@ -51,18 +51,17 @@ unittest
     auto si = ISize(4, 15);
     assert(si.area == 60);
 
-    static assert(__traits(compiles, sd = si));
-    static assert(!__traits(compiles, si = sd));
-    static assert(__traits(compiles, si = cast(ISize) sd));
+    static assert(__traits(compiles, sd = cast(FSize)si));
+    static assert(__traits(compiles, si = cast(ISize)sd));
 }
 
 /// Represents margins around a rectangular area
 struct Margins(T) if (isNumeric!T)
 {
-    T left;
-    T top;
-    T right;
-    T bottom;
+    T left =0;
+    T top =0;
+    T right =0;
+    T bottom =0;
 
     U opCast(U : Margins!V, V)() const
     {
@@ -75,8 +74,7 @@ unittest
     auto md = FMargins(3, 5, 5, 6);
     auto mi = IMargins(4, 15, 2, 5);
 
-    static assert(__traits(compiles, md = mi));
-    static assert(!__traits(compiles, mi = md));
+    static assert(__traits(compiles, md = cast(FMargins) mi));
     static assert(__traits(compiles, mi = cast(IMargins) md));
 }
 
@@ -389,8 +387,7 @@ unittest
     auto rd = FRect(3, 5, 5, 6);
     auto ri = IRect(4, 15, 2, 5);
 
-    static assert(__traits(compiles, rd = ri));
-    static assert(!__traits(compiles, ri = rd));
+    static assert(__traits(compiles, rd = cast(FRect) ri));
     static assert(__traits(compiles, ri = cast(IRect) rd));
 
     ri.left = 2;
