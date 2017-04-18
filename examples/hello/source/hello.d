@@ -75,29 +75,21 @@ int main()
     root.appendChild(arHelloNode);
     root.appendChild(logoNode);
 
-
     writeln(root.toString());
 
     win.onResize += (WindowResizeEvent ev) {
-        helloNode.transform = FMat4.identity.translate(50, ev.size.height-50, 0);   
+        helloNode.transform = FMat4.identity.translate(50, ev.size.height-50, 0);
         arHelloNode.transform = FMat4.identity.translate(ev.size.width-350, 150, 0);
         logoNode.transform = FMat4.identity.translate(
             ev.size.width-logoImg.width-10, ev.size.height-logoImg.height-10, 0
         );
     };
-    auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
-    auto treePath = new Path([0, 0]);
-    treePath.lineTo([branchVec.x, branchVec.y]);
 
-    win.onRequestFrame = () {
-        import dgt.math.mat : FMat4;
+    win.root = root;
 
-        immutable size = win.size;
-
-        return new immutable RenderFrame(
-            win.nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), root.collectRenderNode()
-        );
-    };
+    // auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
+    // auto treePath = new Path([0, 0]);
+    // treePath.lineTo([branchVec.x, branchVec.y]);
 
     win.show();
     return app.loop();
@@ -132,7 +124,7 @@ SgImageNode textNode(string text, FontRequest font, Paint paint)
     ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
 
     imgNode.appendChild(ulNode);
-    
+
     return imgNode;
 }
 

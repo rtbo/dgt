@@ -12,8 +12,8 @@ import dgt.context;
 import dgt.vg;
 import dgt.math;
 import dgt.sg.renderframe;
-import dgt.sg.rendernode;
 import dgt.sg.renderer;
+import dgt.sg.node;
 
 import std.exception;
 import std.experimental.logger;
@@ -288,16 +288,12 @@ class Window
     mixin EventHandlerSignalMixin!("onClose", OnWindowCloseHandler);
     mixin SignalMixin!("onClosed", Window);
 
-    alias FrameRequestHandler = immutable(RenderFrame) delegate();
-    @property void onRequestFrame(FrameRequestHandler handler)
+
+    @property inout(SgNode) root() inout { return _root; }
+    @property void root(SgNode root)
     {
-        if (_onRequestFrame) {
-            warning("overriding RequestFrameHandler");
-        }
-        _onRequestFrame = handler;
+        _root = root;
     }
-
-
 
     void handleEvent(WindowEvent wEv)
     {
@@ -399,9 +395,10 @@ class Window
         {
             assert(_gfxRunning);
 
-            if (_onRequestFrame) {
-                immutable f = _onRequestFrame();
-                renderFrame(_renderTid, f);
+            if (_root) {
+                renderFrame(_renderTid, new immutable RenderFrame (
+                    nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), _root.collectRenderNode()
+                ));
             }
         }
 
@@ -414,10 +411,6 @@ class Window
         shared(GlContext) _context;
         Tid _renderTid;
         bool _gfxRunning;
-        FrameRequestHandler _onRequestFrame;
-
-        // transient rendering state
-        Image _renderBuf;
-
+        SgNode _root;
     }
 }
