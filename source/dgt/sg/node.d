@@ -61,7 +61,7 @@ class SgNode
     {
         return SgSiblingNodeRange!SgNode(_firstChild, _lastChild);
     }
-    
+
     /// A bidirectional range of this nodes children
     @property auto children() const
     {
@@ -181,11 +181,11 @@ class SgNode
     {
         immutable childrenNode = collectChildrenRenderNode();
         immutable localNode = collectLocalRenderNode();
-        immutable toBeTransformed = 
+        immutable toBeTransformed =
             (childrenNode && localNode) ? new immutable GroupRenderNode(
                 [localNode, childrenNode]
             ) :
-            (localNode ? localNode : 
+            (localNode ? localNode :
             (childrenNode ? childrenNode : null));
 
         if (!toBeTransformed) return null;
@@ -221,8 +221,8 @@ class SgNode
     }
 
 
-    @property string name() const { return _name; }    
-    @property void name(string name) 
+    @property string name() const { return _name; }
+    @property void name(string name)
     {
         _name = name;
     }
@@ -379,7 +379,7 @@ class SgImageNode : SgNode
         return "SgImageNode";
     }
 
-    
+
     private Image _image;
     private FPoint _topLeft;
     private Rebindable!(immutable(Image)) _immutImg;
@@ -433,7 +433,7 @@ static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
 static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
 
 
-unittest 
+unittest
 {
     import std.algorithm : equal;
 
