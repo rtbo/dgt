@@ -376,7 +376,8 @@ class Window
         {
             if (_root) {
                 Application.instance.renderFrame(new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), _root.collectRenderNode()
+                    nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
+                    _root.collectRenderNode()
                 ));
             }
         }
