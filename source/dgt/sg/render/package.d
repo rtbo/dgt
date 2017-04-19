@@ -108,6 +108,9 @@ class Renderer
     TexPipeline     _texBlendArgbPipeline;
     TexPipeline     _texBlendArgbPremultPipeline;
 
+    VertexBuffer!SolidVertex    _solidQuadVBuf;
+    VertexBuffer!TexVertex      _texQuadVBuf;
+    IndexBuffer!ushort          _quadIBuf;
     Disposable[ulong] _objectCache;
 
     FMat4 _viewProj;
@@ -159,6 +162,28 @@ class Renderer
             ))
         );
 
+        auto quadSolidVerts = [
+            SolidVertex([0f, 0f]),
+            SolidVertex([0f, 1f]),
+            SolidVertex([1f, 1f]),
+            SolidVertex([1f, 0f]),
+        ];
+        _solidQuadVBuf = new VertexBuffer!SolidVertex(quadSolidVerts);
+        _solidQuadVBuf.retain();
+
+        auto quadTexVerts = [
+            TexVertex([0f, 0f], [0f, 0f]),
+            TexVertex([0f, 1f], [0f, 1f]),
+            TexVertex([1f, 1f], [1f, 1f]),
+            TexVertex([1f, 0f], [1f, 0f]),
+        ];
+        _texQuadVBuf = new VertexBuffer!TexVertex(quadTexVerts);
+        _texQuadVBuf.retain();
+
+        ushort[] quadInds = [0, 1, 2, 0, 2, 3];
+        _quadIBuf = new IndexBuffer!ushort(quadInds);
+        _quadIBuf.retain();
+
         _encoder = Encoder(cmdBuf.obj);
     }
 
@@ -170,6 +195,9 @@ class Renderer
                 oc.dispose();
             }
             _encoder = Encoder.init;
+            _texQuadVBuf.release();
+            _solidQuadVBuf.release();
+            _quadIBuf.release();
             _solidPipeline.dispose();
             _solidBlendPipeline.dispose();
             _texPipeline.dispose();
@@ -258,25 +286,19 @@ class Renderer
 
     void renderColorNode(immutable(ColorRenderNode) node, in FMat4 model)
     {
-        immutable rect = node.bounds;
         immutable color = node.color;
-        auto quadVerts = [
-            SolidVertex([rect.left, rect.top]),
-            SolidVertex([rect.left, rect.bottom]),
-            SolidVertex([rect.right, rect.bottom]),
-            SolidVertex([rect.right, rect.top]),
-        ];
-        ushort[] quadInds = [0, 1, 2, 0, 2, 3];
-        auto vbuf = makeRc!(VertexBuffer!SolidVertex)(quadVerts);
-        auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
-
-        immutable mvp = transpose(_viewProj * model);
+        immutable rect = node.bounds;
+        immutable rectTr = translate(
+            scale!float(rect.width, rect.height, 1f),
+            fvec(rect.topLeft, 0f)
+        );
+        immutable mvp = transpose(_viewProj * model * rectTr);
 
         SolidPipeline pl = color.a == 1f ?
             _solidPipeline : _solidBlendPipeline;
 
         pl.updateUniforms(mvp, color);
-        pl.draw(vbuf.obj, slice, _rtv);
+        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), _rtv);
     }
 
     void renderImageNode(immutable(ImageRenderNode) node, in FMat4 model)
@@ -312,17 +334,6 @@ class Renderer
             }
         }
 
-        immutable rect = node.bounds;
-        auto quadVerts = [
-            TexVertex([rect.left, rect.top], [0f, 0f]),
-            TexVertex([rect.left, rect.bottom], [0f, 1f]),
-            TexVertex([rect.right, rect.bottom], [1f, 1f]),
-            TexVertex([rect.right, rect.top], [1f, 0f]),
-        ];
-        ushort[] quadInds = [0, 1, 2, 0, 2, 3];
-        auto vbuf = makeRc!(VertexBuffer!TexVertex)(quadVerts);
-        auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
-
         TexPipeline pl;
         switch (img.format) {
         case ImageFormat.rgb:
@@ -338,8 +349,13 @@ class Renderer
             assert(false, "unimplemented");
         }
 
-        pl.updateUniforms(transpose(_viewProj * model));
-        pl.draw(vbuf.obj, slice, srv.obj, sampler.obj, _rtv);
+        immutable rect = node.bounds;
+        immutable rectTr = translate(
+            scale!float(rect.width, rect.height, 1f),
+            fvec(rect.topLeft, 0f)
+        );
+        pl.updateUniforms(transpose(_viewProj * model * rectTr));
+        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _rtv);
     }
 }
 
