@@ -2,9 +2,13 @@ module dgt.application;
 
 import gfx.foundation.rc;
 import dgt.platform;
+import dgt.context;
 import dgt.window;
+import dgt.sg.render;
+import dgt.sg.render.frame;
 
 import std.experimental.logger;
+import std.concurrency : Tid;
 
 /// Singleton class that must be built by the client application
 class Application : Disposable
@@ -35,9 +39,20 @@ class Application : Disposable
     /// Enter main event processing loop
     int loop()
     {
+        assert(!_gfxRunning);
+        initializeGfx();
+
         while (!_exitFlag)
             _platform.processNextEvent();
+
+        finalizeGfx();
         return _exitCode;
+    }
+
+    void renderFrame(immutable(RenderFrame) frame)
+    {
+        assert(_gfxRunning);
+        .renderFrame(_renderTid, frame);
     }
 
     /// Register an exit code and exit at end of current event loop
@@ -114,10 +129,52 @@ class Application : Disposable
         }
     }
 
+    private void initializeGfx()
+    {
+        Window window;
+        Window dummy;
+        foreach (w; _windows) {
+            if (w.platformWindow.created) {
+                window = w;
+                break;
+            }
+        }
+        if (!window) {
+            dummy = new Window("dummy", WindowFlags.dummy);
+            dummy.show();
+            window = dummy;
+        }
+
+        shared ctx = createGlContext(window);
+        _renderTid = startRenderLoop(ctx);
+        _gfxRunning = true;
+
+        if (dummy) {
+            dummy.close();
+        }
+    }
+
+    private void finalizeGfx(Window window=null)
+    {
+        Window dummy;
+        if (!window) {
+            dummy = new Window("dummy", WindowFlags.dummy);
+            dummy.show();
+            window = dummy;
+        }
+        finalizeRenderLoop(_renderTid, window.nativeHandle);
+        _gfxRunning = false;
+
+        if (dummy) dummy.close();
+    }
+
     private Platform _platform;
     private bool _exitFlag;
     private int _exitCode;
     private Window[] _windows;
+
+    Tid _renderTid;
+    bool _gfxRunning;
 
     static
     {

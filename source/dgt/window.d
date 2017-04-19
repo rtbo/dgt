@@ -12,12 +12,10 @@ import dgt.context;
 import dgt.vg;
 import dgt.math;
 import dgt.sg.render.frame;
-import dgt.sg.render;
 import dgt.sg.node;
 
 import std.exception;
 import std.experimental.logger;
-import std.concurrency : Tid;
 
 alias GfxDevice = gfx.device.Device;
 
@@ -248,10 +246,6 @@ class Window
             }
 
             _platformWindow.create();
-            if (!(_flags & WindowFlags.dummy)) {
-                assert(!_gfxRunning);
-                initializeGfx();
-            }
         }
 
         if (!(_flags & WindowFlags.dummy))
@@ -261,7 +255,6 @@ class Window
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
-        if (_gfxRunning) finalizeGfx();
         _platformWindow.close();
         _onClosed.fire(this);
         Application.instance.unregisterWindow(this);
@@ -371,18 +364,6 @@ class Window
 
     private
     {
-        void initializeGfx()
-        {
-            shared ctx = createGlContext(this);
-            _renderTid = startRenderLoop(ctx);
-            _gfxRunning = true;
-        }
-
-        void finalizeGfx()
-        {
-            finalizeRenderLoop(_renderTid, nativeHandle);
-            _gfxRunning = false;
-        }
 
         void handleResize(WindowResizeEvent ev)
         {
@@ -393,10 +374,8 @@ class Window
 
         void handleExpose(WindowExposeEvent ev)
         {
-            assert(_gfxRunning);
-
             if (_root) {
-                renderFrame(_renderTid, new immutable RenderFrame (
+                Application.instance.renderFrame(new immutable RenderFrame (
                     nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1), _root.collectRenderNode()
                 ));
             }
@@ -408,9 +387,6 @@ class Window
         ISize _size;
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
-        shared(GlContext) _context;
-        Tid _renderTid;
-        bool _gfxRunning;
         SgNode _root;
     }
 }
