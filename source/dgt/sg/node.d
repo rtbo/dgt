@@ -189,12 +189,6 @@ class SgNode
         _dynamic = dynamic;
     }
 
-    /// The render cache cookie of this node.
-    @property ulong renderCacheCookie() const
-    {
-        return _renderCacheCookie;
-    }
-
     /// Collect the render node for this node.
     immutable(RenderNode) collectRenderNode()
     {
@@ -329,7 +323,6 @@ class SgNode
 
     // cache policy
     private bool _dynamic=false;
-    private ulong _renderCacheCookie;
 
     // debug info
     private string _name;
@@ -355,14 +348,7 @@ class SgColorRectNode : SgNode
 
     override protected immutable(RenderNode) collectLocalRenderNode()
     {
-        if (!dynamic && !renderCacheCookie) {
-            _renderCacheCookie = Application.instance.nextRenderCacheCookie();
-        }
-        if (dynamic && renderCacheCookie) {
-            Application.instance.deleteRenderCache(renderCacheCookie);
-            _renderCacheCookie = 0;
-        }
-        return new immutable ColorRenderNode(_color, bounds, _renderCacheCookie);
+        return new immutable ColorRenderNode(_color, bounds);
     }
 
     override string typeName() const
@@ -400,15 +386,8 @@ class SgImageNode : SgNode
         if (_image && !_immutImg) _immutImg = _image.idup;
 
         if (_immutImg) {
-            if (!dynamic && !renderCacheCookie) {
-                _renderCacheCookie = Application.instance.nextRenderCacheCookie();
-            }
-            if (dynamic && renderCacheCookie) {
-                Application.instance.deleteRenderCache(renderCacheCookie);
-                _renderCacheCookie = 0;
-            }
             return new immutable ImageRenderNode (
-                _topLeft, _immutImg, _renderCacheCookie
+                _topLeft, _immutImg, _rcc.collectCookie(dynamic)
             );
         }
         else {
@@ -425,8 +404,32 @@ class SgImageNode : SgNode
     private Image _image;
     private FPoint _topLeft;
     private Rebindable!(immutable(Image)) _immutImg;
+    private RenderCacheCookie _rcc;
 }
 
+struct RenderCacheCookie
+{
+    ulong cookie;
+
+    ulong collectCookie(in bool dynamic)
+    {
+        if (!dynamic && !cookie) {
+            cookie = Application.instance.nextRenderCacheCookie();
+        }
+        else if (dynamic && cookie) {
+            Application.instance.deleteRenderCache(cookie);
+            cookie = 0;
+        }
+        return cookie;
+    }
+    void dirty(in bool dynamic)
+    {
+        if (cookie) {
+            Application.instance.deleteRenderCache(cookie);
+            cookie = 0;
+        }
+    }
+}
 
 private:
 
