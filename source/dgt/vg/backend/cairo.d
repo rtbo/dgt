@@ -426,7 +426,7 @@ pure @safe
             return CAIRO_FORMAT_A1;
         case ImageFormat.a8:
             return CAIRO_FORMAT_A8;
-        case ImageFormat.rgb:
+        case ImageFormat.xrgb:
             return CAIRO_FORMAT_RGB24;
         case ImageFormat.argbPremult:
             return CAIRO_FORMAT_ARGB32;

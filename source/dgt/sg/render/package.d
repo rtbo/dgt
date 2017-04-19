@@ -336,7 +336,7 @@ class Renderer
 
         TexPipeline pl;
         switch (img.format) {
-        case ImageFormat.rgb:
+        case ImageFormat.xrgb:
             pl = _texPipeline;
             break;
         case ImageFormat.argb:

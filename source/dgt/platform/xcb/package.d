@@ -465,7 +465,7 @@ ImageFormat dgtImageFormat(in xcb_format_t* fmt)
     case 32:
         if (fmt.depth == 24)
         {
-            return ImageFormat.rgb;
+            return ImageFormat.xrgb;
         }
         else if (fmt.depth == 32)
         {

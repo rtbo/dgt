@@ -16,11 +16,9 @@ enum ImageFormat
     a8,
     /// 32 bits per pixel RGB. Upper 8 bits are unused.
     /// Will save some computation time by skipping blending.
-    rgb,
+    xrgb,
     /// 32 bits per pixel ARGB. Stored in machine native byte order.
-    /// Less efficient than the premultiplied version for blending.
-    /// Some backends only support the premultiplied format in such case
-    /// the data will be copied into another premultiplied buffer
+    /// Do not support vector graphics rendering.
     argb,
     /// 32 bits per pixel ARGB. RGB channels are premultiplied by the alpha
     /// channel to boost the alpha blending computations. Stored in machine
@@ -28,16 +26,19 @@ enum ImageFormat
     argbPremult,
 }
 
+/// Whether the format only has alpha component.
 @property bool isPureAlpha(in ImageFormat format)
 {
     return format == ImageFormat.a1 || format == ImageFormat.a8;
 }
 
+/// Whether the format has alpha component.
 @property bool hasAlpha(in ImageFormat format)
 {
-    return format != ImageFormat.rgb;
+    return format != ImageFormat.xrgb;
 }
 
+/// Whether the format has color components.
 @property bool hasRgb(in ImageFormat format)
 {
     return !format.isPureAlpha;
@@ -52,7 +53,7 @@ enum ImageFormat
         return 1;
     case ImageFormat.a8:
         return 8;
-    case ImageFormat.rgb:
+    case ImageFormat.xrgb:
     case ImageFormat.argb:
     case ImageFormat.argbPremult:
         return 32;
@@ -327,8 +328,8 @@ class Image
                 }
             }
         }
-        else if ((_format == ImageFormat.rgb && format == ImageFormat.argb) ||
-                (_format == ImageFormat.argb && format == ImageFormat.rgb))
+        else if ((_format == ImageFormat.xrgb && format == ImageFormat.argb) ||
+                (_format == ImageFormat.argb && format == ImageFormat.xrgb))
         {
             fourBytesConv!eraseAlpha(this, res);
         }
@@ -707,7 +708,7 @@ private
                 assert(false);
             case ImageFormat.a8:
                 return PNG_FORMAT_GRAY;
-            case ImageFormat.rgb:
+            case ImageFormat.xrgb:
             case ImageFormat.argb:
             case ImageFormat.argbPremult:
             version(LittleEndian) {
@@ -795,7 +796,7 @@ private
                 assert(false);
             case ImageFormat.a8:
                 return TJPF.TJPF_GRAY;
-            case ImageFormat.rgb:
+            case ImageFormat.xrgb:
             case ImageFormat.argb:
             case ImageFormat.argbPremult:
             version(LittleEndian) {
