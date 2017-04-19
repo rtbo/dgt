@@ -1,4 +1,4 @@
-module dgt.sg.rendernode;
+module dgt.sg.render.node;
 
 import dgt.geometry;
 import dgt.math;

@@ -1,6 +1,6 @@
 module dgt.sg.node;
 
-import dgt.sg.rendernode;
+import dgt.sg.render.node;
 import dgt.geometry;
 import dgt.math;
 import dgt.image;

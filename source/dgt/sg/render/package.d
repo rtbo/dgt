@@ -1,11 +1,11 @@
-module dgt.sg.renderer;
+module dgt.sg.render;
 
 import dgt.context;
 import dgt.geometry;
 import dgt.math;
 import dgt.image;
-import dgt.sg.rendernode;
-import dgt.sg.renderframe;
+import dgt.sg.render.node;
+import dgt.sg.render.frame;
 
 import gfx.foundation.rc;
 import gfx.foundation.util;

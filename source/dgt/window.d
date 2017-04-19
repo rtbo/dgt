@@ -11,8 +11,8 @@ import dgt.image;
 import dgt.context;
 import dgt.vg;
 import dgt.math;
-import dgt.sg.renderframe;
-import dgt.sg.renderer;
+import dgt.sg.render.frame;
+import dgt.sg.render;
 import dgt.sg.node;
 
 import std.exception;
