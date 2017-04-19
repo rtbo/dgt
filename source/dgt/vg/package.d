@@ -3,6 +3,7 @@ module dgt.vg;
 public import dgt.vg.context;
 public import dgt.vg.paint;
 public import dgt.vg.path;
+public import dgt.vg.penbrush;
 import gfx.foundation.rc;
 import dgt.image;
 

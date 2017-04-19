@@ -55,6 +55,8 @@ abstract class Paint
     {
         return _type;
     }
+
+    abstract @property Paint dup() const;
 }
 
 /// A solid paint color.
@@ -96,6 +98,11 @@ class ColorPaint : Paint
     @property void color(in FVec4 color)
     {
         _color = color;
+    }
+
+    override @property ColorPaint dup() const
+    {
+        return new ColorPaint(_color);
     }
 }
 
@@ -174,6 +181,13 @@ class LinearGradientPaint : GradientPaint
     {
         _end = end;
     }
+
+    override @property LinearGradientPaint dup() const
+    {
+        auto lp = new LinearGradientPaint(_start, _end, _stops.dup);
+        lp.spreadMode = _spreadMode;
+        return lp;
+    }
 }
 
 /// Gradient paint that interpolates the color defined in stops between a focal
@@ -224,9 +238,16 @@ class RadialGradientPaint : GradientPaint
     {
         _radius = radius;
     }
+
+    override @property RadialGradientPaint dup() const
+    {
+        auto rp = new RadialGradientPaint(_focal, _center, _radius, _stops.dup);
+        rp.spreadMode = _spreadMode;
+        return rp;
+    }
 }
 
-/// A Paint that will paint image data (a.k.a. texture).
+/// A Paint that will paint image data
 class ImagePaint : Paint
 {
     private Image _image;
@@ -244,5 +265,10 @@ class ImagePaint : Paint
     @property inout(Image) image() inout
     {
         return _image;
+    }
+
+    override @property ImagePaint dup() const
+    {
+        return new ImagePaint(_image.dup);
     }
 }

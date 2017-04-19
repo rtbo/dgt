@@ -8,36 +8,6 @@ import dgt.math.mat;
 import std.typecons : BitFlags, Flag, No;
 import std.traits : isCallable;
 
-enum FillRule
-{
-    NonZero,
-    EvenOdd,
-}
-
-enum LineCap
-{
-    butt,
-    round,
-    square,
-}
-
-enum LineJoin
-{
-    miter,
-    round,
-    bevel,
-}
-
-struct Dash
-{
-    float offset;
-    float[] values;
-
-    @property Dash dup() const
-    {
-        return Dash(offset, values.dup);
-    }
-}
 
 enum PaintMode
 {
