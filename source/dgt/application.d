@@ -55,6 +55,21 @@ class Application : Disposable
         .renderFrame(_renderTid, frame);
     }
 
+    void deleteRenderCache(in ulong cookie)
+    {
+        assert(_gfxRunning);
+        .deleteRenderCache(_renderTid, cookie);
+    }
+
+    ulong nextRenderCacheCookie()
+    {
+        if (_renderCacheCookie == ulong.max) {
+            error("Render cache cookie overflow!");
+            _renderCacheCookie = 0;
+        }
+        return ++_renderCacheCookie;
+    }
+
     /// Register an exit code and exit at end of current event loop
     void exit(int code = 0)
     {
@@ -173,6 +188,7 @@ class Application : Disposable
     private int _exitCode;
     private Window[] _windows;
 
+    ulong _renderCacheCookie;
     Tid _renderTid;
     bool _gfxRunning;
 
@@ -213,3 +229,4 @@ Platform makeDefaultPlatform()
         assert(false, "unimplemented");
     }
 }
+

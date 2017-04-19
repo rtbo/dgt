@@ -4,6 +4,7 @@ import dgt.sg.render.node;
 import dgt.geometry;
 import dgt.math;
 import dgt.image;
+import dgt.application;
 
 import std.exception;
 import std.range;
@@ -176,6 +177,24 @@ class SgNode
     /// Whether this node has a transform set. (Other than identity)
     @property bool hasTransform() const { return _hasTransform; }
 
+    /// Whether this node is dynamic.
+    /// Dynamic basically means animated. That is, the rendering data can vary
+    /// about every frame.
+    /// This flag mainly impact caching policy.
+    @property bool dynamic() const { return _dynamic; }
+
+    /// ditto
+    @property void dynamic(bool dynamic)
+    {
+        _dynamic = dynamic;
+    }
+
+    /// The render cache cookie of this node.
+    @property ulong renderCacheCookie() const
+    {
+        return _renderCacheCookie;
+    }
+
     /// Collect the render node for this node.
     immutable(RenderNode) collectRenderNode()
     {
@@ -289,6 +308,7 @@ class SgNode
         assert(!_nextSibling || _nextSibling._prevSibling is this);
     }
 
+    // graph
     private SgNode _parent;
 
     private size_t _childCount;
@@ -298,15 +318,23 @@ class SgNode
     private SgNode _prevSibling;
     private SgNode _nextSibling;
 
-    FRect _bounds;
-    FRect _screenBounds;
-    FRect _childrenBounds;
+    // bounds
+    private FRect _bounds;
+    private FRect _screenBounds;
+    private FRect _childrenBounds;
 
-    FMat4 _transform = FMat4.identity;
-    bool _hasTransform;
+    // transform
+    private FMat4 _transform = FMat4.identity;
+    private bool _hasTransform;
 
-    string _name;
+    // cache policy
+    private bool _dynamic=false;
+    private ulong _renderCacheCookie;
+
+    // debug info
+    private string _name;
 }
+
 
 
 class SgColorRectNode : SgNode
@@ -327,7 +355,14 @@ class SgColorRectNode : SgNode
 
     override protected immutable(RenderNode) collectLocalRenderNode()
     {
-        return new immutable ColorRenderNode(_color, bounds);
+        if (!dynamic && !renderCacheCookie) {
+            _renderCacheCookie = Application.instance.nextRenderCacheCookie();
+        }
+        if (dynamic && renderCacheCookie) {
+            Application.instance.deleteRenderCache(renderCacheCookie);
+            _renderCacheCookie = 0;
+        }
+        return new immutable ColorRenderNode(_color, bounds, _renderCacheCookie);
     }
 
     override string typeName() const
@@ -365,8 +400,15 @@ class SgImageNode : SgNode
         if (_image && !_immutImg) _immutImg = _image.idup;
 
         if (_immutImg) {
+            if (!dynamic && !renderCacheCookie) {
+                _renderCacheCookie = Application.instance.nextRenderCacheCookie();
+            }
+            if (dynamic && renderCacheCookie) {
+                Application.instance.deleteRenderCache(renderCacheCookie);
+                _renderCacheCookie = 0;
+            }
             return new immutable ImageRenderNode (
-                _topLeft, _immutImg
+                _topLeft, _immutImg, _renderCacheCookie
             );
         }
         else {

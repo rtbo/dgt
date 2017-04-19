@@ -38,6 +38,12 @@ bool renderFrame(Tid renderLoopTid, immutable(RenderFrame) frame)
     return true;
 }
 
+/// Instruct the render thread to delete a cached render data;
+void deleteRenderCache(Tid renderLoopTid, in ulong cookie)
+{
+    send(renderLoopTid, DeleteCache(cookie));
+}
+
 /// End the rendering thread identified by renderLoopTid.
 /// The native handle is used to make a context current in order to
 /// free held graphics resources.
@@ -58,7 +64,9 @@ struct Finalize {
     size_t nativeHandle;
 }
 struct Finalized {}
-
+struct DeleteCache {
+    ulong cookie;
+}
 
 void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 {
@@ -71,6 +79,9 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
         receive(
             (immutable(RenderFrame) frame) {
                 renderer.renderFrame(frame);
+            },
+            (DeleteCache dc) {
+                renderer.deleteCache(dc.cookie);
             },
             (Finalize f) {
                 renderer.finalize(f.nativeHandle);
@@ -96,6 +107,8 @@ class Renderer
     TexPipeline     _texPipeline;
     TexPipeline     _texBlendArgbPipeline;
     TexPipeline     _texBlendArgbPremultPipeline;
+
+    Disposable[ulong] _objectCache;
 
     FMat4 _viewProj;
     ISize _size;
@@ -153,6 +166,9 @@ class Renderer
     {
         synchronized(_context) {
             _context.makeCurrent(nativeHandle);
+            foreach(oc; _objectCache) {
+                oc.dispose();
+            }
             _encoder = Encoder.init;
             _solidPipeline.dispose();
             _solidBlendPipeline.dispose();
@@ -165,6 +181,22 @@ class Renderer
             _context.doneCurrent();
         }
         _context.dispose();
+    }
+
+    T retrieveCache(T)(ulong cookie)
+    {
+        Disposable* d = (cookie in _objectCache);
+        if (!d) return null;
+        T cachedObj = cast(T)*d;
+        if (!cachedObj) {
+            error("invalid cache cookie: ", cookie);
+        }
+        return cachedObj;
+    }
+
+    void deleteCache(ulong cookie)
+    {
+
     }
 
     void renderFrame(immutable(RenderFrame) frame)
@@ -250,18 +282,35 @@ class Renderer
     void renderImageNode(immutable(ImageRenderNode) node, in FMat4 model)
     {
         immutable img = node.image;
-        enforce(img.format == ImageFormat.argb ||
-                img.format == ImageFormat.argbPremult);
+        Rc!(ShaderResourceView!Rgba8) srv;
+        Rc!Sampler sampler;
+        TextureObjectCache cache;
+        immutable cookie = node.cacheCookie;
 
-        auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
-        TexUsageFlags usage = TextureUsage.ShaderResource;
-        auto tex = makeRc!(Texture2D!Rgba8)(
-            usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
-        );
-        auto srv = tex.viewAsShaderResource(0, 0, newSwizzle()).rc();
-        auto sampler = makeRc!Sampler(
-            srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
-        );
+        if (cookie) {
+            cache = retrieveCache!TextureObjectCache(cookie);
+        }
+        if (cache) {
+            srv = cache.srv;
+            sampler = cache.sampler;
+        }
+        else {
+            enforce(img.format == ImageFormat.argb ||
+                    img.format == ImageFormat.argbPremult);
+
+            auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
+            TexUsageFlags usage = TextureUsage.ShaderResource;
+            auto tex = makeRc!(Texture2D!Rgba8)(
+                usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
+            );
+            srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+            sampler = new Sampler(
+                srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+            );
+            if (cookie) {
+                _objectCache[cookie] = new TextureObjectCache(srv.obj, sampler.obj);
+            }
+        }
 
         immutable rect = node.bounds;
         auto quadVerts = [
@@ -272,7 +321,6 @@ class Renderer
         ];
         ushort[] quadInds = [0, 1, 2, 0, 2, 3];
         auto vbuf = makeRc!(VertexBuffer!TexVertex)(quadVerts);
-
         auto slice = VertexBufferSlice(new IndexBuffer!ushort(quadInds));
 
         TexPipeline pl;
@@ -303,4 +351,24 @@ FMat4 orthoProj(float l, float r, float b, float t, float n, float f)
         0, 0, -2f/(f-n), -(f+n)/(f-n),
         0, 0, 0, 1
     );
+}
+
+class TextureObjectCache : Disposable
+{
+    ShaderResourceView!Rgba8 srv;
+    Sampler sampler;
+
+    this(ShaderResourceView!Rgba8 srv, Sampler sampler)
+    {
+        this.srv = srv;
+        this.sampler = sampler;
+        this.srv.retain();
+        this.sampler.retain();
+    }
+
+    override void dispose()
+    {
+        srv.release();
+        sampler.release();
+    }
 }

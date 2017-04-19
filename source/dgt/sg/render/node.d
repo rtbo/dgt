@@ -26,8 +26,8 @@ abstract class RenderNode
         image,
     }
 
-    private FRect _bounds;
     private Type _type;
+    private FRect _bounds;
 
     immutable this(in Type type, in FRect bounds)
     {
@@ -38,6 +38,7 @@ abstract class RenderNode
     @property Type type() const { return _type; }
 
     @property FRect bounds() const { return _bounds; }
+
 }
 
 
@@ -54,7 +55,6 @@ class GroupRenderNode : RenderNode
     {
         import std.algorithm : map;
         _children = children;
-        //super(Type.group, FRect.init);
         super(Type.group, computeRectsExtents(children.map!(c => c.bounds)));
     }
 
@@ -70,7 +70,7 @@ class TransformRenderNode : RenderNode
     {
         _transform = transform;
         _child = child;
-        super(Type.transform, transformBounds(child.bounds, transform)); // bounds
+        super(Type.transform, transformBounds(child.bounds, transform));
     }
 
     @property FMat4 transform() const { return _transform; }
@@ -81,27 +81,33 @@ class TransformRenderNode : RenderNode
 class ColorRenderNode : RenderNode
 {
     private FVec4 _color;
+    private ulong _cacheCookie;
 
-    immutable this(in FVec4 color, in FRect bounds)
+    immutable this(in FVec4 color, in FRect bounds, in ulong cacheCookie=0)
     {
         _color = color;
+        _cacheCookie = cacheCookie;
         super(Type.color, bounds);
     }
 
     @property FVec4 color() const { return _color; }
+    @property ulong cacheCookie() const { return _cacheCookie; }
 }
 
 class ImageRenderNode : RenderNode
 {
     private immutable(Image) _img;
+    private ulong _cacheCookie;
 
-    immutable this (in FPoint topLeft, immutable(Image) img)
+    immutable this (in FPoint topLeft, immutable(Image) img, in ulong cacheCookie=0)
     {
         _img = img;
+        _cacheCookie = cacheCookie;
         super(Type.image, FRect(topLeft, cast(FSize)img.size));
     }
 
     @property immutable(Image) image() const { return _img; }
+    @property ulong cacheCookie() const { return _cacheCookie; }
 }
 
 
