@@ -13,8 +13,8 @@ import dgt.text.layout;
 import dgt.image;
 import dgt.geometry;
 import dgt.sg.node;
-import dgt.sg.rendernode;
-import dgt.sg.renderframe;
+import dgt.sg.render.node;
+import dgt.sg.render.frame;
 
 import std.typecons : scoped;
 import std.stdio;
