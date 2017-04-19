@@ -372,6 +372,15 @@ Rect!T extents(T)(in Rect!T r1, in Rect!T r2)
     return r;
 }
 
+/// Extend a rect with the given point
+void extend(T)(ref Rect!T r, in Point!T p)
+{
+    if (r.left > p.x) r.left = p.x;
+    else if (r.right < p.x) r.right = p.x;
+    if (r.top > p.y) r.top = p.y;
+    else if (r.bottom < p.y) r.bottom = p.y;
+}
+
 @property T area(T)(in Size!T s)
 {
     return s.width * s.height;
