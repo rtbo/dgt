@@ -163,7 +163,7 @@ class Font : RefCounted
     }
 
     /// Get the scaled metrics of one glyph.
-    GlyphMetrics glyphMetrics(size_t glyphIndex)
+    GlyphMetrics glyphMetrics(uint glyphIndex)
     {
         GlyphCache* entry = glyphIndex in _glyphCache;
         GlyphCache cache = entry ? *entry : GlyphCache.init;
@@ -190,7 +190,7 @@ class Font : RefCounted
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
-    RasterizedGlyph rasterizeGlyph(size_t glyphIndex)
+    RasterizedGlyph rasterizeGlyph(uint glyphIndex)
     {
         GlyphCache* entry = glyphIndex in _glyphCache;
         GlyphCache cache = entry ? *entry : GlyphCache.init;
@@ -234,7 +234,7 @@ class Font : RefCounted
         return _hbFont;
     }
 
-    private RasterizedGlyph rasterize(size_t glyphIndex)
+    private RasterizedGlyph rasterize(uint glyphIndex)
     {
         import std.math : abs;
         import std.algorithm : min;
@@ -278,7 +278,7 @@ class Font : RefCounted
 
     private FT_Face _ftFace;
     private hb_font_t* _hbFont;
-    private GlyphCache[size_t] _glyphCache;
+    private GlyphCache[uint] _glyphCache;
 }
 
 private enum CacheFlags
