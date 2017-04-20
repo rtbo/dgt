@@ -178,15 +178,13 @@ class TextLayout : RefCounted
         scope(exit)
             context.restore();
 
-        auto backend = context.backend;
-
         immutable origTr = context.transform;
         auto advance = fvec(0, 0);
         foreach (TextShape ts; _shapes)
         {
             foreach (i, GlyphInfo gi; ts.glyphs)
             {
-                auto rg = ts.font.rasterizeGlyph(gi.index, backend);
+                auto rg = ts.font.rasterizeGlyph(gi.index);
                 if (rg)
                 {
                     context.transform = origTr.translate(

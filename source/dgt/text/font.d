@@ -190,18 +190,18 @@ class Font : RefCounted
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
-    RasterizedGlyph rasterizeGlyph(size_t glyphIndex, VgBackend backend)
+    RasterizedGlyph rasterizeGlyph(size_t glyphIndex)
     {
         GlyphCache* entry = glyphIndex in _glyphCache;
         GlyphCache cache = entry ? *entry : GlyphCache.init;
-        if (cache.rasterized && cache.rasterized.backendUid == backend.uid)
+        if (cache.rasterized)
         {
             return cache.rasterized;
         }
 
         if (cache.isWhitespace) return null;
 
-        auto rasterized = rasterize(glyphIndex, backend);
+        auto rasterized = rasterize(glyphIndex);
         if (rasterized)
         {
             cache.rasterized = rasterized;
@@ -234,7 +234,7 @@ class Font : RefCounted
         return _hbFont;
     }
 
-    private RasterizedGlyph rasterize(size_t glyphIndex, VgBackend backend)
+    private RasterizedGlyph rasterize(size_t glyphIndex)
     {
         import std.math : abs;
         import std.algorithm : min;
@@ -271,7 +271,7 @@ class Font : RefCounted
         }
         auto img = new Image(destData, fmt, width, destStride);
         return new RasterizedGlyph(
-            img, vec(slot.bitmap_left, slot.bitmap_top), backend.uid
+            img, vec(slot.bitmap_left, slot.bitmap_top)
         );
     }
 
@@ -342,13 +342,11 @@ class RasterizedGlyph
 {
     private Image _img;
     private @property IVec2 _bearing;
-    private size_t backendUid;
 
-    this (Image img, in IVec2 bearing, in size_t backendUid)
+    this (Image img, in IVec2 bearing)
     {
         _img = img;
         _bearing = bearing;
-        this.backendUid = backendUid;
     }
 
     @property inout(Image) image() inout
