@@ -249,7 +249,6 @@ class Image
     /// Only ImageFormat.argb is supported.
     void saveToFile(in string filename) const
     {
-        enforce(format == ImageFormat.argb);
         auto io = imgIOFromFile(filename);
         io.writeFile(this, filename);
     }
@@ -685,8 +684,7 @@ private
         final switch (format)
         {
         case ImageFileFormat.png: return new PngIO;
-        case ImageFileFormat.jpeg: //return new JpegIO;
-            return null;
+        case ImageFileFormat.jpeg: return new JpegIO;
         }
     }
 
