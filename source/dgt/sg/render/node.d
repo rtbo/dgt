@@ -4,13 +4,6 @@ import dgt.geometry;
 import dgt.math;
 import dgt.image;
 
-// One problem to solve is how to cache rendering data between frames
-// and avoid unuseful cycle and data transfer.
-// A possibility is to add a cache flag to some types (like the Image node)
-// that will instruct the renderer to keep the texure in cache.
-// Later on, when the reference to the image is dropped, a msg can be sent to the renderer
-// requiring to free the resource.
-
 /// Transient render node tree
 /// A graph structure that tells a renderer what to render, no more, no less.
 /// Is meant to be collected as immutable during frame construct and sent to a renderer
@@ -81,17 +74,14 @@ class TransformRenderNode : RenderNode
 class ColorRenderNode : RenderNode
 {
     private FVec4 _color;
-    private ulong _cacheCookie;
 
-    immutable this(in FVec4 color, in FRect bounds, in ulong cacheCookie=0)
+    immutable this(in FVec4 color, in FRect bounds)
     {
         _color = color;
-        _cacheCookie = cacheCookie;
         super(Type.color, bounds);
     }
 
     @property FVec4 color() const { return _color; }
-    @property ulong cacheCookie() const { return _cacheCookie; }
 }
 
 class ImageRenderNode : RenderNode
