@@ -13,6 +13,7 @@ import derelict.freetype.ft;
 import std.string;
 import std.exception;
 import std.typecons : Flag, Yes, No;
+import std.experimental.logger;
 
 /// Font size (expressed in pts or px)
 struct FontSize
@@ -110,6 +111,8 @@ class Font : RefCounted
         _weight = res.weight;
         _style = res.style;
         _foundry = res.foundry;
+
+        logf("loading font file %s with size %s%s", _filename, _size.value, _size.unit);
 
         ftEnforce(FT_New_Face(_ftLib, toStringz(_filename), _faceIndex, &_ftFace));
         enforce(_ftFace.face_flags & FT_FACE_FLAG_SCALABLE, "Only outline fonts are supported.");
