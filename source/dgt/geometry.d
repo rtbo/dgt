@@ -1,3 +1,4 @@
+/// Geometric primitives module
 module dgt.geometry;
 
 import dgt.math;

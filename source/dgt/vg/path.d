@@ -1,3 +1,4 @@
+/// Vector graphics path module.
 module dgt.vg.path;
 
 import dgt.geometry;

@@ -1,3 +1,4 @@
+/// Screen region manipulation.
 module dgt.region;
 
 import dgt.geometry;
@@ -5,7 +6,7 @@ import dgt.geometry;
 import std.exception : assumeUnique;
 import std.range;
 
-
+/// An immutable screen region.
 alias Region = immutable(_Region);
 
 Region intersect(in Region lhs, in Region rhs);

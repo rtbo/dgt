@@ -1,3 +1,4 @@
+/// Vector linear algebra module
 module dgt.math.vec;
 
 import gfx.foundation.util : staticRange;

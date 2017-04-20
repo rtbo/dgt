@@ -1,3 +1,4 @@
+/// Vector graphics context module
 module dgt.vg.context;
 
 import gfx.foundation.rc;

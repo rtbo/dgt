@@ -1,3 +1,4 @@
+/// Events delivered by the OS.
 module dgt.event;
 
 import dgt.signal;

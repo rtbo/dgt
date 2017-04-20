@@ -1,3 +1,4 @@
+/// Paint module describes the stroke and fill paint used in VG and SG rendering.
 module dgt.vg.paint;
 
 import gfx.foundation.rc;

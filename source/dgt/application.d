@@ -1,3 +1,4 @@
+/// Main application module.
 module dgt.application;
 
 import gfx.foundation.rc;

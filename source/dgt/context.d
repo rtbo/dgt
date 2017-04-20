@@ -1,3 +1,4 @@
+/// OpenGL context creation and manipulation.
 module dgt.context;
 
 import dgt.platform;

@@ -1,3 +1,4 @@
+/// Scene graph module
 module dgt.sg.node;
 
 import dgt.sg.render.node;

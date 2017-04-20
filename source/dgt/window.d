@@ -1,3 +1,4 @@
+/// Window creation and manipulation
 module dgt.window;
 
 import gfx.foundation.rc;

@@ -1,3 +1,4 @@
+/// Scene graph rendering module
 module dgt.sg.render;
 
 import dgt.context;

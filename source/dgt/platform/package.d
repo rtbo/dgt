@@ -1,3 +1,4 @@
+/// Platform abstraction module
 module dgt.platform;
 
 import gfx.foundation.rc;
@@ -9,6 +10,7 @@ import dgt.context;
 
 import std.typecons : BitFlags;
 
+/// Platform singleton. Entry point to operating system specific code.
 interface Platform : Disposable
 {
     void initialize();
@@ -25,6 +27,7 @@ interface Platform : Disposable
     void processNextEvent();
 }
 
+/// OS specific window interface.
 interface PlatformWindow
 {
     @property inout(Window) window() inout;
@@ -54,6 +57,7 @@ interface PlatformWindow
 /// A native buffer image suitable for blitting pixels on screen.
 /// Top left corner of this buffer image fit with the top left corner of the
 /// window.
+/// Suitable for software rendering into an image.
 interface PlatformWindowBuffer : Disposable
 {
     /// The window associated to the buffer.

@@ -1,3 +1,4 @@
+/// Font file manipulation
 module dgt.text.font;
 
 import dgt.text.fontcache;

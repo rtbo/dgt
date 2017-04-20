@@ -1,3 +1,4 @@
+/// Aggregates what is necessary to stroke and fill.
 module dgt.vg.penbrush;
 
 import dgt.vg.paint;

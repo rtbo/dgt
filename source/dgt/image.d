@@ -1,3 +1,4 @@
+/// In-memory pixel images.
 module dgt.image;
 
 import gfx.foundation.rc;

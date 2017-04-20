@@ -1,3 +1,4 @@
+/// Screen module
 module dgt.screen;
 
 interface Screen

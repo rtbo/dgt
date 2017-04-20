@@ -1,3 +1,4 @@
+/// Text layout and shaping
 module dgt.text.layout;
 
 import dgt.text.fontcache;

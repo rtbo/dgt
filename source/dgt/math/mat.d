@@ -1,4 +1,4 @@
-/// Matrix definition module
+/// Matrix linear algebra module
 module dgt.math.mat;
 
 import dgt.math.vec;

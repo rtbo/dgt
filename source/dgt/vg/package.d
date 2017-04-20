@@ -1,3 +1,4 @@
+/// Vector graphics module.
 module dgt.vg;
 
 public import dgt.vg.context;

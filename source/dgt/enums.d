@@ -1,3 +1,4 @@
+/// Global enumerations.
 module dgt.enums;
 
 enum Orientation
