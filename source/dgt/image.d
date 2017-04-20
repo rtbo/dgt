@@ -209,6 +209,30 @@ class Image
         return _stride;
     }
 
+    /// blit pixels from src into this image.
+    /// The two formats must be identical and this must be big enough in both directions
+    /// Unimplemented for ImageFormat.a1.
+    void blitFrom(const(Image) src, in IPoint srcOrig, in IPoint destOrig, in ISize size, in bool yReversed=false)
+    {
+        enforce(format == src.format);
+        enforce(src.width >= srcOrig.x+size.width);
+        enforce(src.height >= srcOrig.y+size.height);
+        enforce(this.width >= destOrig.x+size.width);
+        enforce(this.height >= destOrig.y+size.height);
+        assert(format != ImageFormat.a1);
+
+        immutable copyStride = minStrideForWidth(format, size.width);
+        immutable pixelStride = bpp(format)/8;
+
+        foreach(l; 0 .. size.height) {
+            immutable srcL = yReversed ? (size.height-(l+srcOrig.y)-1) : (l+srcOrig.y);
+            immutable srcPos = srcL * src.stride + pixelStride * srcOrig.x;
+            immutable destL = l+destOrig.y;
+            immutable destPos = destL * this.stride + pixelStride * destOrig.x;
+            _data[destPos .. destPos+copyStride] = src.data[srcPos .. srcPos+copyStride];
+        }
+    }
+
     /// Read the file specified by filename and load into an Image.
     static Image loadFromFile(in string filename, in ImageFormat format)
     {
