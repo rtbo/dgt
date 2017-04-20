@@ -96,11 +96,11 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 
 class Renderer
 {
-    GlContext _context;
-    Device _device;
-    Encoder _encoder;
-    BuiltinSurface!Rgba8 _surf;
-    RenderTargetView!Rgba8 _rtv;
+    GlContext               _context;
+    Device                  _device;
+    Encoder                 _encoder;
+    BuiltinSurface!Rgba8    _surf;
+    RenderTargetView!Rgba8  _rtv;
 
     SolidPipeline   _solidPipeline;
     SolidPipeline   _solidBlendPipeline;
@@ -111,7 +111,9 @@ class Renderer
     VertexBuffer!SolidVertex    _solidQuadVBuf;
     VertexBuffer!TexVertex      _texQuadVBuf;
     IndexBuffer!ushort          _quadIBuf;
-    Disposable[ulong] _objectCache;
+
+    Disposable[ulong]   _objectCache;
+    ulong[]             _cachePruneQueue;
 
     FMat4 _viewProj;
     ISize _size;
@@ -224,7 +226,7 @@ class Renderer
 
     void deleteCache(ulong cookie)
     {
-
+        _cachePruneQueue ~= cookie;
     }
 
     void renderFrame(immutable(RenderFrame) frame)
@@ -236,6 +238,18 @@ class Renderer
                 return;
             }
             scope(exit) _context.doneCurrent();
+
+            foreach(cookie; _cachePruneQueue) {
+                auto d = cookie in _objectCache;
+                if (d) {
+                    (*d).dispose();
+                    _objectCache.remove(cookie);
+                }
+                else {
+                    warning("invalid cookie given for cache prune");
+                }
+            }
+            _cachePruneQueue.length = 0;
 
             _size = frame.viewport.size;
             if (!_device) {
