@@ -12,6 +12,7 @@ import dgt.math.transform;
 import dgt.bindings.harfbuzz;
 
 import std.exception;
+import std.experimental.logger;
 
 /// Format in which the text is submitted
 enum TextFormat
@@ -157,10 +158,10 @@ class TextLayout : RefCounted
                     //         horizontal bearing of last char  +
                     //         width of last char               -
                     //         horizontal bearing of first char
-                    width += (advance.x + gm.horBearing.x + gm.size.x);
+                    width += (advance.x + gm.horBearing.x + gm.size.width);
                 }
                 top = max(top, gm.horBearing.y);
-                bottom = min(bottom, gm.horBearing.y - gm.size.y);
+                bottom = min(bottom, gm.horBearing.y - gm.size.height);
                 advance += gi.advance;
             }
         }

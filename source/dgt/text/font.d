@@ -4,17 +4,22 @@ module dgt.text.font;
 import dgt.text.fontcache;
 import dgt.image;
 import dgt.math.vec;
-import gfx.foundation.rc;
 import dgt.util;
 import dgt.bindings.harfbuzz;
 import dgt.vg;
+import dgt.geometry;
+
+import gfx.foundation.rc;
 
 import derelict.freetype.ft;
 
-import std.string;
+import std.algorithm;
+import std.array;
 import std.exception;
-import std.typecons : Flag, Yes, No;
 import std.experimental.logger;
+import std.range;
+import std.string;
+import std.typecons : Flag, Yes, No, Rebindable;
 
 /// Font size (expressed in pts or px)
 struct FontSize
@@ -91,10 +96,35 @@ struct FontMetrics
     /// Usually negative.
     float descender;
     /// Position where underline should be placed.
-    /// Usuallt negative.
+    /// Usually negative.
     float underlinePos;
     /// Thickness that should apply for underline.
     float underlineThickness;
+}
+
+/// Glyph metrics (all in px).
+struct GlyphMetrics
+{
+    private this (in FSize size, in FVec2 horBearing, in float horAdvance,
+            in FVec2 verBearing, in float verAdvance)
+    {
+        _size = size;
+        _horBearing = horBearing;
+        _horAdvance = horAdvance;
+        _verBearing = verBearing;
+        _verAdvance = verAdvance;
+    }
+
+    /// The size of the glyph
+    mixin ReadOnlyValueProperty!(FSize, "size");
+    /// Bearing for horizontal layout
+    mixin ReadOnlyValueProperty!(FVec2, "horBearing");
+    /// Advance for horizontal layout
+    mixin ReadOnlyValueProperty!(float, "horAdvance");
+    /// Bearing for vertical layout
+    mixin ReadOnlyValueProperty!(FVec2, "verBearing");
+    /// Advance for vertical layout
+    mixin ReadOnlyValueProperty!(float, "verAdvance");
 }
 
 /// A scaled font object that hold font information and will lazily load and
@@ -174,7 +204,7 @@ class Font : RefCounted
 
         auto ftm = _ftFace.glyph.metrics;
         cache.metrics = GlyphMetrics(
-            fvec(ftm.width/64f, ftm.height/64f),
+            FSize(ftm.width/64f, ftm.height/64f),
 
             fvec(ftm.horiBearingX/64f, ftm.horiBearingY/64f),
             ftm.horiAdvance/64f,
@@ -188,6 +218,151 @@ class Font : RefCounted
         else _glyphCache[glyphIndex] = cache;
         return cache.metrics;
     }
+
+    /// Accumulate glyph indices to be part of the next glyph run
+    void prepareGlyphRun(uint[] indices)
+    {
+        _runPreparation ~= indices;
+    }
+
+    /// Realizes the glyph run with previously accumulated glyph indices
+    void realizeGlyphRun()
+    {
+        scope(exit) _runPreparation = [];
+
+        // temporary struct
+        static struct G {
+            uint glyph;
+            GlyphMetrics gm;
+            IRect rect;
+        }
+
+        // getting glyph metrics of each glyph and discarding whitespace
+        G[] gs;
+        foreach(glyph; sort(_runPreparation)
+                        .uniq()
+                        .filter!(gl => !hasGlyphRendered(gl))) {
+            immutable gm = glyphMetrics(glyph);
+            immutable size = cast(ISize)gm.size;
+            if (size.area == 0) continue;
+            G g;
+            g.gm = gm;
+            g.glyph = glyph;
+            gs ~= g;
+        }
+
+        // shaping the run into a more or less square of glyphs.
+        // Will place the same number of glyphs per line, which is not optimal
+        // when glyphs have different sizes.
+        // we also let 2px space min between glyphs to avoid filtering issues
+        immutable numPerLine = glyphRunNumPerLine(gs.length);
+        int lineLoad;
+        int lineWidth;
+        int lineHeight;
+        int totalWidth;
+        int totalHeight;
+        IVec2 advance = ivec(1, 1);
+        foreach(ref g; gs) {
+            immutable size = cast(ISize)g.gm.size;
+            g.rect = IRect(advance, size);
+
+            lineHeight = max(lineHeight, size.height+2);
+            lineWidth += size.width+2;
+            totalWidth = max(totalWidth, lineWidth);
+            totalHeight = max(totalHeight, lineHeight+advance.y-1);
+            if (++lineLoad == numPerLine) {
+                advance = ivec(0, advance.y+lineHeight);
+                lineLoad = 0;
+                lineWidth = 0;
+                lineHeight = 0;
+            }
+            else {
+                advance += ivec(size.width+2, 0);
+            }
+        }
+
+        // allocating run bitmap and rendering
+        Image img = new Image(ImageFormat.a8, ISize(totalWidth, totalHeight));
+        foreach(g; gs) {
+            immutable rect = g.rect;
+
+            IVec2 bearing =void;
+            bool yReversed =void;
+            const rg = renderGlyph(g.glyph, bearing, yReversed);
+            assert(rg);
+            assert(rg.size == rect.size);
+            img.blitFrom(rg, IPoint(0, 0), rect.topLeft, rect.size, yReversed);
+        }
+
+        import std.format : format;
+        static int num;
+        img.saveToFile(format("run%s.png", num++));
+
+        // storing results
+        immutable iimg = assumeUnique(img);
+        immutable(RenderedGlyph)[] glyphs;
+        foreach(g; gs) {
+            immutable rg = new immutable RenderedGlyph(g.glyph, g.rect, g.gm, iimg);
+            glyphs ~= rg;
+            _renderedGlyphs[g.glyph] = rg;
+        }
+        _runs ~= new immutable GlyphRun(iimg, glyphs);
+    }
+
+    mixin ReadOnlyValueProperty!(string, "filename");
+    mixin ReadOnlyValueProperty!(int, "faceIndex");
+    mixin ReadOnlyValueProperty!(string, "family");
+    mixin ReadOnlyValueProperty!(FontSize, "size");
+    mixin ReadOnlyValueProperty!(int, "weight");
+    mixin ReadOnlyValueProperty!(FontStyle, "style");
+    mixin ReadOnlyValueProperty!(string, "foundry");
+    mixin ReadOnlyValueProperty!(FontFormat, "format");
+
+    @property FT_Face ftFace()
+    {
+        return _ftFace;
+    }
+    @property hb_font_t* hbFont()
+    {
+        return _hbFont;
+    }
+
+    /// Render and return an image referencing internal FT buffer.
+    /// Will be invalidated at next call of renderGlyph or rasterize
+    private const(Image) renderGlyph(uint glyphIndex, out IVec2 bearing, out bool yReversed)
+    {
+        import std.math : abs;
+
+        FT_Load_Glyph(_ftFace, cast(FT_UInt)glyphIndex, FT_LOAD_DEFAULT);
+        FT_Render_Glyph(_ftFace.glyph, FT_RENDER_MODE_NORMAL);
+        auto slot = _ftFace.glyph;
+        auto bitmap = slot.bitmap;
+
+        immutable stride = abs(bitmap.pitch);
+        if (stride == 0) return null; // whitespace
+
+        immutable width = bitmap.width;
+        immutable height = bitmap.rows;
+        auto data = bitmap.buffer[0 .. height*stride];
+
+        bearing = vec(slot.bitmap_left, slot.bitmap_top);
+        yReversed = bitmap.pitch < 0;
+        return new Image(data, ImageFormat.a8, width, stride);
+    }
+
+    private bool hasGlyphRendered(in uint glyph) const
+    {
+        return (glyph in _renderedGlyphs) !is null;
+    }
+
+    private FT_Face _ftFace;
+    private hb_font_t* _hbFont;
+    private uint[] _runPreparation;
+    private immutable(GlyphRun)[] _runs;
+    private Rebindable!(immutable(RenderedGlyph))[uint] _renderedGlyphs;
+
+    // API that follows is to be revised or pruned.
+    // used by software rendering, which could probably use the new API
 
     /// Rasterize the glyph at the specified index.
     /// If the glyph is a whitespace, null is returned.
@@ -217,23 +392,6 @@ class Font : RefCounted
         return rasterized;
     }
 
-    mixin ReadOnlyValueProperty!(string, "filename");
-    mixin ReadOnlyValueProperty!(int, "faceIndex");
-    mixin ReadOnlyValueProperty!(string, "family");
-    mixin ReadOnlyValueProperty!(FontSize, "size");
-    mixin ReadOnlyValueProperty!(int, "weight");
-    mixin ReadOnlyValueProperty!(FontStyle, "style");
-    mixin ReadOnlyValueProperty!(string, "foundry");
-    mixin ReadOnlyValueProperty!(FontFormat, "format");
-
-    @property FT_Face ftFace()
-    {
-        return _ftFace;
-    }
-    @property hb_font_t* hbFont()
-    {
-        return _hbFont;
-    }
 
     private RasterizedGlyph rasterize(uint glyphIndex)
     {
@@ -276,10 +434,58 @@ class Font : RefCounted
         );
     }
 
-
-    private FT_Face _ftFace;
-    private hb_font_t* _hbFont;
     private GlyphCache[uint] _glyphCache;
+}
+
+
+immutable class GlyphRun
+{
+    immutable this(immutable(Image) img,
+                    immutable(RenderedGlyph)[] glyphs)
+    {
+        _img = img;
+        _glyphs = glyphs;
+    }
+
+    @property immutable(Image) image() const { return _img; }
+    @property immutable(RenderedGlyph)[] glyphs() const { return _glyphs; }
+
+    private Image _img;
+    private RenderedGlyph[] _glyphs;
+}
+
+
+immutable class RenderedGlyph
+{
+    immutable this(in uint glyph, in IRect rect, in GlyphMetrics metrics, immutable(Image) runImg)
+    {
+        _glyph = glyph;
+        _rect = rect;
+        _metrics = metrics;
+        _runImg = runImg;
+    }
+
+    @property uint glyph() const { return _glyph; }
+    @property IRect rect() const { return _rect; }
+    @property GlyphMetrics metrics() const { return _metrics; }
+    @property immutable(Image) runImg() const { return _runImg; }
+
+    private uint _glyph;
+    private IRect _rect;
+    private GlyphMetrics _metrics;
+    private Image _runImg;
+}
+
+
+private size_t glyphRunNumPerLine(size_t numGlyphs)
+{
+    if (numGlyphs <= 25) return 5;
+    if (numGlyphs <= 100) return 10;
+    if (numGlyphs <= 400) return 20;
+
+    import std.math : sqrt;
+    // multiple of 10 close to sqrt
+    return 10 * ((5+cast(int)sqrt(cast(float)numGlyphs))/10);
 }
 
 private enum CacheFlags
@@ -318,25 +524,6 @@ private struct GlyphCache
     }
 }
 
-/// Glyph metrics.
-struct GlyphMetrics
-{
-    private this (in FVec2 size, in FVec2 horBearing, in float horAdvance,
-            in FVec2 verBearing, in float verAdvance)
-    {
-        _size = size;
-        _horBearing = horBearing;
-        _horAdvance = horAdvance;
-        _verBearing = verBearing;
-        _verAdvance = verAdvance;
-    }
-
-    mixin ReadOnlyValueProperty!(FVec2, "size");
-    mixin ReadOnlyValueProperty!(FVec2, "horBearing");
-    mixin ReadOnlyValueProperty!(float, "horAdvance");
-    mixin ReadOnlyValueProperty!(FVec2, "verBearing");
-    mixin ReadOnlyValueProperty!(float, "verAdvance");
-}
 
 /// A glyph rasterized in a bitmap
 class RasterizedGlyph
