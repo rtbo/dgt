@@ -300,9 +300,9 @@ class Font : RefCounted
             img.blitFrom(rg, IPoint(0, 0), rect.topLeft, rect.size, yReversed);
         }
 
-        import std.format : format;
-        static int num;
-        img.saveToFile(format("run%s.png", num++));
+        // import std.format : format;
+        // static int num;
+        // img.saveToFile(format("run%s.png", num++));
 
         // storing results
         import dgt.application : Application;

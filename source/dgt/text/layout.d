@@ -53,8 +53,12 @@ struct GlyphInfo
 immutable struct ShapedGlyph
 {
     immutable(RenderedGlyph) glyph;
+    /// advance of this glyph
     FVec2 advance;
+    /// offset of this glyph
     IVec2 offset;
+    /// position relative to start of layout
+    FVec2 layoutPos;
 }
 
 
@@ -193,13 +197,22 @@ class TextLayout : RefCounted
 
     public immutable(ShapedGlyph)[] render()
     {
+        import std.math : floor;
         immutable(ShapedGlyph)[] res;
+        auto advance = fvec(0, 0);
         foreach(ref ts; _shapes) {
             ts.font.realizeGlyphRun();
             foreach (gi; ts.glyphs) {
-                res ~= immutable(ShapedGlyph)(
-                    ts.font.renderedGlyph(gi.index), gi.advance, gi.offset
-                );
+                immutable rg = ts.font.renderedGlyph(gi.index);
+                if (rg) {
+                    auto layoutPos = gi.offset +
+                            ivec(rg.metrics.horBearing.x, -rg.metrics.horBearing.y) +
+                            ivec(floor(advance.x), floor(advance.y));
+                    res ~= immutable(ShapedGlyph)(
+                        ts.font.renderedGlyph(gi.index), gi.advance, gi.offset, cast(FVec2)layoutPos
+                    );
+                }
+                advance += gi.advance;
             }
         }
         return res;
