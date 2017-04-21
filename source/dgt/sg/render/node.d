@@ -1,8 +1,9 @@
 module dgt.sg.render.node;
 
 import dgt.geometry;
-import dgt.math;
 import dgt.image;
+import dgt.math;
+import dgt.text.layout;
 
 /// Transient render node tree
 /// A graph structure that tells a renderer what to render, no more, no less.
@@ -17,6 +18,7 @@ abstract class RenderNode
         transform,
         color,
         image,
+        text,
     }
 
     private Type _type;
@@ -33,7 +35,6 @@ abstract class RenderNode
     @property FRect bounds() const { return _bounds; }
 
 }
-
 
 class GroupRenderNode : RenderNode
 {
@@ -100,4 +101,18 @@ class ImageRenderNode : RenderNode
     @property ulong cacheCookie() const { return _cacheCookie; }
 }
 
+class TextRenderNode : RenderNode
+{
+    private immutable(ShapedGlyph)[] _glyphs;
+    private FVec4 _color;
 
+    immutable this (immutable(ShapedGlyph)[] glyphs, in FVec4 color)
+    {
+        _glyphs = glyphs;
+        _color = color;
+        super(Type.text, FRect(0, 0, 0, 0));
+    }
+
+    @property immutable(ShapedGlyph)[] glyphs() const { return _glyphs; }
+    @property FVec4 color() const { return _color; }
+}

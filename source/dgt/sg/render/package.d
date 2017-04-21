@@ -71,27 +71,36 @@ struct DeleteCache {
 
 void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 {
-    auto renderer = new Renderer(cast(GlContext)context);
+    try {
+        auto renderer = new Renderer(cast(GlContext)context);
 
-    bool exit;
-    while (!exit)
-    {
-        send(mainLoopTid, ReadyToRender());
-        receive(
-            (immutable(RenderFrame) frame) {
-                renderer.renderFrame(frame);
-            },
-            (DeleteCache dc) {
-                renderer.deleteCache(dc.cookie);
-            },
-            (Finalize f) {
-                renderer.finalize(f.nativeHandle);
-                exit = true;
-            }
-        );
+        bool exit;
+        while (!exit)
+        {
+            send(mainLoopTid, ReadyToRender());
+            receive(
+                (immutable(RenderFrame) frame) {
+                    renderer.renderFrame(frame);
+                },
+                (DeleteCache dc) {
+                    renderer.deleteCache(dc.cookie);
+                },
+                (Finalize f) {
+                    renderer.finalize(f.nativeHandle);
+                    exit = true;
+                }
+            );
+        }
     }
-
-    prioritySend(mainLoopTid, Finalized());
+    catch(Exception ex) {
+        errorf("renderer exited due to exception: %s", ex.msg);
+    }
+    catch(Throwable th) {
+        errorf("renderer exited due to error: %s", th.msg);
+    }
+    finally {
+        prioritySend(mainLoopTid, Finalized());
+    }
 }
 
 
@@ -108,10 +117,11 @@ class Renderer
     TexPipeline     _texPipeline;
     TexPipeline     _texBlendArgbPipeline;
     TexPipeline     _texBlendArgbPremultPipeline;
+    TextPipeline    _textPipeline;
 
-    VertexBuffer!SolidVertex    _solidQuadVBuf;
-    VertexBuffer!TexVertex      _texQuadVBuf;
-    IndexBuffer!ushort          _quadIBuf;
+    VertexBuffer!P2Vertex   _solidQuadVBuf;
+    VertexBuffer!P2T2Vertex _texQuadVBuf;
+    IndexBuffer!ushort      _quadIBuf;
 
     Disposable[ulong]   _objectCache;
     ulong[]             _cachePruneQueue;
@@ -164,23 +174,24 @@ class Renderer
                 Factor.makeOneMinus(BlendValue.SourceAlpha)
             ))
         );
+        _textPipeline = new TextPipeline(cmdBuf.obj);
 
         auto quadSolidVerts = [
-            SolidVertex([0f, 0f]),
-            SolidVertex([0f, 1f]),
-            SolidVertex([1f, 1f]),
-            SolidVertex([1f, 0f]),
+            P2Vertex([0f, 0f]),
+            P2Vertex([0f, 1f]),
+            P2Vertex([1f, 1f]),
+            P2Vertex([1f, 0f]),
         ];
-        _solidQuadVBuf = new VertexBuffer!SolidVertex(quadSolidVerts);
+        _solidQuadVBuf = new VertexBuffer!P2Vertex(quadSolidVerts);
         _solidQuadVBuf.retain();
 
         auto quadTexVerts = [
-            TexVertex([0f, 0f], [0f, 0f]),
-            TexVertex([0f, 1f], [0f, 1f]),
-            TexVertex([1f, 1f], [1f, 1f]),
-            TexVertex([1f, 0f], [1f, 0f]),
+            P2T2Vertex([0f, 0f], [0f, 0f]),
+            P2T2Vertex([0f, 1f], [0f, 1f]),
+            P2T2Vertex([1f, 1f], [1f, 1f]),
+            P2T2Vertex([1f, 0f], [1f, 0f]),
         ];
-        _texQuadVBuf = new VertexBuffer!TexVertex(quadTexVerts);
+        _texQuadVBuf = new VertexBuffer!P2T2Vertex(quadTexVerts);
         _texQuadVBuf.retain();
 
         ushort[] quadInds = [0, 1, 2, 0, 2, 3];
@@ -206,6 +217,7 @@ class Renderer
             _texPipeline.dispose();
             _texBlendArgbPipeline.dispose();
             _texBlendArgbPremultPipeline.dispose();
+            _textPipeline.dispose();
             _rtv.release();
             _surf.release();
             _device.release();
@@ -296,6 +308,8 @@ class Renderer
         case RenderNode.Type.image:
             renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), model);
             break;
+        case RenderNode.Type.text:
+            renderTextNode(unsafeCast!(immutable(TextRenderNode))(node), model);
         }
     }
 
@@ -332,8 +346,11 @@ class Renderer
             sampler = cache.sampler;
         }
         else {
-            enforce(img.format == ImageFormat.argb ||
-                    img.format == ImageFormat.argbPremult);
+            if (img.format != ImageFormat.argb &&
+                    img.format != ImageFormat.argbPremult) {
+                errorf("improper texture image format: %s", img.format);
+                return;
+            }
 
             auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
             TexUsageFlags usage = TextureUsage.ShaderResource;
@@ -372,6 +389,67 @@ class Renderer
         pl.updateUniforms(transpose(_viewProj * model * rectTr));
         pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _rtv);
     }
+
+    void renderTextNode(immutable(TextRenderNode) node, in FMat4 model)
+    {
+        _textPipeline.updateColor(node.color);
+        foreach(gl; node.glyphs) {
+            Rc!(ShaderResourceView!Alpha8) srv;
+            Rc!Sampler sampler;
+            immutable cookie = gl.glyph.cacheCookie;
+            auto runImg = gl.glyph.runImg;
+            GlyphRunObjectCache cache;
+            if (cookie) {
+                cache = retrieveCache!GlyphRunObjectCache(cookie);
+            }
+            if (cache) {
+                srv = cache.srv;
+                sampler = cache.sampler;
+            }
+            else {
+                if (runImg.format != ImageFormat.a8) {
+                    errorf("improper text texture image format: %s", runImg.format);
+                    return;
+                }
+                immutable pixels = runImg.data;
+                TexUsageFlags usage = TextureUsage.ShaderResource;
+                auto tex = new Texture2D!Alpha8(
+                    usage, 1, cast(ushort)runImg.width, cast(ushort)runImg.height, [pixels]
+                ).rc();
+                srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+                sampler = new Sampler(
+                    srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+                );
+                if (cookie) {
+                    _objectCache[cookie] = new GlyphRunObjectCache(
+                        srv.obj, sampler.obj
+                    );
+                }
+            }
+
+            // texel space rect
+            immutable txRect = cast(FRect)gl.glyph.rect;
+            FVec2 fSize = fvec(runImg.width, runImg.height);
+            // normalized rect
+            immutable normRect = FRect(
+                txRect.topLeft / fSize,
+                FSize(txRect.width / fSize.x, txRect.height / fSize.y)
+            );
+            immutable vertRect = FRect(
+                gl.layoutPos, txRect.size
+            );
+            auto quadVerts = [
+                P2T2Vertex([vertRect.left, vertRect.top], [normRect.left, normRect.top]),
+                P2T2Vertex([vertRect.left, vertRect.bottom], [normRect.left, normRect.bottom]),
+                P2T2Vertex([vertRect.right, vertRect.bottom], [normRect.right, normRect.bottom]),
+                P2T2Vertex([vertRect.right, vertRect.top], [normRect.right, normRect.top]),
+            ];
+            auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
+
+            _textPipeline.updateMVP(transpose(_viewProj * model));
+            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _rtv);
+        }
+    }
 }
 
 FMat4 orthoProj(float l, float r, float b, float t, float n, float f)
@@ -390,6 +468,26 @@ class TextureObjectCache : Disposable
     Sampler sampler;
 
     this(ShaderResourceView!Rgba8 srv, Sampler sampler)
+    {
+        this.srv = srv;
+        this.sampler = sampler;
+        this.srv.retain();
+        this.sampler.retain();
+    }
+
+    override void dispose()
+    {
+        srv.release();
+        sampler.release();
+    }
+}
+
+class GlyphRunObjectCache : Disposable
+{
+    ShaderResourceView!Alpha8 srv;
+    Sampler sampler;
+
+    this(ShaderResourceView!Alpha8 srv, Sampler sampler)
     {
         this.srv = srv;
         this.sampler = sampler;

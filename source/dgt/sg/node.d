@@ -1,11 +1,15 @@
 /// Scene graph module
 module dgt.sg.node;
 
-import dgt.sg.render.node;
-import dgt.geometry;
-import dgt.math;
-import dgt.image;
 import dgt.application;
+import dgt.geometry;
+import dgt.image;
+import dgt.math;
+import dgt.sg.render.node;
+import dgt.text.fontcache;
+import dgt.text.layout;
+
+import gfx.foundation.rc;
 
 import std.exception;
 import std.range;
@@ -407,6 +411,52 @@ class SgImageNode : SgNode
     private Rebindable!(immutable(Image)) _immutImg;
     private RenderCacheCookie _rcc;
 }
+
+
+class SgTextNode : SgNode
+{
+    this() {}
+
+    @property string text () const { return _text; }
+    @property void text (string text)
+    {
+        _text = text;
+        _renderNode = null;
+    }
+
+    @property FontRequest font() const { return _font; }
+    @property void font(FontRequest font)
+    {
+        _font = font;
+        _renderNode = null;
+    }
+
+    @property FVec4 color() const { return _color; }
+    @property void color(in FVec4 color)
+    {
+        _color = color;
+        _renderNode = null;
+    }
+
+    override protected immutable(RenderNode) collectLocalRenderNode()
+    {
+        if (!_renderNode) {
+            auto layout = makeRc!TextLayout(text, TextFormat.plain, _font);
+            layout.layout();
+            layout.prepareGlyphRuns();
+            _renderNode = new immutable(TextRenderNode)(
+                layout.render(), _color
+            );
+        }
+        return _renderNode;
+    }
+
+    private string _text;
+    private FontRequest _font;
+    private FVec4 _color;
+    Rebindable!(immutable(TextRenderNode)) _renderNode;
+}
+
 
 struct RenderCacheCookie
 {

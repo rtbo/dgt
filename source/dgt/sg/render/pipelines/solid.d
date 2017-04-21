@@ -1,6 +1,6 @@
 module dgt.sg.render.pipelines.solid;
 
-import dgt.sg.render.pipelines;
+import dgt.sg.render.pipelines.defs;
 import dgt.math;
 
 import gfx.pipeline;
@@ -16,7 +16,7 @@ class SolidPipeline : Disposable
     private Encoder _encoder;
 
 
-    alias Vertex = SolidVertex;
+    alias Vertex = P2Vertex;
     alias Meta = SolidMeta;
     alias StateObject = PipelineState!SolidMeta;
     alias Data = StateObject.Data;
@@ -65,9 +65,6 @@ class SolidPipeline : Disposable
 }
 
 
-struct SolidVertex {
-    @GfxName("a_Pos")   float[2] pos;
-}
 
 private:
 
@@ -80,7 +77,7 @@ struct Color {
 }
 
 struct SolidMeta {
-    VertexInput!SolidVertex   input;
+    VertexInput!P2Vertex   input;
 
     @GfxName("MVP")
     ConstantBlock!MVP       mvp;
