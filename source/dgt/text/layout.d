@@ -23,6 +23,7 @@ enum TextFormat
 
 /// The layout is divided in different items, for example because a word
 /// is in italic or in another color, or due to bidirectional text (unimplemented).
+/// This struct holds resources and must be reset to init before garbage collection.
 struct TextItem
 {
     string text;
@@ -46,6 +47,16 @@ struct GlyphInfo
     FVec2 advance;
     IVec2 offset;
 }
+
+
+/// Shaped Glyph is data sent to the render thread
+immutable struct ShapedGlyph
+{
+    immutable(RenderedGlyph) glyph;
+    FVec2 advance;
+    IVec2 offset;
+}
+
 
 /// Metrics of text drawn to screen
 struct TextMetrics
@@ -172,6 +183,28 @@ class TextLayout : RefCounted
         );
     }
 
+    public void prepareGlyphRuns()
+    {
+        import std.algorithm : map;
+        foreach(ref ts; _shapes) {
+            ts.font.prepareGlyphRun(ts.glyphs.map!(gl => gl.index));
+        }
+    }
+
+    public immutable(ShapedGlyph)[] render()
+    {
+        immutable(ShapedGlyph)[] res;
+        foreach(ref ts; _shapes) {
+            ts.font.realizeGlyphRun();
+            foreach (gi; ts.glyphs) {
+                res ~= immutable(ShapedGlyph)(
+                    ts.font.renderedGlyph(gi.index), gi.advance, gi.offset
+                );
+            }
+        }
+        return res;
+    }
+
     /// Render the layout into the supplied context.
     public void renderInto(VgContext context)
     {
@@ -201,31 +234,32 @@ class TextLayout : RefCounted
         }
     }
 
-    private TextShape shapeItem(TextItem item)
-    {
-        auto hbb = hb_buffer_create();
-        scope(exit) hb_buffer_destroy(hbb);
-        hb_buffer_add_utf8(hbb, item.text.ptr, cast(int)item.text.length, 0, -1);
-        hb_buffer_guess_segment_properties(hbb);
-        hb_shape(item.font.hbFont, hbb, null, 0);
-        auto numGlyphs = hb_buffer_get_length(hbb);
-        auto glyphInfos = hb_buffer_get_glyph_infos(hbb, null);
-        auto glyphPos = hb_buffer_get_glyph_positions(hbb, null);
-        auto glyphs = new GlyphInfo[numGlyphs];
-        foreach (i; 0 .. numGlyphs)
-        {
-            glyphs[i] = GlyphInfo(
-                glyphInfos[i].codepoint,
-                fvec(glyphPos[i].x_advance/64, glyphPos[i].y_advance/64),
-                ivec(glyphPos[i].x_offset/64, -glyphPos[i].y_offset/64),
-            );
-        }
-        return TextShape(item.text, item.font, glyphs);
-    }
 
     private string _text;
     private TextFormat _format;
     private FontResult[] _matchedFonts;
     private TextItem[] _items;
     private TextShape[] _shapes;
+}
+
+private TextShape shapeItem(ref TextItem item)
+{
+    auto hbb = hb_buffer_create();
+    scope(exit) hb_buffer_destroy(hbb);
+    hb_buffer_add_utf8(hbb, item.text.ptr, cast(int)item.text.length, 0, -1);
+    hb_buffer_guess_segment_properties(hbb);
+    hb_shape(item.font.hbFont, hbb, null, 0);
+    auto numGlyphs = hb_buffer_get_length(hbb);
+    auto glyphInfos = hb_buffer_get_glyph_infos(hbb, null);
+    auto glyphPos = hb_buffer_get_glyph_positions(hbb, null);
+    auto glyphs = new GlyphInfo[numGlyphs];
+    foreach (i; 0 .. numGlyphs)
+    {
+        glyphs[i] = GlyphInfo(
+            glyphInfos[i].codepoint,
+            fvec(glyphPos[i].x_advance/64, glyphPos[i].y_advance/64),
+            ivec(glyphPos[i].x_offset/64, -glyphPos[i].y_offset/64),
+        );
+    }
+    return TextShape(item.text, item.font, glyphs);
 }
