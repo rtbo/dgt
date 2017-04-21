@@ -62,11 +62,12 @@ class Application : Disposable
         .deleteRenderCache(_renderTid, cookie);
     }
 
+    /// Get a new valid cookie for caching render data
     ulong nextRenderCacheCookie()
     {
         if (_renderCacheCookie == ulong.max) {
             error("Render cache cookie overflow!");
-            _renderCacheCookie = 0;
+            return 0;
         }
         return ++_renderCacheCookie;
     }
