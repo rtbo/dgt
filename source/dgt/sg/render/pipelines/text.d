@@ -29,7 +29,7 @@ class TextPipeline : Disposable
 
         _pso = new StateObject(
             prog.obj, Primitive.Triangles,
-            Rasterizer.fill.withSamples()
+            Rasterizer.fill.withCullBack().withSamples()
         );
         _pso.retain();
 
