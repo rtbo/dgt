@@ -220,9 +220,15 @@ class Font : RefCounted
     }
 
     /// Accumulate glyph indices to be part of the next glyph run
-    void prepareGlyphRun(uint[] indices)
+    void prepareGlyphRun(IR)(IR indexRange)
+    if (isInputRange!IR && is(ElementType!IR == uint))
     {
-        _runPreparation ~= indices;
+        static if (hasLength!IR) {
+            reserve(_runPreparation, indexRange.length);
+        }
+        foreach (i; indexRange) {
+            _runPreparation ~= i;
+        }
     }
 
     /// Realizes the glyph run with previously accumulated glyph indices
@@ -309,6 +315,12 @@ class Font : RefCounted
             _renderedGlyphs[g.glyph] = rg;
         }
         _runs ~= new immutable GlyphRun(iimg, glyphs, cookie);
+    }
+
+    immutable(RenderedGlyph) renderedGlyph(uint index)
+    {
+        auto rg = (index in _renderedGlyphs);
+        return rg ? *rg : null;
     }
 
     mixin ReadOnlyValueProperty!(string, "filename");
@@ -480,6 +492,8 @@ immutable class RenderedGlyph
     @property immutable(Image) runImg() const { return _runImg; }
     @property ulong cacheCookie() const { return _cacheCookie; }
 
+    // 60 bytes of metadata per glyph.
+    // Have to be reduced as soon as usage gets clearer
     private uint _glyph;
     private IRect _rect;
     private GlyphMetrics _metrics;
