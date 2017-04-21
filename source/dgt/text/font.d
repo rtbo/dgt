@@ -299,14 +299,16 @@ class Font : RefCounted
         img.saveToFile(format("run%s.png", num++));
 
         // storing results
+        import dgt.application : Application;
+        immutable cookie = Application.instance.nextRenderCacheCookie();
         immutable iimg = assumeUnique(img);
         immutable(RenderedGlyph)[] glyphs;
         foreach(g; gs) {
-            immutable rg = new immutable RenderedGlyph(g.glyph, g.rect, g.gm, iimg);
+            immutable rg = new immutable RenderedGlyph(g.glyph, g.rect, g.gm, iimg, cookie);
             glyphs ~= rg;
             _renderedGlyphs[g.glyph] = rg;
         }
-        _runs ~= new immutable GlyphRun(iimg, glyphs);
+        _runs ~= new immutable GlyphRun(iimg, glyphs, cookie);
     }
 
     mixin ReadOnlyValueProperty!(string, "filename");
@@ -441,39 +443,48 @@ class Font : RefCounted
 immutable class GlyphRun
 {
     immutable this(immutable(Image) img,
-                    immutable(RenderedGlyph)[] glyphs)
+                    immutable(RenderedGlyph)[] glyphs,
+                    ulong cacheCookie)
     {
         _img = img;
         _glyphs = glyphs;
+        _cacheCookie = cacheCookie;
     }
 
     @property immutable(Image) image() const { return _img; }
     @property immutable(RenderedGlyph)[] glyphs() const { return _glyphs; }
+    @property ulong cacheCookie() const { return _cacheCookie; }
 
     private Image _img;
     private RenderedGlyph[] _glyphs;
+    private ulong _cacheCookie;
 }
 
 
 immutable class RenderedGlyph
 {
-    immutable this(in uint glyph, in IRect rect, in GlyphMetrics metrics, immutable(Image) runImg)
+    immutable this(in uint glyph, in IRect rect, in GlyphMetrics metrics,
+                    immutable(Image) runImg,
+                    in ulong cacheCookie)
     {
         _glyph = glyph;
         _rect = rect;
         _metrics = metrics;
         _runImg = runImg;
+        _cacheCookie = cacheCookie;
     }
 
     @property uint glyph() const { return _glyph; }
     @property IRect rect() const { return _rect; }
     @property GlyphMetrics metrics() const { return _metrics; }
     @property immutable(Image) runImg() const { return _runImg; }
+    @property ulong cacheCookie() const { return _cacheCookie; }
 
     private uint _glyph;
     private IRect _rect;
     private GlyphMetrics _metrics;
     private Image _runImg;
+    private ulong _cacheCookie;
 }
 
 
