@@ -97,37 +97,26 @@ int main()
 
 private:
 
-
-SgImageNode textNode(string text, FontRequest font, Paint paint)
+SgTextNode textNode(string text, FontRequest font, Paint paint)
 {
+    // FIXME: retrieve metrics from node
     auto layout = makeRc!TextLayout(text, TextFormat.plain, font);
     layout.layout();
     immutable metrics = layout.metrics;
-    auto img = new Image(ImageFormat.argbPremult, ISize(metrics.size));
-    {
-        auto ctx = createContext(img);
-        scope(exit) ctx.dispose();
-
-        ctx.transform = Transform.identity.translate(metrics.bearing);
-        ctx.fillPaint = paint;
-        layout.renderInto(ctx);
-    }
-
     immutable topLeft = cast(FVec2)(-metrics.bearing);
 
-    auto imgNode = new SgImageNode;
-    imgNode.topLeft = topLeft;
-    imgNode.image = assumeUnique(img);
+    auto textNode = new SgTextNode;
+    textNode.text = text;
+    textNode.font = font;
+    textNode.color = (cast(ColorPaint)paint).color;
 
     auto ulNode = new SgColorRectNode;
     ulNode.color = fvec(1, 1, 1, 0.5);
     ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
 
-    imgNode.appendChild(ulNode);
-
-    return imgNode;
+    textNode.appendChild(ulNode);
+    return textNode;
 }
-
 
 enum branchScale = 0.7f;
 enum branchAngle = PI / 8;
@@ -172,8 +161,6 @@ struct FractalBranch
             );
         }
     }
-
-
 
     void draw(in Path path, VgContext context)
     {
