@@ -287,8 +287,8 @@ class Font : RefCounted
             }
         }
 
-        // allocating run bitmap and rendering
-        Image img = new Image(ImageFormat.a8, ISize(totalWidth, totalHeight));
+        // make width multiple of 4, height even, allocate run bitmap, and render
+        Image img = new Image(ImageFormat.a8, ISize(roundUp(totalWidth, 4), roundUp(totalHeight, 2)));
         foreach(g; gs) {
             immutable rect = g.rect;
 
@@ -501,6 +501,13 @@ immutable class RenderedGlyph
     private ulong _cacheCookie;
 }
 
+private int roundUp(in int number, in int multiple) pure
+{
+    if (multiple == 0) return number;
+    immutable rem = number % multiple;
+    if (rem == 0) return number;
+    return number + multiple - rem;
+}
 
 private size_t glyphRunNumPerLine(size_t numGlyphs)
 {
