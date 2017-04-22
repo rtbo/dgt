@@ -63,6 +63,7 @@ shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
     int[] attribList = [
         WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
         WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
+        WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
         WGL_PIXEL_TYPE_ARB,         WGL_TYPE_RGBA_ARB,
         WGL_COLOR_BITS_ARB,         attribs.colorSize,
         WGL_DEPTH_BITS_ARB,         attribs.depthSize,
