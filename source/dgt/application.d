@@ -1,18 +1,19 @@
 /// Main application module.
 module dgt.application;
 
-import gfx.foundation.rc;
-import dgt.platform;
 import dgt.context;
+import dgt.eventloop;
+import dgt.platform;
 import dgt.window;
 import dgt.sg.render;
 import dgt.sg.render.frame;
+import gfx.foundation.rc;
 
 import std.experimental.logger;
 import std.concurrency : Tid;
 
 /// Singleton class that must be built by the client application
-class Application : Disposable
+class Application : EventLoop, Disposable
 {
     /// Build an application. This will initialize underlying platform.
     this()
@@ -38,16 +39,13 @@ class Application : Disposable
     }
 
     /// Enter main event processing loop
-    int loop()
+    override int loop()
     {
         assert(!_gfxRunning);
         initializeGfx();
+        scope(exit) finalizeGfx();
 
-        while (!_exitFlag)
-            _platform.processNextEvent();
-
-        finalizeGfx();
-        return _exitCode;
+        return EventLoop.loop();
     }
 
     void renderFrame(immutable(RenderFrame) frame)
@@ -72,12 +70,6 @@ class Application : Disposable
         return ++_renderCacheCookie;
     }
 
-    /// Register an exit code and exit at end of current event loop
-    void exit(int code = 0)
-    {
-        _exitCode = code;
-        _exitFlag = true;
-    }
 
     private void initialize(Platform platform)
     {
