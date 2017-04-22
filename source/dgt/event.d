@@ -1,14 +1,16 @@
-/// Events delivered by the OS.
+/// Events module
 module dgt.event;
 
+import dgt.enums;
+import dgt.geometry : IPoint, IRect, ISize;
+import key = dgt.keys;
 import dgt.signal;
 import dgt.window : Window, WindowState;
-import dgt.geometry : IPoint, ISize, IRect;
-import dgt.enums;
-import key = dgt.keys;
 
 
-enum EventType
+/// Type of event. 3 categories: app, window and user.
+/// Category can be tested using masks.
+enum EventType : int
 {
     appMask = 0x01000000,
     timer,
@@ -34,31 +36,37 @@ enum EventType
     userMask = 0x0400000,
 }
 
+/// Tests whether the event type is of the app category
 bool isAppEventType(EventType type)
 {
     return (type & EventType.appMask) != 0;
 }
 
+/// Tests whether the event type is of the app category
 bool isAppEvent(in Event ev)
 {
     return ev.type.isAppEventType();
 }
 
+/// Tests whether the event type is of the window category
 bool isWindowEventType(EventType type)
 {
     return (type & EventType.windowMask) != 0;
 }
 
+/// Tests whether the event type is of the window category
 bool isWindowEvent(in Event ev)
 {
     return ev.type.isWindowEventType();
 }
 
+/// Tests whether the event type is of the user category
 bool isUserEventType(EventType type)
 {
     return (type & EventType.userMask) != 0;
 }
 
+/// Tests whether the event type is of the user category
 bool isUserEvent(in Event ev)
 {
     return ev.type.isUserEventType;
