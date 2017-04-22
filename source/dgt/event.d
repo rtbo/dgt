@@ -11,26 +11,27 @@ import key = dgt.keys;
 enum EventType
 {
     appMask = 0x01000000,
-    appQuit, // generated e.g. with Ctrl-C, or when last window closes
-    appUser,
+    timer,
 
     windowMask = 0x02000000,
-    windowShow,
-    windowHide,
-    windowExpose,
-    windowResize,
-    windowMove,
-    windowClose,
-    windowStateChange,
-    windowFocusIn,
-    windowFocusOut,
-    windowMouseDown,
-    windowMouseUp,
-    windowMouseMove,
-    windowMouseEnter,
-    windowMouseLeave,
-    windowKeyDown,
-    windowKeyUp,
+    show,
+    hide,
+    expose,
+    resize,
+    move,
+    close,
+    stateChange,
+    focusIn,
+    focusOut,
+    mouseDown,
+    mouseUp,
+    mouseMove,
+    mouseEnter,
+    mouseLeave,
+    keyDown,
+    keyUp,
+
+    userMask = 0x0400000,
 }
 
 bool isAppEventType(EventType type)
@@ -53,14 +54,24 @@ bool isWindowEvent(in Event ev)
     return ev.type.isWindowEventType();
 }
 
+bool isUserEventType(EventType type)
+{
+    return (type & EventType.userMask) != 0;
+}
+
+bool isUserEvent(in Event ev)
+{
+    return ev.type.isUserEventType;
+}
+
 unittest
 {
-    assert(isAppEventType(EventType.appQuit));
-    assert(!isAppEventType(EventType.windowClose));
-    assert(isWindowEventType(EventType.windowClose));
-    assert(isWindowEventType(EventType.windowFocusOut));
-    assert(isWindowEventType(EventType.windowKeyDown));
-    assert(!isWindowEventType(EventType.appQuit));
+    assert(isAppEventType(EventType.timer));
+    assert(!isAppEventType(EventType.close));
+    assert(isWindowEventType(EventType.close));
+    assert(isWindowEventType(EventType.focusOut));
+    assert(isWindowEventType(EventType.keyDown));
+    assert(!isWindowEventType(EventType.timer));
 }
 
 abstract class Event
@@ -105,44 +116,12 @@ abstract class AppEvent : Event
     }
 }
 
-class AppQuitEvent : AppEvent
+class UserEvent : Event
 {
-    this()
+    this(EventType type)
     {
-        super(EventType.appQuit);
-    }
-
-    @property bool declined() const
-    {
-        return _declined;
-    }
-
-    void decline()
-    {
-        _declined = true;
-        consume();
-    }
-
-    @property int code() const
-    {
-        return _code;
-    }
-
-    @property void code(int code)
-    {
-        _code = code;
-        consume();
-    }
-
-    private bool _declined;
-    private int _code;
-}
-
-class AppUserEvent : AppEvent
-{
-    this()
-    {
-        super(EventType.appUser);
+        assert(isUserEventType(type));
+        super(type);
     }
 }
 
@@ -167,7 +146,7 @@ class WindowShowEvent : WindowEvent
 {
     this(Window window)
     {
-        super(EventType.windowShow, window);
+        super(EventType.show, window);
     }
 }
 
@@ -175,7 +154,7 @@ class WindowHideEvent : WindowEvent
 {
     this(Window window)
     {
-        super(EventType.windowHide, window);
+        super(EventType.hide, window);
     }
 }
 
@@ -183,7 +162,7 @@ class WindowExposeEvent : WindowEvent
 {
     this(Window window, IRect exposedArea)
     {
-        super(EventType.windowExpose, window);
+        super(EventType.expose, window);
         _exposedArea = exposedArea;
     }
 
@@ -199,7 +178,7 @@ class WindowResizeEvent : WindowEvent
 {
     this(Window window, ISize size)
     {
-        super(EventType.windowResize, window);
+        super(EventType.resize, window);
         _size = size;
     }
 
@@ -215,7 +194,7 @@ class WindowMoveEvent : WindowEvent
 {
     this(Window window, IPoint point)
     {
-        super(EventType.windowMove, window);
+        super(EventType.move, window);
     }
 
     @property IPoint point() const
@@ -230,7 +209,7 @@ class WindowCloseEvent : WindowEvent
 {
     this(Window window)
     {
-        super(EventType.windowClose, window);
+        super(EventType.close, window);
     }
 
     @property bool declined() const
@@ -251,7 +230,7 @@ class WindowStateChangeEvent : WindowEvent
 {
     this(Window window, WindowState state)
     {
-        super(EventType.windowStateChange, window);
+        super(EventType.stateChange, window);
         _state = state;
     }
 
@@ -268,7 +247,7 @@ class WindowFocusEvent : WindowEvent
     this(EventType type, Window window, FocusMethod method)
     in
     {
-        assert(type == EventType.windowFocusIn || type == EventType.windowFocusOut);
+        assert(type == EventType.focusIn || type == EventType.focusOut);
     }
     body
     {
@@ -290,8 +269,8 @@ class WindowMouseEvent : WindowEvent
             MouseState state, key.Mods modifiers)
     in
     {
-        assert(type == EventType.windowMouseDown || type == EventType.windowMouseUp || type == EventType.windowMouseMove
-                || type == EventType.windowMouseEnter || type == EventType.windowMouseLeave);
+        assert(type == EventType.mouseDown || type == EventType.mouseUp || type == EventType.mouseMove
+                || type == EventType.mouseEnter || type == EventType.mouseLeave);
     }
     body
     {
@@ -338,7 +317,7 @@ class WindowKeyEvent : WindowEvent
             bool repeat = false, int repeatCount = 1)
     in
     {
-        assert(type == EventType.windowKeyDown || type == EventType.windowKeyUp);
+        assert(type == EventType.keyDown || type == EventType.keyUp);
     }
     body
     {

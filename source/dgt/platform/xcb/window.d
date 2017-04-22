@@ -330,8 +330,8 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? EventType.windowMouseDown
-                    : EventType.windowMouseUp, _win, IPoint(e.event_x, e.event_y),
+            auto ev = scoped!WindowMouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? EventType.mouseDown
+                    : EventType.mouseUp, _win, IPoint(e.event_x, e.event_y),
                     dgtMouseButton(e.detail), dgtMouseState(e.state), dgtKeyMods(e.state));
             _win.handleEvent(ev);
         }
@@ -343,7 +343,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent(EventType.windowMouseMove, _win, IPoint(e.event_x,
+            auto ev = scoped!WindowMouseEvent(EventType.mouseMove, _win, IPoint(e.event_x,
                     e.event_y), MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
             _win.handleEvent(ev);
         }
@@ -355,8 +355,8 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? EventType.windowMouseEnter
-                    : EventType.windowMouseLeave, _win, IPoint(e.event_x, e.event_y),
+            auto ev = scoped!WindowMouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? EventType.mouseEnter
+                    : EventType.mouseLeave, _win, IPoint(e.event_x, e.event_y),
                     MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
             _win.handleEvent(ev);
         }

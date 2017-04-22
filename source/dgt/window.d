@@ -294,38 +294,38 @@ class Window
         assert(wEv.window is this);
         switch (wEv.type)
         {
-        case EventType.windowExpose:
+        case EventType.expose:
             handleExpose(cast(WindowExposeEvent)wEv);
             break;
-        case EventType.windowShow:
+        case EventType.show:
             _onShow.fire(cast(WindowShowEvent)wEv);
             break;
-        case EventType.windowHide:
+        case EventType.hide:
             _onHide.fire(cast(WindowHideEvent)wEv);
             break;
-        case EventType.windowMove:
+        case EventType.move:
             auto wmEv = cast(WindowMoveEvent) wEv;
             _position = wmEv.point;
             _onMove.fire(cast(WindowMoveEvent) wEv);
             break;
-        case EventType.windowResize:
+        case EventType.resize:
             handleResize(cast(WindowResizeEvent) wEv);
             break;
-        case EventType.windowMouseDown:
+        case EventType.mouseDown:
             _onMouse.fire(cast(WindowMouseEvent) wEv);
             if (!wEv.consumed)
             {
                 _onMouseDown.fire(cast(WindowMouseEvent) wEv);
             }
             break;
-        case EventType.windowMouseUp:
+        case EventType.mouseUp:
             _onMouse.fire(cast(WindowMouseEvent) wEv);
             if (!wEv.consumed)
             {
                 _onMouseUp.fire(cast(WindowMouseEvent) wEv);
             }
             break;
-        case EventType.windowKeyDown:
+        case EventType.keyDown:
             auto kEv = cast(WindowKeyEvent) wEv;
             _onKey.fire(kEv);
             if (!kEv.consumed)
@@ -333,7 +333,7 @@ class Window
                 _onKeyDown.fire(kEv);
             }
             break;
-        case EventType.windowKeyUp:
+        case EventType.keyUp:
             auto kEv = cast(WindowKeyEvent) wEv;
             _onKey.fire(kEv);
             if (!kEv.consumed)
@@ -341,10 +341,10 @@ class Window
                 _onKeyUp.fire(kEv);
             }
             break;
-        case EventType.windowStateChange:
+        case EventType.stateChange:
             _onStateChange.fire(cast(WindowStateChangeEvent) wEv);
             break;
-        case EventType.windowClose:
+        case EventType.close:
             auto cev = cast(WindowCloseEvent) wEv;
             _onClose.fire(cev);
             if (!cev.declined)

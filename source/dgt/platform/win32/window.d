@@ -283,32 +283,32 @@ class Win32Window : PlatformWindow
             {
             case WM_LBUTTONDOWN:
                 but = MouseButton.left;
-                t = EventType.windowMouseDown;
+                t = EventType.mouseDown;
                 _mouseState |= MouseState.left;
                 break;
             case WM_MBUTTONDOWN:
                 but = MouseButton.middle;
-                t = EventType.windowMouseDown;
+                t = EventType.mouseDown;
                 _mouseState |= MouseState.middle;
                 break;
             case WM_RBUTTONDOWN:
                 but = MouseButton.right;
-                t = EventType.windowMouseDown;
+                t = EventType.mouseDown;
                 _mouseState |= MouseState.right;
                 break;
             case WM_LBUTTONUP:
                 but = MouseButton.left;
-                t = EventType.windowMouseUp;
+                t = EventType.mouseUp;
                 _mouseState &= ~MouseState.left;
                 break;
             case WM_MBUTTONUP:
                 but = MouseButton.middle;
-                t = EventType.windowMouseUp;
+                t = EventType.mouseUp;
                 _mouseState &= ~MouseState.middle;
                 break;
             case WM_RBUTTONUP:
                 but = MouseButton.right;
-                t = EventType.windowMouseUp;
+                t = EventType.mouseUp;
                 _mouseState &= ~MouseState.right;
                 break;
             case WM_MOUSEMOVE: {
@@ -318,7 +318,7 @@ class Win32Window : PlatformWindow
 
                     // mouse was out: deliver enter event
                     auto ev = scoped!WindowMouseEvent(
-                        EventType.windowMouseEnter, _win, pos, MouseButton.none,
+                        EventType.mouseEnter, _win, pos, MouseButton.none,
                         _mouseState, mods
                     );
                     _win.handleEvent(ev);
@@ -331,14 +331,14 @@ class Win32Window : PlatformWindow
                     tm.dwHoverTime = 0;
                     TrackMouseEvent(&tm);
                 }
-                t = EventType.windowMouseMove;
+                t = EventType.mouseMove;
                 _mousePos = pos;
                 break;
             }
             case WM_MOUSELEAVE: {
                 _mouseOut = true;
                 pos = _mousePos;
-                t = EventType.windowMouseLeave;
+                t = EventType.mouseLeave;
                 break;
             }
             default:
@@ -379,7 +379,7 @@ class Win32Window : PlatformWindow
                 immutable repeatCount = lParam & repeatCountMask;
 
                 auto ev = new WindowKeyEvent(
-                    EventType.windowKeyDown, _win, sym, code, keyMods,
+                    EventType.keyDown, _win, sym, code, keyMods,
                     text.to!string, scancode, cast(uint)wParam, repeat, repeatCount
                 );
                 _win.handleEvent(ev);
@@ -387,7 +387,7 @@ class Win32Window : PlatformWindow
             else
             {
                 auto ev = new WindowKeyEvent(
-                    EventType.windowKeyDown, _win, sym, code, keyMods,
+                    EventType.keyDown, _win, sym, code, keyMods,
                     "", scancode, cast(uint)wParam
                 );
                 _win.handleEvent(ev);

@@ -125,7 +125,7 @@ class XcbKeyboard
 
         if (xcbEventType(xcbEv) == XCB_KEY_PRESS)
         {
-            et = EventType.windowKeyDown;
+            et = EventType.keyDown;
             _mods |= mods;
             auto size = xkb_state_key_get_utf8(_state, keycode, null, 0);
             if (size > 0) {
@@ -138,7 +138,7 @@ class XcbKeyboard
         else
         {
             assert(xcbEventType(xcbEv) == XCB_KEY_RELEASE);
-            et = EventType.windowKeyUp;
+            et = EventType.keyUp;
             _mods &= ~mods;
         }
 
