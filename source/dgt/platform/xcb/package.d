@@ -406,7 +406,7 @@ class XcbPlatform : Platform
             if (xcbEv.data.data32[0] == atom(Atom.WM_DELETE_WINDOW))
             {
                 auto w = window(xcbEv.window);
-                auto ev = scoped!WindowCloseEvent(w);
+                auto ev = scoped!CloseEvent(w);
                 w.handleEvent(ev);
             }
         }

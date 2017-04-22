@@ -37,62 +37,62 @@ enum WindowFlags
 
 interface OnWindowShowHandler
 {
-    void onWindowMove(WindowShowEvent ev);
+    void onWindowMove(ShowEvent ev);
 }
 
 interface OnWindowHideHandler
 {
-    void onWindowHide(WindowHideEvent ev);
+    void onWindowHide(HideEvent ev);
 }
 
 interface OnWindowMoveHandler
 {
-    void onWindowMove(WindowMoveEvent ev);
+    void onWindowMove(MoveEvent ev);
 }
 
 interface OnWindowResizeHandler
 {
-    void onWindowResize(WindowResizeEvent ev);
+    void onWindowResize(ResizeEvent ev);
 }
 
 interface OnWindowMouseHandler
 {
-    void onWindowMouse(WindowMouseEvent ev);
+    void onWindowMouse(MouseEvent ev);
 }
 
 interface OnWindowMouseDownHandler
 {
-    void onWindowMouseDown(WindowMouseEvent ev);
+    void onWindowMouseDown(MouseEvent ev);
 }
 
 interface OnWindowMouseUpHandler
 {
-    void onWindowMouseUp(WindowMouseEvent ev);
+    void onWindowMouseUp(MouseEvent ev);
 }
 
 interface OnWindowKeyHandler
 {
-    void onWindowKey(WindowKeyEvent ev);
+    void onWindowKey(KeyEvent ev);
 }
 
 interface OnWindowKeyDownHandler
 {
-    void onWindowKeyDown(WindowKeyEvent ev);
+    void onWindowKeyDown(KeyEvent ev);
 }
 
 interface OnWindowKeyUpHandler
 {
-    void onWindowKeyUp(WindowKeyEvent ev);
+    void onWindowKeyUp(KeyEvent ev);
 }
 
 interface OnWindowStateChangeHandler
 {
-    void onWindowStateChange(WindowStateChangeEvent ev);
+    void onWindowStateChange(StateChangeEvent ev);
 }
 
 interface OnWindowCloseHandler
 {
-    void onWindowClose(WindowCloseEvent ev);
+    void onWindowClose(CloseEvent ev);
 }
 
 
@@ -295,38 +295,38 @@ class Window
         switch (wEv.type)
         {
         case EventType.expose:
-            handleExpose(cast(WindowExposeEvent)wEv);
+            handleExpose(cast(ExposeEvent)wEv);
             break;
         case EventType.show:
-            _onShow.fire(cast(WindowShowEvent)wEv);
+            _onShow.fire(cast(ShowEvent)wEv);
             break;
         case EventType.hide:
-            _onHide.fire(cast(WindowHideEvent)wEv);
+            _onHide.fire(cast(HideEvent)wEv);
             break;
         case EventType.move:
-            auto wmEv = cast(WindowMoveEvent) wEv;
+            auto wmEv = cast(MoveEvent) wEv;
             _position = wmEv.point;
-            _onMove.fire(cast(WindowMoveEvent) wEv);
+            _onMove.fire(cast(MoveEvent) wEv);
             break;
         case EventType.resize:
-            handleResize(cast(WindowResizeEvent) wEv);
+            handleResize(cast(ResizeEvent) wEv);
             break;
         case EventType.mouseDown:
-            _onMouse.fire(cast(WindowMouseEvent) wEv);
+            _onMouse.fire(cast(MouseEvent) wEv);
             if (!wEv.consumed)
             {
-                _onMouseDown.fire(cast(WindowMouseEvent) wEv);
+                _onMouseDown.fire(cast(MouseEvent) wEv);
             }
             break;
         case EventType.mouseUp:
-            _onMouse.fire(cast(WindowMouseEvent) wEv);
+            _onMouse.fire(cast(MouseEvent) wEv);
             if (!wEv.consumed)
             {
-                _onMouseUp.fire(cast(WindowMouseEvent) wEv);
+                _onMouseUp.fire(cast(MouseEvent) wEv);
             }
             break;
         case EventType.keyDown:
-            auto kEv = cast(WindowKeyEvent) wEv;
+            auto kEv = cast(KeyEvent) wEv;
             _onKey.fire(kEv);
             if (!kEv.consumed)
             {
@@ -334,7 +334,7 @@ class Window
             }
             break;
         case EventType.keyUp:
-            auto kEv = cast(WindowKeyEvent) wEv;
+            auto kEv = cast(KeyEvent) wEv;
             _onKey.fire(kEv);
             if (!kEv.consumed)
             {
@@ -342,10 +342,10 @@ class Window
             }
             break;
         case EventType.stateChange:
-            _onStateChange.fire(cast(WindowStateChangeEvent) wEv);
+            _onStateChange.fire(cast(StateChangeEvent) wEv);
             break;
         case EventType.close:
-            auto cev = cast(WindowCloseEvent) wEv;
+            auto cev = cast(CloseEvent) wEv;
             _onClose.fire(cev);
             if (!cev.declined)
                 close();
@@ -366,14 +366,14 @@ class Window
     private
     {
 
-        void handleResize(WindowResizeEvent ev)
+        void handleResize(ResizeEvent ev)
         {
             immutable newSize = ev.size;
             _size = newSize;
             _onResize.fire(ev);
         }
 
-        void handleExpose(WindowExposeEvent ev)
+        void handleExpose(ExposeEvent ev)
         {
             if (_root) {
                 Application.instance.renderFrame(new immutable RenderFrame (

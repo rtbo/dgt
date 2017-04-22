@@ -171,7 +171,7 @@ class Win32Window : PlatformWindow
 
         bool handleClose()
         {
-            auto ev = scoped!WindowCloseEvent(_win);
+            auto ev = scoped!CloseEvent(_win);
             _win.handleEvent(ev);
             return true;
         }
@@ -196,7 +196,7 @@ class Win32Window : PlatformWindow
             // auto win32Rect = rectToWin32(r);
             // FillRect(_hDc, &win32Rect, cast(HBRUSH)(COLOR_WINDOW+1));
 
-			auto ev = scoped!WindowExposeEvent(_win, r);
+			auto ev = scoped!ExposeEvent(_win, r);
 			_win.handleEvent(ev);
 
 			return true;
@@ -242,12 +242,12 @@ class Win32Window : PlatformWindow
             _rect = g;
 
             if (g.size != oldG.size) {
-                auto ev = scoped!WindowResizeEvent(_win, g.size);
+                auto ev = scoped!ResizeEvent(_win, g.size);
                 _win.handleEvent(ev);
                 _sentFstResize = true;
             }
             if (g.point != oldG.point) {
-                auto ev = scoped!WindowMoveEvent(_win, g.point);
+                auto ev = scoped!MoveEvent(_win, g.point);
                 _win.handleEvent(ev);
             }
 
@@ -259,12 +259,12 @@ class Win32Window : PlatformWindow
             if (lParam) return false; // only handle calls subsequent to ShowWindow
 
             if (wParam) {
-                auto ev = scoped!WindowShowEvent(_win);
+                auto ev = scoped!ShowEvent(_win);
                 _win.handleEvent(ev);
                 _sentFstShow = true;
             }
             else {
-                auto ev = scoped!WindowHideEvent(_win);
+                auto ev = scoped!HideEvent(_win);
                 _win.handleEvent(ev);
             }
             return true;
@@ -317,7 +317,7 @@ class Win32Window : PlatformWindow
                     _mouseOut = false;
 
                     // mouse was out: deliver enter event
-                    auto ev = scoped!WindowMouseEvent(
+                    auto ev = scoped!MouseEvent(
                         EventType.mouseEnter, _win, pos, MouseButton.none,
                         _mouseState, mods
                     );
@@ -345,7 +345,7 @@ class Win32Window : PlatformWindow
                 break;
             }
             {
-                auto ev = scoped!WindowMouseEvent(
+                auto ev = scoped!MouseEvent(
                     t, _win, pos, but, _mouseState, mods
                 );
                 _win.handleEvent(ev);
@@ -378,7 +378,7 @@ class Win32Window : PlatformWindow
                 immutable repeat = ((lParam & previousStateMask) != 0);
                 immutable repeatCount = lParam & repeatCountMask;
 
-                auto ev = new WindowKeyEvent(
+                auto ev = new KeyEvent(
                     EventType.keyDown, _win, sym, code, keyMods,
                     text.to!string, scancode, cast(uint)wParam, repeat, repeatCount
                 );
@@ -386,7 +386,7 @@ class Win32Window : PlatformWindow
             }
             else
             {
-                auto ev = new WindowKeyEvent(
+                auto ev = new KeyEvent(
                     EventType.keyDown, _win, sym, code, keyMods,
                     "", scancode, cast(uint)wParam
                 );
@@ -399,7 +399,7 @@ class Win32Window : PlatformWindow
 
         void handleWindowStateChange(WindowState ws)
         {
-            auto ev = scoped!WindowStateChangeEvent(_win, ws);
+            auto ev = scoped!StateChangeEvent(_win, ws);
             _win.handleEvent(ev);
         }
     }
@@ -486,7 +486,7 @@ class Win32Window : PlatformWindow
             immutable geomCond = geom.area != 0;
 
             if (!_sentFstShow && stateCond) {
-                auto ev = scoped!WindowShowEvent(_win);
+                auto ev = scoped!ShowEvent(_win);
                 _win.handleEvent(ev);
             }
             if (!_sentFstResize && geomCond) {

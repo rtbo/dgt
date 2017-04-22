@@ -26,7 +26,7 @@ int main()
     scope(exit) app.dispose();
 
     auto win = new Window("Hello DGT");
-    win.onKeyDown += (WindowKeyEvent ev) {
+    win.onKeyDown += (KeyEvent ev) {
         switch (ev.sym)
         {
         case key.Sym.f:
@@ -77,7 +77,7 @@ int main()
 
     writeln(root.toString());
 
-    win.onResize += (WindowResizeEvent ev) {
+    win.onResize += (ResizeEvent ev) {
         helloNode.transform = FMat4.identity.translate(50, ev.size.height-50, 0);
         arHelloNode.transform = FMat4.identity.translate(ev.size.width-350, 150, 0);
         logoNode.transform = FMat4.identity.translate(

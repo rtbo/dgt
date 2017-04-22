@@ -142,7 +142,7 @@ abstract class WindowEvent : Event
     private Window _window;
 }
 
-class WindowShowEvent : WindowEvent
+class ShowEvent : WindowEvent
 {
     this(Window window)
     {
@@ -150,7 +150,7 @@ class WindowShowEvent : WindowEvent
     }
 }
 
-class WindowHideEvent : WindowEvent
+class HideEvent : WindowEvent
 {
     this(Window window)
     {
@@ -158,7 +158,7 @@ class WindowHideEvent : WindowEvent
     }
 }
 
-class WindowExposeEvent : WindowEvent
+class ExposeEvent : WindowEvent
 {
     this(Window window, IRect exposedArea)
     {
@@ -174,7 +174,7 @@ class WindowExposeEvent : WindowEvent
     private IRect _exposedArea;
 }
 
-class WindowResizeEvent : WindowEvent
+class ResizeEvent : WindowEvent
 {
     this(Window window, ISize size)
     {
@@ -190,7 +190,7 @@ class WindowResizeEvent : WindowEvent
     private ISize _size;
 }
 
-class WindowMoveEvent : WindowEvent
+class MoveEvent : WindowEvent
 {
     this(Window window, IPoint point)
     {
@@ -205,7 +205,7 @@ class WindowMoveEvent : WindowEvent
     private IPoint _point;
 }
 
-class WindowCloseEvent : WindowEvent
+class CloseEvent : WindowEvent
 {
     this(Window window)
     {
@@ -226,7 +226,7 @@ class WindowCloseEvent : WindowEvent
     private bool _declined;
 }
 
-class WindowStateChangeEvent : WindowEvent
+class StateChangeEvent : WindowEvent
 {
     this(Window window, WindowState state)
     {
@@ -242,7 +242,7 @@ class WindowStateChangeEvent : WindowEvent
     private WindowState _state;
 }
 
-class WindowFocusEvent : WindowEvent
+class FocusEvent : WindowEvent
 {
     this(EventType type, Window window, FocusMethod method)
     in
@@ -263,7 +263,7 @@ class WindowFocusEvent : WindowEvent
     private FocusMethod _method;
 }
 
-class WindowMouseEvent : WindowEvent
+class MouseEvent : WindowEvent
 {
     this(EventType type, Window window, IPoint point, MouseButton button,
             MouseState state, key.Mods modifiers)
@@ -310,7 +310,7 @@ class WindowMouseEvent : WindowEvent
     }
 }
 
-class WindowKeyEvent : WindowEvent
+class KeyEvent : WindowEvent
 {
     this(EventType type, Window window, key.Sym sym, key.Code code,
             key.Mods modifiers, string text, uint nativeCode, uint nativeSymbol,
@@ -425,12 +425,12 @@ version(unittest)
 
     interface CloseEventHandlerTestIface
     {
-        void onClose(WindowCloseEvent ev);
+        void onClose(CloseEvent ev);
     }
     static assert(isSmi!(EventHandlerTestIface));
     static assert(!isEventHandler!SmiTestIface);
     static assert(isEventHandler!EventHandlerTestIface);
-    static assert(is(HandlerEventType!CloseEventHandlerTestIface == WindowCloseEvent));
+    static assert(is(HandlerEventType!CloseEventHandlerTestIface == CloseEvent));
 }
 
 /// Signal defined by a EventHander

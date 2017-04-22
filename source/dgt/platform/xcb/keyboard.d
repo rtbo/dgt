@@ -143,7 +143,7 @@ class XcbKeyboard
         }
 
         import std.typecons : scoped;
-        auto ev = scoped!WindowKeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
+        auto ev = scoped!KeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
         w.handleEvent(ev);
     }
 

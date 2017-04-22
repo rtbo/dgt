@@ -330,7 +330,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? EventType.mouseDown
+            auto ev = scoped!MouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? EventType.mouseDown
                     : EventType.mouseUp, _win, IPoint(e.event_x, e.event_y),
                     dgtMouseButton(e.detail), dgtMouseState(e.state), dgtKeyMods(e.state));
             _win.handleEvent(ev);
@@ -343,7 +343,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent(EventType.mouseMove, _win, IPoint(e.event_x,
+            auto ev = scoped!MouseEvent(EventType.mouseMove, _win, IPoint(e.event_x,
                     e.event_y), MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
             _win.handleEvent(ev);
         }
@@ -355,7 +355,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowMouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? EventType.mouseEnter
+            auto ev = scoped!MouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? EventType.mouseEnter
                     : EventType.mouseLeave, _win, IPoint(e.event_x, e.event_y),
                     MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
             _win.handleEvent(ev);
@@ -371,12 +371,12 @@ class XcbWindow : PlatformWindow
             if (e.x != _rect.x || e.y != _rect.y)
             {
                 _rect.point = IPoint(e.x, e.y);
-                _win.handleEvent(scoped!WindowMoveEvent(_win, _rect.point));
+                _win.handleEvent(scoped!MoveEvent(_win, _rect.point));
             }
             if (e.width != _rect.width || e.height != _rect.height)
             {
                 _rect.size = ISize(e.width, e.height);
-                _win.handleEvent(scoped!WindowResizeEvent(_win, _rect.size));
+                _win.handleEvent(scoped!ResizeEvent(_win, _rect.size));
             }
         }
 
@@ -388,7 +388,7 @@ class XcbWindow : PlatformWindow
         body
         {
             _mapped = false;
-            auto ev = scoped!WindowHideEvent(_win);
+            auto ev = scoped!HideEvent(_win);
             _win.handleEvent(ev);
         }
 
@@ -400,7 +400,7 @@ class XcbWindow : PlatformWindow
         body
         {
             _mapped = true;
-            auto ev = scoped!WindowShowEvent(_win);
+            auto ev = scoped!ShowEvent(_win);
             _win.handleEvent(ev);
         }
 
@@ -418,7 +418,7 @@ class XcbWindow : PlatformWindow
                 if (ws != _lastKnownState)
                 {
                     _lastKnownState = ws;
-                    _win.handleEvent(scoped!WindowStateChangeEvent(_win, ws));
+                    _win.handleEvent(scoped!StateChangeEvent(_win, ws));
                 }
             }
         }
@@ -430,7 +430,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = scoped!WindowExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
+            auto ev = scoped!ExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
             _win.handleEvent(ev);
         }
     }
