@@ -126,10 +126,10 @@ abstract class AppEvent : Event
 
 class UserEvent : Event
 {
-    this(EventType type)
+    this(int eventType)
     {
-        assert(isUserEventType(type));
-        super(type);
+        assert(isUserEventType(cast(EventType)type));
+        super(cast(EventType)type);
     }
 }
 
