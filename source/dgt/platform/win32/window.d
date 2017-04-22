@@ -24,7 +24,6 @@ class Win32Window : PlatformWindow
 {
     private Window _win;
     private HWND _hWnd;
-    private HDC _paintEvDc;
     private IRect _rect;
     private WindowState _state;
     private bool _shownOnce;
@@ -153,20 +152,10 @@ class Win32Window : PlatformWindow
 
     package
     {
-        HDC getDC()
-        {
-            if (_paintEvDc) return _paintEvDc;
-            return GetDC(_hWnd);
-        }
 
-        void releaseDC(HDC dc)
+        @property HWND handle()
         {
-            if (_paintEvDc)
-            {
-                assert(dc is _paintEvDc);
-                return;
-            }
-            ReleaseDC(_hWnd, dc);
+            return _hWnd;
         }
 
         bool handleClose()
@@ -185,19 +174,13 @@ class Win32Window : PlatformWindow
             if (msg == WM_ERASEBKGND) return true;
             if (geometry.area == 0) return true;
 
-			PAINTSTRUCT ps;
-			_paintEvDc = BeginPaint(_hWnd, &ps);
-			scope(exit) {
-				EndPaint(_hWnd, &ps);
-                _paintEvDc = null;
-			}
-
             immutable r = IRect(0, 0, geometry.size);
-            // auto win32Rect = rectToWin32(r);
-            // FillRect(_hDc, &win32Rect, cast(HBRUSH)(COLOR_WINDOW+1));
 
 			auto ev = scoped!ExposeEvent(_win, r);
 			_win.handleEvent(ev);
+
+            immutable wr = rectToWin32(r);
+            ValidateRect(_hWnd, &wr);
 
 			return true;
 		}

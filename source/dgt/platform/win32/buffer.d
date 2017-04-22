@@ -85,8 +85,8 @@ class Win32WindowBuffer : PlatformWindowBuffer
     }
     body
     {
-        auto dc = _window.getDC();
-        scope(exit) _window.releaseDC(dc);
+        auto dc = GetDC(_window.handle);
+        scope(exit) ReleaseDC(_window.handle, dc);
 
         BitBlt(
             dc, orig.x, orig.y, size.width, size.height,

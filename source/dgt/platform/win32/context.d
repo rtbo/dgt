@@ -35,8 +35,8 @@ void initWin32Gl()
     scope(exit) dummy.close();
 
     auto pDummy = unsafeCast!Win32Window(dummy.platformWindow);
-    auto dc = pDummy.getDC();
-    scope(exit) pDummy.releaseDC(dc);
+    auto dc = GetDC(pDummy.handle);
+    scope(exit) ReleaseDC(pDummy.handle, dc);
 
     auto chosen = ChoosePixelFormat(dc, &pfd);
     SetPixelFormat(dc, chosen, &pfd);
