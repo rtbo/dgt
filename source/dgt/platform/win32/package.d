@@ -71,7 +71,7 @@ class Win32Platform : Platform
         return new Win32Window(window);
     }
 
-    override void processNextEvent()
+    override void processEvents()
     {
 		MSG msg;
 		if (GetMessage(&msg, null, 0, 0) > 0)

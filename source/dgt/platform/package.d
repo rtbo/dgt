@@ -24,7 +24,7 @@ interface Platform : Disposable
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
-    void processNextEvent();
+    void processEvents();
 }
 
 /// OS specific window interface.

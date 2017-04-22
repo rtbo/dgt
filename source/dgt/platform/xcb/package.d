@@ -148,7 +148,7 @@ class XcbPlatform : Platform
         return new XcbWindow(window, this);
     }
 
-    override void processNextEvent()
+    override void processEvents()
     {
         xcb_generic_event_t* e = xcb_wait_for_event(g_connection);
         immutable xcbType = xcbEventType(e);

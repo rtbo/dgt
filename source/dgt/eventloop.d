@@ -10,7 +10,7 @@ class EventLoop
     int loop()
     {
         while (!_exitFlag) {
-            Application.instance.platform.processNextEvent();
+            Application.instance.platform.processEvents();
         }
         return _exitCode;
     }
