@@ -152,6 +152,16 @@ final class Win32GlContext : GlContext
         wglMakeCurrent(null, null);
     }
 
+    override @property int swapInterval()
+    {
+        return wglGetSwapIntervalEXT();
+    }
+
+    override @property void swapInterval(int interval)
+    {
+        wglSwapIntervalEXT(interval);
+    }
+
     override void swapBuffers(size_t nativeHandle)
     {
         auto wnd = cast(HWND)nativeHandle;

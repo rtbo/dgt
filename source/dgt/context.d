@@ -94,6 +94,8 @@ interface GlContext : Disposable
     @property GlAttribs attribs() const;
     bool makeCurrent(size_t nativeHandle);
     void doneCurrent();
+    @property int swapInterval();
+    @property void swapInterval(int interval);
     void swapBuffers(size_t nativeHandle);
 }
 

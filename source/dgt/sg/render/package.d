@@ -133,6 +133,7 @@ class Renderer
     this(GlContext context)
     {
         _context = context;
+        _context.swapInterval = 1;
     }
 
     void initialize() {

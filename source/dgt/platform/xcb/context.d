@@ -152,6 +152,35 @@ final class XcbGlContext : GlContext
         glXMakeCurrent(g_display, 0, null);
     }
 
+    override @property int swapInterval()
+    {
+        Display *dpy = glXGetCurrentDisplay();
+        GLXDrawable drawable = glXGetCurrentDrawable();
+        uint swap;
+
+        if (drawable) {
+            glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
+            return swap;
+        }
+        else {
+            warningf("could not get glx drawable to get swap interval");
+            return -1;
+        }
+    }
+    
+    override @property void swapInterval(int interval)
+    {
+        Display *dpy = glXGetCurrentDisplay();
+        GLXDrawable drawable = glXGetCurrentDrawable();
+
+        if (drawable) {
+            glXSwapIntervalEXT(dpy, drawable, interval);
+        }
+        else {
+            warningf("could not get glx drawable to set swap interval");
+        }
+    }
+
     override void swapBuffers(size_t nativeHandle)
     {
         auto xWin = cast(xcb_window_t)nativeHandle;
