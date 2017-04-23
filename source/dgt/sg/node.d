@@ -38,14 +38,34 @@ abstract class SgNode
         return _nextSibling;
     }
 
-    /// The bounds of this nodes in local node coordinates.
-    @property FRect bounds() const { return _bounds; }
+    /// The transformedBounds of this nodes in local node coordinates.
+    @property FRect bounds()
+    {
+        if (_bounds.dirty) _bounds = computeBounds();
+        return _bounds;
+    }
 
-    /// The bounds of the children of this node in local coordinates.
-    @property FRect childrenBounds() const { return _childrenBounds; }
+    /// The transformedBounds of this nodes after its transformation is applied.
+    @property FRect transformedBounds()
+    {
+        if (_transformedBounds.dirty) _transformedBounds = computeTransformedBounds();
+        return _transformedBounds;
+    }
 
-    /// The bounds of this nodes in global screen coordinates
-    @property FRect screenBounds() const { return _screenBounds; }
+    abstract protected FRect computeBounds();
+    protected FRect computeTransformedBounds()
+    {
+        immutable b = bounds;
+        return _hasTransform ? transformBounds(b, _transform) : b;
+    }
+
+    /// Marks transformedBounds as dirty, meaning they need to be re-computed.
+    void dirtyBounds()
+    {
+        _bounds.dirty = true;
+        _transformedBounds.dirty = true;
+        if (_parent) _parent.dirtyBounds();
+    }
 
     /// The transform affecting this node and its children.
     /// Define the transform from parent coordinates to local coordinates.
@@ -56,14 +76,17 @@ abstract class SgNode
     {
         _transform = transform;
         _hasTransform = transform != FMat4.identity;
+        _transformedBounds.dirty = true;
+        if (_parent) _parent.dirtyBounds();
     }
 
     /// Whether this node has a transform set. (Other than identity)
     @property bool hasTransform() const { return _hasTransform; }
 
     /// Whether this node is dynamic.
-    /// Dynamic basically means animated. That is, the rendering data can vary
-    /// about every frame.
+    /// Dynamic basically means that the rendering data can vary
+    /// about every frame. Whether the transform changes at every frame
+    /// or not should not influence this flag.
     /// This flag mainly impact caching policy.
     @property bool dynamic() const { return _dynamic; }
 
@@ -74,9 +97,9 @@ abstract class SgNode
     }
 
     /// Collect the render node for this node.
-    immutable(RenderNode) collectRenderNode()
+    immutable(RenderNode) collectTransformedRenderNode()
     {
-        immutable toBeTransformed = collectLocalRenderNode();
+        immutable toBeTransformed = collectRenderNode();
         if (!toBeTransformed) return null;
         else if (hasTransform) {
             return new immutable TransformRenderNode(
@@ -90,7 +113,7 @@ abstract class SgNode
 
     /// Collect the local render node for this node.
     /// Local means unaltered by the transform.
-    abstract immutable(RenderNode) collectLocalRenderNode();
+    abstract immutable(RenderNode) collectRenderNode();
 
     @property uint level() const
     {
@@ -121,7 +144,7 @@ abstract class SgNode
         if (name.length) {
             props ~= ["name", format("'%s'", name)];
         }
-        props ~= ["bounds", format("%s", _bounds)];
+        props ~= ["transformedBounds", format("%s", _transformedBounds)];
         return props;
     }
 
@@ -140,10 +163,9 @@ abstract class SgNode
     package SgNode _prevSibling;
     package SgNode _nextSibling;
 
-    // bounds
-    private FRect _bounds;
-    private FRect _screenBounds;
-    private FRect _childrenBounds;
+    // transformedBounds
+    private Lazy!FRect _bounds;
+    private Lazy!FRect _transformedBounds;
 
     // transform
     private FMat4 _transform = FMat4.identity;
@@ -156,9 +178,22 @@ abstract class SgNode
     private string _name;
 }
 
+struct Lazy(T)
+{
+    T val;
+    bool dirty = true;
+
+    void opAssign(T val)
+    {
+        this.val = val;
+        dirty = false;
+    }
+
+    alias val this;
+}
 
 
-class SgColorRectNode : SgNode
+class SgColorRect : SgNode
 {
     this() {}
 
@@ -168,48 +203,66 @@ class SgColorRectNode : SgNode
         _color = color;
     }
 
-    @property FRect rect() const { return _bounds; }
+    @property FRect rect() const { return _rect; }
     @property void rect(in FRect rect)
     {
-        _bounds = rect;
+        _rect = rect;
+        dirtyBounds();
     }
 
-    override protected immutable(RenderNode) collectLocalRenderNode()
+    override protected FRect computeBounds()
+    {
+        return _rect;
+    }
+
+    override protected immutable(RenderNode) collectRenderNode()
     {
         return new immutable ColorRenderNode(_color, bounds);
     }
 
     override string typeName() const
     {
-        return "SgColorRectNode";
+        return "SgColorRect";
     }
 
     private FVec4 _color;
+    private FRect _rect;
 }
 
 
-class SgImageNode : SgNode
+class SgImage : SgNode
 {
     this() {}
 
     @property inout(Image) image() inout { return _image; }
-    @property void image(Image image) {
+    @property void image(Image image)
+    {
         _image = image;
         _immutImg = null;
+        _size = cast(FSize)image.size;
+        dirtyBounds();
     }
     @property void image(immutable(Image) image)
     {
         _image = null;
         _immutImg = image;
+        _size = cast(FSize)image.size;
+        dirtyBounds();
     }
 
     @property FPoint topLeft() const { return _topLeft; }
     @property void topLeft(in FPoint topLeft)
     {
         _topLeft = topLeft;
+        dirtyBounds();
     }
 
-    override protected immutable(RenderNode) collectLocalRenderNode()
+    protected override FRect computeBounds()
+    {
+        return FRect(_topLeft, _size);
+    }
+
+    override protected immutable(RenderNode) collectRenderNode()
     {
         if (_image && !_immutImg) _immutImg = _image.idup;
 
@@ -225,18 +278,19 @@ class SgImageNode : SgNode
 
     override string typeName() const
     {
-        return "SgImageNode";
+        return "SgImage";
     }
 
 
-    private Image _image;
     private FPoint _topLeft;
+    private FSize _size;
+    private Image _image;
     private Rebindable!(immutable(Image)) _immutImg;
     private RenderCacheCookie _rcc;
 }
 
 
-class SgTextNode : SgNode
+class SgText : SgNode
 {
     this() {}
 
@@ -245,6 +299,7 @@ class SgTextNode : SgNode
     {
         _text = text;
         _renderNode = null;
+        dirtyBounds();
     }
 
     @property FontRequest font() const { return _font; }
@@ -252,6 +307,7 @@ class SgTextNode : SgNode
     {
         _font = font;
         _renderNode = null;
+        dirtyBounds();
     }
 
     @property FVec4 color() const { return _color; }
@@ -261,7 +317,17 @@ class SgTextNode : SgNode
         _renderNode = null;
     }
 
-    override protected immutable(RenderNode) collectLocalRenderNode()
+    override protected FRect computeBounds()
+    {
+        auto layout = makeRc!TextLayout(text, TextFormat.plain, _font);
+        layout.layout();
+        immutable metrics = layout.metrics;
+        immutable topLeft = cast(FVec2)(-metrics.bearing);
+        immutable size = cast(FVec2)metrics.size;
+        return FRect(topLeft, FSize(size));
+    }
+
+    override protected immutable(RenderNode) collectRenderNode()
     {
         if (!_renderNode) {
             auto layout = makeRc!TextLayout(text, TextFormat.plain, _font);

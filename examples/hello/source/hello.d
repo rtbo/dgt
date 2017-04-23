@@ -66,7 +66,7 @@ int main()
     arHelloNode.name = "hello-ar";
 
     immutable logoImg = assumeUnique(Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb));
-    auto logoNode = new SgImageNode;
+    auto logoNode = new SgImage;
     logoNode.image = logoImg;
     logoNode.name = "logo";
 
@@ -106,12 +106,12 @@ SgNode textNode(string text, FontRequest font, Paint paint)
     immutable metrics = layout.metrics;
     immutable topLeft = cast(FVec2)(-metrics.bearing);
 
-    auto textNode = new SgTextNode;
+    auto textNode = new SgText;
     textNode.text = text;
     textNode.font = font;
     textNode.color = (cast(ColorPaint)paint).color;
 
-    auto ulNode = new SgColorRectNode;
+    auto ulNode = new SgColorRect;
     ulNode.color = fvec(1, 1, 1, 0.5);
     ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
 

@@ -1,5 +1,6 @@
 module dgt.sg.parent;
 
+import dgt.geometry;
 import dgt.sg.node;
 import dgt.sg.render.node;
 
@@ -131,15 +132,32 @@ class SgParent : SgNode
         --_childCount;
     }
 
+    override protected FRect computeBounds()
+    {
+        import std.algorithm : map;
+        return computeRectsExtents(
+            children.map!(c => c.transformedBounds)
+        );
+    }
 
-    override immutable(RenderNode) collectLocalRenderNode()
+    override protected FRect computeTransformedBounds()
+    {
+        import std.algorithm : map;
+        if (!hasTransform) return computeBounds();
+        immutable tr = transform;
+        return computeRectsExtents(
+            children.map!(c => transformBounds(c.transformedBounds, tr))
+        );
+    }
+
+    override immutable(RenderNode) collectRenderNode()
     {
         import std.algorithm : map, filter;
         import std.array : array;
         if (!_childCount) return null;
         else return new immutable(GroupRenderNode)(
-            childrenBounds,
-            children.map!(c => c.collectRenderNode())
+            bounds,
+            children.map!(c => c.collectTransformedRenderNode())
                     .filter!(rn => rn !is null)
                     .array()
         );
