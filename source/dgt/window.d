@@ -13,7 +13,7 @@ import dgt.context;
 import dgt.vg;
 import dgt.math;
 import dgt.sg.render.frame;
-import dgt.sg.node;
+import dgt.sg.parent;
 
 import std.exception;
 import std.experimental.logger;
@@ -283,8 +283,8 @@ class Window
     mixin SignalMixin!("onClosed", Window);
 
 
-    @property inout(SgNode) root() inout { return _root; }
-    @property void root(SgNode root)
+    @property inout(SgParent) root() inout { return _root; }
+    @property void root(SgParent root)
     {
         _root = root;
     }
@@ -389,6 +389,6 @@ class Window
         ISize _size;
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
-        SgNode _root;
+        SgParent _root;
     }
 }

@@ -13,6 +13,7 @@ import dgt.text.layout;
 import dgt.image;
 import dgt.geometry;
 import dgt.sg.node;
+import dgt.sg.group;
 import dgt.sg.render.node;
 import dgt.sg.render.frame;
 
@@ -69,7 +70,7 @@ int main()
     logoNode.image = logoImg;
     logoNode.name = "logo";
 
-    auto root = new SgNode;
+    auto root = new SgGroup;
     root.name = "root";
     root.appendChild(helloNode);
     root.appendChild(arHelloNode);
@@ -97,7 +98,7 @@ int main()
 
 private:
 
-SgTextNode textNode(string text, FontRequest font, Paint paint)
+SgNode textNode(string text, FontRequest font, Paint paint)
 {
     // FIXME: retrieve metrics from node
     auto layout = makeRc!TextLayout(text, TextFormat.plain, font);
@@ -114,8 +115,10 @@ SgTextNode textNode(string text, FontRequest font, Paint paint)
     ulNode.color = fvec(1, 1, 1, 0.5);
     ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
 
-    textNode.appendChild(ulNode);
-    return textNode;
+    auto node = new SgGroup;
+    node.appendChild(textNode);
+    node.appendChild(ulNode);
+    return node;
 }
 
 enum branchScale = 0.7f;

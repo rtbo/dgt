@@ -5,6 +5,7 @@ import dgt.application;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
+import dgt.sg.parent;
 import dgt.sg.render.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
@@ -12,42 +13,17 @@ import dgt.text.layout;
 import gfx.foundation.rc;
 
 import std.exception;
-import std.range;
 import std.typecons;
 
 /// A node for a 2D scene-graph
-class SgNode
+abstract class SgNode
 {
     this() {}
 
-    /// Whether this node has children.
-    @property bool hasChildren() const
-    {
-        return _firstChild !is null;
-    }
-
-    /// The number of children this node has.
-    @property size_t childCount() const
-    {
-        return _childCount;
-    }
-
     /// This node's parent.
-    @property inout(SgNode) parent() inout
+    @property inout(SgParent) parent() inout
     {
         return _parent;
-    }
-
-    /// This node's first child.
-    @property inout(SgNode) firstChild() inout
-    {
-        return _firstChild;
-    }
-
-    /// This node's last child.
-    @property inout(SgNode) lastChild() inout
-    {
-        return _lastChild;
     }
 
     /// This node's previous sibling.
@@ -59,105 +35,8 @@ class SgNode
     /// This node's next sibling.
     @property inout(SgNode) nextSibling() inout
     {
-        return nextSibling;
+        return _nextSibling;
     }
-
-    /// A bidirectional range of this nodes children
-    @property auto children()
-    {
-        return SgSiblingNodeRange!SgNode(_firstChild, _lastChild);
-    }
-
-    /// A bidirectional range of this nodes children
-    @property auto children() const
-    {
-        return SgSiblingNodeRange!(const(SgNode))(_firstChild, _lastChild);
-    }
-
-    /// Appends the given node to this node children list.
-    void appendChild(SgNode node)
-    {
-        enforce(node && !node._parent);
-        node._parent = this;
-
-        if (!hasChildren) {
-            _firstChild = node;
-            _lastChild = node;
-        }
-        else {
-            _lastChild._nextSibling = node;
-            node._prevSibling = _lastChild;
-            _lastChild = node;
-        }
-        ++_childCount;
-    }
-
-    /// Prepend the given node to this node children list.
-    void prependChild(SgNode node)
-    {
-        enforce(node && !node._parent);
-        node._parent = this;
-
-        if (!hasChildren) {
-            _firstChild = node;
-            _lastChild = node;
-        }
-        else {
-            _firstChild._prevSibling = node;
-            node._nextSibling = _firstChild;
-            _firstChild = node;
-        }
-        ++_childCount;
-    }
-
-    /// Insert the given node in this node children list, just before the given
-    /// child.
-    void insertChildBefore(SgNode node, SgNode child)
-    {
-        enforce(node && !node._parent && child._parent is this);
-        node._parent = this;
-
-        if (child is _firstChild) {
-            _firstChild = node;
-        }
-        else {
-            auto prev = child._prevSibling;
-            prev._nextSibling = node;
-            node._prevSibling = prev;
-        }
-        child._prevSibling = node;
-        node._nextSibling = child;
-        ++_childCount;
-    }
-
-    /// Removes the given node from this node children list.
-    void removeChild(SgNode child)
-    {
-        enforce(child && child._parent is this);
-
-        child._parent = null;
-
-        if (_childCount == 1) {
-            _firstChild = null;
-            _lastChild = null;
-        }
-        else if (child is _firstChild) {
-            _firstChild = child._nextSibling;
-            _firstChild._prevSibling = null;
-        }
-        else if (child is _lastChild) {
-            _lastChild = child._prevSibling;
-            _lastChild._nextSibling = null;
-        }
-        else {
-            auto prev = child._prevSibling;
-            auto next = child._nextSibling;
-            prev._nextSibling = next;
-            next._prevSibling = prev;
-        }
-        --_childCount;
-    }
-
 
     /// The bounds of this nodes in local node coordinates.
     @property FRect bounds() const { return _bounds; }
@@ -197,15 +76,7 @@ class SgNode
     /// Collect the render node for this node.
     immutable(RenderNode) collectRenderNode()
     {
-        immutable childrenNode = collectChildrenRenderNode();
-        immutable localNode = collectLocalRenderNode();
-        immutable toBeTransformed =
-            (childrenNode && localNode) ? new immutable GroupRenderNode(
-                [localNode, childrenNode]
-            ) :
-            (localNode ? localNode :
-            (childrenNode ? childrenNode : null));
-
+        immutable toBeTransformed = collectLocalRenderNode();
         if (!toBeTransformed) return null;
         else if (hasTransform) {
             return new immutable TransformRenderNode(
@@ -218,26 +89,19 @@ class SgNode
     }
 
     /// Collect the local render node for this node.
-    /// Local means already transformed and without children.
-    protected immutable(RenderNode) collectLocalRenderNode()
-    {
-        return null;
-    }
+    /// Local means unaltered by the transform.
+    abstract immutable(RenderNode) collectLocalRenderNode();
 
-    /// Collect a node grouping the children together.
-    protected immutable(RenderNode) collectChildrenRenderNode()
+    @property uint level() const
     {
-        import std.algorithm : map, filter;
-        import std.array : array;
-        if (!_childCount) return null;
-        else return new immutable(GroupRenderNode)(
-            childrenBounds,
-            children.map!(c => c.collectRenderNode())
-                    .filter!(rn => rn !is null)
-                    .array()
-        );
+        Rebindable!(const(SgParent)) p = parent;
+        uint lev=0;
+        while (p !is null) {
+            ++lev;
+            p = p.parent;
+        }
+        return lev;
     }
-
 
     @property string name() const { return _name; }
     @property void name(string name)
@@ -261,61 +125,20 @@ class SgNode
         return props;
     }
 
-    protected string toStringInternal(size_t indent)
+    override string toString()
     {
         import std.array : array;
         import std.format : format;
         import std.range : repeat;
-        auto indentStr = repeat(' ', indent*4).array;
-        string res;
-        res = format("%s%s { %(%-(%s:%), %) ", indentStr, typeName, properties);
-        if (hasChildren) {
-            res ~= format("[\n");
-            size_t ind=0;
-            foreach(c; children) {
-                res ~= c.toStringInternal(indent+1);
-                if (ind != _childCount-1) {
-                    res ~= ",\n";
-                }
-                ++ind;
-            }
-            res ~= format("\n%s]", indentStr);
-        }
-        res ~= "}";
-        return res;
-    }
-
-    override string toString()
-    {
-        return toStringInternal(0);
-    }
-
-
-    invariant()
-    {
-        assert(!_firstChild || _firstChild.parent is this);
-        assert(!_lastChild || _lastChild.parent is this);
-        assert(!_firstChild || _firstChild._prevSibling is null);
-        assert(!_lastChild || _lastChild._nextSibling is null);
-
-        assert(_childCount != 0 || (_firstChild is null && _lastChild is null));
-        assert(_childCount == 0 || (_firstChild !is null && _lastChild !is null));
-        assert(_childCount != 1 || (_firstChild is _lastChild));
-        assert((_firstChild is null) == (_lastChild is null));
-
-        assert(!_prevSibling || _prevSibling._nextSibling is this);
-        assert(!_nextSibling || _nextSibling._prevSibling is this);
+        auto indent = repeat(' ', level*4).array;
+        return format("%s%s { %(%-(%s:%), %) }", indent, typeName, properties);
     }
 
     // graph
-    private SgNode _parent;
+    package SgParent _parent;
 
-    private size_t _childCount;
-    private SgNode _firstChild;
-    private SgNode _lastChild;
-
-    private SgNode _prevSibling;
-    private SgNode _nextSibling;
+    package SgNode _prevSibling;
+    package SgNode _nextSibling;
 
     // bounds
     private FRect _bounds;
@@ -480,76 +303,4 @@ struct RenderCacheCookie
             cookie = 0;
         }
     }
-}
-
-private:
-
-/// Bidirectional range that traverses a sibling node list
-struct SgSiblingNodeRange(NodeT)
-{
-    Rebindable!NodeT _first;
-    Rebindable!NodeT _last;
-
-    this (NodeT first, NodeT last)
-    {
-        _first = first;
-        _last = last;
-    }
-
-    @property bool empty() { return _first is null; }
-    @property NodeT front() { return _first; }
-    void popFront() {
-        if (_first is _last) {
-            _first = null;
-            _last = null;
-        }
-        else {
-            _first = _first._nextSibling;
-        }
-    }
-
-    @property auto save()
-    {
-        return SgSiblingNodeRange(_first, _last);
-    }
-
-    @property NodeT back() { return _last; }
-    void popBack() {
-        if (_first is _last) {
-            _first = null;
-            _last = null;
-        }
-        else {
-            _last = _last._prevSibling;
-        }
-    }
-}
-
-static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
-static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
-
-
-unittest
-{
-    import std.algorithm : equal;
-
-    auto root = new SgNode;
-    auto c1 = new SgNode;
-    auto c2 = new SgNode;
-    root.name = "root";
-    c1.name = "c1";
-    c2.name = "c2";
-    root.appendChild(c1);
-    root.appendChild(c2);
-
-    assert(c1.parent is root);
-    assert(c2.parent is root);
-    assert(root.firstChild is c1);
-    assert(root.lastChild is c2);
-
-    string[] names;
-    foreach(c; root.children) {
-        names ~= c.name;
-    }
-    assert(equal(names, ["c1", "c2"]));
 }
