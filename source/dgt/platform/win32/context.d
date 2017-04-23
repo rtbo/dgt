@@ -23,8 +23,6 @@ package:
 
 void initWin32Gl()
 {
-    DerelictGL3.load();
-
     immutable attribs = GlAttribs.init;
 
     PIXELFORMATDESCRIPTOR pfd = void;
@@ -47,7 +45,8 @@ void initWin32Gl()
     wglMakeCurrent(dc, glrc);
     scope(exit) wglMakeCurrent(null, null);
 
-    DerelictGL3.reload();
+    immutable glVer = cast(GLVersion)attribs.decimalVersion;
+    DerelictGL3.reload(glVer, glVer);
 
     enforce(WGL_ARB_create_context && WGL_ARB_pixel_format);
 }
@@ -110,7 +109,8 @@ shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
         mutCtx.makeCurrent(window.nativeHandle);
         scope(exit) mutCtx.doneCurrent();
 
-        DerelictGL3.reload();
+        immutable glVer = cast(GLVersion)attribs.decimalVersion;
+        DerelictGL3.reload(glVer, glVer);
 
         return ctx;
     }

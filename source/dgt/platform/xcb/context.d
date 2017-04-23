@@ -71,7 +71,8 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
         );
         glXMakeCurrent(g_display, cast(xcb_window_t)window.nativeHandle, dummyCtx);
 
-        DerelictGL3.reload();
+        immutable glVer = cast(GLVersion)attribs.decimalVersion;
+        DerelictGL3.reload(glVer, glVer);
 
         glXMakeCurrent(g_display, 0, null);
         glXDestroyContext(g_display, dummyCtx);
@@ -108,7 +109,8 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
         mutCtx.makeCurrent(window.nativeHandle);
         scope(exit) mutCtx.doneCurrent();
 
-        DerelictGL3.reload();
+        immutable glVer = cast(GLVersion)attribs.decimalVersion;
+        DerelictGL3.reload(glVer, glVer);
 
         return ctx;
     }
@@ -167,7 +169,7 @@ final class XcbGlContext : GlContext
             return -1;
         }
     }
-    
+
     override @property void swapInterval(int interval)
     {
         Display *dpy = glXGetCurrentDisplay();
