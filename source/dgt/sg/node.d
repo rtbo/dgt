@@ -149,7 +149,7 @@ abstract class SgNode
         import std.format : format;
         import std.range : repeat;
         auto indent = repeat(' ', level*4).array;
-        return format("%s%s { %(%-(%s:%), %) }", indent, this.classinfo.name, properties);
+        return format("%s%s { %(%-(%s:%), %) }", indent, this.className, properties);
     }
 
     // graph
@@ -370,4 +370,10 @@ struct RenderCacheCookie
             cookie = 0;
         }
     }
+}
+
+package @property string className(Object obj)
+{
+    import std.algorithm : splitter;
+    return typeid(obj).toString().splitter('.').back;
 }

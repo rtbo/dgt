@@ -169,7 +169,7 @@ class SgParent : SgNode
         import std.format : format;
         import std.range : repeat;
         auto indent = repeat(' ', level*4).array;
-        string res = format("%s%s { %(%-(%s:%), %) ", indent, this.classinfo.name, properties);
+        string res = format("%s%s { %(%-(%s:%), %) ", indent, this.className, properties);
         if (hasChildren) {
             res ~= format("[\n");
             size_t ind=0;
