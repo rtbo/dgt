@@ -72,7 +72,7 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
         glXMakeCurrent(g_display, cast(xcb_window_t)window.nativeHandle, dummyCtx);
 
         immutable glVer = cast(GLVersion)attribs.decimalVersion;
-        DerelictGL3.reload(glVer, glVer);
+        DerelictGL3.reload(GLVersion.None, glVer);
 
         glXMakeCurrent(g_display, 0, null);
         glXDestroyContext(g_display, dummyCtx);
