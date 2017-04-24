@@ -100,16 +100,12 @@ private:
 
 SgNode textNode(string text, FontRequest font, Paint paint)
 {
-    // FIXME: retrieve metrics from node
-    auto layout = makeRc!TextLayout(text, TextFormat.plain, font);
-    layout.layout();
-    immutable metrics = layout.metrics;
-    immutable topLeft = cast(FVec2)(-metrics.bearing);
-
     auto textNode = new SgText;
     textNode.text = text;
     textNode.font = font;
     textNode.color = (cast(ColorPaint)paint).color;
+    immutable metrics = textNode.metrics;
+    immutable topLeft = cast(FVec2)(-metrics.bearing);
 
     auto ulNode = new SgColorRect;
     ulNode.color = fvec(1, 1, 1, 0.5);

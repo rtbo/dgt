@@ -163,6 +163,7 @@ class Font : RefCounted
 
     override void dispose()
     {
+        logf("unloading font file %s with size %s%s", _filename, _size.value, _size.unit);
         hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
     }

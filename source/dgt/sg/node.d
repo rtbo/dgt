@@ -284,6 +284,7 @@ class SgText : SgNode
     {
         _text = text;
         _renderNode = null;
+        _layout.unload();
         dirtyBounds();
     }
 
@@ -292,6 +293,7 @@ class SgText : SgNode
     {
         _font = font;
         _renderNode = null;
+        _layout.unload();
         dirtyBounds();
     }
 
@@ -302,33 +304,47 @@ class SgText : SgNode
         _renderNode = null;
     }
 
+    @property TextMetrics metrics()
+    {
+        ensureLayout();
+        return _metrics;
+    }
+
     override protected FRect computeBounds()
     {
-        auto layout = makeRc!TextLayout(text, TextFormat.plain, _font);
-        layout.layout();
-        immutable metrics = layout.metrics;
-        immutable topLeft = cast(FVec2)(-metrics.bearing);
-        immutable size = cast(FVec2)metrics.size;
+        ensureLayout();
+        immutable topLeft = cast(FVec2)(-_metrics.bearing);
+        immutable size = cast(FVec2)_metrics.size;
         return FRect(topLeft, FSize(size));
     }
 
     override protected immutable(RenderNode) collectRenderNode()
     {
         if (!_renderNode) {
-            auto layout = makeRc!TextLayout(text, TextFormat.plain, _font);
-            layout.layout();
-            layout.prepareGlyphRuns();
+            ensureLayout();
             _renderNode = new immutable(TextRenderNode)(
-                layout.render(), _color
+                _layout.render(), _color
             );
         }
         return _renderNode;
     }
 
+    private void ensureLayout()
+    {
+        if (!_layout) {
+            _layout = makeRc!TextLayout(_text, TextFormat.plain, _font);
+            _layout.layout();
+            _layout.prepareGlyphRuns();
+            _metrics = _layout.metrics;
+        }
+    }
+
     private string _text;
     private FontRequest _font;
     private FVec4 _color;
-    Rebindable!(immutable(TextRenderNode)) _renderNode;
+    private Rc!TextLayout _layout;
+    private TextMetrics _metrics;
+    private Rebindable!(immutable(TextRenderNode)) _renderNode;
 }
 
 
