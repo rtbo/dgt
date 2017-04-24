@@ -132,14 +132,14 @@ abstract class SgNode
         _name = name;
     }
 
-    string[2][] properties() const
+    string[2][] properties()
     {
         import std.format : format;
         string[2][] props;
         if (name.length) {
             props ~= ["name", format("'%s'", name)];
         }
-        props ~= ["transformedBounds", format("%s", _transformedBounds.val)];
+        props ~= ["transformedBounds", format("%s", transformedBounds)];
         return props;
     }
 
