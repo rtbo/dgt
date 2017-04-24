@@ -43,6 +43,12 @@ struct FontResult
     int faceIndex;
     // todo: build coverage lazily and cache it.
     CodepointSet coverage;
+
+    /// hash suitable to AA key
+    @property size_t hash() const
+    {
+        return hashOf(filename, hashOf(faceIndex, hashOf(size)));
+    }
 }
 
 
@@ -79,6 +85,8 @@ class FontCache : Disposable
 
     private FcConfig* _config;
     private string[] _appFontFiles;
+
+    private Weak!Font[size_t]   _liveCache;
 
     private this()
     {
@@ -206,7 +214,25 @@ class FontCache : Disposable
         return res;
     }
 
-    CodepointSet buildCoverage(FcCharSet* cs)
+    /// Create a new font based on the font result, or fetch it from the cache
+    /// if it was created before.
+    Rc!Font createOrGetFont(in FontResult res)
+    {
+        immutable hash = res.hash;
+        Rc!Font f;
+        Weak!Font wf;
+        auto wfp = hash in _liveCache;
+        if (wfp) wf = *wfp;
+        f = wf.lock();
+        if (!f.loaded) {
+            f = new Font(res);
+            _liveCache[hash] = Weak!Font(f);
+        }
+        return f;
+    }
+
+
+    private CodepointSet buildCoverage(FcCharSet* cs)
     {
         CodepointSet coverage;
         Flag!"included" inSet = No.included;

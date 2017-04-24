@@ -136,7 +136,7 @@ class TextLayout : RefCounted
 
         // only plain text single item support
         _items = [TextItem(
-            _text, makeRc!Font(mf[0]), ImageFormat.a8, 0,
+            _text, FontCache.instance.createOrGetFont(mf[0]), ImageFormat.a8, 0,
         )];
         foreach(ref i; _items)
         {
