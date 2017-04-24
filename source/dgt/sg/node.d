@@ -115,6 +115,12 @@ abstract class SgNode
     /// Local means unaltered by the transform.
     abstract immutable(RenderNode) collectRenderNode();
 
+    /// Requires node to dispose any resource that it would keep.
+    /// This is called at termination, or when a node is removed from the graph.
+    /// Allows to have resource collection that is determined and indenpendent from GC.
+    /// It does not need to be called by application.
+    void disposeResources() {}
+
     @property uint level() const
     {
         Rebindable!(const(SgParent)) p = parent;
@@ -327,6 +333,12 @@ class SgText : SgNode
             );
         }
         return _renderNode;
+    }
+
+    override void disposeResources()
+    {
+        _layout.unload();
+        _renderNode = null;
     }
 
     private void ensureLayout()

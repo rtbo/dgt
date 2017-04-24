@@ -129,6 +129,7 @@ class SgParent : SgNode
             prev._nextSibling = next;
             next._prevSibling = prev;
         }
+        child.disposeResources();
         --_childCount;
     }
 
@@ -161,6 +162,12 @@ class SgParent : SgNode
                     .filter!(rn => rn !is null)
                     .array()
         );
+    }
+
+    override void disposeResources()
+    {
+        import std.algorithm : each;
+        children.each!(c => c.disposeResources());
     }
 
     override string toString()

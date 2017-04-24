@@ -256,6 +256,7 @@ class Window
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
+        if (_root) _root.disposeResources();
         _platformWindow.close();
         _onClosed.fire(this);
         Application.instance.unregisterWindow(this);
