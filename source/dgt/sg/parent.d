@@ -163,18 +163,13 @@ class SgParent : SgNode
         );
     }
 
-    override string typeName() const
-    {
-        return "SgParent";
-    }
-
     override string toString()
     {
         import std.array : array;
         import std.format : format;
         import std.range : repeat;
         auto indent = repeat(' ', level*4).array;
-        string res = format("%s%s { %(%-(%s:%), %) ", indent, typeName, properties);
+        string res = format("%s%s { %(%-(%s:%), %) ", indent, this.classinfo.name, properties);
         if (hasChildren) {
             res ~= format("[\n");
             size_t ind=0;

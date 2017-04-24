@@ -132,11 +132,6 @@ abstract class SgNode
         _name = name;
     }
 
-    string typeName() const
-    {
-        return "SgNode";
-    }
-
     string[2][] properties() const
     {
         import std.format : format;
@@ -144,7 +139,7 @@ abstract class SgNode
         if (name.length) {
             props ~= ["name", format("'%s'", name)];
         }
-        props ~= ["transformedBounds", format("%s", _transformedBounds)];
+        props ~= ["transformedBounds", format("%s", _transformedBounds.val)];
         return props;
     }
 
@@ -154,7 +149,7 @@ abstract class SgNode
         import std.format : format;
         import std.range : repeat;
         auto indent = repeat(' ', level*4).array;
-        return format("%s%s { %(%-(%s:%), %) }", indent, typeName, properties);
+        return format("%s%s { %(%-(%s:%), %) }", indent, this.classinfo.name, properties);
     }
 
     // graph
@@ -220,11 +215,6 @@ class SgColorRect : SgNode
         return new immutable ColorRenderNode(_color, bounds);
     }
 
-    override string typeName() const
-    {
-        return "SgColorRect";
-    }
-
     private FVec4 _color;
     private FRect _rect;
 }
@@ -274,11 +264,6 @@ class SgImage : SgNode
         else {
             return null;
         }
-    }
-
-    override string typeName() const
-    {
-        return "SgImage";
     }
 
 
