@@ -37,13 +37,13 @@ class SgParent : SgNode
         return _lastChild;
     }
 
-    /// A bidirectional range of this nodes children
+    /// A bidirectional range of this node's children
     @property auto children()
     {
         return SgSiblingNodeRange!SgNode(_firstChild, _lastChild);
     }
 
-    /// A bidirectional range of this nodes children
+    /// ditto
     @property auto children() const
     {
         return SgSiblingNodeRange!(const(SgNode))(_firstChild, _lastChild);
