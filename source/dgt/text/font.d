@@ -142,6 +142,7 @@ class Font : RefCounted
         _weight = res.weight;
         _style = res.style;
         _foundry = res.foundry;
+        _cacheHash = res.hash;
 
         logf("loading font file %s with size %s%s", _filename, _size.value, _size.unit);
 
@@ -164,8 +165,11 @@ class Font : RefCounted
     override void dispose()
     {
         logf("unloading font file %s with size %s%s", _filename, _size.value, _size.unit);
+        FontCache.instance.onFontDispose(_cacheHash);
         hb_font_destroy(_hbFont);
         FT_Done_Face(_ftFace);
+        _renderedGlyphs.clear();
+        _runs = [];
     }
 
     /// Retrieve the scaled font metrics, with or without hinting.
@@ -375,6 +379,7 @@ class Font : RefCounted
     private uint[] _runPreparation;
     private immutable(GlyphRun)[] _runs;
     private Rebindable!(immutable(RenderedGlyph))[uint] _renderedGlyphs;
+    private size_t _cacheHash;
 
     // API that follows is to be revised or pruned.
     // used by software rendering, which could probably use the new API

@@ -231,6 +231,10 @@ class FontCache : Disposable
         return f;
     }
 
+    package void onFontDispose(size_t hash)
+    {
+        _liveCache.remove(hash);
+    }
 
     private CodepointSet buildCoverage(FcCharSet* cs)
     {
