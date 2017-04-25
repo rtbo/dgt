@@ -1,4 +1,4 @@
-module dgt.sg.render.pipelines.tex;
+module dgt.sg.render.pipelines.blit;
 
 import dgt.sg.render.pipelines.defs;
 import dgt.math;
@@ -8,21 +8,21 @@ import gfx.device;
 import gfx.foundation.rc;
 import gfx.foundation.typecons;
 
-class TexPipeline : Disposable
+class BlitPipeline : Disposable
 {
     private StateObject _pso;
     private ConstBuffer!MVP _mvpBlk;
     private Encoder _encoder;
 
     alias Vertex = P2T2Vertex;
-    alias Meta = TexMeta;
-    alias StateObject = PipelineState!TexMeta;
+    alias Meta = BlitMeta;
+    alias StateObject = PipelineState!Meta;
     alias Data = StateObject.Data;
 
-    this(CommandBuffer cmdBuf, Option!Blend blend)
+    this(CommandBuffer cmdBuf)
     {
         auto prog = makeRc!Program(ShaderSet.vertexPixel(
-            texVShader, texFShader
+            blitVShader, blitFShader
         ));
 
         _pso = new StateObject(
@@ -30,7 +30,6 @@ class TexPipeline : Disposable
             Rasterizer.fill.withSamples()
         );
         _pso.retain();
-        _pso.outColor.info.blend = blend;
 
         _mvpBlk = new ConstBuffer!MVP(1);
         _mvpBlk.retain();
@@ -56,7 +55,7 @@ class TexPipeline : Disposable
                 Sampler sampler,
                 RenderTargetView!Rgba8 rtv)
     {
-        _encoder.draw!TexMeta(slice, _pso, Data(
+        _encoder.draw!Meta(slice, _pso, Data(
             rc(vbuf), rc(_mvpBlk), rc(srv), rc(sampler), rc(rtv)
         ));
     }
@@ -69,7 +68,7 @@ struct MVP {
     FMat4 mvp;
 }
 
-struct TexMeta
+struct BlitMeta
 {
     VertexInput!P2T2Vertex   input;
 
@@ -86,7 +85,7 @@ struct TexMeta
     ColorOutput!Rgba8           outColor;
 }
 
-enum texVShader = `
+enum blitVShader = `
     #version 330
     in vec2 a_Pos;
     in vec2 a_TexCoord;
@@ -102,37 +101,14 @@ enum texVShader = `
         gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
     }
 `;
-version(LittleEndian)
-{
-    // ImageFormat order is argb, in native order (that is actually bgra)
-    // the framebuffer order is rgba, so some swizzling is needed
-    enum texFShader = `
-        #version 330
+enum blitFShader = `
+    #version 330
 
-        in vec2 v_TexCoord;
-        out vec4 o_Color;
-        uniform sampler2D t_Sampler;
+    in vec2 v_TexCoord;
+    out vec4 o_Color;
+    uniform sampler2D t_Sampler;
 
-        void main() {
-            vec4 sample = texture(t_Sampler, v_TexCoord);
-            o_Color = sample.bgra;
-        }
-    `;
-}
-version(BigEndian)
-{
-    // ImageFormat order is argb, in native order
-    // the framebuffer order is rgba, so a left shift is needed
-    enum texFShader = `
-        #version 330
-
-        in vec2 v_TexCoord;
-        out vec4 o_Color;
-        uniform sampler2D t_Sampler;
-
-        void main() {
-            vec4 sample = texture(t_Sampler, v_TexCoord);
-            o_Color = sample.gbar;
-        }
-    `;
-}
+    void main() {
+        o_Color = texture(t_Sampler, v_TexCoord);
+    }
+`;

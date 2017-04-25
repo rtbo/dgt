@@ -109,6 +109,12 @@ class Renderer
     GlContext               _context;
     Device                  _device;
     Encoder                 _encoder;
+
+    Rc!(Texture2D!Rgba8)            _bufTex;
+    Rc!(RenderTargetView!Rgba8)     _bufRtv;
+    Rc!(ShaderResourceView!Rgba8)   _bufSrv;
+    Rc!Sampler                      _bufSampler;
+
     BuiltinSurface!Rgba8    _surf;
     RenderTargetView!Rgba8  _rtv;
 
@@ -118,6 +124,7 @@ class Renderer
     TexPipeline     _texBlendArgbPipeline;
     TexPipeline     _texBlendArgbPremultPipeline;
     TextPipeline    _textPipeline;
+    BlitPipeline    _blitPipeline;
 
     VertexBuffer!P2Vertex   _solidQuadVBuf;
     VertexBuffer!P2T2Vertex _texQuadVBuf;
@@ -177,6 +184,8 @@ class Renderer
         );
         _textPipeline = new TextPipeline(cmdBuf.obj);
 
+        _blitPipeline = new BlitPipeline(cmdBuf.obj);
+
         auto quadSolidVerts = [
             P2Vertex([0f, 0f]),
             P2Vertex([0f, 1f]),
@@ -219,8 +228,13 @@ class Renderer
             _texBlendArgbPipeline.dispose();
             _texBlendArgbPremultPipeline.dispose();
             _textPipeline.dispose();
+            _blitPipeline.dispose();
             _rtv.release();
             _surf.release();
+            _bufTex.unload();
+            _bufRtv.unload();
+            _bufSrv.unload();
+            _bufSampler.unload();
             _device.release();
             _context.doneCurrent();
         }
@@ -271,18 +285,35 @@ class Renderer
                 log("renderer initialized");
             }
 
+            if (!_bufTex || _bufTex.width != _size.width || _bufTex.height != _size.height) {
+                TexUsageFlags usage = TextureUsage.ShaderResource | TextureUsage.RenderTarget;
+                _bufTex = new Texture2D!Rgba8(usage, 1, cast(ushort)_size.width, cast(ushort)_size.height, []);
+                _bufRtv = _bufTex.viewAsRenderTarget(0, none!ubyte);
+                _bufSrv = _bufTex.viewAsShaderResource(0, 0, newSwizzle());
+                _bufSampler = new Sampler(
+                    _bufSrv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+                );
+            }
+
             immutable vp = cast(Rect!ushort)frame.viewport;
             _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
 
             if (frame.hasClearColor) {
                 auto col = frame.clearColor;
-                _encoder.clear!Rgba8(_rtv, [col.r, col.g, col.b, col.a]);
+                _encoder.clear!Rgba8(_bufRtv, [col.r, col.g, col.b, col.a]);
             }
 
             if (frame.root) {
                 _viewProj = orthoProj(0, vp.width, vp.height, 0, 1, -1); // Y=0 at the top
                 renderNode(frame.root, FMat4.identity);
             }
+
+            // blit from texture to screen
+            immutable vpTr =
+                            translation!float(0f, _size.height, 0f) *
+                            scale!float(_size.width, -_size.height, 1f);
+            _blitPipeline.updateUniforms(transpose(_viewProj * vpTr));
+            _blitPipeline.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), _bufSrv.obj, _bufSampler.obj, _rtv);
 
             _encoder.flush(_device);
             _context.swapBuffers(frame.windowHandle);
@@ -328,7 +359,7 @@ class Renderer
             _solidPipeline : _solidBlendPipeline;
 
         pl.updateUniforms(mvp, color);
-        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), _rtv);
+        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), _bufRtv);
     }
 
     void renderImageNode(immutable(ImageRenderNode) node, in FMat4 model)
@@ -388,7 +419,7 @@ class Renderer
             fvec(rect.topLeft, 0f)
         );
         pl.updateUniforms(transpose(_viewProj * model * rectTr));
-        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _rtv);
+        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _bufRtv);
     }
 
     void renderTextNode(immutable(TextRenderNode) node, in FMat4 model)
@@ -448,7 +479,7 @@ class Renderer
             auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 
             _textPipeline.updateMVP(transpose(_viewProj * model));
-            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _rtv);
+            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _bufRtv);
         }
     }
 }
