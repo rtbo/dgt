@@ -3,6 +3,7 @@ module dgt.sg.parent;
 import dgt.geometry;
 import dgt.sg.node;
 import dgt.sg.render.node;
+import dgt.window;
 
 import std.exception;
 import std.range;
@@ -153,7 +154,7 @@ class SgParent : SgNode
 
     override immutable(RenderNode) collectRenderNode()
     {
-        import std.algorithm : map, filter;
+        import std.algorithm : filter, map;
         import std.array : array;
         if (!_childCount) return null;
         else return new immutable(GroupRenderNode)(
@@ -207,8 +208,11 @@ class SgParent : SgNode
 
         assert(!_prevSibling || _prevSibling._nextSibling is this);
         assert(!_nextSibling || _nextSibling._prevSibling is this);
+
+        assert(!(_parent && _window)); // only root can hold the window ref
     }
 
+    package(dgt) Window _window;
     private size_t _childCount;
     private SgNode _firstChild;
     private SgNode _lastChild;

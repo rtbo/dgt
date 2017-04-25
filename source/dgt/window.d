@@ -284,10 +284,17 @@ class Window
     mixin SignalMixin!("onClosed", Window);
 
 
+    /// The scene graph root attached to this window
     @property inout(SgParent) root() inout { return _root; }
+    /// ditto
     @property void root(SgParent root)
     {
+        if (_root) {
+            _root.disposeResources();
+            _root._window = null;
+        }
         _root = root;
+        _root._window = this;
     }
 
     void handleEvent(WindowEvent wEv)

@@ -9,6 +9,7 @@ import dgt.sg.parent;
 import dgt.sg.render.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
+import dgt.window;
 
 import gfx.foundation.rc;
 
@@ -19,6 +20,27 @@ import std.typecons;
 abstract class SgNode
 {
     this() {}
+
+    /// The window this node is attached to.
+    @property Window window()
+    {
+        return root._window;
+    }
+
+    /// The root of this scene graph
+    @property SgParent root()
+    {
+        if (!_parent) return cast(SgParent)this;
+        SgParent p = _parent;
+        while (p._parent) p = p._parent;
+        return p;
+    }
+
+    /// Whether this node is root
+    @property bool isRoot() const
+    {
+        return _parent is null;
+    }
 
     /// This node's parent.
     @property inout(SgParent) parent() inout
