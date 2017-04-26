@@ -6,7 +6,7 @@ import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.sg.parent;
-import dgt.sg.render.node;
+import dgt.render.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.window;

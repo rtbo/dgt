@@ -1,13 +1,13 @@
 /// Scene graph rendering module
-module dgt.sg.render;
+module dgt.render;
 
 import dgt.context;
 import dgt.geometry;
 import dgt.math;
 import dgt.image;
-import dgt.sg.render.node;
-import dgt.sg.render.frame;
-import dgt.sg.render.pipelines;
+import dgt.render.node;
+import dgt.render.frame;
+import dgt.render.pipelines;
 
 import gfx.foundation.rc;
 import gfx.foundation.util;

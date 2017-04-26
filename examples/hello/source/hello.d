@@ -14,8 +14,8 @@ import dgt.image;
 import dgt.geometry;
 import dgt.sg.node;
 import dgt.sg.group;
-import dgt.sg.render.node;
-import dgt.sg.render.frame;
+import dgt.render.node;
+import dgt.render.frame;
 
 import std.typecons : scoped;
 import std.stdio;

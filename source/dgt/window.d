@@ -12,7 +12,7 @@ import dgt.image;
 import dgt.context;
 import dgt.vg;
 import dgt.math;
-import dgt.sg.render.frame;
+import dgt.render.frame;
 import dgt.sg.parent;
 
 import std.exception;

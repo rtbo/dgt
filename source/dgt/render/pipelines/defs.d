@@ -1,4 +1,4 @@
-module dgt.sg.render.pipelines.defs;
+module dgt.render.pipelines.defs;
 
 import gfx.pipeline.format : R8, Unorm;
 import gfx.pipeline.pso.meta : GfxName;

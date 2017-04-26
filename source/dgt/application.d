@@ -5,8 +5,8 @@ import dgt.context;
 import dgt.eventloop;
 import dgt.platform;
 import dgt.window;
-import dgt.sg.render;
-import dgt.sg.render.frame;
+import dgt.render;
+import dgt.render.frame;
 import gfx.foundation.rc;
 
 import std.experimental.logger;

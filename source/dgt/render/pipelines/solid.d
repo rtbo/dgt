@@ -1,6 +1,6 @@
-module dgt.sg.render.pipelines.solid;
+module dgt.render.pipelines.solid;
 
-import dgt.sg.render.pipelines.defs;
+import dgt.render.pipelines.defs;
 import dgt.math;
 
 import gfx.pipeline;

@@ -2,7 +2,7 @@ module dgt.sg.parent;
 
 import dgt.geometry;
 import dgt.sg.node;
-import dgt.sg.render.node;
+import dgt.render.node;
 import dgt.window;
 
 import std.exception;

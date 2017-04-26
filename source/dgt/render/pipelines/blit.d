@@ -1,6 +1,6 @@
-module dgt.sg.render.pipelines.blit;
+module dgt.render.pipelines.blit;
 
-import dgt.sg.render.pipelines.defs;
+import dgt.render.pipelines.defs;
 import dgt.math;
 
 import gfx.pipeline;
