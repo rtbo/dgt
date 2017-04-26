@@ -1,12 +1,13 @@
 /// Platform abstraction module
 module dgt.platform;
 
-import gfx.foundation.rc;
+import dgt.context;
+import dgt.event;
 import dgt.geometry;
+import dgt.image;
 import dgt.screen;
 import dgt.window;
-import dgt.image;
-import dgt.context;
+import gfx.foundation.rc;
 
 import std.typecons : BitFlags;
 
@@ -24,6 +25,8 @@ interface Platform : Disposable
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
+
+    void collectEvents(void delegate(Event) collector);
     void processEvents();
 }
 

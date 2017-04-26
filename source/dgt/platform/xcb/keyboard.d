@@ -112,7 +112,7 @@ class XcbKeyboard
         xkb_context_unref(_context);
     }
 
-    void processEvent(xcb_key_press_event_t *xcbEv, Window w)
+    void processEvent(xcb_key_press_event_t *xcbEv, Window w, void delegate(Event) collector)
     {
         immutable keycode = xcbEv.detail;
         immutable keysym = xkb_state_key_get_one_sym(_state, keycode);
@@ -142,9 +142,8 @@ class XcbKeyboard
             _mods &= ~mods;
         }
 
-        import std.typecons : scoped;
-        auto ev = scoped!KeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
-        w.handleEvent(ev);
+        auto ev = new KeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
+        collector(ev);
     }
 
 }
