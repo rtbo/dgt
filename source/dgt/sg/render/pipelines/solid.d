@@ -29,7 +29,7 @@ class SolidPipeline : Disposable
 
         _pso = new StateObject(
             prog.obj, Primitive.Triangles,
-            Rasterizer.fill.withCullBack().withSamples()
+            Rasterizer.fill.withSamples()
         );
         _pso.retain();
         _pso.outColor.info.blend = blend;
