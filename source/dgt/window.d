@@ -370,6 +370,14 @@ class Window
         {
             return _platformWindow;
         }
+
+        immutable(RenderFrame) collectFrame()
+        {
+            return new immutable RenderFrame (
+                nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
+                _root ? _root.collectRenderNode() : null
+            );
+        }
     }
 
     private
@@ -385,10 +393,7 @@ class Window
         void handleExpose(ExposeEvent ev)
         {
             if (_root) {
-                RenderThread.instance.frame(new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
-                    _root.collectRenderNode()
-                ));
+                RenderThread.instance.frame(collectFrame);
             }
         }
 
