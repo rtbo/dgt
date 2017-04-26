@@ -46,14 +46,14 @@ void initWin32Gl()
     scope(exit) wglMakeCurrent(null, null);
 
     immutable glVer = cast(GLVersion)attribs.decimalVersion;
-    DerelictGL3.reload(glVer, glVer);
+    DerelictGL3.reload(GLVersion.None, glVer);
 
     enforce(WGL_ARB_create_context && WGL_ARB_pixel_format);
 }
 
 
-shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
-                                   shared(GlContext)sharedCtx, Screen screen)
+GlContext createWin32GlContext(GlAttribs attribs, PlatformWindow window,
+                                   GlContext sharedCtx, Screen screen)
 {
     auto wnd = cast(HWND)window.nativeHandle;
     auto dc = GetDC(wnd);
@@ -99,15 +99,14 @@ shared(GlContext) createWin32GlContext(GlAttribs attribs, PlatformWindow window,
     }
     ctxAttribs ~= 0;
 
-    auto w32glc = cast(shared(Win32GlContext)) sharedCtx;
+    auto w32glc = cast(Win32GlContext) sharedCtx;
     HGLRC sharedGlrc = w32glc ? cast(HGLRC)w32glc._glrc : null;
     auto glrc = wglCreateContextAttribsARB(dc, sharedGlrc, ctxAttribs.ptr);
 
     if (glrc) {
-        auto ctx = new shared(Win32GlContext)(glrc, attribs);
-        auto mutCtx = cast(Win32GlContext)ctx;
-        mutCtx.makeCurrent(window.nativeHandle);
-        scope(exit) mutCtx.doneCurrent();
+        auto ctx = new Win32GlContext(glrc, attribs);
+        ctx.makeCurrent(window.nativeHandle);
+        scope(exit) ctx.doneCurrent();
 
         immutable glVer = cast(GLVersion)attribs.decimalVersion;
         DerelictGL3.reload(glVer, glVer);
@@ -127,8 +126,8 @@ final class Win32GlContext : GlContext
     private HGLRC _glrc;
     private GlAttribs _attribs;
 
-    shared this(HGLRC glrc, GlAttribs attribs) {
-        _glrc = cast(shared(HGLRC))glrc;
+    this(HGLRC glrc, GlAttribs attribs) {
+        _glrc = glrc;
         _attribs = attribs;
     }
 

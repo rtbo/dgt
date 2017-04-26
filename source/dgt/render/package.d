@@ -53,16 +53,18 @@ class RenderThread
         _instance = new RenderThread;
     }
 
-    /// Start a rendering thread that will use the context passed in argument
+    /// Start a rendering thread that will use the context passed in argument.
+    /// The context is assumed "moved" to the render thread and should not be
+    /// used anymore.
     /// Returns the Tid of the rendering thread.
-    package(dgt) void start(shared(GlContext) context)
+    package(dgt) void start(GlContext context)
     {
         assert(!_running);
         trace("starting rendering loop");
-        _tid = spawn(&renderLoop, context, thisTid);
+        _tid = spawn(&renderLoop, cast(shared(GlContext))context, thisTid);
     }
 
-    /// Render a frame with rendering thread identified with renderLoopTid.
+    /// Render a frame in the rendering thread.
     package(dgt) bool frame(immutable(RenderFrame) frame)
     {
         import core.time : dur;
@@ -72,7 +74,7 @@ class RenderThread
         send(_tid, frame);
         return true;
     }
-    /// End the rendering thread identified by renderLoopTid.
+    /// End the rendering thread.
     /// The native handle is used to make a context current in order to
     /// free held graphics resources.
     package(dgt) void stop(size_t nativeHandle)
@@ -247,31 +249,31 @@ class Renderer
 
     void finalize(size_t nativeHandle)
     {
-        synchronized(_context) {
-            _context.makeCurrent(nativeHandle);
-            foreach(oc; _objectCache) {
-                oc.dispose();
-            }
-            _encoder = Encoder.init;
-            _texQuadVBuf.release();
-            _solidQuadVBuf.release();
-            _quadIBuf.release();
-            _solidPipeline.dispose();
-            _solidBlendPipeline.dispose();
-            _texPipeline.dispose();
-            _texBlendArgbPipeline.dispose();
-            _texBlendArgbPremultPipeline.dispose();
-            _textPipeline.dispose();
-            _blitPipeline.dispose();
-            _rtv.release();
-            _surf.release();
-            _bufTex.unload();
-            _bufRtv.unload();
-            _bufSrv.unload();
-            _bufSampler.unload();
-            _device.release();
-            _context.doneCurrent();
+        _context.makeCurrent(nativeHandle);
+
+        foreach(oc; _objectCache) {
+            oc.dispose();
         }
+        _encoder = Encoder.init;
+        _texQuadVBuf.release();
+        _solidQuadVBuf.release();
+        _quadIBuf.release();
+        _solidPipeline.dispose();
+        _solidBlendPipeline.dispose();
+        _texPipeline.dispose();
+        _texBlendArgbPipeline.dispose();
+        _texBlendArgbPremultPipeline.dispose();
+        _textPipeline.dispose();
+        _blitPipeline.dispose();
+        _rtv.release();
+        _surf.release();
+        _bufTex.unload();
+        _bufRtv.unload();
+        _bufSrv.unload();
+        _bufSampler.unload();
+        _device.release();
+
+        _context.doneCurrent();
         _context.dispose();
     }
 
@@ -293,65 +295,62 @@ class Renderer
 
     void renderFrame(immutable(RenderFrame) frame)
     {
-        synchronized(_context)
-        {
-            if (!_context.makeCurrent(frame.windowHandle)) {
-                error("could not make rendering context current!");
-                return;
-            }
-            scope(exit) _context.doneCurrent();
-
-            foreach(cookie; _cachePruneQueue) {
-                auto d = cookie in _objectCache;
-                if (d) {
-                    (*d).dispose();
-                    _objectCache.remove(cookie);
-                }
-                else {
-                    warning("invalid cookie given for cache prune");
-                }
-            }
-            _cachePruneQueue.length = 0;
-
-            _size = frame.viewport.size;
-            if (!_device) {
-                initialize();
-                log("renderer initialized");
-            }
-
-            if (!_bufTex || _bufTex.width != _size.width || _bufTex.height != _size.height) {
-                TexUsageFlags usage = TextureUsage.ShaderResource | TextureUsage.RenderTarget;
-                _bufTex = new Texture2D!Rgba8(usage, 1, cast(ushort)_size.width, cast(ushort)_size.height, []);
-                _bufRtv = _bufTex.viewAsRenderTarget(0, none!ubyte);
-                _bufSrv = _bufTex.viewAsShaderResource(0, 0, newSwizzle());
-                _bufSampler = new Sampler(
-                    _bufSrv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
-                );
-            }
-
-            immutable vp = cast(Rect!ushort)frame.viewport;
-            _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
-
-            if (frame.hasClearColor) {
-                auto col = frame.clearColor;
-                _encoder.clear!Rgba8(_bufRtv, [col.r, col.g, col.b, col.a]);
-            }
-
-            if (frame.root) {
-                _viewProj = orthoProj(0, vp.width, vp.height, 0, 1, -1); // Y=0 at the top
-                renderNode(frame.root, FMat4.identity);
-            }
-
-            // blit from texture to screen
-            immutable vpTr =
-                            translation!float(0f, _size.height, 0f) *
-                            scale!float(_size.width, -_size.height, 1f);
-            _blitPipeline.updateUniforms(transpose(_viewProj * vpTr));
-            _blitPipeline.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), _bufSrv.obj, _bufSampler.obj, _rtv);
-
-            _encoder.flush(_device);
-            _context.swapBuffers(frame.windowHandle);
+        if (!_context.makeCurrent(frame.windowHandle)) {
+            error("could not make rendering context current!");
+            return;
         }
+        scope(exit) _context.doneCurrent();
+
+        foreach(cookie; _cachePruneQueue) {
+            auto d = cookie in _objectCache;
+            if (d) {
+                (*d).dispose();
+                _objectCache.remove(cookie);
+            }
+            else {
+                warning("invalid cookie given for cache prune");
+            }
+        }
+        _cachePruneQueue.length = 0;
+
+        _size = frame.viewport.size;
+        if (!_device) {
+            initialize();
+            log("renderer initialized");
+        }
+
+        if (!_bufTex || _bufTex.width != _size.width || _bufTex.height != _size.height) {
+            TexUsageFlags usage = TextureUsage.ShaderResource | TextureUsage.RenderTarget;
+            _bufTex = new Texture2D!Rgba8(usage, 1, cast(ushort)_size.width, cast(ushort)_size.height, []);
+            _bufRtv = _bufTex.viewAsRenderTarget(0, none!ubyte);
+            _bufSrv = _bufTex.viewAsShaderResource(0, 0, newSwizzle());
+            _bufSampler = new Sampler(
+                _bufSrv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+            );
+        }
+
+        immutable vp = cast(Rect!ushort)frame.viewport;
+        _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
+
+        if (frame.hasClearColor) {
+            auto col = frame.clearColor;
+            _encoder.clear!Rgba8(_bufRtv, [col.r, col.g, col.b, col.a]);
+        }
+
+        if (frame.root) {
+            _viewProj = orthoProj(0, vp.width, vp.height, 0, 1, -1); // Y=0 at the top
+            renderNode(frame.root, FMat4.identity);
+        }
+
+        // blit from texture to screen
+        immutable vpTr =
+                        translation!float(0f, _size.height, 0f) *
+                        scale!float(_size.width, -_size.height, 1f);
+        _blitPipeline.updateUniforms(transpose(_viewProj * vpTr));
+        _blitPipeline.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), _bufSrv.obj, _bufSampler.obj, _rtv);
+
+        _encoder.flush(_device);
+        _context.swapBuffers(frame.windowHandle);
     }
 
     void renderNode(immutable(RenderNode) node, in FMat4 model)

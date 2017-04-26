@@ -126,9 +126,9 @@ class XcbPlatform : Platform
         return "xcb";
     }
 
-    override shared(GlContext) createGlContext(
+    override GlContext createGlContext(
                 GlAttribs attribs, PlatformWindow window,
-                shared(GlContext) sharedCtx, Screen screen)
+                GlContext sharedCtx, Screen screen)
     {
         return createXcbGlContext(attribs, window, sharedCtx, screen);
     }

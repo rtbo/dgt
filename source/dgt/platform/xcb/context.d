@@ -59,8 +59,8 @@ XVisualInfo* getXlibVisualInfo(Display* dpy, int screenNum, in GlAttribs attribs
     return glXGetVisualFromFBConfig(dpy, fbc);
 }
 
-shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
-                                     shared(GlContext)sharedCtx, Screen screen)
+GlContext createXcbGlContext(GlAttribs attribs, PlatformWindow window,
+                                     GlContext sharedCtx, Screen screen)
 {
     auto screenNum = screen ? screen.num() : XDefaultScreen(g_display);
     auto fbc = getGlxFBConfig(g_display, screenNum, attribs);
@@ -95,7 +95,7 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
     }
     ctxAttribs ~= 0;
 
-    auto xcbCtx = cast(shared(XcbGlContext))sharedCtx;
+    auto xcbCtx = cast(XcbGlContext)sharedCtx;
     auto shCtx = xcbCtx ? xcbCtx._context : null;
     auto glxCtx = enforce(
         glXCreateContextAttribsARB(g_display, fbc, cast(GLXContext)shCtx, 1, &ctxAttribs[0])
@@ -104,10 +104,9 @@ shared(GlContext) createXcbGlContext(GlAttribs attribs, PlatformWindow window,
     XSync(g_display, false);
 
     if (glxCtx) {
-        auto ctx = new shared(XcbGlContext)(glxCtx, attribs);
-        auto mutCtx = cast(XcbGlContext)ctx;
-        mutCtx.makeCurrent(window.nativeHandle);
-        scope(exit) mutCtx.doneCurrent();
+        auto ctx = new XcbGlContext(glxCtx, attribs);
+        ctx.makeCurrent(window.nativeHandle);
+        scope(exit) ctx.doneCurrent();
 
         immutable glVer = cast(GLVersion)attribs.decimalVersion;
         DerelictGL3.reload(glVer, glVer);
@@ -126,9 +125,9 @@ final class XcbGlContext : GlContext
     private GLXContext _context;
     private GlAttribs _attribs;
 
-    shared this (GLXContext context, GlAttribs attribs)
+    this (GLXContext context, GlAttribs attribs)
     {
-        _context = cast(shared(GLXContext))context;
+        _context = context;
         _attribs = attribs;
     }
 

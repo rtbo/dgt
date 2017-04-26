@@ -49,9 +49,9 @@ class Win32Platform : Platform
         return "win32";
     }
 
-    override shared(GlContext) createGlContext(
+    override GlContext createGlContext(
                 GlAttribs attribs, PlatformWindow window,
-                shared(GlContext) sharedCtx, Screen screen)
+                GlContext sharedCtx, Screen screen)
     {
         return createWin32GlContext(attribs, window, sharedCtx, screen);
     }

@@ -17,9 +17,9 @@ interface Platform : Disposable
 
     @property string name() const;
 
-    shared(GlContext) createGlContext(
+    GlContext createGlContext(
                 GlAttribs attribs, PlatformWindow window,
-                shared(GlContext) sharedCtx, Screen screen);
+                GlContext sharedCtx, Screen screen);
 
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;

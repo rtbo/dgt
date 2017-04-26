@@ -99,8 +99,8 @@ interface GlContext : Disposable
     void swapBuffers(size_t nativeHandle);
 }
 
-shared(GlContext) createGlContext(GlAttribs attribs,
-                                  shared(GlContext) sharedCtx=null,
+GlContext createGlContext(GlAttribs attribs,
+                                  GlContext sharedCtx=null,
                                   Screen screen=null)
 {
     return createGlContext(
@@ -108,8 +108,8 @@ shared(GlContext) createGlContext(GlAttribs attribs,
     );
 }
 
-shared(GlContext) createGlContext(Window window=null,
-                                  shared(GlContext) sharedCtx=null,
+GlContext createGlContext(Window window=null,
+                                  GlContext sharedCtx=null,
                                   Screen screen=null)
 {
     return createGlContext(
@@ -121,8 +121,8 @@ shared(GlContext) createGlContext(Window window=null,
 
 private:
 
-shared(GlContext) createGlContext(GlAttribs attribs, Window window,
-                                  shared(GlContext) sharedCtx, Screen screen)
+GlContext createGlContext(GlAttribs attribs, Window window,
+                                  GlContext sharedCtx, Screen screen)
 {
     Window dummy;
     if (!window) {
