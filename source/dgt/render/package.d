@@ -176,7 +176,6 @@ class Renderer
     this(GlContext context)
     {
         _context = context;
-        _context.swapInterval = 1;
     }
 
     void initialize() {
@@ -300,6 +299,8 @@ class Renderer
             return;
         }
         scope(exit) _context.doneCurrent();
+
+        _context.swapInterval = 1;
 
         foreach(cookie; _cachePruneQueue) {
             auto d = cookie in _objectCache;
