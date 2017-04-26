@@ -28,6 +28,7 @@ interface Platform : Disposable
 
     void collectEvents(void delegate(Event) collector);
     void processEvents();
+    void wait();
 }
 
 /// OS specific window interface.

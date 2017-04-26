@@ -2,6 +2,7 @@ module dgt.eventloop;
 
 import dgt.application;
 import dgt.event;
+import dgt.render;
 import dgt.window;
 
 import std.experimental.logger;
@@ -21,7 +22,17 @@ class EventLoop
             //  - if need rendering or need animation tick:
             //      - rendering (possibly only to swap buffers)
             //  - wait (for input, animation tick, or timer)
-            Application.instance.platform.processEvents();
+            Application.instance.platform.collectEvents(
+                (Event ev) {
+                    auto wEv = cast(WindowEvent)ev;
+                    if (wEv) wEv.window.handleEvent(wEv);
+                }
+            );
+
+            RenderThread.instance.frame(_windows[0].collectFrame());
+
+            Application.instance.platform.wait();
+
         }
         return _exitCode;
     }

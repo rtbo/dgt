@@ -87,6 +87,8 @@ class XcbPlatform : Platform
         Screen[] _screens;
         XcbScreen[] _xcbScreens;
         XcbWindow[xcb_window_t] _windows;
+        int _xcbFd;
+        int _notifyFd;
     }
 
     /// Builds an XcbPlatform
@@ -112,6 +114,8 @@ class XcbPlatform : Platform
         _kbd = new XcbKeyboard(g_connection, _xkbFirstEv);
         initializeDRI();
         initializeVG();
+        _xcbFd = xcb_get_file_descriptor(g_connection);
+        _notifyFd = 0;
     }
 
     override void dispose()
@@ -172,6 +176,18 @@ class XcbPlatform : Platform
                 wEv.window.handleEvent(wEv);
             }
         });
+    }
+
+    override void wait()
+    {
+        import core.sys.posix.poll;
+
+        pollfd[2] fds;
+        fds[0].fd = _xcbFd;
+        fds[0].events = POLLIN;
+        fds[1].fd = -1;
+
+        poll(fds.ptr, 2, -1);
     }
 
     private void handleEvent(xcb_generic_event_t* e, void delegate(Event) collector)

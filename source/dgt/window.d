@@ -393,7 +393,7 @@ class Window
         void handleExpose(ExposeEvent ev)
         {
             if (_root) {
-                RenderThread.instance.frame(collectFrame);
+                //RenderThread.instance.frame(collectFrame);
             }
         }
 
