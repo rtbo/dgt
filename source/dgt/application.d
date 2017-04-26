@@ -4,8 +4,8 @@ module dgt.application;
 import dgt.context;
 import dgt.eventloop;
 import dgt.platform;
-import dgt.window;
 import dgt.render;
+import dgt.window;
 import gfx.foundation.rc;
 
 import std.experimental.logger;
@@ -90,36 +90,12 @@ class Application : EventLoop, Disposable
         log("ending initialization");
     }
 
-    package void registerWindow(Window w)
-    {
-        import std.algorithm : canFind;
-        assert(!_windows.canFind(w), "tentative to register registered window");
-        logf(`register window: 0x%08x "%s"`, cast(void*)w, w.title);
-        _windows ~= w;
-    }
-
-    package void unregisterWindow(Window w)
-    {
-        import std.algorithm : canFind, remove, SwapStrategy;
-        assert(_windows.canFind(w), "tentative to unregister unregistered window");
-        _windows = _windows.remove!(win => win is w, SwapStrategy.unstable)();
-        logf(`unregister window: 0x%08x "%s"`, cast(void*)w, w.title);
-
-        // do not exit for a dummy window (they can be created and closed before event loop starts)
-        if (w.flags & WindowFlags.dummy) return;
-
-        if (!_windows.length && !_exitFlag)
-        {
-            logf("last window exit!");
-            exit(0);
-        }
-    }
 
     private void initializeGfx()
     {
         Window window;
         Window dummy;
-        foreach (w; _windows) {
+        foreach (w; windows) {
             if (w.platformWindow.created) {
                 window = w;
                 break;
@@ -154,7 +130,6 @@ class Application : EventLoop, Disposable
     private Platform _platform;
     private bool _exitFlag;
     private int _exitCode;
-    private Window[] _windows;
 
     static
     {
