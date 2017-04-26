@@ -6,11 +6,9 @@ import dgt.eventloop;
 import dgt.platform;
 import dgt.window;
 import dgt.render;
-import dgt.render.frame;
 import gfx.foundation.rc;
 
 import std.experimental.logger;
-import std.concurrency : Tid;
 
 /// Singleton class that must be built by the client application
 class Application : EventLoop, Disposable
@@ -41,33 +39,11 @@ class Application : EventLoop, Disposable
     /// Enter main event processing loop
     override int loop()
     {
-        assert(!_gfxRunning);
+        assert(!RenderThread.instance.running);
         initializeGfx();
         scope(exit) finalizeGfx();
 
         return EventLoop.loop();
-    }
-
-    void renderFrame(immutable(RenderFrame) frame)
-    {
-        assert(_gfxRunning);
-        .renderFrame(_renderTid, frame);
-    }
-
-    void deleteRenderCache(in ulong cookie)
-    {
-        assert(_gfxRunning);
-        .deleteRenderCache(_renderTid, cookie);
-    }
-
-    /// Get a new valid cookie for caching render data
-    ulong nextRenderCacheCookie()
-    {
-        if (_renderCacheCookie == ulong.max) {
-            error("Render cache cookie overflow!");
-            return 0;
-        }
-        return ++_renderCacheCookie;
     }
 
 
@@ -109,6 +85,7 @@ class Application : EventLoop, Disposable
             import dgt.text.fontcache : FontCache;
             FontEngine.initialize();
             FontCache.initialize();
+            RenderThread.initialize();
         }
         log("ending initialization");
     }
@@ -154,9 +131,7 @@ class Application : EventLoop, Disposable
             window = dummy;
         }
 
-        shared ctx = createGlContext(window);
-        _renderTid = startRenderLoop(ctx);
-        _gfxRunning = true;
+        RenderThread.instance.start(createGlContext(window));
 
         if (dummy) {
             dummy.close();
@@ -171,8 +146,7 @@ class Application : EventLoop, Disposable
             dummy.show();
             window = dummy;
         }
-        finalizeRenderLoop(_renderTid, window.nativeHandle);
-        _gfxRunning = false;
+        RenderThread.instance.stop(window.nativeHandle);
 
         if (dummy) dummy.close();
     }
@@ -181,10 +155,6 @@ class Application : EventLoop, Disposable
     private bool _exitFlag;
     private int _exitCode;
     private Window[] _windows;
-
-    ulong _renderCacheCookie;
-    Tid _renderTid;
-    bool _gfxRunning;
 
     static
     {

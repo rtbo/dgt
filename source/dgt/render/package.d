@@ -1,64 +1,98 @@
-/// Scene graph rendering module
+/// rendering thread management
 module dgt.render;
 
 import dgt.context;
 import dgt.geometry;
-import dgt.math;
 import dgt.image;
-import dgt.render.node;
+import dgt.math;
 import dgt.render.frame;
+import dgt.render.node;
 import dgt.render.pipelines;
 
-import gfx.foundation.rc;
-import gfx.foundation.util;
-import gfx.foundation.typecons;
-import gfx.pipeline;
 import gfx.device;
 import gfx.device.gl3;
+import gfx.foundation.rc;
+import gfx.foundation.typecons;
+import gfx.foundation.util;
+import gfx.pipeline;
 
 import std.concurrency;
 import std.exception;
 import std.experimental.logger;
 
-/// Start a rendering thread that will use the context passed in argument
-/// Returns the Tid of the rendering thread.
-Tid startRenderLoop(shared(GlContext) context)
+/// Interface to the render thread
+class RenderThread
 {
-    trace("starting rendering loop");
-    return spawn(&renderLoop, context, thisTid);
-}
-
-/// Render a frame with rendering thread identified with renderLoopTid.
-bool renderFrame(Tid renderLoopTid, immutable(RenderFrame) frame)
-{
-    import core.time : dur;
-    if (!receiveTimeout(dur!"msecs"(15), (ReadyToRender rr){})) {
-        return false;
+    static RenderThread instance()
+    {
+        return _instance;
     }
-    send(renderLoopTid, frame);
-    return true;
-}
 
-/// Instruct the render thread to delete a cached render data;
-void deleteRenderCache(Tid renderLoopTid, in ulong cookie)
-{
-    send(renderLoopTid, DeleteCache(cookie));
-}
+    @property bool running() const { return _running; }
 
-/// End the rendering thread identified by renderLoopTid.
-/// The native handle is used to make a context current in order to
-/// free held graphics resources.
-void finalizeRenderLoop(Tid renderLoopTid, size_t nativeHandle)
-{
-    import core.time : dur;
-    trace("terminating render loop");
-    prioritySend(renderLoopTid, Finalize(nativeHandle));
-    if (!receiveTimeout(dur!"msecs"(100), (Finalized f) {})) {
-        error("no proper termination of renderer!");
+
+    /// Instruct the render thread to delete a cached render data;
+    void deleteCache(in ulong cookie)
+    {
+        send(_tid, DeleteCache(cookie));
     }
+
+    /// Get a new valid cookie for caching render data
+    ulong nextCacheCookie()
+    {
+        if (_cacheCookie == ulong.max) {
+            error("Render cache cookie overflow!");
+            return 0;
+        }
+        return ++_cacheCookie;
+    }
+
+    package(dgt) this() {}
+    package(dgt) static void initialize()
+    {
+        _instance = new RenderThread;
+    }
+
+    /// Start a rendering thread that will use the context passed in argument
+    /// Returns the Tid of the rendering thread.
+    package(dgt) void start(shared(GlContext) context)
+    {
+        assert(!_running);
+        trace("starting rendering loop");
+        _tid = spawn(&renderLoop, context, thisTid);
+    }
+
+    /// Render a frame with rendering thread identified with renderLoopTid.
+    package(dgt) bool frame(immutable(RenderFrame) frame)
+    {
+        import core.time : dur;
+        if (!receiveTimeout(dur!"msecs"(15), (ReadyToRender rr){})) {
+            return false;
+        }
+        send(_tid, frame);
+        return true;
+    }
+    /// End the rendering thread identified by renderLoopTid.
+    /// The native handle is used to make a context current in order to
+    /// free held graphics resources.
+    package(dgt) void stop(size_t nativeHandle)
+    {
+        import core.time : dur;
+        trace("terminating render loop");
+        prioritySend(_tid, Finalize(nativeHandle));
+        if (!receiveTimeout(dur!"msecs"(100), (Finalized f) {})) {
+            error("no proper termination of renderer!");
+        }
+    }
+
+    private Tid _tid;
+    private ulong _cacheCookie;
+    private bool _running;
 }
 
 private:
+
+__gshared RenderThread _instance;
 
 struct ReadyToRender {}
 struct Finalize {

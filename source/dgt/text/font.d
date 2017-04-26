@@ -310,8 +310,8 @@ class Font : RefCounted
         // img.saveToFile(format("run%s.png", num++));
 
         // storing results
-        import dgt.application : Application;
-        immutable cookie = Application.instance.nextRenderCacheCookie();
+        import dgt.render : RenderThread;
+        immutable cookie = RenderThread.instance.nextCacheCookie();
         immutable iimg = assumeUnique(img);
         immutable(RenderedGlyph)[] glyphs;
         foreach(g; gs) {

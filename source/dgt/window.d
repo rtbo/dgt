@@ -12,6 +12,7 @@ import dgt.image;
 import dgt.context;
 import dgt.vg;
 import dgt.math;
+import dgt.render;
 import dgt.render.frame;
 import dgt.sg.parent;
 
@@ -384,7 +385,7 @@ class Window
         void handleExpose(ExposeEvent ev)
         {
             if (_root) {
-                Application.instance.renderFrame(new immutable RenderFrame (
+                RenderThread.instance.frame(new immutable RenderFrame (
                     nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
                     _root.collectRenderNode()
                 ));

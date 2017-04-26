@@ -1,11 +1,11 @@
 /// Scene graph module
 module dgt.sg.node;
 
-import dgt.application;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.sg.parent;
+import dgt.render;
 import dgt.render.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
@@ -389,10 +389,10 @@ struct RenderCacheCookie
     ulong collectCookie(in bool dynamic)
     {
         if (!dynamic && !cookie) {
-            cookie = Application.instance.nextRenderCacheCookie();
+            cookie = RenderThread.instance.nextCacheCookie();
         }
         else if (dynamic && cookie) {
-            Application.instance.deleteRenderCache(cookie);
+            RenderThread.instance.deleteCache(cookie);
             cookie = 0;
         }
         return cookie;
@@ -400,7 +400,7 @@ struct RenderCacheCookie
     void dirty(in bool dynamic)
     {
         if (cookie) {
-            Application.instance.deleteRenderCache(cookie);
+            RenderThread.instance.deleteCache(cookie);
             cookie = 0;
         }
     }
