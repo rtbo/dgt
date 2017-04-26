@@ -59,13 +59,15 @@ XVisualInfo* getXlibVisualInfo(Display* dpy, int screenNum, in GlAttribs attribs
     return glXGetVisualFromFBConfig(dpy, fbc);
 }
 
+
+
 GlContext createXcbGlContext(GlAttribs attribs, PlatformWindow window,
                                      GlContext sharedCtx, Screen screen)
 {
     auto screenNum = screen ? screen.num() : XDefaultScreen(g_display);
     auto fbc = getGlxFBConfig(g_display, screenNum, attribs);
 
-    if (!glXCreateContextAttribsARB) {
+    if (!GLX_ARB_create_context) {
         auto dummyCtx = enforce(
             glXCreateNewContext(g_display, fbc, GLX_RGBA_TYPE, null, true)
         );
@@ -111,6 +113,10 @@ GlContext createXcbGlContext(GlAttribs attribs, PlatformWindow window,
         immutable glVer = cast(GLVersion)attribs.decimalVersion;
         DerelictGL3.reload(glVer, glVer);
 
+        enforce(glXGetProcAddress || glXGetProcAddressARB);
+        loadSwapControlMESA(screenNum);
+        enforce(GLX_EXT_swap_control || GLX_SGI_swap_control || GLX_MESA_swap_control);
+
         return ctx;
     }
     else {
@@ -120,10 +126,48 @@ GlContext createXcbGlContext(GlAttribs attribs, PlatformWindow window,
 
 private:
 
+extern(C) nothrow @nogc {
+    alias da_glXGetSwapIntervalMESA = int function();
+    alias da_glXSwapIntervalMESA = int function(uint);
+}
+
+__gshared {
+    da_glXGetSwapIntervalMESA glXGetSwapIntervalMESA;
+    da_glXSwapIntervalMESA glXSwapIntervalMESA;
+    bool GLX_MESA_swap_control;
+}
+
+void loadSwapControlMESA(int screenNum)
+{
+    import std.algorithm : canFind, splitter;
+    import std.string : fromStringz;
+
+    void* get(const(char)*name) {
+        if (glXGetProcAddress) {
+            return glXGetProcAddress(name);
+        }
+        else if (glXGetProcAddressARB) {
+            return glXGetProcAddressARB(cast(const(ubyte)*)name);
+        }
+        else {
+            assert(false);
+        }
+    }
+
+    string exts = glXQueryExtensionsString(g_display, screenNum).fromStringz.idup;
+    if (exts.splitter(" ").canFind("GLX_MESA_swap_control")) {
+        glXGetSwapIntervalMESA = cast(da_glXGetSwapIntervalMESA)get("glXGetSwapIntervalMESA");
+        glXSwapIntervalMESA = cast(da_glXSwapIntervalMESA)get("glXSwapIntervalMESA");
+
+        GLX_MESA_swap_control = glXGetSwapIntervalMESA && glXSwapIntervalMESA;
+    }
+}
+
 final class XcbGlContext : GlContext
 {
     private GLXContext _context;
     private GlAttribs _attribs;
+    private bool _current;
 
     this (GLXContext context, GlAttribs attribs)
     {
@@ -145,40 +189,64 @@ final class XcbGlContext : GlContext
     override bool makeCurrent(size_t nativeHandle)
     {
         auto xWin = cast(xcb_window_t)nativeHandle;
-        return glXMakeCurrent(g_display, xWin, _context) != 0;
+        _current = glXMakeCurrent(g_display, xWin, _context) != 0;
+        return _current;
     }
 
     override void doneCurrent()
     {
         glXMakeCurrent(g_display, 0, null);
+        _current = false;
+    }
+
+    override @property bool current() const
+    {
+        return _current;
     }
 
     override @property int swapInterval()
     {
-        Display *dpy = glXGetCurrentDisplay();
-        GLXDrawable drawable = glXGetCurrentDrawable();
-        uint swap;
+        if (GLX_EXT_swap_control) {
+            Display *dpy = glXGetCurrentDisplay();
+            GLXDrawable drawable = glXGetCurrentDrawable();
+            uint swap;
 
-        if (drawable) {
-            glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
-            return swap;
+            if (drawable) {
+                glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
+                return swap;
+            }
+            else {
+                warningf("could not get glx drawable to get swap interval");
+                return -1;
+            }
+
         }
-        else {
-            warningf("could not get glx drawable to get swap interval");
-            return -1;
+        else if (GLX_MESA_swap_control) {
+            return glXGetSwapIntervalMESA();
         }
+        return -1;
     }
 
     override @property void swapInterval(int interval)
     {
-        Display *dpy = glXGetCurrentDisplay();
-        GLXDrawable drawable = glXGetCurrentDrawable();
+        if (GLX_EXT_swap_control) {
+            assert(GLX_EXT_swap_control);
+            Display *dpy = glXGetCurrentDisplay();
+            GLXDrawable drawable = glXGetCurrentDrawable();
 
-        if (drawable) {
-            glXSwapIntervalEXT(dpy, drawable, interval);
+            if (drawable) {
+                glXSwapIntervalEXT(dpy, drawable, interval);
+            }
+            else {
+                warningf("could not get glx drawable to set swap interval");
+            }
+        }
+        else if (GLX_SGI_swap_control) {
+            glXSwapIntervalSGI(interval);
         }
         else {
-            warningf("could not get glx drawable to set swap interval");
+            assert(GLX_MESA_swap_control);
+            glXSwapIntervalMESA(interval);
         }
     }
 

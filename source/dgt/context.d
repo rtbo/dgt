@@ -92,11 +92,21 @@ struct GlAttribs
 interface GlContext : Disposable
 {
     @property GlAttribs attribs() const;
+
     bool makeCurrent(size_t nativeHandle);
+
     void doneCurrent();
-    @property int swapInterval();
-    @property void swapInterval(int interval);
-    void swapBuffers(size_t nativeHandle);
+
+    @property bool current() const;
+
+    @property int swapInterval()
+    in { assert(current); }
+
+    @property void swapInterval(int interval)
+    in { assert(current); }
+
+    void swapBuffers(size_t nativeHandle)
+    in { assert(current); }
 }
 
 GlContext createGlContext(GlAttribs attribs,
