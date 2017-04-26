@@ -105,7 +105,7 @@ class TextLayout : RefCounted
         _text = text;
         _format = format;
         _matchedFonts = FontCache.instance.requestFont(font);
-        enforce(_matchedFonts.length, "Text layout could not match any font");
+        enforce(_matchedFonts.length, "Text layout could not match any font for '"~text~"'");
     }
 
     override void dispose()
