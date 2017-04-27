@@ -23,6 +23,8 @@ class EventLoop
             //  - if need rendering or need animation tick:
             //      - rendering (possibly only to swap buffers)
             //  - wait (for input, animation tick, or timer)
+
+            immutable waitCode = Application.platform.waitFor(Wait.all);
             Application.instance.platform.collectEvents(
                 (Event ev) {
                     auto wEv = cast(WindowEvent)ev;
@@ -30,12 +32,10 @@ class EventLoop
                 }
             );
 
-            if (_windows.length) {
+            if (!_exitFlag && _windows.length && (waitCode & Wait.vsync))
+            {
                 RenderThread.instance.frame(_windows[0].collectFrame());
             }
-
-            if (!_exitFlag)
-                Application.instance.platform.waitFor(Wait.all);
         }
         return _exitCode;
     }

@@ -1,6 +1,7 @@
 /// rendering thread management
 module dgt.render;
 
+import dgt.application;
 import dgt.context;
 import dgt.geometry;
 import dgt.image;
@@ -117,6 +118,7 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
             receive(
                 (immutable(RenderFrame) frame) {
                     renderer.renderFrame(frame);
+                    Application.platform.vsync();
                 },
                 (DeleteCache dc) {
                     renderer.deleteCache(dc.cookie);
