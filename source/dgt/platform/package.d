@@ -11,6 +11,17 @@ import gfx.foundation.rc;
 
 import std.typecons : BitFlags;
 
+/// Kind of event to wait for
+enum Wait
+{
+    none = 0,
+    input = 1,
+    vsync = 2,
+    timer = 4,
+
+    all = input | vsync | timer
+}
+
 /// Platform singleton. Entry point to operating system specific code.
 interface Platform : Disposable
 {
@@ -28,7 +39,8 @@ interface Platform : Disposable
 
     void collectEvents(void delegate(Event) collector);
     void processEvents();
-    void wait();
+    Wait waitFor(Wait flags);
+    void vsync();
 }
 
 /// OS specific window interface.

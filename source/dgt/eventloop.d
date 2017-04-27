@@ -4,6 +4,7 @@ import dgt.application;
 import dgt.event;
 import dgt.render;
 import dgt.window;
+import dgt.platform;
 
 import std.experimental.logger;
 
@@ -29,9 +30,10 @@ class EventLoop
                 }
             );
 
-            RenderThread.instance.frame(_windows[0].collectFrame());
+            if (_windows.length)
+                RenderThread.instance.frame(_windows[0].collectFrame());
 
-            Application.instance.platform.wait();
+            Application.instance.platform.waitFor(Wait.all);
 
         }
         return _exitCode;

@@ -88,7 +88,8 @@ class XcbPlatform : Platform
         XcbScreen[] _xcbScreens;
         XcbWindow[xcb_window_t] _windows;
         int _xcbFd;
-        int _notifyFd;
+        int _vsyncReadFd;
+        int _vsyncWriteFd;
     }
 
     /// Builds an XcbPlatform
@@ -114,8 +115,14 @@ class XcbPlatform : Platform
         _kbd = new XcbKeyboard(g_connection, _xkbFirstEv);
         initializeDRI();
         initializeVG();
+
         _xcbFd = xcb_get_file_descriptor(g_connection);
-        _notifyFd = 0;
+
+        import core.sys.posix.unistd : pipe;
+        int[2] pipeFds;
+        enforce(pipe(pipeFds) ==0, "could not create pipe");
+        _vsyncReadFd = pipeFds[0];
+        _vsyncWriteFd = pipeFds[1];
     }
 
     override void dispose()
@@ -178,17 +185,30 @@ class XcbPlatform : Platform
         });
     }
 
-    override void wait()
+    override Wait waitFor(Wait flags)
     {
-        import core.sys.posix.poll;
+        import core.sys.posix.poll : poll, pollfd, POLLIN;
 
         pollfd[2] fds;
-        fds[0].fd = _xcbFd;
+        fds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
         fds[0].events = POLLIN;
-        fds[1].fd = -1;
+        fds[1].fd = (flags & Wait.vsync) ? _vsyncReadFd : -1;
+        fds[1].events = POLLIN;
 
         poll(fds.ptr, 2, -1);
+
+        Wait res = Wait.none;
+        if (fds[0].revents & POLLIN) {
+            res |= Wait.input;
+        }
+        if (fds[1].revents & POLLIN) {
+            res |= Wait.vsync;
+        }
+        return res;
     }
+
+    override void vsync()
+    {}
 
     private void handleEvent(xcb_generic_event_t* e, void delegate(Event) collector)
     {
