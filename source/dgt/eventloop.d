@@ -30,11 +30,12 @@ class EventLoop
                 }
             );
 
-            if (_windows.length)
+            if (_windows.length) {
                 RenderThread.instance.frame(_windows[0].collectFrame());
+            }
 
-            Application.instance.platform.waitFor(Wait.all);
-
+            if (!_exitFlag)
+                Application.instance.platform.waitFor(Wait.all);
         }
         return _exitCode;
     }
