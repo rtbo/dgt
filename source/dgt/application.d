@@ -131,7 +131,7 @@ class Application : EventLoop, Disposable
     private bool _exitFlag;
     private int _exitCode;
 
-    static
+    static __gshared
     {
         /// Get the Application singleton.
         @property Application instance()
