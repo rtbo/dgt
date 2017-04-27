@@ -12,6 +12,7 @@ import dgt.screen;
 import dgt.window;
 
 import std.experimental.logger;
+import core.sys.windows.winuser;
 import core.sys.windows.windows;
 
 private __gshared Win32Platform _w32Inst;
@@ -104,6 +105,37 @@ class Win32Platform : Platform
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+    }
+
+    private enum WM_VSYNC = WM_USER+1;
+
+    override Wait waitFor(Wait flags)
+    {
+        Wait check() {
+            Wait res = Wait.none;
+            MSG msg;
+            if (PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
+                if (msg.message == WM_VSYNC) {
+                    res |= Wait.vsync;
+                }
+                else {
+                    res |= Wait.input;
+                }
+            }
+            return res;
+        }
+
+        Wait wait = check();
+        if (wait != Wait.none) return wait;
+
+        immutable code = MsgWaitForMultipleObjects(0, null, FALSE, INFINITE, QS_ALLINPUT);
+
+        return check();
+    }
+
+    override void vsync()
+    {
+        PostMessage(null, WM_VSYNC, 0, 0);
     }
 
     wstring windowClassName(Window w)
