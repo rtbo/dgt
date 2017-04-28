@@ -124,9 +124,9 @@ class XcbPlatform : Platform
         _vsyncReadFd = pipeFds[0];
         _vsyncWriteFd = pipeFds[1];
 
-        import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
-        immutable flags = fcntl(_vsyncReadFd, F_GETFL, 0);
-        fcntl(_vsyncReadFd, F_SETFL, flags | O_NONBLOCK);
+        //import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
+        //immutable flags = fcntl(_vsyncReadFd, F_GETFL, 0);
+        //fcntl(_vsyncReadFd, F_SETFL, flags | O_NONBLOCK);
     }
 
     override void dispose()
@@ -199,7 +199,29 @@ class XcbPlatform : Platform
         fds[1].fd = (flags & Wait.vsync) ? _vsyncReadFd : -1;
         fds[1].events = POLLIN;
 
-        poll(fds.ptr, 2, -1);
+        int rc = poll(fds.ptr, 2, -1);
+        if (rc == -1) {
+            import core.stdc.errno : errno, EINVAL, EFAULT, EINTR, ENOMEM;
+            string msg;
+            switch(errno) {
+            case EINVAL:
+                msg = "EINVAL";
+                break;
+            case EFAULT:
+                msg = "EFAULT";
+                break;
+            case EINTR:
+                msg = "EINTR";
+                break;
+            case ENOMEM:
+                msg = "ENOMEM";
+                break;
+            default:
+                msg = "(unknown)";
+                break;
+            }
+            throw new Exception("poll error: "~msg);
+        }
 
         Wait res = Wait.none;
         if (fds[0].revents & POLLIN) {
@@ -208,8 +230,8 @@ class XcbPlatform : Platform
         if (fds[1].revents & POLLIN) {
             res |= Wait.vsync;
             import core.sys.posix.unistd : read;
-            ubyte[4] buf;
-            while(read(_vsyncReadFd, cast(void*)buf.ptr, 4) > 0) {}
+            ubyte[8] buf;
+            read(_vsyncReadFd, cast(void*)buf.ptr, 8);
         }
         return res;
     }

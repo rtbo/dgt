@@ -24,11 +24,13 @@ import std.experimental.logger;
 /// Interface to the render thread
 class RenderThread
 {
+    /// Get the singleton instance
     static RenderThread instance()
     {
         return _instance;
     }
 
+    /// Whether the render thread is running
     @property bool running() const { return _running; }
 
 
@@ -65,13 +67,17 @@ class RenderThread
         _tid = spawn(&renderLoop, cast(shared(GlContext))context, thisTid);
     }
 
+    /// Whether the renderer is ready to render a new frame
+    /// This will return true after vsync until a new frame is sent
+    package(dgt) static @property bool hadVSync()
+    {
+        import core.atomic : atomicLoad;
+        return atomicLoad(_hadVSync);
+    }
+
     /// Render a frame in the rendering thread.
     package(dgt) bool frame(immutable(RenderFrame) frame)
     {
-        import core.time : dur;
-        if (!receiveTimeout(dur!"msecs"(15), (ReadyToRender rr){})) {
-            return false;
-        }
         send(_tid, frame);
         return true;
     }
@@ -96,8 +102,8 @@ class RenderThread
 private:
 
 __gshared RenderThread _instance;
+shared bool _hadVSync;
 
-struct ReadyToRender {}
 struct Finalize {
     size_t nativeHandle;
 }
@@ -108,16 +114,20 @@ struct DeleteCache {
 
 void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 {
+    import core.atomic : atomicStore;
+
     try {
         auto renderer = new Renderer(cast(GlContext)context);
+        atomicStore(_hadVSync, true);
 
         bool exit;
         while (!exit)
         {
-            send(mainLoopTid, ReadyToRender());
             receive(
                 (immutable(RenderFrame) frame) {
+                    atomicStore(_hadVSync, false);
                     renderer.renderFrame(frame);
+                    atomicStore(_hadVSync, true);
                     Application.platform.vsync();
                 },
                 (DeleteCache dc) {
