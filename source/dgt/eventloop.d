@@ -15,6 +15,7 @@ class EventLoop
     int loop()
     {
         while (!_exitFlag) {
+            // for each frame
             //  - collect and process input events
             //  - if requested:
             //      - update
@@ -24,18 +25,16 @@ class EventLoop
             //      - rendering (possibly only to swap buffers)
             //  - wait (for input, animation tick, or timer)
 
-            immutable waitCode = Application.platform.waitFor(Wait.all);
-            Application.instance.platform.collectEvents(
-                (Event ev) {
-                    auto wEv = cast(WindowEvent)ev;
-                    if (wEv) wEv.window.handleEvent(wEv);
-                }
-            );
+            Application.platform.collectEvents(&compressEvent);
+            deliverEvents();
 
-            if (!_exitFlag && _windows.length && (waitCode & Wait.vsync))
-            {
-                RenderThread.instance.frame(_windows[0].collectFrame());
+            if (!_exitFlag) {
+                if (_windows.length) {
+                    RenderThread.instance.frame(_windows[0].collectFrame());
+                }
+                Application.platform.waitFor(Wait.all);
             }
+
         }
         return _exitCode;
     }
@@ -77,6 +76,14 @@ class EventLoop
             exit(0);
         }
     }
+
+    private void compressEvent(Event ev)
+    {
+        auto wEv = cast(WindowEvent)ev;
+        if (wEv) wEv.window.handleEvent(wEv);
+    }
+
+    private void deliverEvents() {}
 
     private bool _exitFlag;
     private int _exitCode;
