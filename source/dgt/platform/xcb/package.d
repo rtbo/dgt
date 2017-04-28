@@ -123,6 +123,10 @@ class XcbPlatform : Platform
         enforce(pipe(pipeFds) ==0, "could not create pipe");
         _vsyncReadFd = pipeFds[0];
         _vsyncWriteFd = pipeFds[1];
+
+        import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
+        immutable flags = fcntl(_vsyncReadFd, F_GETFL, 0);
+        fcntl(_vsyncReadFd, F_SETFL, flags | O_NONBLOCK);
     }
 
     override void dispose()
@@ -203,12 +207,19 @@ class XcbPlatform : Platform
         }
         if (fds[1].revents & POLLIN) {
             res |= Wait.vsync;
+            import core.sys.posix.unistd : read;
+            ubyte[4] buf;
+            while(read(_vsyncReadFd, cast(void*)buf.ptr, 4) > 0) {}
         }
         return res;
     }
 
     override void vsync()
-    {}
+    {
+        import core.sys.posix.unistd : write;
+        ubyte[4] buf;
+        write(_vsyncWriteFd, cast(const(void*))buf.ptr, 4);
+    }
 
     private void handleEvent(xcb_generic_event_t* e, void delegate(Event) collector)
     {
