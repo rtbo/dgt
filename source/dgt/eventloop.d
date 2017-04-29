@@ -52,10 +52,16 @@ class EventLoop
         return _windows;
     }
 
-    package void registerWindow(Window w)
+    /// Whether the given window is registered with this event loop
+    bool hasWindow(in Window w) const
     {
         import std.algorithm : canFind;
-        assert(!_windows.canFind(w), "tentative to register registered window");
+        return _windows.canFind(w);
+    }
+
+    package void registerWindow(Window w)
+    {
+        assert(!hasWindow(w), "tentative to register registered window");
         logf(`register window: 0x%08x "%s"`, cast(void*)w, w.title);
         _windows ~= w;
 
@@ -64,8 +70,8 @@ class EventLoop
 
     package void unregisterWindow(Window w)
     {
-        import std.algorithm : canFind, remove, SwapStrategy;
-        assert(_windows.canFind(w), "tentative to unregister unregistered window");
+        import std.algorithm : remove, SwapStrategy;
+        assert(hasWindow(w), "tentative to unregister unregistered window");
 
         onUnregisterWindow(w);
 
@@ -85,10 +91,31 @@ class EventLoop
     private void compressEvent(Event ev)
     {
         auto wEv = cast(WindowEvent)ev;
-        if (wEv) wEv.window.handleEvent(wEv);
+        if (wEv) {
+            assert(hasWindow(wEv.window));
+            version(Windows) {
+                // windows has modal resize and move envents
+                if (wEv.type == EventType.resize || wEv.type == EventType.move) {
+                    wEv.window.handleEvent(wEv);
+                    if (RenderThread.hadVSync)
+                        RenderThread.instance.frame(wEv.window.collectFrame());
+                }
+                else {
+                    wEv.window.compressEvent(wEv);
+                }
+            }
+            else {
+                wEv.window.compressEvent(wEv);
+            }
+        }
     }
 
-    private void deliverEvents() {}
+    private void deliverEvents()
+    {
+        foreach (w; _windows) {
+            w.deliverEvents();
+        }
+    }
 
     private bool _exitFlag;
     private int _exitCode;
