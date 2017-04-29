@@ -123,6 +123,7 @@ class XcbWindow : PlatformWindow
 
     override void close()
     {
+        _platform.unregisterWindow(this);
         if (_mapped)
             xcb_unmap_window(g_connection, _xcbWin);
         xcb_destroy_window(g_connection, _xcbWin);

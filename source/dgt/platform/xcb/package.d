@@ -124,9 +124,9 @@ class XcbPlatform : Platform
         _vsyncReadFd = pipeFds[0];
         _vsyncWriteFd = pipeFds[1];
 
-        //import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
-        //immutable flags = fcntl(_vsyncReadFd, F_GETFL, 0);
-        //fcntl(_vsyncReadFd, F_SETFL, flags | O_NONBLOCK);
+        import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
+        immutable flags = fcntl(_vsyncWriteFd, F_GETFL, 0);
+        fcntl(_vsyncWriteFd, F_SETFL, flags | O_NONBLOCK);
     }
 
     override void dispose()
@@ -199,28 +199,16 @@ class XcbPlatform : Platform
         fds[1].fd = (flags & Wait.vsync) ? _vsyncReadFd : -1;
         fds[1].events = POLLIN;
 
-        int rc = poll(fds.ptr, 2, -1);
-        if (rc == -1) {
-            import core.stdc.errno : errno, EINVAL, EFAULT, EINTR, ENOMEM;
-            string msg;
-            switch(errno) {
-            case EINVAL:
-                msg = "EINVAL";
-                break;
-            case EFAULT:
-                msg = "EFAULT";
-                break;
-            case EINTR:
-                msg = "EINTR";
-                break;
-            case ENOMEM:
-                msg = "ENOMEM";
-                break;
-            default:
-                msg = "(unknown)";
-                break;
+        while(true) {
+            immutable rc = poll(fds.ptr, 2, -1);
+            if (rc == -1) {
+                import core.stdc.errno : EINTR, errno;
+                import core.stdc.string : strerror;
+                import std.string : fromStringz;
+                if (errno == EINTR) continue;
+                logf("error during poll: %s", fromStringz(strerror(errno)));
             }
-            throw new Exception("poll error: "~msg);
+            break;
         }
 
         Wait res = Wait.none;
@@ -379,6 +367,11 @@ class XcbPlatform : Platform
             _windows[w.xcbWin] = w;
         }
 
+        void unregisterWindow(XcbWindow w)
+        {
+            _windows.remove(w.xcbWin);
+        }
+
         xcb_atom_t atom(Atom atom) const
         {
             auto at = (atom in _atoms);
@@ -481,7 +474,9 @@ class XcbPlatform : Platform
         {
             auto se = cast(SpecializedEvent*)xcbEv;
             auto xcbWin = xcbWindow(mixin("se." ~ seField));
-            mixin("xcbWin." ~ processingMethod ~ "(se, collector);");
+            if (xcbWin) {
+                mixin("xcbWin." ~ processingMethod ~ "(se, collector);");
+            }
         }
 
         void processKeyEvent(xcb_key_press_event_t* xcbEv, void delegate(Event) collector)

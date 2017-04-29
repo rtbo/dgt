@@ -104,13 +104,15 @@ private:
 __gshared RenderThread _instance;
 shared bool _hadVSync;
 
+
+struct DeleteCache {
+    ulong cookie;
+}
+
 struct Finalize {
     size_t nativeHandle;
 }
 struct Finalized {}
-struct DeleteCache {
-    ulong cookie;
-}
 
 void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 {

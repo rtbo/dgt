@@ -103,7 +103,6 @@ class Window
     {
         _flags = flags;
         _platformWindow = Application.platform.createWindow(this);
-        Application.instance.registerWindow(this);
     }
 
     this(string title, WindowFlags flags=WindowFlags.none)
@@ -243,24 +242,23 @@ class Window
     {
         if (!_platformWindow.created) {
 
-            if (_size.area == 0) {
-                _size = ISize(640, 480);
-            }
+            if (_size.area == 0) _size = ISize(640, 480);
 
             _platformWindow.create();
+
+            if (!dummy) Application.instance.registerWindow(this);
         }
 
-        if (!(_flags & WindowFlags.dummy))
-            _platformWindow.state = state;
+        if (!dummy) _platformWindow.state = state;
     }
 
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
         if (_root) _root.disposeResources();
+        if (!dummy) Application.instance.unregisterWindow(this);
         _platformWindow.close();
         _onClosed.fire(this);
-        Application.instance.unregisterWindow(this);
     }
 
     @property size_t nativeHandle() const
@@ -366,9 +364,19 @@ class Window
 
     package(dgt)
     {
+        @property bool dummy() const
+        {
+            return (_flags & WindowFlags.dummy) != 0;
+        }
+
         @property inout(PlatformWindow) platformWindow() inout
         {
             return _platformWindow;
+        }
+
+        @property bool created() const
+        {
+            return _platformWindow.created;
         }
 
         immutable(RenderFrame) collectFrame()
