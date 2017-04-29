@@ -78,6 +78,8 @@ class RenderThread
     /// Render a frame in the rendering thread.
     package(dgt) bool frame(immutable(RenderFrame) frame)
     {
+        import core.atomic : atomicStore;
+        atomicStore(_hadVSync, false);
         send(_tid, frame);
         return true;
     }
@@ -127,7 +129,6 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
         {
             receive(
                 (immutable(RenderFrame) frame) {
-                    atomicStore(_hadVSync, false);
                     renderer.renderFrame(frame);
                     atomicStore(_hadVSync, true);
                     Application.platform.vsync();
