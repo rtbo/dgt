@@ -27,15 +27,20 @@ class EventLoop
 
             Application.platform.collectEvents(&compressEvent);
             deliverEvents();
+            if (_exitFlag) break;
 
-            if (!_exitFlag) {
-                if (_windows.length && RenderThread.hadVSync) {
-                    if (!_windows[0].dirtyRegion.empty) {
-                        RenderThread.instance.frame(_windows[0].collectFrame());
-                    }
+            if (RenderThread.hadVSync) {
+                import std.algorithm : filter, map;
+                import std.array : array;
+                immutable frames = _windows
+                            .filter!(w => !w.dirtyRegion.empty)
+                            .map!(w => w.collectFrame)
+                            .array();
+                if (frames.length) {
+                    RenderThread.instance.frame(frames);
                 }
-                Application.platform.waitFor(Wait.all);
             }
+            Application.platform.waitFor(Wait.all);
 
         }
         return _exitCode;
