@@ -4,7 +4,7 @@ import dgt.application;
 import dgt.event;
 import dgt.geometry;
 import dgt.image;
-import key = dgt.keys;
+import dgt.keys;
 import dgt.math;
 import dgt.render.frame;
 import dgt.render.node;
@@ -32,19 +32,19 @@ int main()
     win.onKeyDown += (KeyEvent ev) {
         switch (ev.sym)
         {
-        case key.Sym.f:
+        case KeySym.f:
             win.showFullscreen();
             break;
-        case key.Sym.n:
+        case KeySym.n:
             win.showNormal();
             break;
-        case key.Sym.m:
+        case KeySym.m:
             win.showMaximized();
             break;
-        case key.Sym.s:
+        case KeySym.s:
             win.showMinimized();
             break;
-        case key.Sym.escape:
+        case KeySym.escape:
             win.close();
             break;
         default:

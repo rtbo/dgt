@@ -14,7 +14,7 @@ import dgt.geometry;
 import dgt.enums;
 import dgt.event;
 import dgt.image;
-import key = dgt.keys;
+import dgt.keys;
 
 import xcb.xcb;
 import xcb.xkb;
@@ -496,17 +496,17 @@ class XcbPlatform : Platform
     }
 }
 
-key.Mods dgtKeyMods(in ushort xcbState) pure @nogc @safe nothrow
+KeyMods dgtKeyMods(in ushort xcbState) pure @nogc @safe nothrow
 {
-    key.Mods km;
+    KeyMods km;
     if (xcbState & XCB_MOD_MASK_SHIFT)
-        km |= key.Mods.shift;
+        km |= KeyMods.shift;
     if (xcbState & XCB_MOD_MASK_CONTROL)
-        km |= key.Mods.ctrl;
+        km |= KeyMods.ctrl;
     if (xcbState & XCB_MOD_MASK_1)
-        km |= key.Mods.alt;
+        km |= KeyMods.alt;
     if (xcbState & XCB_MOD_MASK_2)
-        km |= key.Mods.super_;
+        km |= KeyMods.super_;
     return km;
 }
 

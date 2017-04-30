@@ -3,7 +3,7 @@ module dgt.platform.xcb.keyboard;
 version(linux):
 
 import dgt.platform.xcb : xcbEventType;
-import key = dgt.keys;
+import dgt.keys;
 import dgt.event;
 import dgt.window;
 
@@ -25,7 +25,7 @@ class XcbKeyboard
         uint _device;
         xkb_keymap *_keymap;
         xkb_state *_state;
-        key.Mods _mods;
+        KeyMods _mods;
     }
 
     this(xcb_connection_t *connection, out uint xkbFirstEv)
@@ -148,48 +148,48 @@ class XcbKeyboard
 
 }
 
-key.Mods modsForCode(in key.Code code)
+KeyMods modsForCode(in KeyCode code)
 {
     switch(code)
     {
-        case key.Code.leftCtrl: return key.Mods.leftCtrl;
-        case key.Code.leftShift: return key.Mods.leftShift;
-        case key.Code.leftAlt: return key.Mods.leftAlt;
-        case key.Code.leftSuper: return key.Mods.leftSuper;
-        case key.Code.rightCtrl: return key.Mods.rightCtrl;
-        case key.Code.rightShift: return key.Mods.rightShift;
-        case key.Code.rightAlt: return key.Mods.rightAlt;
-        case key.Code.rightSuper: return key.Mods.rightSuper;
-        default: return key.Mods.none;
+        case KeyCode.leftCtrl: return KeyMods.leftCtrl;
+        case KeyCode.leftShift: return KeyMods.leftShift;
+        case KeyCode.leftAlt: return KeyMods.leftAlt;
+        case KeyCode.leftSuper: return KeyMods.leftSuper;
+        case KeyCode.rightCtrl: return KeyMods.rightCtrl;
+        case KeyCode.rightShift: return KeyMods.rightShift;
+        case KeyCode.rightAlt: return KeyMods.rightAlt;
+        case KeyCode.rightSuper: return KeyMods.rightSuper;
+        default: return KeyMods.none;
     }
 }
 
 
-key.Sym symForKeysym(uint keysym)
+KeySym symForKeysym(uint keysym)
 {
     if (keysym >= 0x20 && keysym < 0x80) {
         if (keysym >= 0x61 && keysym <= 0x7a) {
-            keysym &= ~key.Sym.latin1SmallMask;
+            keysym &= ~KeySym.latin1SmallMask;
         }
-        return cast(key.Sym)keysym;
+        return cast(KeySym)keysym;
     }
     if (keysym >= XKB_KEY_F1 && keysym <= XKB_KEY_F24) {
-        return cast(key.Sym)(key.Sym.f1 + (keysym - XKB_KEY_F1));
+        return cast(KeySym)(KeySym.f1 + (keysym - XKB_KEY_F1));
     }
     auto k = (keysym in keysymMap);
     if (k) {
         return *k;
     }
-    return key.Sym.unknown;
+    return KeySym.unknown;
 }
 
 
-key.Code codeForKeycode(xkb_keycode_t keycode)
+KeyCode codeForKeycode(xkb_keycode_t keycode)
 {
     if (keycode >= keycodeTable.length)
     {
         warningf("DGT-XCB: keycode 0x%x is out of bounds", keycode);
-        return key.Code.unknown;
+        return KeyCode.unknown;
     }
     return keycodeTable[keycode];
 }
@@ -197,578 +197,578 @@ key.Code codeForKeycode(xkb_keycode_t keycode)
 
 private
 {
-    immutable key.Sym[uint] keysymMap;
-    immutable key.Code[256] keycodeTable;
+    immutable KeySym[uint] keysymMap;
+    immutable KeyCode[256] keycodeTable;
 
     shared static this() {
 
         keycodeTable = [
             // 0x00     0
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.escape,
-            key.Code.d1,
-            key.Code.d2,
-            key.Code.d3,
-            key.Code.d4,
-            key.Code.d5,
-            key.Code.d6,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.escape,
+            KeyCode.d1,
+            KeyCode.d2,
+            KeyCode.d3,
+            KeyCode.d4,
+            KeyCode.d5,
+            KeyCode.d6,
             // 0x10     16
-            key.Code.d7,
-            key.Code.d8,
-            key.Code.d9,
-            key.Code.d0,
-            key.Code.minus,
-            key.Code.equals,
-            key.Code.backspace,
-            key.Code.tab,
-            key.Code.q,
-            key.Code.w,
-            key.Code.e,
-            key.Code.r,
-            key.Code.t,
-            key.Code.y,
-            key.Code.u,
-            key.Code.i,
+            KeyCode.d7,
+            KeyCode.d8,
+            KeyCode.d9,
+            KeyCode.d0,
+            KeyCode.minus,
+            KeyCode.equals,
+            KeyCode.backspace,
+            KeyCode.tab,
+            KeyCode.q,
+            KeyCode.w,
+            KeyCode.e,
+            KeyCode.r,
+            KeyCode.t,
+            KeyCode.y,
+            KeyCode.u,
+            KeyCode.i,
             // 0x20     32
-            key.Code.o,
-            key.Code.p,
-            key.Code.leftBracket,
-            key.Code.rightBracket,
-            key.Code.enter,
-            key.Code.leftCtrl,
-            key.Code.a,
-            key.Code.s,
-            key.Code.d,
-            key.Code.f,
-            key.Code.g,
-            key.Code.h,
-            key.Code.j,
-            key.Code.k,
-            key.Code.l,
-            key.Code.semicolon,
+            KeyCode.o,
+            KeyCode.p,
+            KeyCode.leftBracket,
+            KeyCode.rightBracket,
+            KeyCode.enter,
+            KeyCode.leftCtrl,
+            KeyCode.a,
+            KeyCode.s,
+            KeyCode.d,
+            KeyCode.f,
+            KeyCode.g,
+            KeyCode.h,
+            KeyCode.j,
+            KeyCode.k,
+            KeyCode.l,
+            KeyCode.semicolon,
             // 0x30     48
-            key.Code.quote,
-            key.Code.grave,
-            key.Code.uK_Hash,
-            key.Code.leftShift,
-            key.Code.z,
-            key.Code.x,
-            key.Code.c,
-            key.Code.v,
-            key.Code.b,
-            key.Code.n,
-            key.Code.m,
-            key.Code.comma,
-            key.Code.period,
-            key.Code.slash,
-            key.Code.rightShift,
-            key.Code.kp_Multiply,
+            KeyCode.quote,
+            KeyCode.grave,
+            KeyCode.uK_Hash,
+            KeyCode.leftShift,
+            KeyCode.z,
+            KeyCode.x,
+            KeyCode.c,
+            KeyCode.v,
+            KeyCode.b,
+            KeyCode.n,
+            KeyCode.m,
+            KeyCode.comma,
+            KeyCode.period,
+            KeyCode.slash,
+            KeyCode.rightShift,
+            KeyCode.kp_Multiply,
             // 0x40     64
-            key.Code.leftAlt,
-            key.Code.space,
-            key.Code.capsLock,
-            key.Code.f1,
-            key.Code.f2,
-            key.Code.f3,
-            key.Code.f4,
-            key.Code.f5,
-            key.Code.f6,
-            key.Code.f7,
-            key.Code.f8,
-            key.Code.f9,
-            key.Code.f10,
-            key.Code.kp_NumLock,
-            key.Code.scrollLock,
-            key.Code.kp_7,
+            KeyCode.leftAlt,
+            KeyCode.space,
+            KeyCode.capsLock,
+            KeyCode.f1,
+            KeyCode.f2,
+            KeyCode.f3,
+            KeyCode.f4,
+            KeyCode.f5,
+            KeyCode.f6,
+            KeyCode.f7,
+            KeyCode.f8,
+            KeyCode.f9,
+            KeyCode.f10,
+            KeyCode.kp_NumLock,
+            KeyCode.scrollLock,
+            KeyCode.kp_7,
             // 0x50     80
-            key.Code.kp_8,
-            key.Code.kp_9,
-            key.Code.kp_Subtract,
-            key.Code.kp_4,
-            key.Code.kp_5,
-            key.Code.kp_6,
-            key.Code.kp_Add,
-            key.Code.kp_1,
-            key.Code.kp_2,
-            key.Code.kp_3,
-            key.Code.kp_0,
-            key.Code.kp_Period,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.uK_Backslash,
-            key.Code.f11,
+            KeyCode.kp_8,
+            KeyCode.kp_9,
+            KeyCode.kp_Subtract,
+            KeyCode.kp_4,
+            KeyCode.kp_5,
+            KeyCode.kp_6,
+            KeyCode.kp_Add,
+            KeyCode.kp_1,
+            KeyCode.kp_2,
+            KeyCode.kp_3,
+            KeyCode.kp_0,
+            KeyCode.kp_Period,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.uK_Backslash,
+            KeyCode.f11,
             // 0x60     96
-            key.Code.f12,
-            key.Code.unknown,
-            key.Code.lang3,     // Katakana
-            key.Code.lang4,     // Hiragana
-            key.Code.unknown,   // Henkan
-            key.Code.unknown,   // Hiragana_Katakana
-            key.Code.unknown,   // Muhenkan
-            key.Code.unknown,
-            key.Code.kp_Enter,
-            key.Code.rightCtrl,
-            key.Code.kp_Divide,
-            key.Code.printScreen,
-            key.Code.rightAlt,
-            key.Code.unknown,  // line feed
-            key.Code.home,
-            key.Code.up,
+            KeyCode.f12,
+            KeyCode.unknown,
+            KeyCode.lang3,     // Katakana
+            KeyCode.lang4,     // Hiragana
+            KeyCode.unknown,   // Henkan
+            KeyCode.unknown,   // Hiragana_Katakana
+            KeyCode.unknown,   // Muhenkan
+            KeyCode.unknown,
+            KeyCode.kp_Enter,
+            KeyCode.rightCtrl,
+            KeyCode.kp_Divide,
+            KeyCode.printScreen,
+            KeyCode.rightAlt,
+            KeyCode.unknown,  // line feed
+            KeyCode.home,
+            KeyCode.up,
             // 0x70     112
-            key.Code.pageUp,
-            key.Code.left,
-            key.Code.right,
-            key.Code.end,
-            key.Code.down,
-            key.Code.pageDown,
-            key.Code.insert,
-            key.Code.delete_,
-            key.Code.unknown,
-            key.Code.mute,
-            key.Code.volumeDown,
-            key.Code.volumeUp,
-            key.Code.unknown,  // power off
-            key.Code.kp_Equal,
-            key.Code.kp_PlusMinus,
-            key.Code.pause,
+            KeyCode.pageUp,
+            KeyCode.left,
+            KeyCode.right,
+            KeyCode.end,
+            KeyCode.down,
+            KeyCode.pageDown,
+            KeyCode.insert,
+            KeyCode.delete_,
+            KeyCode.unknown,
+            KeyCode.mute,
+            KeyCode.volumeDown,
+            KeyCode.volumeUp,
+            KeyCode.unknown,  // power off
+            KeyCode.kp_Equal,
+            KeyCode.kp_PlusMinus,
+            KeyCode.pause,
             // 0x80     128
-            key.Code.unknown, // launch A
-            key.Code.kp_Decimal,
-            key.Code.lang1,     // hangul
-            key.Code.lang2,     // hangul/hanja toggle
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.menu,
-            key.Code.cancel,
-            key.Code.again,
-            key.Code.unknown,  // SunProps
-            key.Code.undo,
-            key.Code.unknown,  // SunFront
-            key.Code.copy,
-            key.Code.unknown,  // Open
-            key.Code.paste,
+            KeyCode.unknown, // launch A
+            KeyCode.kp_Decimal,
+            KeyCode.lang1,     // hangul
+            KeyCode.lang2,     // hangul/hanja toggle
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.menu,
+            KeyCode.cancel,
+            KeyCode.again,
+            KeyCode.unknown,  // SunProps
+            KeyCode.undo,
+            KeyCode.unknown,  // SunFront
+            KeyCode.copy,
+            KeyCode.unknown,  // Open
+            KeyCode.paste,
             // 0x90     144
-            key.Code.find,
-            key.Code.cut,
-            key.Code.help,
-            key.Code.unknown,  // XF86MenuKB
-            key.Code.unknown,  // XF86Calculator
-            key.Code.unknown,
-            key.Code.unknown,  //XF86Sleep
-            key.Code.unknown,  //XF86Wakeup
-            key.Code.unknown,  //XF86Explorer
-            key.Code.unknown,  //XF86Send
-            key.Code.unknown,
-            key.Code.unknown,  //Xfer
-            key.Code.unknown,  //launch1
-            key.Code.unknown,  //launch2
-            key.Code.unknown,  //WWW
-            key.Code.unknown,  //DOS
+            KeyCode.find,
+            KeyCode.cut,
+            KeyCode.help,
+            KeyCode.unknown,  // XF86MenuKB
+            KeyCode.unknown,  // XF86Calculator
+            KeyCode.unknown,
+            KeyCode.unknown,  //XF86Sleep
+            KeyCode.unknown,  //XF86Wakeup
+            KeyCode.unknown,  //XF86Explorer
+            KeyCode.unknown,  //XF86Send
+            KeyCode.unknown,
+            KeyCode.unknown,  //Xfer
+            KeyCode.unknown,  //launch1
+            KeyCode.unknown,  //launch2
+            KeyCode.unknown,  //WWW
+            KeyCode.unknown,  //DOS
             // 0xA0     160
-            key.Code.unknown,  // Screensaver
-            key.Code.unknown,
-            key.Code.unknown,   // RotateWindows
-            key.Code.unknown,   // Mail
-            key.Code.unknown,   // Favorites
-            key.Code.unknown,   // MyComputer
-            key.Code.unknown,   // Back
-            key.Code.unknown,   // Forward
-            key.Code.unknown,
-            key.Code.unknown,   // Eject
-            key.Code.unknown,   // Eject
-            key.Code.unknown,   // AudioNext
-            key.Code.unknown,   // AudioPlay
-            key.Code.unknown,   // AudioPrev
-            key.Code.unknown,   // AudioStop
-            key.Code.unknown,   // AudioRecord
+            KeyCode.unknown,  // Screensaver
+            KeyCode.unknown,
+            KeyCode.unknown,   // RotateWindows
+            KeyCode.unknown,   // Mail
+            KeyCode.unknown,   // Favorites
+            KeyCode.unknown,   // MyComputer
+            KeyCode.unknown,   // Back
+            KeyCode.unknown,   // Forward
+            KeyCode.unknown,
+            KeyCode.unknown,   // Eject
+            KeyCode.unknown,   // Eject
+            KeyCode.unknown,   // AudioNext
+            KeyCode.unknown,   // AudioPlay
+            KeyCode.unknown,   // AudioPrev
+            KeyCode.unknown,   // AudioStop
+            KeyCode.unknown,   // AudioRecord
             // 0xB0     176
-            key.Code.unknown,   // AudioRewind
-            key.Code.unknown,   // Phone
-            key.Code.unknown,
-            key.Code.unknown,   // Tools
-            key.Code.unknown,   // HomePage
-            key.Code.unknown,   // Reload
-            key.Code.unknown,   // Close
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,   // ScrollUp
-            key.Code.unknown,   // ScrollDown
-            key.Code.unknown,   // parentleft
-            key.Code.unknown,   // parentright
-            key.Code.unknown,   // New
-            key.Code.unknown,   // Redo
-            key.Code.unknown,   // Tools
+            KeyCode.unknown,   // AudioRewind
+            KeyCode.unknown,   // Phone
+            KeyCode.unknown,
+            KeyCode.unknown,   // Tools
+            KeyCode.unknown,   // HomePage
+            KeyCode.unknown,   // Reload
+            KeyCode.unknown,   // Close
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,   // ScrollUp
+            KeyCode.unknown,   // ScrollDown
+            KeyCode.unknown,   // parentleft
+            KeyCode.unknown,   // parentright
+            KeyCode.unknown,   // New
+            KeyCode.unknown,   // Redo
+            KeyCode.unknown,   // Tools
             // 0xC0     192
-            key.Code.unknown,   // Launch5
-            key.Code.unknown,   // Launch6
-            key.Code.unknown,   // Launch7
-            key.Code.unknown,   // Launch8
-            key.Code.unknown,   // Launch9
-            key.Code.unknown,
-            key.Code.unknown,   // AudioMicMute
-            key.Code.unknown,   // TouchpadToggle
-            key.Code.unknown,   // TouchpadPadOn
-            key.Code.unknown,   // TouchpadOff
-            key.Code.unknown,
-            key.Code.unknown,   // Mode_switch
-            key.Code.unknown,   // Alt_L
-            key.Code.unknown,   // Meta_L
-            key.Code.unknown,   // Super_L
-            key.Code.unknown,   // Hyper_L
+            KeyCode.unknown,   // Launch5
+            KeyCode.unknown,   // Launch6
+            KeyCode.unknown,   // Launch7
+            KeyCode.unknown,   // Launch8
+            KeyCode.unknown,   // Launch9
+            KeyCode.unknown,
+            KeyCode.unknown,   // AudioMicMute
+            KeyCode.unknown,   // TouchpadToggle
+            KeyCode.unknown,   // TouchpadPadOn
+            KeyCode.unknown,   // TouchpadOff
+            KeyCode.unknown,
+            KeyCode.unknown,   // Mode_switch
+            KeyCode.unknown,   // Alt_L
+            KeyCode.unknown,   // Meta_L
+            KeyCode.unknown,   // Super_L
+            KeyCode.unknown,   // Hyper_L
             // 0xD0     208
-            key.Code.unknown,   // AudioPlay
-            key.Code.unknown,   // AudioPause
-            key.Code.unknown,   // Launch3
-            key.Code.unknown,   // Launch4
-            key.Code.unknown,   // LaunchB
-            key.Code.unknown,   // Suspend
-            key.Code.unknown,   // Close
-            key.Code.unknown,   // AudioPlay
-            key.Code.unknown,   // AudioForward
-            key.Code.unknown,
-            key.Code.unknown,   // Print
-            key.Code.unknown,
-            key.Code.unknown,   // WebCam
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,   // Mail
+            KeyCode.unknown,   // AudioPlay
+            KeyCode.unknown,   // AudioPause
+            KeyCode.unknown,   // Launch3
+            KeyCode.unknown,   // Launch4
+            KeyCode.unknown,   // LaunchB
+            KeyCode.unknown,   // Suspend
+            KeyCode.unknown,   // Close
+            KeyCode.unknown,   // AudioPlay
+            KeyCode.unknown,   // AudioForward
+            KeyCode.unknown,
+            KeyCode.unknown,   // Print
+            KeyCode.unknown,
+            KeyCode.unknown,   // WebCam
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,   // Mail
             // 0xE0     224
-            key.Code.unknown,   // Messenger
-            key.Code.unknown,   // Seach
-            key.Code.unknown,   // GO
-            key.Code.unknown,   // Finance
-            key.Code.unknown,   // Game
-            key.Code.unknown,   // Shop
-            key.Code.unknown,
-            key.Code.unknown,   // Cancel
-            key.Code.unknown,   // MonBrightnessDown
-            key.Code.unknown,   // MonBrightnessUp
-            key.Code.unknown,   // AudioMedia
-            key.Code.unknown,   // Display
-            key.Code.unknown,   // KbdLightOnOff
-            key.Code.unknown,   // KbdBrightnessDown
-            key.Code.unknown,   // KbdBrightnessUp
-            key.Code.unknown,   // Send
+            KeyCode.unknown,   // Messenger
+            KeyCode.unknown,   // Seach
+            KeyCode.unknown,   // GO
+            KeyCode.unknown,   // Finance
+            KeyCode.unknown,   // Game
+            KeyCode.unknown,   // Shop
+            KeyCode.unknown,
+            KeyCode.unknown,   // Cancel
+            KeyCode.unknown,   // MonBrightnessDown
+            KeyCode.unknown,   // MonBrightnessUp
+            KeyCode.unknown,   // AudioMedia
+            KeyCode.unknown,   // Display
+            KeyCode.unknown,   // KbdLightOnOff
+            KeyCode.unknown,   // KbdBrightnessDown
+            KeyCode.unknown,   // KbdBrightnessUp
+            KeyCode.unknown,   // Send
             // 0xF0     240
-            key.Code.unknown,   // Reply
-            key.Code.unknown,   // MailForward
-            key.Code.unknown,   // Save
-            key.Code.unknown,   // Documents
-            key.Code.unknown,   // Battery
-            key.Code.unknown,   // Bluetooth
-            key.Code.unknown,   // WLan
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown,
-            key.Code.unknown
+            KeyCode.unknown,   // Reply
+            KeyCode.unknown,   // MailForward
+            KeyCode.unknown,   // Save
+            KeyCode.unknown,   // Documents
+            KeyCode.unknown,   // Battery
+            KeyCode.unknown,   // Bluetooth
+            KeyCode.unknown,   // WLan
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown,
+            KeyCode.unknown
         ];
 
 
 
-        key.Sym[uint] map;
+        KeySym[uint] map;
 
-        map[XKB_KEY_Escape] =                   key.Sym.escape;
-        map[XKB_KEY_Tab] =                      key.Sym.tab;
-        map[XKB_KEY_ISO_Left_Tab] =             key.Sym.leftTab;
-        map[XKB_KEY_BackSpace] =                key.Sym.backspace;
-        map[XKB_KEY_Return] =                   key.Sym.return_;
-        map[XKB_KEY_Insert] =                   key.Sym.insert;
-        map[XKB_KEY_Delete] =                   key.Sym.delete_;
-        map[XKB_KEY_Clear] =                    key.Sym.delete_;
-        map[XKB_KEY_Pause] =                    key.Sym.pause;
-        map[XKB_KEY_Print] =                    key.Sym.print;
-        map[0x1005FF60] =                       key.Sym.sysRq;         // hardcoded Sun SysReq
-        map[0x1007ff00] =                       key.Sym.sysRq;         // hardcoded X386 SysReq
+        map[XKB_KEY_Escape] =                   KeySym.escape;
+        map[XKB_KEY_Tab] =                      KeySym.tab;
+        map[XKB_KEY_ISO_Left_Tab] =             KeySym.leftTab;
+        map[XKB_KEY_BackSpace] =                KeySym.backspace;
+        map[XKB_KEY_Return] =                   KeySym.return_;
+        map[XKB_KEY_Insert] =                   KeySym.insert;
+        map[XKB_KEY_Delete] =                   KeySym.delete_;
+        map[XKB_KEY_Clear] =                    KeySym.delete_;
+        map[XKB_KEY_Pause] =                    KeySym.pause;
+        map[XKB_KEY_Print] =                    KeySym.print;
+        map[0x1005FF60] =                       KeySym.sysRq;         // hardcoded Sun SysReq
+        map[0x1007ff00] =                       KeySym.sysRq;         // hardcoded X386 SysReq
 
         // cursor movement
 
-        map[XKB_KEY_Home] =                     key.Sym.home;
-        map[XKB_KEY_End] =                      key.Sym.end;
-        map[XKB_KEY_Left] =                     key.Sym.left;
-        map[XKB_KEY_Up] =                       key.Sym.up;
-        map[XKB_KEY_Right] =                    key.Sym.right;
-        map[XKB_KEY_Down] =                     key.Sym.down;
-        map[XKB_KEY_Page_Up] =                  key.Sym.pageUp;
-        map[XKB_KEY_Page_Down] =                key.Sym.pageDown;
-        map[XKB_KEY_Prior] =                    key.Sym.pageUp;
-        map[XKB_KEY_Next] =                     key.Sym.pageDown;
+        map[XKB_KEY_Home] =                     KeySym.home;
+        map[XKB_KEY_End] =                      KeySym.end;
+        map[XKB_KEY_Left] =                     KeySym.left;
+        map[XKB_KEY_Up] =                       KeySym.up;
+        map[XKB_KEY_Right] =                    KeySym.right;
+        map[XKB_KEY_Down] =                     KeySym.down;
+        map[XKB_KEY_Page_Up] =                  KeySym.pageUp;
+        map[XKB_KEY_Page_Down] =                KeySym.pageDown;
+        map[XKB_KEY_Prior] =                    KeySym.pageUp;
+        map[XKB_KEY_Next] =                     KeySym.pageDown;
 
         // modifiers
 
-        map[XKB_KEY_Shift_L] =                  key.Sym.leftShift;
-        map[XKB_KEY_Shift_R] =                  key.Sym.rightShift;
-        map[XKB_KEY_Shift_Lock] =               key.Sym.shift;
-        map[XKB_KEY_Control_L] =                key.Sym.leftCtrl;
-        map[XKB_KEY_Control_R] =                key.Sym.rightCtrl;
-        //map[XKB_KEY_Meta_L] =                   key.Sym.leftMeta;
-        //map[XKB_KEY_Meta_R] =                   key.Sym.rightMeta;
-        map[XKB_KEY_Alt_L] =                    key.Sym.leftAlt;
-        map[XKB_KEY_Alt_R] =                    key.Sym.rightAlt;
-        map[XKB_KEY_Caps_Lock] =                key.Sym.capsLock;
-        map[XKB_KEY_Num_Lock] =                 key.Sym.numLock;
-        map[XKB_KEY_Scroll_Lock] =              key.Sym.scrollLock;
-        map[XKB_KEY_Super_L] =                  key.Sym.leftSuper;
-        map[XKB_KEY_Super_R] =                  key.Sym.rightSuper;
-        map[XKB_KEY_Menu] =                     key.Sym.menu;
-        map[XKB_KEY_Help] =                     key.Sym.help;
-        map[0x1000FF74] =                       key.Sym.leftTab; // hardcoded HP backtab
-        map[0x1005FF10] =                       key.Sym.f11;     // hardcoded Sun F36 (labeled F11)
-        map[0x1005FF11] =                       key.Sym.f12;     // hardcoded Sun F37 (labeled F12)
+        map[XKB_KEY_Shift_L] =                  KeySym.leftShift;
+        map[XKB_KEY_Shift_R] =                  KeySym.rightShift;
+        map[XKB_KEY_Shift_Lock] =               KeySym.shift;
+        map[XKB_KEY_Control_L] =                KeySym.leftCtrl;
+        map[XKB_KEY_Control_R] =                KeySym.rightCtrl;
+        //map[XKB_KEY_Meta_L] =                   KeySym.leftMeta;
+        //map[XKB_KEY_Meta_R] =                   KeySym.rightMeta;
+        map[XKB_KEY_Alt_L] =                    KeySym.leftAlt;
+        map[XKB_KEY_Alt_R] =                    KeySym.rightAlt;
+        map[XKB_KEY_Caps_Lock] =                KeySym.capsLock;
+        map[XKB_KEY_Num_Lock] =                 KeySym.numLock;
+        map[XKB_KEY_Scroll_Lock] =              KeySym.scrollLock;
+        map[XKB_KEY_Super_L] =                  KeySym.leftSuper;
+        map[XKB_KEY_Super_R] =                  KeySym.rightSuper;
+        map[XKB_KEY_Menu] =                     KeySym.menu;
+        map[XKB_KEY_Help] =                     KeySym.help;
+        map[0x1000FF74] =                       KeySym.leftTab; // hardcoded HP backtab
+        map[0x1005FF10] =                       KeySym.f11;     // hardcoded Sun F36 (labeled F11)
+        map[0x1005FF11] =                       KeySym.f12;     // hardcoded Sun F37 (labeled F12)
 
         // numeric and function keypad keys
 
-        map[XKB_KEY_KP_Enter] =                 key.Sym.kp_Enter;
-        map[XKB_KEY_KP_Delete] =                key.Sym.kp_Delete;
-        map[XKB_KEY_KP_Home] =                  key.Sym.kp_Home;
-        map[XKB_KEY_KP_Begin] =                 key.Sym.kp_Begin;
-        map[XKB_KEY_KP_End] =                   key.Sym.kp_End;
-        map[XKB_KEY_KP_Page_Up] =               key.Sym.kp_PageUp;
-        map[XKB_KEY_KP_Page_Down] =             key.Sym.kp_PageDown;
-        map[XKB_KEY_KP_Up] =                    key.Sym.kp_Up;
-        map[XKB_KEY_KP_Down] =                  key.Sym.kp_Down;
-        map[XKB_KEY_KP_Left] =                  key.Sym.kp_Left;
-        map[XKB_KEY_KP_Right] =                 key.Sym.kp_Right;
-        map[XKB_KEY_KP_Equal] =                 key.Sym.kp_Equal;
-        map[XKB_KEY_KP_Multiply] =              key.Sym.kp_Multiply;
-        map[XKB_KEY_KP_Add] =                   key.Sym.kp_Add;
-        map[XKB_KEY_KP_Divide] =                key.Sym.kp_Divide;
-        map[XKB_KEY_KP_Subtract] =              key.Sym.kp_Subtract;
-        map[XKB_KEY_KP_Decimal] =               key.Sym.kp_Decimal;
-        map[XKB_KEY_KP_Separator] =             key.Sym.kp_Separator;
+        map[XKB_KEY_KP_Enter] =                 KeySym.kp_Enter;
+        map[XKB_KEY_KP_Delete] =                KeySym.kp_Delete;
+        map[XKB_KEY_KP_Home] =                  KeySym.kp_Home;
+        map[XKB_KEY_KP_Begin] =                 KeySym.kp_Begin;
+        map[XKB_KEY_KP_End] =                   KeySym.kp_End;
+        map[XKB_KEY_KP_Page_Up] =               KeySym.kp_PageUp;
+        map[XKB_KEY_KP_Page_Down] =             KeySym.kp_PageDown;
+        map[XKB_KEY_KP_Up] =                    KeySym.kp_Up;
+        map[XKB_KEY_KP_Down] =                  KeySym.kp_Down;
+        map[XKB_KEY_KP_Left] =                  KeySym.kp_Left;
+        map[XKB_KEY_KP_Right] =                 KeySym.kp_Right;
+        map[XKB_KEY_KP_Equal] =                 KeySym.kp_Equal;
+        map[XKB_KEY_KP_Multiply] =              KeySym.kp_Multiply;
+        map[XKB_KEY_KP_Add] =                   KeySym.kp_Add;
+        map[XKB_KEY_KP_Divide] =                KeySym.kp_Divide;
+        map[XKB_KEY_KP_Subtract] =              KeySym.kp_Subtract;
+        map[XKB_KEY_KP_Decimal] =               KeySym.kp_Decimal;
+        map[XKB_KEY_KP_Separator] =             KeySym.kp_Separator;
 
-        map[XKB_KEY_KP_0] =                     key.Sym.kp_0;
-        map[XKB_KEY_KP_1] =                     key.Sym.kp_1;
-        map[XKB_KEY_KP_2] =                     key.Sym.kp_2;
-        map[XKB_KEY_KP_3] =                     key.Sym.kp_3;
-        map[XKB_KEY_KP_4] =                     key.Sym.kp_4;
-        map[XKB_KEY_KP_6] =                     key.Sym.kp_6;
-        map[XKB_KEY_KP_7] =                     key.Sym.kp_7;
-        map[XKB_KEY_KP_8] =                     key.Sym.kp_8;
-        map[XKB_KEY_KP_9] =                     key.Sym.kp_9;
+        map[XKB_KEY_KP_0] =                     KeySym.kp_0;
+        map[XKB_KEY_KP_1] =                     KeySym.kp_1;
+        map[XKB_KEY_KP_2] =                     KeySym.kp_2;
+        map[XKB_KEY_KP_3] =                     KeySym.kp_3;
+        map[XKB_KEY_KP_4] =                     KeySym.kp_4;
+        map[XKB_KEY_KP_6] =                     KeySym.kp_6;
+        map[XKB_KEY_KP_7] =                     KeySym.kp_7;
+        map[XKB_KEY_KP_8] =                     KeySym.kp_8;
+        map[XKB_KEY_KP_9] =                     KeySym.kp_9;
 
         // International input method support keys
 
         // International & multi-key character composition
-        map[XKB_KEY_ISO_Level3_Shift] =         key.Sym.altGr;
-        //map[XKB_KEY_Multi_key] =                key.Sym.multi_key;
-        //map[XKB_KEY_Codeinput] =                key.Sym.codeinput;
-        //map[XKB_KEY_SingleCandidate] =          key.Sym.singleCandidate;
-        //map[XKB_KEY_MultipleCandidate] =        key.Sym.multipleCandidate;
-        //map[XKB_KEY_PreviousCandidate] =        key.Sym.previousCandidate;
+        map[XKB_KEY_ISO_Level3_Shift] =         KeySym.altGr;
+        //map[XKB_KEY_Multi_key] =                KeySym.multi_key;
+        //map[XKB_KEY_Codeinput] =                KeySym.codeinput;
+        //map[XKB_KEY_SingleCandidate] =          KeySym.singleCandidate;
+        //map[XKB_KEY_MultipleCandidate] =        KeySym.multipleCandidate;
+        //map[XKB_KEY_PreviousCandidate] =        KeySym.previousCandidate;
 
         // Misc Functions
-        map[XKB_KEY_Mode_switch] =              key.Sym.modeSwitch;
+        map[XKB_KEY_Mode_switch] =              KeySym.modeSwitch;
 
         //// Japanese keyboard support
-        //map[XKB_KEY_Kanji] =                    key.Sym.kanji;
-        //map[XKB_KEY_Muhenkan] =                 key.Sym.muhenkan;
-        //map[XKB_KEY_Henkan_Mode] =            key.Sym.henkan_Mode;
-        //map[XKB_KEY_Henkan_Mode] =              key.Sym.henkan;
-        //map[XKB_KEY_Henkan] =                   key.Sym.henkan;
-        //map[XKB_KEY_Romaji] =                   key.Sym.romaji;
-        //map[XKB_KEY_Hiragana] =                 key.Sym.hiragana;
-        //map[XKB_KEY_Katakana] =                 key.Sym.katakana;
-        //map[XKB_KEY_Hiragana_Katakana] =        key.Sym.hiragana_Katakana;
-        //map[XKB_KEY_Zenkaku] =                  key.Sym.zenkaku;
-        //map[XKB_KEY_Hankaku] =                  key.Sym.hankaku;
-        //map[XKB_KEY_Zenkaku_Hankaku] =          key.Sym.zenkaku_Hankaku;
-        //map[XKB_KEY_Touroku] =                  key.Sym.touroku;
-        //map[XKB_KEY_Massyo] =                   key.Sym.massyo;
-        //map[XKB_KEY_Kana_Lock] =                key.Sym.kana_Lock;
-        //map[XKB_KEY_Kana_Shift] =               key.Sym.kana_Shift;
-        //map[XKB_KEY_Eisu_Shift] =               key.Sym.eisu_Shift;
-        //map[XKB_KEY_Eisu_toggle] =              key.Sym.eisu_toggle;
-        //map[XKB_KEY_Kanji_Bangou] =           key.Sym.kanji_Bangou;
-        //map[XKB_KEY_Zen_Koho] =               key.Sym.zen_Koho;
-        //map[XKB_KEY_Mae_Koho] =               key.Sym.mae_Koho;
-        //map[XKB_KEY_Kanji_Bangou] =             key.Sym.codeinput;
-        //map[XKB_KEY_Zen_Koho] =                 key.Sym.multipleCandidate;
-        //map[XKB_KEY_Mae_Koho] =                 key.Sym.previousCandidate;
+        //map[XKB_KEY_Kanji] =                    KeySym.kanji;
+        //map[XKB_KEY_Muhenkan] =                 KeySym.muhenkan;
+        //map[XKB_KEY_Henkan_Mode] =            KeySym.henkan_Mode;
+        //map[XKB_KEY_Henkan_Mode] =              KeySym.henkan;
+        //map[XKB_KEY_Henkan] =                   KeySym.henkan;
+        //map[XKB_KEY_Romaji] =                   KeySym.romaji;
+        //map[XKB_KEY_Hiragana] =                 KeySym.hiragana;
+        //map[XKB_KEY_Katakana] =                 KeySym.katakana;
+        //map[XKB_KEY_Hiragana_Katakana] =        KeySym.hiragana_Katakana;
+        //map[XKB_KEY_Zenkaku] =                  KeySym.zenkaku;
+        //map[XKB_KEY_Hankaku] =                  KeySym.hankaku;
+        //map[XKB_KEY_Zenkaku_Hankaku] =          KeySym.zenkaku_Hankaku;
+        //map[XKB_KEY_Touroku] =                  KeySym.touroku;
+        //map[XKB_KEY_Massyo] =                   KeySym.massyo;
+        //map[XKB_KEY_Kana_Lock] =                KeySym.kana_Lock;
+        //map[XKB_KEY_Kana_Shift] =               KeySym.kana_Shift;
+        //map[XKB_KEY_Eisu_Shift] =               KeySym.eisu_Shift;
+        //map[XKB_KEY_Eisu_toggle] =              KeySym.eisu_toggle;
+        //map[XKB_KEY_Kanji_Bangou] =           KeySym.kanji_Bangou;
+        //map[XKB_KEY_Zen_Koho] =               KeySym.zen_Koho;
+        //map[XKB_KEY_Mae_Koho] =               KeySym.mae_Koho;
+        //map[XKB_KEY_Kanji_Bangou] =             KeySym.codeinput;
+        //map[XKB_KEY_Zen_Koho] =                 KeySym.multipleCandidate;
+        //map[XKB_KEY_Mae_Koho] =                 KeySym.previousCandidate;
 
         //// Korean keyboard support
-        //map[XKB_KEY_HANGul] =                   key.Sym.hangul;
-        //map[XKB_KEY_HANGul_Start] =             key.Sym.hangul_Start;
-        //map[XKB_KEY_HANGul_End] =               key.Sym.hangul_End;
-        //map[XKB_KEY_HANGul_Hanja] =             key.Sym.hangul_Hanja;
-        //map[XKB_KEY_HANGul_Jamo] =              key.Sym.hangul_Jamo;
-        //map[XKB_KEY_HANGul_Romaja] =            key.Sym.hangul_Romaja;
-        //map[XKB_KEY_HANGul_Codeinput] =       key.Sym.hangul_Codeinput;
-        //map[XKB_KEY_HANGul_Codeinput] =         key.Sym.codeinput;
-        //map[XKB_KEY_HANGul_Jeonja] =            key.Sym.hangul_Jeonja;
-        //map[XKB_KEY_HANGul_Banja] =             key.Sym.hangul_Banja;
-        //map[XKB_KEY_HANGul_PreHanja] =          key.Sym.hangul_PreHanja;
-        //map[XKB_KEY_HANGul_PostHanja] =         key.Sym.hangul_PostHanja;
-        //map[XKB_KEY_HANGul_SingleCandidate] =   key.Sym.hangul_SingleCandidate;
-        //map[XKB_KEY_HANGul_MultipleCandidate] = key.Sym.hangul_MultipleCandidate;
-        //map[XKB_KEY_HANGul_PreviousCandidate] = key.Sym.hangul_PreviousCandidate;
-        //map[XKB_KEY_HANGul_SingleCandidate] =   key.Sym.singleCandidate;
-        //map[XKB_KEY_HANGul_MultipleCandidate] = key.Sym.multipleCandidate;
-        //map[XKB_KEY_HANGul_PreviousCandidate] = key.Sym.previousCandidate;
-        //map[XKB_KEY_HANGul_Special] =           key.Sym.hangul_Special;
-        //map[XKB_KEY_HANGul_switch] =          key.Sym.hangul_switch;
-        //map[XKB_KEY_HANGul_switch] =            key.Sym.Mode_switch;
+        //map[XKB_KEY_HANGul] =                   KeySym.hangul;
+        //map[XKB_KEY_HANGul_Start] =             KeySym.hangul_Start;
+        //map[XKB_KEY_HANGul_End] =               KeySym.hangul_End;
+        //map[XKB_KEY_HANGul_Hanja] =             KeySym.hangul_Hanja;
+        //map[XKB_KEY_HANGul_Jamo] =              KeySym.hangul_Jamo;
+        //map[XKB_KEY_HANGul_Romaja] =            KeySym.hangul_Romaja;
+        //map[XKB_KEY_HANGul_Codeinput] =       KeySym.hangul_Codeinput;
+        //map[XKB_KEY_HANGul_Codeinput] =         KeySym.codeinput;
+        //map[XKB_KEY_HANGul_Jeonja] =            KeySym.hangul_Jeonja;
+        //map[XKB_KEY_HANGul_Banja] =             KeySym.hangul_Banja;
+        //map[XKB_KEY_HANGul_PreHanja] =          KeySym.hangul_PreHanja;
+        //map[XKB_KEY_HANGul_PostHanja] =         KeySym.hangul_PostHanja;
+        //map[XKB_KEY_HANGul_SingleCandidate] =   KeySym.hangul_SingleCandidate;
+        //map[XKB_KEY_HANGul_MultipleCandidate] = KeySym.hangul_MultipleCandidate;
+        //map[XKB_KEY_HANGul_PreviousCandidate] = KeySym.hangul_PreviousCandidate;
+        //map[XKB_KEY_HANGul_SingleCandidate] =   KeySym.singleCandidate;
+        //map[XKB_KEY_HANGul_MultipleCandidate] = KeySym.multipleCandidate;
+        //map[XKB_KEY_HANGul_PreviousCandidate] = KeySym.previousCandidate;
+        //map[XKB_KEY_HANGul_Special] =           KeySym.hangul_Special;
+        //map[XKB_KEY_HANGul_switch] =          KeySym.hangul_switch;
+        //map[XKB_KEY_HANGul_switch] =            KeySym.Mode_switch;
 
 
         // Special keys from X.org - This include multimedia keys,
             // wireless/bluetooth/uwb keys, special launcher keys, etc.
-        map[XKB_KEY_XF86Back] =                 key.Sym.browserBack;
-        map[XKB_KEY_XF86Forward] =              key.Sym.browserForward;
-        map[XKB_KEY_XF86Stop] =                 key.Sym.browserStop;
-        map[XKB_KEY_XF86Refresh] =              key.Sym.browserRefresh;
-        map[XKB_KEY_XF86Favorites] =            key.Sym.browserFavorites;
-        map[XKB_KEY_XF86AudioMedia] =           key.Sym.launchMedia;
-        map[XKB_KEY_XF86OpenURL] =              key.Sym.openUrl;
-        map[XKB_KEY_XF86HomePage] =             key.Sym.browserHome;
-        map[XKB_KEY_XF86Search] =               key.Sym.browserSearch;
-        map[XKB_KEY_XF86AudioLowerVolume] =     key.Sym.volumeDown;
-        map[XKB_KEY_XF86AudioMute] =            key.Sym.volumeMute;
-        map[XKB_KEY_XF86AudioRaiseVolume] =     key.Sym.volumeUp;
-        map[XKB_KEY_XF86AudioPlay] =            key.Sym.mediaPlay;
-        map[XKB_KEY_XF86AudioStop] =            key.Sym.mediaStop;
-        map[XKB_KEY_XF86AudioPrev] =            key.Sym.mediaPrevious;
-        map[XKB_KEY_XF86AudioNext] =            key.Sym.mediaNext;
-        map[XKB_KEY_XF86AudioRecord] =          key.Sym.mediaRecord;
-        map[XKB_KEY_XF86AudioPause] =           key.Sym.mediaPause;
-        map[XKB_KEY_XF86Mail] =                 key.Sym.launchMail;
-        map[XKB_KEY_XF86MyComputer] =           key.Sym.myComputer;
-        map[XKB_KEY_XF86Calculator] =           key.Sym.calculator;
-        map[XKB_KEY_XF86Memo] =                 key.Sym.memo;
-        map[XKB_KEY_XF86ToDoList] =             key.Sym.todoList;
-        map[XKB_KEY_XF86Calendar] =             key.Sym.calendar;
-        map[XKB_KEY_XF86PowerDown] =            key.Sym.powerDown;
-        map[XKB_KEY_XF86ContrastAdjust] =       key.Sym.contrastAdjust;
-        map[XKB_KEY_XF86Standby] =              key.Sym.standby;
-        map[XKB_KEY_XF86MonBrightnessUp] =      key.Sym.monBrightnessUp;
-        map[XKB_KEY_XF86MonBrightnessDown] =    key.Sym.monBrightnessDown;
-        map[XKB_KEY_XF86KbdLightOnOff] =        key.Sym.keyboardLightOnOff;
-        map[XKB_KEY_XF86KbdBrightnessUp] =      key.Sym.keyboardBrightnessUp;
-        map[XKB_KEY_XF86KbdBrightnessDown] =    key.Sym.keyboardBrightnessDown;
-        map[XKB_KEY_XF86PowerOff] =             key.Sym.powerOff;
-        map[XKB_KEY_XF86WakeUp] =               key.Sym.wakeUp;
-        map[XKB_KEY_XF86Eject] =                key.Sym.eject;
-        map[XKB_KEY_XF86ScreenSaver] =          key.Sym.screenSaver;
-        map[XKB_KEY_XF86WWW] =                  key.Sym.www;
-        map[XKB_KEY_XF86Sleep] =                key.Sym.sleep;
-        map[XKB_KEY_XF86LightBulb] =            key.Sym.lightBulb;
-        map[XKB_KEY_XF86Shop] =                 key.Sym.shop;
-        map[XKB_KEY_XF86History] =              key.Sym.history;
-        map[XKB_KEY_XF86AddFavorite] =          key.Sym.addFavorite;
-        map[XKB_KEY_XF86HotLinks] =             key.Sym.hotLinks;
-        map[XKB_KEY_XF86BrightnessAdjust] =     key.Sym.brightnessAdjust;
-        map[XKB_KEY_XF86Finance] =              key.Sym.finance;
-        map[XKB_KEY_XF86Community] =            key.Sym.community;
-        map[XKB_KEY_XF86AudioRewind] =          key.Sym.audioRewind;
-        map[XKB_KEY_XF86BackForward] =          key.Sym.backForward;
-        map[XKB_KEY_XF86ApplicationLeft] =      key.Sym.applicationLeft;
-        map[XKB_KEY_XF86ApplicationRight] =     key.Sym.applicationRight;
-        map[XKB_KEY_XF86Book] =                 key.Sym.book;
-        map[XKB_KEY_XF86CD] =                   key.Sym.cd;
-        map[XKB_KEY_XF86Calculater] =           key.Sym.calculator;
-        map[XKB_KEY_XF86Clear] =                key.Sym.clear;
-        map[XKB_KEY_XF86ClearGrab] =            key.Sym.clearGrab;
-        map[XKB_KEY_XF86Close] =                key.Sym.close;
-        map[XKB_KEY_XF86Copy] =                 key.Sym.copy;
-        map[XKB_KEY_XF86Cut] =                  key.Sym.cut;
-        map[XKB_KEY_XF86Display] =              key.Sym.display;
-        map[XKB_KEY_XF86DOS] =                  key.Sym.dos;
-        map[XKB_KEY_XF86Documents] =            key.Sym.documents;
-        map[XKB_KEY_XF86Excel] =                key.Sym.excel;
-        map[XKB_KEY_XF86Explorer] =             key.Sym.explorer;
-        map[XKB_KEY_XF86Game] =                 key.Sym.game;
-        map[XKB_KEY_XF86Go] =                   key.Sym.go;
-        map[XKB_KEY_XF86iTouch] =               key.Sym.iTouch;
-        map[XKB_KEY_XF86LogOff] =               key.Sym.logOff;
-        map[XKB_KEY_XF86Market] =               key.Sym.market;
-        map[XKB_KEY_XF86Meeting] =              key.Sym.meeting;
-        map[XKB_KEY_XF86MenuKB] =               key.Sym.menuKB;
-        map[XKB_KEY_XF86MenuPB] =               key.Sym.menuPB;
-        map[XKB_KEY_XF86MySites] =              key.Sym.mySites;
-        map[XKB_KEY_XF86New] =                  key.Sym.new_;
-        map[XKB_KEY_XF86News] =                 key.Sym.news;
-        map[XKB_KEY_XF86OfficeHome] =           key.Sym.officeHome;
-        map[XKB_KEY_XF86Open] =                 key.Sym.open;
-        map[XKB_KEY_XF86Option] =               key.Sym.option;
-        map[XKB_KEY_XF86Paste] =                key.Sym.paste;
-        map[XKB_KEY_XF86Phone] =                key.Sym.phone;
-        map[XKB_KEY_XF86Reply] =                key.Sym.reply;
-        map[XKB_KEY_XF86Reload] =               key.Sym.reload;
-        map[XKB_KEY_XF86RotateWindows] =        key.Sym.rotateWindows;
-        map[XKB_KEY_XF86RotationPB] =           key.Sym.rotationPB;
-        map[XKB_KEY_XF86RotationKB] =           key.Sym.rotationKB;
-        map[XKB_KEY_XF86Save] =                 key.Sym.save;
-        map[XKB_KEY_XF86Send] =                 key.Sym.send;
-        map[XKB_KEY_XF86Spell] =                key.Sym.spell;
-        map[XKB_KEY_XF86SplitScreen] =          key.Sym.splitScreen;
-        map[XKB_KEY_XF86Support] =              key.Sym.support;
-        map[XKB_KEY_XF86TaskPane] =             key.Sym.taskPane;
-        map[XKB_KEY_XF86Terminal] =             key.Sym.terminal;
-        map[XKB_KEY_XF86Tools] =                key.Sym.tools;
-        map[XKB_KEY_XF86Travel] =               key.Sym.travel;
-        map[XKB_KEY_XF86Video] =                key.Sym.video;
-        map[XKB_KEY_XF86Word] =                 key.Sym.word;
-        map[XKB_KEY_XF86Xfer] =                 key.Sym.xfer;
-        map[XKB_KEY_XF86ZoomIn] =               key.Sym.zoomIn;
-        map[XKB_KEY_XF86ZoomOut] =              key.Sym.zoomOut;
-        map[XKB_KEY_XF86Away] =                 key.Sym.away;
-        map[XKB_KEY_XF86Messenger] =            key.Sym.messenger;
-        map[XKB_KEY_XF86WebCam] =               key.Sym.webCam;
-        map[XKB_KEY_XF86MailForward] =          key.Sym.mailForward;
-        map[XKB_KEY_XF86Pictures] =             key.Sym.pictures;
-        map[XKB_KEY_XF86Music] =                key.Sym.music;
-        map[XKB_KEY_XF86Battery] =              key.Sym.battery;
-        map[XKB_KEY_XF86Bluetooth] =            key.Sym.bluetooth;
-        map[XKB_KEY_XF86WLAN] =                 key.Sym.wlan;
-        map[XKB_KEY_XF86UWB] =                  key.Sym.uwb;
-        map[XKB_KEY_XF86AudioForward] =         key.Sym.audioForward;
-        map[XKB_KEY_XF86AudioRepeat] =          key.Sym.audioRepeat;
-        map[XKB_KEY_XF86AudioRandomPlay] =      key.Sym.audioRandomPlay;
-        map[XKB_KEY_XF86Subtitle] =             key.Sym.subtitle;
-        map[XKB_KEY_XF86AudioCycleTrack] =      key.Sym.audioCycleTrack;
-        map[XKB_KEY_XF86Time] =                 key.Sym.time;
-        map[XKB_KEY_XF86Select] =               key.Sym.select;
-        map[XKB_KEY_XF86View] =                 key.Sym.view;
-        map[XKB_KEY_XF86TopMenu] =              key.Sym.topMenu;
-        map[XKB_KEY_XF86Red] =                  key.Sym.red;
-        map[XKB_KEY_XF86Green] =                key.Sym.green;
-        map[XKB_KEY_XF86Yellow] =               key.Sym.yellow;
-        map[XKB_KEY_XF86Blue] =                 key.Sym.blue;
-        map[XKB_KEY_XF86Bluetooth] =            key.Sym.bluetooth;
-        map[XKB_KEY_XF86Suspend] =              key.Sym.suspend;
-        map[XKB_KEY_XF86Hibernate] =            key.Sym.hibernate;
-        map[XKB_KEY_XF86TouchpadToggle] =       key.Sym.touchpadToggle;
-        map[XKB_KEY_XF86TouchpadOn] =           key.Sym.touchpadOn;
-        map[XKB_KEY_XF86TouchpadOff] =          key.Sym.touchpadOff;
-        map[XKB_KEY_XF86AudioMicMute] =         key.Sym.micMute;
-        map[XKB_KEY_XF86Launch0] =              key.Sym.launch0;
-        map[XKB_KEY_XF86Launch1] =              key.Sym.launch1;
-        map[XKB_KEY_XF86Launch2] =              key.Sym.launch2;
-        map[XKB_KEY_XF86Launch3] =              key.Sym.launch3;
-        map[XKB_KEY_XF86Launch4] =              key.Sym.launch4;
-        map[XKB_KEY_XF86Launch5] =              key.Sym.launch5;
-        map[XKB_KEY_XF86Launch6] =              key.Sym.launch6;
-        map[XKB_KEY_XF86Launch7] =              key.Sym.launch7;
-        map[XKB_KEY_XF86Launch8] =              key.Sym.launch8;
-        map[XKB_KEY_XF86Launch9] =              key.Sym.launch9;
-        map[XKB_KEY_XF86LaunchA] =              key.Sym.launchA;
-        map[XKB_KEY_XF86LaunchB] =              key.Sym.launchB;
-        map[XKB_KEY_XF86LaunchC] =              key.Sym.launchC;
-        map[XKB_KEY_XF86LaunchD] =              key.Sym.launchD;
-        map[XKB_KEY_XF86LaunchE] =              key.Sym.launchE;
-        map[XKB_KEY_XF86LaunchF] =              key.Sym.launchF;
+        map[XKB_KEY_XF86Back] =                 KeySym.browserBack;
+        map[XKB_KEY_XF86Forward] =              KeySym.browserForward;
+        map[XKB_KEY_XF86Stop] =                 KeySym.browserStop;
+        map[XKB_KEY_XF86Refresh] =              KeySym.browserRefresh;
+        map[XKB_KEY_XF86Favorites] =            KeySym.browserFavorites;
+        map[XKB_KEY_XF86AudioMedia] =           KeySym.launchMedia;
+        map[XKB_KEY_XF86OpenURL] =              KeySym.openUrl;
+        map[XKB_KEY_XF86HomePage] =             KeySym.browserHome;
+        map[XKB_KEY_XF86Search] =               KeySym.browserSearch;
+        map[XKB_KEY_XF86AudioLowerVolume] =     KeySym.volumeDown;
+        map[XKB_KEY_XF86AudioMute] =            KeySym.volumeMute;
+        map[XKB_KEY_XF86AudioRaiseVolume] =     KeySym.volumeUp;
+        map[XKB_KEY_XF86AudioPlay] =            KeySym.mediaPlay;
+        map[XKB_KEY_XF86AudioStop] =            KeySym.mediaStop;
+        map[XKB_KEY_XF86AudioPrev] =            KeySym.mediaPrevious;
+        map[XKB_KEY_XF86AudioNext] =            KeySym.mediaNext;
+        map[XKB_KEY_XF86AudioRecord] =          KeySym.mediaRecord;
+        map[XKB_KEY_XF86AudioPause] =           KeySym.mediaPause;
+        map[XKB_KEY_XF86Mail] =                 KeySym.launchMail;
+        map[XKB_KEY_XF86MyComputer] =           KeySym.myComputer;
+        map[XKB_KEY_XF86Calculator] =           KeySym.calculator;
+        map[XKB_KEY_XF86Memo] =                 KeySym.memo;
+        map[XKB_KEY_XF86ToDoList] =             KeySym.todoList;
+        map[XKB_KEY_XF86Calendar] =             KeySym.calendar;
+        map[XKB_KEY_XF86PowerDown] =            KeySym.powerDown;
+        map[XKB_KEY_XF86ContrastAdjust] =       KeySym.contrastAdjust;
+        map[XKB_KEY_XF86Standby] =              KeySym.standby;
+        map[XKB_KEY_XF86MonBrightnessUp] =      KeySym.monBrightnessUp;
+        map[XKB_KEY_XF86MonBrightnessDown] =    KeySym.monBrightnessDown;
+        map[XKB_KEY_XF86KbdLightOnOff] =        KeySym.keyboardLightOnOff;
+        map[XKB_KEY_XF86KbdBrightnessUp] =      KeySym.keyboardBrightnessUp;
+        map[XKB_KEY_XF86KbdBrightnessDown] =    KeySym.keyboardBrightnessDown;
+        map[XKB_KEY_XF86PowerOff] =             KeySym.powerOff;
+        map[XKB_KEY_XF86WakeUp] =               KeySym.wakeUp;
+        map[XKB_KEY_XF86Eject] =                KeySym.eject;
+        map[XKB_KEY_XF86ScreenSaver] =          KeySym.screenSaver;
+        map[XKB_KEY_XF86WWW] =                  KeySym.www;
+        map[XKB_KEY_XF86Sleep] =                KeySym.sleep;
+        map[XKB_KEY_XF86LightBulb] =            KeySym.lightBulb;
+        map[XKB_KEY_XF86Shop] =                 KeySym.shop;
+        map[XKB_KEY_XF86History] =              KeySym.history;
+        map[XKB_KEY_XF86AddFavorite] =          KeySym.addFavorite;
+        map[XKB_KEY_XF86HotLinks] =             KeySym.hotLinks;
+        map[XKB_KEY_XF86BrightnessAdjust] =     KeySym.brightnessAdjust;
+        map[XKB_KEY_XF86Finance] =              KeySym.finance;
+        map[XKB_KEY_XF86Community] =            KeySym.community;
+        map[XKB_KEY_XF86AudioRewind] =          KeySym.audioRewind;
+        map[XKB_KEY_XF86BackForward] =          KeySym.backForward;
+        map[XKB_KEY_XF86ApplicationLeft] =      KeySym.applicationLeft;
+        map[XKB_KEY_XF86ApplicationRight] =     KeySym.applicationRight;
+        map[XKB_KEY_XF86Book] =                 KeySym.book;
+        map[XKB_KEY_XF86CD] =                   KeySym.cd;
+        map[XKB_KEY_XF86Calculater] =           KeySym.calculator;
+        map[XKB_KEY_XF86Clear] =                KeySym.clear;
+        map[XKB_KEY_XF86ClearGrab] =            KeySym.clearGrab;
+        map[XKB_KEY_XF86Close] =                KeySym.close;
+        map[XKB_KEY_XF86Copy] =                 KeySym.copy;
+        map[XKB_KEY_XF86Cut] =                  KeySym.cut;
+        map[XKB_KEY_XF86Display] =              KeySym.display;
+        map[XKB_KEY_XF86DOS] =                  KeySym.dos;
+        map[XKB_KEY_XF86Documents] =            KeySym.documents;
+        map[XKB_KEY_XF86Excel] =                KeySym.excel;
+        map[XKB_KEY_XF86Explorer] =             KeySym.explorer;
+        map[XKB_KEY_XF86Game] =                 KeySym.game;
+        map[XKB_KEY_XF86Go] =                   KeySym.go;
+        map[XKB_KEY_XF86iTouch] =               KeySym.iTouch;
+        map[XKB_KEY_XF86LogOff] =               KeySym.logOff;
+        map[XKB_KEY_XF86Market] =               KeySym.market;
+        map[XKB_KEY_XF86Meeting] =              KeySym.meeting;
+        map[XKB_KEY_XF86MenuKB] =               KeySym.menuKB;
+        map[XKB_KEY_XF86MenuPB] =               KeySym.menuPB;
+        map[XKB_KEY_XF86MySites] =              KeySym.mySites;
+        map[XKB_KEY_XF86New] =                  KeySym.new_;
+        map[XKB_KEY_XF86News] =                 KeySym.news;
+        map[XKB_KEY_XF86OfficeHome] =           KeySym.officeHome;
+        map[XKB_KEY_XF86Open] =                 KeySym.open;
+        map[XKB_KEY_XF86Option] =               KeySym.option;
+        map[XKB_KEY_XF86Paste] =                KeySym.paste;
+        map[XKB_KEY_XF86Phone] =                KeySym.phone;
+        map[XKB_KEY_XF86Reply] =                KeySym.reply;
+        map[XKB_KEY_XF86Reload] =               KeySym.reload;
+        map[XKB_KEY_XF86RotateWindows] =        KeySym.rotateWindows;
+        map[XKB_KEY_XF86RotationPB] =           KeySym.rotationPB;
+        map[XKB_KEY_XF86RotationKB] =           KeySym.rotationKB;
+        map[XKB_KEY_XF86Save] =                 KeySym.save;
+        map[XKB_KEY_XF86Send] =                 KeySym.send;
+        map[XKB_KEY_XF86Spell] =                KeySym.spell;
+        map[XKB_KEY_XF86SplitScreen] =          KeySym.splitScreen;
+        map[XKB_KEY_XF86Support] =              KeySym.support;
+        map[XKB_KEY_XF86TaskPane] =             KeySym.taskPane;
+        map[XKB_KEY_XF86Terminal] =             KeySym.terminal;
+        map[XKB_KEY_XF86Tools] =                KeySym.tools;
+        map[XKB_KEY_XF86Travel] =               KeySym.travel;
+        map[XKB_KEY_XF86Video] =                KeySym.video;
+        map[XKB_KEY_XF86Word] =                 KeySym.word;
+        map[XKB_KEY_XF86Xfer] =                 KeySym.xfer;
+        map[XKB_KEY_XF86ZoomIn] =               KeySym.zoomIn;
+        map[XKB_KEY_XF86ZoomOut] =              KeySym.zoomOut;
+        map[XKB_KEY_XF86Away] =                 KeySym.away;
+        map[XKB_KEY_XF86Messenger] =            KeySym.messenger;
+        map[XKB_KEY_XF86WebCam] =               KeySym.webCam;
+        map[XKB_KEY_XF86MailForward] =          KeySym.mailForward;
+        map[XKB_KEY_XF86Pictures] =             KeySym.pictures;
+        map[XKB_KEY_XF86Music] =                KeySym.music;
+        map[XKB_KEY_XF86Battery] =              KeySym.battery;
+        map[XKB_KEY_XF86Bluetooth] =            KeySym.bluetooth;
+        map[XKB_KEY_XF86WLAN] =                 KeySym.wlan;
+        map[XKB_KEY_XF86UWB] =                  KeySym.uwb;
+        map[XKB_KEY_XF86AudioForward] =         KeySym.audioForward;
+        map[XKB_KEY_XF86AudioRepeat] =          KeySym.audioRepeat;
+        map[XKB_KEY_XF86AudioRandomPlay] =      KeySym.audioRandomPlay;
+        map[XKB_KEY_XF86Subtitle] =             KeySym.subtitle;
+        map[XKB_KEY_XF86AudioCycleTrack] =      KeySym.audioCycleTrack;
+        map[XKB_KEY_XF86Time] =                 KeySym.time;
+        map[XKB_KEY_XF86Select] =               KeySym.select;
+        map[XKB_KEY_XF86View] =                 KeySym.view;
+        map[XKB_KEY_XF86TopMenu] =              KeySym.topMenu;
+        map[XKB_KEY_XF86Red] =                  KeySym.red;
+        map[XKB_KEY_XF86Green] =                KeySym.green;
+        map[XKB_KEY_XF86Yellow] =               KeySym.yellow;
+        map[XKB_KEY_XF86Blue] =                 KeySym.blue;
+        map[XKB_KEY_XF86Bluetooth] =            KeySym.bluetooth;
+        map[XKB_KEY_XF86Suspend] =              KeySym.suspend;
+        map[XKB_KEY_XF86Hibernate] =            KeySym.hibernate;
+        map[XKB_KEY_XF86TouchpadToggle] =       KeySym.touchpadToggle;
+        map[XKB_KEY_XF86TouchpadOn] =           KeySym.touchpadOn;
+        map[XKB_KEY_XF86TouchpadOff] =          KeySym.touchpadOff;
+        map[XKB_KEY_XF86AudioMicMute] =         KeySym.micMute;
+        map[XKB_KEY_XF86Launch0] =              KeySym.launch0;
+        map[XKB_KEY_XF86Launch1] =              KeySym.launch1;
+        map[XKB_KEY_XF86Launch2] =              KeySym.launch2;
+        map[XKB_KEY_XF86Launch3] =              KeySym.launch3;
+        map[XKB_KEY_XF86Launch4] =              KeySym.launch4;
+        map[XKB_KEY_XF86Launch5] =              KeySym.launch5;
+        map[XKB_KEY_XF86Launch6] =              KeySym.launch6;
+        map[XKB_KEY_XF86Launch7] =              KeySym.launch7;
+        map[XKB_KEY_XF86Launch8] =              KeySym.launch8;
+        map[XKB_KEY_XF86Launch9] =              KeySym.launch9;
+        map[XKB_KEY_XF86LaunchA] =              KeySym.launchA;
+        map[XKB_KEY_XF86LaunchB] =              KeySym.launchB;
+        map[XKB_KEY_XF86LaunchC] =              KeySym.launchC;
+        map[XKB_KEY_XF86LaunchD] =              KeySym.launchD;
+        map[XKB_KEY_XF86LaunchE] =              KeySym.launchE;
+        map[XKB_KEY_XF86LaunchF] =              KeySym.launchF;
 
         map.rehash();
 
@@ -1049,6 +1049,6 @@ private
 //
 // #define KEY_WWAN		246	/* Wireless WAN (LTE, UMTS, GSM, etc.) */
 // #define KEY_WIMAX		KEY_WWAN
-// #define KEY_RFKILL		247	/* key.Sym that controls all radios */
+// #define KEY_RFKILL		247	/* KeySym that controls all radios */
 //
 // #define KEY_MICMUTE		248	/* Mute / unmute the microphone */

@@ -11,7 +11,7 @@ import dgt.geometry;
 import dgt.event;
 import dgt.vg;
 import dgt.enums;
-import key = dgt.keys;
+import dgt.keys;
 
 import std.utf : toUTF16z;
 import std.exception : enforce;
@@ -498,19 +498,19 @@ class Win32Window : PlatformWindow
             return cast(int)((lp & 0xffff0000) >> 16);
         }
 
-        static @property key.Mods keyMods()
+        static @property KeyMods keyMods()
         {
-            key.Mods mods = key.Mods.none;
+            KeyMods mods = KeyMods.none;
 
-            if (GetKeyState(VK_LSHIFT) & 0x8000) mods |= key.Mods.leftShift;
-            if (GetKeyState(VK_LCONTROL) & 0x8000) mods |= key.Mods.leftCtrl;
-            if (GetKeyState(VK_LMENU) & 0x8000) mods |= key.Mods.leftAlt;
-            if (GetKeyState(VK_LWIN) & 0x8000) mods |= key.Mods.leftSuper;
+            if (GetKeyState(VK_LSHIFT) & 0x8000) mods |= KeyMods.leftShift;
+            if (GetKeyState(VK_LCONTROL) & 0x8000) mods |= KeyMods.leftCtrl;
+            if (GetKeyState(VK_LMENU) & 0x8000) mods |= KeyMods.leftAlt;
+            if (GetKeyState(VK_LWIN) & 0x8000) mods |= KeyMods.leftSuper;
 
-            if (GetKeyState(VK_RSHIFT) & 0x8000) mods |= key.Mods.rightShift;
-            if (GetKeyState(VK_RCONTROL) & 0x8000) mods |= key.Mods.rightCtrl;
-            if (GetKeyState(VK_RMENU) & 0x8000) mods |= key.Mods.rightAlt;
-            if (GetKeyState(VK_RWIN) & 0x8000) mods |= key.Mods.rightSuper;
+            if (GetKeyState(VK_RSHIFT) & 0x8000) mods |= KeyMods.rightShift;
+            if (GetKeyState(VK_RCONTROL) & 0x8000) mods |= KeyMods.rightCtrl;
+            if (GetKeyState(VK_RMENU) & 0x8000) mods |= KeyMods.rightAlt;
+            if (GetKeyState(VK_RWIN) & 0x8000) mods |= KeyMods.rightSuper;
 
             return mods;
         }

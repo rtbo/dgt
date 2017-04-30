@@ -3,7 +3,7 @@ module dgt.event;
 
 import dgt.enums;
 import dgt.geometry : IPoint, IRect, ISize;
-import key = dgt.keys;
+import dgt.keys;
 import dgt.signal;
 import dgt.window : Window, WindowState;
 
@@ -284,7 +284,7 @@ class FocusEvent : WindowEvent
 class MouseEvent : WindowEvent
 {
     this(EventType type, Window window, IPoint point, MouseButton button,
-            MouseState state, key.Mods modifiers)
+            MouseState state, KeyMods modifiers)
     in
     {
         assert(type == EventType.mouseDown || type == EventType.mouseUp || type == EventType.mouseMove
@@ -314,7 +314,7 @@ class MouseEvent : WindowEvent
         return _state;
     }
 
-    @property key.Mods modifiers() const
+    @property KeyMods modifiers() const
     {
         return _modifiers;
     }
@@ -324,7 +324,7 @@ class MouseEvent : WindowEvent
         _point = p;
     }
 
-    package(dgt) @property void modifiers(in key.Mods m)
+    package(dgt) @property void modifiers(in KeyMods m)
     {
         _modifiers = m;
     }
@@ -334,14 +334,14 @@ class MouseEvent : WindowEvent
         IPoint _point;
         MouseButton _button;
         MouseState _state;
-        key.Mods _modifiers;
+        KeyMods _modifiers;
     }
 }
 
 class KeyEvent : WindowEvent
 {
-    this(EventType type, Window window, key.Sym sym, key.Code code,
-            key.Mods modifiers, string text, uint nativeCode, uint nativeSymbol,
+    this(EventType type, Window window, KeySym sym, KeyCode code,
+            KeyMods modifiers, string text, uint nativeCode, uint nativeSymbol,
             bool repeat = false, int repeatCount = 1)
     in
     {
@@ -361,17 +361,17 @@ class KeyEvent : WindowEvent
         _repeatCount = repeatCount;
     }
 
-    @property key.Sym sym() const
+    @property KeySym sym() const
     {
         return _sym;
     }
 
-    @property key.Code code() const
+    @property KeyCode code() const
     {
         return _code;
     }
 
-    @property key.Mods modifiers() const
+    @property KeyMods modifiers() const
     {
         return _modifiers;
     }
@@ -403,9 +403,9 @@ class KeyEvent : WindowEvent
 
     private
     {
-        key.Sym _sym;
-        key.Code _code;
-        key.Mods _modifiers;
+        KeySym _sym;
+        KeyCode _code;
+        KeyMods _modifiers;
         string _text;
         uint _nativeCode;
         uint _nativeSymbol;

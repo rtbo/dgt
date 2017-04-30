@@ -1,16 +1,9 @@
 /// Key enumeration module.
-/// Tip: import in the following way:
-/// ---
-/// import key = dgt.keys;
-///
-/// auto code = key.Code.b;
-/// auto sym = key.Sym.b;
-/// ---
 module dgt.keys;
 
 
 /// Modifier mask
-enum Mods
+enum KeyMods
 {
     none    = 0,
 
@@ -43,7 +36,7 @@ enum Mods
 /// This enum has 256 values and is a perfect candidate for index based
 /// look-up table.
 /// Values of enumerants are from the USB HID scancodes table.
-enum Code : ubyte
+enum KeyCode : ubyte
 {
     none                = 0,
     errorRollOver       = 1,
@@ -269,11 +262,11 @@ enum Code : ubyte
 }
 
 
-// A part of the `Sym` enum was obtained from Qt.
-// Masking system is from toy-xcb
+// A part of the `KeySym` enum was obtained from Qt.
+// Masking system is original
 
 /// Represent a virtual key, which is a key translated with a keymap.
-enum Sym : uint
+enum KeySym : uint
 {
     none                    = 0,
 
