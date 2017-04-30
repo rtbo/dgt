@@ -1,23 +1,25 @@
 /// Window creation and manipulation
 module dgt.window;
 
-import gfx.foundation.rc;
-import dgt.signal;
-import dgt.util;
-import dgt.platform;
 import dgt.application;
-import dgt.geometry;
-import dgt.event;
-import dgt.image;
 import dgt.context;
-import dgt.vg;
+import dgt.event;
+import dgt.geometry;
+import dgt.image;
 import dgt.math;
+import dgt.platform;
+import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.sg.parent;
+import dgt.signal;
+import dgt.util;
+
+import gfx.foundation.rc;
 
 import std.exception;
 import std.experimental.logger;
+import std.typecons : Rebindable;
 
 alias GfxDevice = gfx.device.Device;
 
@@ -103,7 +105,6 @@ class Window
     {
         _flags = flags;
         _platformWindow = Application.platform.createWindow(this);
-        Application.instance.registerWindow(this);
     }
 
     this(string title, WindowFlags flags=WindowFlags.none)
@@ -114,7 +115,12 @@ class Window
 
     @property string title() const
     {
-        return _title;
+        if (_platformWindow.created) {
+            return _platformWindow.title;
+        }
+        else {
+            return _title;
+        }
     }
 
     @property void title(in string title)
@@ -131,56 +137,47 @@ class Window
 
     @property IPoint position() const
     {
-        return _position;
+        return geometry.topLeft;
     }
 
     @property void position(in IPoint position)
     {
-        if (position != _position)
+        if (position != this.position)
         {
-            if (_platformWindow.created)
-            {
-                _platformWindow.geometry = IRect(_position, _size);
-            }
-            else
-            {
-                _position = position;
-            }
+            geometry = IRect(position, size);
         }
     }
 
     @property ISize size() const
     {
-        return _size;
+        return geometry.size;
     }
 
     @property void size(in ISize size)
     {
-        if (size != _size)
+        if (size != this.size)
         {
-            if (_platformWindow.created)
-            {
-                _platformWindow.geometry = IRect(_position, size);
-            }
-            else
-            {
-                _size = size;
-            }
+            geometry = IRect(position, size);
         }
     }
 
     @property IRect geometry() const
     {
-        return IRect(_position, _size);
+        if (_platformWindow.created) {
+            return _platformWindow.geometry;
+        }
+        else {
+            return IRect(_position, _size);
+        }
     }
 
     @property void geometry(in IRect rect)
     {
-        if (rect.size != _size || rect.point != _position)
+        if (rect != geometry)
         {
             if (_platformWindow.created)
             {
-                _platformWindow.geometry = IRect(_position, size);
+                _platformWindow.geometry = rect;
             }
             else
             {
@@ -242,25 +239,22 @@ class Window
     void show(WindowState state = WindowState.normal)
     {
         if (!_platformWindow.created) {
-
-            if (_size.area == 0) {
-                _size = ISize(640, 480);
-            }
-
+            if (_size.area == 0) _size = ISize(640, 480);
             _platformWindow.create();
+            if (!dummy) Application.instance.registerWindow(this);
+            invalidate();
         }
 
-        if (!(_flags & WindowFlags.dummy))
-            _platformWindow.state = state;
+        if (!dummy) _platformWindow.state = state;
     }
 
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
         if (_root) _root.disposeResources();
+        if (!dummy) Application.instance.unregisterWindow(this);
         _platformWindow.close();
         _onClosed.fire(this);
-        Application.instance.unregisterWindow(this);
     }
 
     @property size_t nativeHandle() const
@@ -296,6 +290,24 @@ class Window
         }
         _root = root;
         _root._window = this;
+    }
+
+    /// The region that needs update
+    @property Region dirtyRegion() const
+    {
+        return _dirtyReg;
+    }
+
+    /// Invalidate a rect
+    void invalidate(in IRect rect)
+    {
+        _dirtyReg = unite(_dirtyReg, new Region(rect));
+    }
+
+    /// Invalidate the whole window
+    void invalidate()
+    {
+        _dirtyReg = new Region(IRect(0, 0, size));
     }
 
     void handleEvent(WindowEvent wEv)
@@ -366,30 +378,130 @@ class Window
 
     package(dgt)
     {
+        @property bool dummy() const
+        {
+            return (_flags & WindowFlags.dummy) != 0;
+        }
+
         @property inout(PlatformWindow) platformWindow() inout
         {
             return _platformWindow;
+        }
+
+        @property bool created() const
+        {
+            return _platformWindow.created;
+        }
+
+        void compressEvent(WindowEvent ev)
+        {
+            if (ev.type == EventType.move) {
+                if (_evCompress & EvCompress.move) {
+                    auto prev = getEvent!MoveEvent(EventType.move);
+                    auto cur = cast(MoveEvent)ev;
+                    prev.point = cur.point;
+                }
+                else {
+                    _events ~= ev;
+                    _evCompress |= EvCompress.move;
+                }
+            }
+            else if (ev.type == EventType.resize) {
+                if (_evCompress & EvCompress.resize) {
+                    auto prev = getEvent!ResizeEvent(EventType.resize);
+                    auto cur = cast(ResizeEvent)ev;
+                    prev.size = cur.size;
+                }
+                else {
+                    _events ~= ev;
+                    _evCompress |= EvCompress.resize;
+                }
+            }
+            else if (ev.type == EventType.mouseMove) {
+                if (_evCompress & EvCompress.mouseMove && !(_evCompress & EvCompress.click)) {
+                    auto prev = getEvent!MouseEvent(EventType.mouseMove);
+                    auto cur = cast(MouseEvent)ev;
+                    prev.point = cur.point;
+                    prev.modifiers = prev.modifiers | cur.modifiers;
+                }
+                else {
+                    _events ~= ev;
+                    _evCompress |= EvCompress.mouseMove;
+                }
+            }
+            else {
+                if (ev.type == EventType.mouseDown || ev.type == EventType.mouseUp) {
+                    _evCompress |= EvCompress.click;
+                }
+                else if (ev.type == EventType.show) {
+                    _evCompress |= EvCompress.show;
+                }
+                _events ~= ev;
+            }
+        }
+
+        void deliverEvents()
+        {
+            if (_evCompress & EvCompress.fstFrame) {
+                if (!(_evCompress & EvCompress.show)) {
+                    handleEvent(new ShowEvent(this));
+                }
+                if (!(_evCompress & EvCompress.resize)) {
+                    logf("size = %s", size);
+                    handleEvent(new ResizeEvent(this, size));
+                }
+            }
+            foreach(ev; _events) {
+                handleEvent(ev);
+            }
+            _events = [];
+            _evCompress = EvCompress.none;
+        }
+
+        immutable(RenderFrame) collectFrame()
+        {
+            scope(exit) _dirtyReg = new Region;
+            return new immutable RenderFrame (
+                nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
+                _root ? _root.collectRenderNode() : null
+            );
         }
     }
 
     private
     {
-
         void handleResize(ResizeEvent ev)
         {
             immutable newSize = ev.size;
             _size = newSize;
             _onResize.fire(ev);
+            invalidate();
         }
 
         void handleExpose(ExposeEvent ev)
         {
             if (_root) {
-                RenderThread.instance.frame(new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
-                    _root.collectRenderNode()
-                ));
+                //RenderThread.instance.frame(collectFrame);
             }
+        }
+
+        EvT getEvent(EvT)(EventType type)
+        {
+            foreach(e; _events) {
+                if (e.type == type) return cast(EvT)e;
+            }
+            return null;
+        }
+
+        enum EvCompress
+        {
+            none        = 0,
+            fstFrame    = 1,
+            move        = 2,
+            resize      = 4,
+            mouseMove   = 8,
+            click       = 16,
+            show        = 32,
         }
 
         WindowFlags _flags;
@@ -399,5 +511,10 @@ class Window
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
         SgParent _root;
+
+        EvCompress _evCompress = EvCompress.fstFrame;
+        WindowEvent[] _events;
+
+        Rebindable!Region _dirtyReg = new Region;
     }
 }

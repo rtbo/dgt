@@ -195,6 +195,11 @@ class ResizeEvent : WindowEvent
         return _size;
     }
 
+    package(dgt) @property void size(in ISize s)
+    {
+        _size = s;
+    }
+
     private ISize _size;
 }
 
@@ -208,6 +213,11 @@ class MoveEvent : WindowEvent
     @property IPoint point() const
     {
         return _point;
+    }
+
+    package(dgt) @property void point(in IPoint p)
+    {
+        _point = p;
     }
 
     private IPoint _point;
@@ -307,6 +317,16 @@ class MouseEvent : WindowEvent
     @property key.Mods modifiers() const
     {
         return _modifiers;
+    }
+
+    package(dgt) @property void point(in IPoint p)
+    {
+        _point = p;
+    }
+
+    package(dgt) @property void modifiers(in key.Mods m)
+    {
+        _modifiers = m;
     }
 
     private

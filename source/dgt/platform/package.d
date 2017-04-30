@@ -1,14 +1,26 @@
 /// Platform abstraction module
 module dgt.platform;
 
-import gfx.foundation.rc;
+import dgt.context;
+import dgt.event;
 import dgt.geometry;
+import dgt.image;
 import dgt.screen;
 import dgt.window;
-import dgt.image;
-import dgt.context;
+import gfx.foundation.rc;
 
 import std.typecons : BitFlags;
+
+/// Kind of event to wait for
+enum Wait
+{
+    none = 0,
+    input = 1,
+    vsync = 2,
+    timer = 4,
+
+    all = input | vsync | timer
+}
 
 /// Platform singleton. Entry point to operating system specific code.
 interface Platform : Disposable
@@ -24,7 +36,11 @@ interface Platform : Disposable
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
+
+    void collectEvents(void delegate(Event) collector);
     void processEvents();
+    Wait waitFor(Wait flags);
+    void vsync();
 }
 
 /// OS specific window interface.

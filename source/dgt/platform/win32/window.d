@@ -14,7 +14,6 @@ import dgt.enums;
 import key = dgt.keys;
 
 import std.utf : toUTF16z;
-import std.typecons : scoped;
 import std.exception : enforce;
 import std.experimental.logger;
 import core.sys.windows.windows;
@@ -158,17 +157,17 @@ class Win32Window : PlatformWindow
             return _hWnd;
         }
 
-        bool handleClose()
+        bool handleClose(void delegate(Event) collector)
         {
-            auto ev = scoped!CloseEvent(_win);
-            _win.handleEvent(ev);
+            auto ev = new CloseEvent(_win);
+            collector(ev);
             return true;
         }
 
-		bool handlePaint(UINT msg, WPARAM /+wParam+/, LPARAM /+lParam+/)
+		bool handlePaint(UINT msg, WPARAM /+wParam+/, LPARAM /+lParam+/, void delegate(Event) collector)
 		{
             if (!_paintEvPackage) {
-                handlePaintEvPackage();
+                handlePaintEvPackage(collector);
             }
 			if (!GetUpdateRect(_hWnd, null, false)) return false;
             if (msg == WM_ERASEBKGND) return true;
@@ -176,8 +175,8 @@ class Win32Window : PlatformWindow
 
             immutable r = IRect(0, 0, geometry.size);
 
-			auto ev = scoped!ExposeEvent(_win, r);
-			_win.handleEvent(ev);
+			auto ev = new ExposeEvent(_win, r);
+			collector(ev);
 
             immutable wr = rectToWin32(r);
             ValidateRect(_hWnd, &wr);
@@ -185,16 +184,16 @@ class Win32Window : PlatformWindow
 			return true;
 		}
 
-        bool handleMove(UINT /+msg+/, WPARAM /+wParam+/, LPARAM /+lParam+/)
+        bool handleMove(UINT /+msg+/, WPARAM /+wParam+/, LPARAM /+lParam+/, void delegate(Event) collector)
         {
             if (!IsIconic(_hWnd)) // do not fire when minimized
             {
-                handleGeometryChange();
+                handleGeometryChange(collector);
             }
             return true;
         }
 
-        bool handleResize(UINT /+msg+/, WPARAM wParam, LPARAM /+lParam+/)
+        bool handleResize(UINT /+msg+/, WPARAM wParam, LPARAM /+lParam+/, void delegate(Event) collector)
         {
             switch (wParam)
             {
@@ -202,22 +201,22 @@ class Win32Window : PlatformWindow
                 case SIZE_MAXHIDE:
                     return false;
                 case SIZE_MINIMIZED:
-                    handleWindowStateChange(WindowState.minimized);
+                    handleWindowStateChange(WindowState.minimized, collector);
                     return true;
                 case SIZE_MAXIMIZED:
-                    handleWindowStateChange(WindowState.maximized);
-                    handleGeometryChange();
+                    handleWindowStateChange(WindowState.maximized, collector);
+                    handleGeometryChange(collector);
                     return true;
                 case SIZE_RESTORED:
-                    handleWindowStateChange(WindowState.normal);
-                    handleGeometryChange();
+                    handleWindowStateChange(WindowState.normal, collector);
+                    handleGeometryChange(collector);
                     return true;
                 default:
                     return false;
             }
         }
 
-        void handleGeometryChange()
+        void handleGeometryChange(void delegate(Event) collector)
         {
             immutable oldG = geometry;
             immutable g = sysGeometry;
@@ -225,36 +224,36 @@ class Win32Window : PlatformWindow
             _rect = g;
 
             if (g.size != oldG.size) {
-                auto ev = scoped!ResizeEvent(_win, g.size);
-                _win.handleEvent(ev);
+                auto ev = new ResizeEvent(_win, g.size);
+                collector(ev);
                 _sentFstResize = true;
             }
             if (g.point != oldG.point) {
-                auto ev = scoped!MoveEvent(_win, g.point);
-                _win.handleEvent(ev);
+                auto ev = new MoveEvent(_win, g.point);
+                collector(ev);
             }
 
             InvalidateRect(_hWnd, null, true);
         }
 
-        bool handleShow(UINT msg, WPARAM wParam, LPARAM lParam)
+        bool handleShow(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(Event) collector)
         {
             if (lParam) return false; // only handle calls subsequent to ShowWindow
 
             if (wParam) {
-                auto ev = scoped!ShowEvent(_win);
-                _win.handleEvent(ev);
+                auto ev = new ShowEvent(_win);
+                collector(ev);
                 _sentFstShow = true;
             }
             else {
-                auto ev = scoped!HideEvent(_win);
-                _win.handleEvent(ev);
+                auto ev = new HideEvent(_win);
+                collector(ev);
             }
             return true;
         }
 
 
-        bool handleMouse(UINT msg, WPARAM wParam, LPARAM lParam)
+        bool handleMouse(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(Event) collector)
         {
             EventType t;
             auto pos = IPoint(GET_X_LPARAM(lParam),
@@ -300,11 +299,11 @@ class Win32Window : PlatformWindow
                     _mouseOut = false;
 
                     // mouse was out: deliver enter event
-                    auto ev = scoped!MouseEvent(
+                    auto ev = new MouseEvent(
                         EventType.mouseEnter, _win, pos, MouseButton.none,
                         _mouseState, mods
                     );
-                    _win.handleEvent(ev);
+                    collector(ev);
 
                     // and register for leave event
                     TRACKMOUSEEVENT tm;
@@ -328,15 +327,15 @@ class Win32Window : PlatformWindow
                 break;
             }
             {
-                auto ev = scoped!MouseEvent(
+                auto ev = new MouseEvent(
                     t, _win, pos, but, _mouseState, mods
                 );
-                _win.handleEvent(ev);
+                collector(ev);
             }
             return true;
         }
 
-        bool handleKey(UINT msg, WPARAM wParam, LPARAM lParam)
+        bool handleKey(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(Event) collector)
         {
             import dgt.platform.win32.keymap : getKeysym, getKeycode;
             import std.conv : to;
@@ -365,7 +364,7 @@ class Win32Window : PlatformWindow
                     EventType.keyDown, _win, sym, code, keyMods,
                     text.to!string, scancode, cast(uint)wParam, repeat, repeatCount
                 );
-                _win.handleEvent(ev);
+                collector(ev);
             }
             else
             {
@@ -373,17 +372,17 @@ class Win32Window : PlatformWindow
                     EventType.keyDown, _win, sym, code, keyMods,
                     "", scancode, cast(uint)wParam
                 );
-                _win.handleEvent(ev);
+                collector(ev);
             }
 
             return true;
         }
 
 
-        void handleWindowStateChange(WindowState ws)
+        void handleWindowStateChange(WindowState ws, void delegate(Event) collector)
         {
-            auto ev = scoped!StateChangeEvent(_win, ws);
-            _win.handleEvent(ev);
+            auto ev = new StateChangeEvent(_win, ws);
+            collector(ev);
         }
     }
 
@@ -460,7 +459,7 @@ class Win32Window : PlatformWindow
             return "";
         }
 
-        void handlePaintEvPackage()
+        void handlePaintEvPackage(void delegate(Event) collector)
         {
             immutable state = sysState;
             immutable geom = sysGeometry;
@@ -469,11 +468,11 @@ class Win32Window : PlatformWindow
             immutable geomCond = geom.area != 0;
 
             if (!_sentFstShow && stateCond) {
-                auto ev = scoped!ShowEvent(_win);
-                _win.handleEvent(ev);
+                auto ev = new ShowEvent(_win);
+                collector(ev);
             }
             if (!_sentFstResize && geomCond) {
-                handleGeometryChange();
+                handleGeometryChange(collector);
             }
 
             if (stateCond && geomCond) _paintEvPackage = true;

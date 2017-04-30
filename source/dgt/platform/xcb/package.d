@@ -87,6 +87,9 @@ class XcbPlatform : Platform
         Screen[] _screens;
         XcbScreen[] _xcbScreens;
         XcbWindow[xcb_window_t] _windows;
+        int _xcbFd;
+        int _vsyncReadFd;
+        int _vsyncWriteFd;
     }
 
     /// Builds an XcbPlatform
@@ -112,6 +115,18 @@ class XcbPlatform : Platform
         _kbd = new XcbKeyboard(g_connection, _xkbFirstEv);
         initializeDRI();
         initializeVG();
+
+        _xcbFd = xcb_get_file_descriptor(g_connection);
+
+        import core.sys.posix.unistd : pipe;
+        int[2] pipeFds;
+        enforce(pipe(pipeFds) ==0, "could not create pipe");
+        _vsyncReadFd = pipeFds[0];
+        _vsyncWriteFd = pipeFds[1];
+
+        import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
+        immutable flags = fcntl(_vsyncWriteFd, F_GETFL, 0);
+        fcntl(_vsyncWriteFd, F_SETFL, flags | O_NONBLOCK);
     }
 
     override void dispose()
@@ -148,51 +163,112 @@ class XcbPlatform : Platform
         return new XcbWindow(window, this);
     }
 
+    override void collectEvents(void delegate(Event) collector)
+    {
+        while(true) {
+            xcb_generic_event_t* e = xcb_poll_for_event(g_connection);
+            if (!e) break;
+            scope(exit) free(e);
+            handleEvent(e, collector);
+        }
+        xcb_flush(g_connection);
+    }
+
     override void processEvents()
     {
         xcb_generic_event_t* e = xcb_wait_for_event(g_connection);
-        immutable xcbType = xcbEventType(e);
-
-        scope(exit)
-        {
+        scope(exit) {
             free(e);
             xcb_flush(g_connection);
         }
+        handleEvent(e, (Event ev) {
+            auto wEv = cast(WindowEvent)ev;
+            if (wEv) {
+                wEv.window.handleEvent(wEv);
+            }
+        });
+    }
+
+    override Wait waitFor(Wait flags)
+    {
+        import core.sys.posix.poll : poll, pollfd, POLLIN;
+
+        pollfd[2] fds;
+        fds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
+        fds[0].events = POLLIN;
+        fds[1].fd = (flags & Wait.vsync) ? _vsyncReadFd : -1;
+        fds[1].events = POLLIN;
+
+        while(true) {
+            immutable rc = poll(fds.ptr, 2, -1);
+            if (rc == -1) {
+                import core.stdc.errno : EINTR, errno;
+                import core.stdc.string : strerror;
+                import std.string : fromStringz;
+                if (errno == EINTR) continue;
+                logf("error during poll: %s", fromStringz(strerror(errno)));
+            }
+            break;
+        }
+
+        Wait res = Wait.none;
+        if (fds[0].revents & POLLIN) {
+            res |= Wait.input;
+        }
+        if (fds[1].revents & POLLIN) {
+            res |= Wait.vsync;
+            import core.sys.posix.unistd : read;
+            ubyte[8] buf;
+            read(_vsyncReadFd, cast(void*)buf.ptr, 8);
+        }
+        return res;
+    }
+
+    override void vsync()
+    {
+        import core.sys.posix.unistd : write;
+        ubyte[4] buf;
+        write(_vsyncWriteFd, cast(const(void*))buf.ptr, 4);
+    }
+
+    private void handleEvent(xcb_generic_event_t* e, void delegate(Event) collector)
+    {
+        immutable xcbType = xcbEventType(e);
 
         switch (xcbType)
         {
         case XCB_KEY_PRESS:
         case XCB_KEY_RELEASE:
-            processKeyEvent(cast(xcb_key_press_event_t*)e);
+            processKeyEvent(cast(xcb_key_press_event_t*)e, collector);
             break;
         case XCB_BUTTON_PRESS:
         case XCB_BUTTON_RELEASE:
-            processWindowEvent!(xcb_button_press_event_t, "processButtonEvent")(e);
+            processWindowEvent!(xcb_button_press_event_t, "processButtonEvent")(e, collector);
             break;
         case XCB_MOTION_NOTIFY:
-            processWindowEvent!(xcb_motion_notify_event_t, "processMotionEvent")(e);
+            processWindowEvent!(xcb_motion_notify_event_t, "processMotionEvent")(e, collector);
             break;
         case XCB_ENTER_NOTIFY:
         case XCB_LEAVE_NOTIFY:
-            processWindowEvent!(xcb_enter_notify_event_t, "processEnterLeaveEvent")(e);
+            processWindowEvent!(xcb_enter_notify_event_t, "processEnterLeaveEvent")(e, collector);
             break;
         case XCB_UNMAP_NOTIFY:
-            processWindowEvent!(xcb_unmap_notify_event_t, "processUnmapEvent")(e);
+            processWindowEvent!(xcb_unmap_notify_event_t, "processUnmapEvent")(e, collector);
             break;
         case XCB_MAP_NOTIFY:
-            processWindowEvent!(xcb_map_notify_event_t, "processMapEvent")(e);
+            processWindowEvent!(xcb_map_notify_event_t, "processMapEvent")(e, collector);
             break;
         case XCB_CONFIGURE_NOTIFY:
-            processWindowEvent!(xcb_configure_notify_event_t, "processConfigureEvent")(e);
+            processWindowEvent!(xcb_configure_notify_event_t, "processConfigureEvent")(e, collector);
             break;
         case XCB_PROPERTY_NOTIFY:
-            processWindowEvent!(xcb_property_notify_event_t, "processPropertyEvent", "window")(e);
+            processWindowEvent!(xcb_property_notify_event_t, "processPropertyEvent", "window")(e, collector);
             break;
         case XCB_CLIENT_MESSAGE:
-            processClientEvent(cast(xcb_client_message_event_t*)e);
+            processClientEvent(cast(xcb_client_message_event_t*)e, collector);
             break;
         case XCB_EXPOSE:
-            processWindowEvent!(xcb_expose_event_t, "processExposeEvent", "window")(e);
+            processWindowEvent!(xcb_expose_event_t, "processExposeEvent", "window")(e, collector);
             break;
         default:
             if (xcbType == _xkbFirstEv)
@@ -227,6 +303,7 @@ class XcbPlatform : Platform
             }
             break;
         }
+
     }
 
     package
@@ -288,6 +365,11 @@ class XcbPlatform : Platform
         void registerWindow(XcbWindow w)
         {
             _windows[w.xcbWin] = w;
+        }
+
+        void unregisterWindow(XcbWindow w)
+        {
+            _windows.remove(w.xcbWin);
         }
 
         xcb_atom_t atom(Atom atom) const
@@ -388,26 +470,27 @@ class XcbPlatform : Platform
         }
 
         void processWindowEvent(SpecializedEvent, string processingMethod, string seField = "event")(
-                xcb_generic_event_t* xcbEv)
+                xcb_generic_event_t* xcbEv, void delegate(Event) collector)
         {
             auto se = cast(SpecializedEvent*)xcbEv;
             auto xcbWin = xcbWindow(mixin("se." ~ seField));
-            mixin("xcbWin." ~ processingMethod ~ "(se);");
+            if (xcbWin) {
+                mixin("xcbWin." ~ processingMethod ~ "(se, collector);");
+            }
         }
 
-        void processKeyEvent(xcb_key_press_event_t* xcbEv)
+        void processKeyEvent(xcb_key_press_event_t* xcbEv, void delegate(Event) collector)
         {
             auto xcbWin = xcbWindow(xcbEv.event);
-            _kbd.processEvent(xcbEv, xcbWin.window);
+            _kbd.processEvent(xcbEv, xcbWin.window, collector);
         }
 
-        void processClientEvent(xcb_client_message_event_t* xcbEv)
+        void processClientEvent(xcb_client_message_event_t* xcbEv, void delegate(Event) collector)
         {
             if (xcbEv.data.data32[0] == atom(Atom.WM_DELETE_WINDOW))
             {
                 auto w = window(xcbEv.window);
-                auto ev = scoped!CloseEvent(w);
-                w.handleEvent(ev);
+                collector(new CloseEvent(w));
             }
         }
     }

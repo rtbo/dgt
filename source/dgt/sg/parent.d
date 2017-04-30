@@ -267,6 +267,7 @@ static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
 
 unittest
 {
+    import dgt.sg.group : SgGroup;
     import std.algorithm : equal;
 
     auto root = new SgGroup;

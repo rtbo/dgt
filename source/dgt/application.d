@@ -36,16 +36,6 @@ class Application : EventLoop, Disposable
         _platform.dispose();
     }
 
-    /// Enter main event processing loop
-    override int loop()
-    {
-        assert(!RenderThread.instance.running);
-        initializeGfx();
-        scope(exit) finalizeGfx();
-
-        return EventLoop.loop();
-    }
-
 
     private void initialize(Platform platform)
     {
@@ -90,48 +80,36 @@ class Application : EventLoop, Disposable
         log("ending initialization");
     }
 
-
-    private void initializeGfx()
-    {
-        Window window;
-        Window dummy;
-        foreach (w; windows) {
-            if (w.platformWindow.created) {
-                window = w;
-                break;
-            }
-        }
-        if (!window) {
-            dummy = new Window("dummy", WindowFlags.dummy);
-            dummy.show();
-            window = dummy;
-        }
-
-        RenderThread.instance.start(createGlContext(window));
-
-        if (dummy) {
-            dummy.close();
+    override protected void onRegisterWindow(Window w) {
+        if (windows.length == 1) {
+            initializeGfx(w);
         }
     }
 
-    private void finalizeGfx(Window window=null)
-    {
-        Window dummy;
-        if (!window) {
-            dummy = new Window("dummy", WindowFlags.dummy);
-            dummy.show();
-            window = dummy;
+    override protected void onUnregisterWindow(Window w) {
+        if (windows.length == 1) {
+            finalizeGfx(w);
         }
-        RenderThread.instance.stop(window.nativeHandle);
+    }
 
-        if (dummy) dummy.close();
+
+    private void initializeGfx(Window window)
+    {
+        assert(window.created && !window.dummy);
+        RenderThread.instance.start(createGlContext(window));
+    }
+
+    private void finalizeGfx(Window window)
+    {
+        assert(window.created && !window.dummy);
+        RenderThread.instance.stop(window.nativeHandle);
     }
 
     private Platform _platform;
     private bool _exitFlag;
     private int _exitCode;
 
-    static
+    static __gshared
     {
         /// Get the Application singleton.
         @property Application instance()

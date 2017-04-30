@@ -125,6 +125,7 @@ final class Win32GlContext : GlContext
 {
     private HGLRC _glrc;
     private GlAttribs _attribs;
+    private bool _current;
 
     this(HGLRC glrc, GlAttribs attribs) {
         _glrc = glrc;
@@ -143,12 +144,19 @@ final class Win32GlContext : GlContext
         auto wnd = cast(HWND)nativeHandle;
         auto dc = GetDC(wnd);
         scope(exit) ReleaseDC(wnd, dc);
-        return wglMakeCurrent(dc, _glrc) != 0;
+        _current = (wglMakeCurrent(dc, _glrc) != 0);
+        return _current;
     }
 
     override void doneCurrent()
     {
         wglMakeCurrent(null, null);
+        _current = false;
+    }
+
+    override @property bool current() const
+    {
+        return _current;
     }
 
     override @property int swapInterval()
