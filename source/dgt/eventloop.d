@@ -30,7 +30,9 @@ class EventLoop
 
             if (!_exitFlag) {
                 if (_windows.length && RenderThread.hadVSync) {
-                    RenderThread.instance.frame(_windows[0].collectFrame());
+                    if (!_windows[0].dirtyRegion.empty) {
+                        RenderThread.instance.frame(_windows[0].collectFrame());
+                    }
                 }
                 Application.platform.waitFor(Wait.all);
             }

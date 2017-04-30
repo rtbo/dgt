@@ -1,23 +1,25 @@
 /// Window creation and manipulation
 module dgt.window;
 
-import gfx.foundation.rc;
-import dgt.signal;
-import dgt.util;
-import dgt.platform;
 import dgt.application;
-import dgt.geometry;
-import dgt.event;
-import dgt.image;
 import dgt.context;
-import dgt.vg;
+import dgt.event;
+import dgt.geometry;
+import dgt.image;
 import dgt.math;
+import dgt.platform;
+import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.sg.parent;
+import dgt.signal;
+import dgt.util;
+
+import gfx.foundation.rc;
 
 import std.exception;
 import std.experimental.logger;
+import std.typecons : Rebindable;
 
 alias GfxDevice = gfx.device.Device;
 
@@ -237,12 +239,10 @@ class Window
     void show(WindowState state = WindowState.normal)
     {
         if (!_platformWindow.created) {
-
             if (_size.area == 0) _size = ISize(640, 480);
-
             _platformWindow.create();
-
             if (!dummy) Application.instance.registerWindow(this);
+            invalidate();
         }
 
         if (!dummy) _platformWindow.state = state;
@@ -290,6 +290,24 @@ class Window
         }
         _root = root;
         _root._window = this;
+    }
+
+    /// The region that needs update
+    @property Region dirtyRegion() const
+    {
+        return _dirtyReg;
+    }
+
+    /// Invalidate a rect
+    void invalidate(in IRect rect)
+    {
+        _dirtyReg = unite(_dirtyReg, new Region(rect));
+    }
+
+    /// Invalidate the whole window
+    void invalidate()
+    {
+        _dirtyReg = new Region(IRect(0, 0, size));
     }
 
     void handleEvent(WindowEvent wEv)
@@ -442,6 +460,7 @@ class Window
 
         immutable(RenderFrame) collectFrame()
         {
+            scope(exit) _dirtyReg = new Region;
             return new immutable RenderFrame (
                 nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
                 _root ? _root.collectRenderNode() : null
@@ -456,6 +475,7 @@ class Window
             immutable newSize = ev.size;
             _size = newSize;
             _onResize.fire(ev);
+            invalidate();
         }
 
         void handleExpose(ExposeEvent ev)
@@ -494,5 +514,7 @@ class Window
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;
+
+        Rebindable!Region _dirtyReg = new Region;
     }
 }
