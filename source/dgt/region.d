@@ -9,17 +9,25 @@ import std.range;
 /// An immutable screen region.
 alias Region = immutable(_Region);
 
+/// Compute the intersection between two regions
 Region intersect(in Region lhs, in Region rhs);
+/// Compute the union between two regions
 Region unite(in Region lhs, in Region rhs);
+/// Subtract rhs from lhs
 Region subtract(in Region lhs, in Region rhs);
 
 // y-x sorted and banded region, as X11 and pixman.
 // Top is lower y and bottom is higher y
-struct _Region
+class _Region
 {
     private IRect _extents;
     private IRect[] _rects;
 
+    /// Construct an empty region
+    immutable this()
+    {}
+
+    /// Construct a region with one rectangle
     immutable this(in IRect r)
     {
         _extents = r;
@@ -68,7 +76,7 @@ Region intersect(in Region lhs, in Region rhs)
     }
     else if (lhs._rects.length == 1 && rhs._rects.length == 1) {
         immutable r = lhs.extents.intersection(rhs.extents);
-        return Region(r);
+        return new Region(r);
     }
     else if (lhs._rects.length == 1 && lhs.extents.contains(rhs.extents)) {
         return rhs;
@@ -101,14 +109,14 @@ Region intersect(in Region lhs, in Region rhs)
             operator(lhs.rects, rhs.rects, false, false, &intersectOp)
         );
         immutable extents = computeExtents(rects);
-        return Region(extents, rects);
+        return new Region(extents, rects);
     }
 }
 
 unittest
 {
-    immutable reg1 = Region(IRect(IPoint(2, 3), ISize(5, 4)));
-    immutable reg2 = Region(IRect(IPoint(4, 5), ISize(5, 4)));
+    immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
+    immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
     immutable res = intersect(reg1, reg2);
 
     assert( ! res.contains(IPoint(3, 4))  );
@@ -204,15 +212,15 @@ Region unite(in Region lhs, in Region rhs)
         extents.bottom = max(lhs.extents.bottom, rhs.extents.bottom);
         extents.left = min(lhs.extents.left, rhs.extents.left);
         extents.right = max(lhs.extents.right, rhs.extents.right);
-        return Region(extents, rects);
+        return new Region(extents, rects);
     }
 }
 
 
 unittest
 {
-    immutable reg1 = Region(IRect(IPoint(2, 3), ISize(5, 4)));
-    immutable reg2 = Region(IRect(IPoint(4, 5), ISize(5, 4)));
+    immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
+    immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
     immutable res = unite(reg1, reg2);
 
     assert(   res.contains(IPoint(3, 4))  );
@@ -308,15 +316,15 @@ Region subtract(in Region lhs, in Region rhs)
             operator(lhs.rects, rhs.rects, true, false, &subtractOp)
         );
         immutable extents = rects.computeExtents();
-        return Region(extents, rects);
+        return new Region(extents, rects);
     }
 }
 
 
 unittest
 {
-    immutable reg1 = Region(IRect(IPoint(2, 3), ISize(5, 4)));
-    immutable reg2 = Region(IRect(IPoint(4, 5), ISize(5, 4)));
+    immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
+    immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
     immutable res = subtract(reg1, reg2);
 
     assert(   res.contains(IPoint(3, 4))  );
