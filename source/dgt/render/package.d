@@ -83,6 +83,18 @@ class RenderThread
         send(_tid, frame);
         return true;
     }
+
+    /// Render a more than one frame in the rendering thread.
+    /// Attempt is made to render all frames in the same vsync.
+    /// Each frame should be for a different window.
+    package(dgt) bool frame(immutable(RenderFrame)[] frames)
+    {
+        import core.atomic : atomicStore;
+        atomicStore(_hadVSync, false);
+        send(_tid, frames);
+        return true;
+    }
+
     /// End the rendering thread.
     /// The native handle is used to make a context current in order to
     /// free held graphics resources.
@@ -133,8 +145,13 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
                     atomicStore(_hadVSync, true);
                     Application.platform.vsync();
                 },
+                (immutable(RenderFrame)[] frames) {
+                    renderer.renderFrames(frames);
+                    atomicStore(_hadVSync, true);
+                    Application.platform.vsync();
+                },
                 (DeleteCache dc) {
-                    renderer.deleteCache(dc.cookie);
+                    renderer.markForPrune(dc.cookie);
                 },
                 (Finalize f) {
                     renderer.finalize(f.nativeHandle);
@@ -155,19 +172,68 @@ void renderLoop(shared(GlContext) context, Tid mainLoopTid)
 }
 
 
+
 class Renderer
 {
+    class PerWindow : Disposable
+    {
+        Rc!(Texture2D!Rgba8)            bufTex;
+        Rc!(RenderTargetView!Rgba8)     bufRtv;
+        Rc!(ShaderResourceView!Rgba8)   bufSrv;
+        Rc!Sampler                      bufSampler;
+
+        Rc!(BuiltinSurface!Rgba8)       surf;
+        Rc!(RenderTargetView!Rgba8)     rtv;
+
+        ISize   size;
+        FMat4   viewProj;
+
+        this(in ISize sz)
+        {
+            surf = new BuiltinSurface!Rgba8(
+                _device.builtinSurface,
+                cast(ushort)sz.width, cast(ushort)sz.height,
+                _context.attribs.samples
+            );
+
+            rtv = surf.viewAsRenderTarget();
+
+            updateWithSize(sz);
+        }
+
+        void updateWithSize(in ISize sz)
+        {
+            if (!bufTex || size != sz) {
+                TexUsageFlags usage = TextureUsage.ShaderResource | TextureUsage.RenderTarget;
+                bufTex = new Texture2D!Rgba8(usage, 1, cast(ushort)sz.width, cast(ushort)sz.height, []);
+                bufRtv = bufTex.viewAsRenderTarget(0, none!ubyte);
+                bufSrv = bufTex.viewAsShaderResource(0, 0, newSwizzle());
+                bufSampler = new Sampler(
+                    bufSrv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+                );
+            }
+            if (size != sz) {
+                size = sz;
+                viewProj = orthoProj(0, sz.width, sz.height, 0, 1, -1); // Y=0 at the top
+            }
+        }
+
+        override void dispose()
+        {
+            bufTex.unload();
+            bufRtv.unload();
+            bufSrv.unload();
+            bufSampler.unload();
+            surf.unload();
+            rtv.unload();
+        }
+    }
+
     GlContext               _context;
     Device                  _device;
     Encoder                 _encoder;
 
-    Rc!(Texture2D!Rgba8)            _bufTex;
-    Rc!(RenderTargetView!Rgba8)     _bufRtv;
-    Rc!(ShaderResourceView!Rgba8)   _bufSrv;
-    Rc!Sampler                      _bufSampler;
-
-    BuiltinSurface!Rgba8    _surf;
-    RenderTargetView!Rgba8  _rtv;
+    PerWindow[size_t]       _windowCache;
 
     SolidPipeline   _solidPipeline;
     SolidPipeline   _solidBlendPipeline;
@@ -184,9 +250,6 @@ class Renderer
     Disposable[ulong]   _objectCache;
     ulong[]             _cachePruneQueue;
 
-    FMat4 _viewProj;
-    ISize _size;
-
 
     this(GlContext context)
     {
@@ -196,16 +259,6 @@ class Renderer
     void initialize() {
         _device = enforce(createGlDevice());
         _device.retain();
-
-        _surf = new BuiltinSurface!Rgba8(
-            _device.builtinSurface,
-            cast(ushort)_size.width, cast(ushort)_size.height,
-            _context.attribs.samples
-        );
-        _surf.retain();
-
-        _rtv = _surf.viewAsRenderTarget();
-        _rtv.retain();
 
         Rc!CommandBuffer cmdBuf = _device.makeCommandBuffer();
 
@@ -279,16 +332,25 @@ class Renderer
         _texBlendArgbPremultPipeline.dispose();
         _textPipeline.dispose();
         _blitPipeline.dispose();
-        _rtv.release();
-        _surf.release();
-        _bufTex.unload();
-        _bufRtv.unload();
-        _bufSrv.unload();
-        _bufSampler.unload();
+        dispose(_windowCache);
         _device.release();
 
         _context.doneCurrent();
         _context.dispose();
+    }
+
+    PerWindow windowCache(size_t handle, in ISize sz)
+    {
+        auto pwp = handle in _windowCache;
+        if (pwp) {
+            pwp.updateWithSize(sz);
+            return *pwp;
+        }
+        else {
+            auto newPw = new PerWindow(sz);
+            _windowCache[handle] = newPw;
+            return newPw;
+        }
     }
 
     T retrieveCache(T)(ulong cookie)
@@ -302,21 +364,13 @@ class Renderer
         return cachedObj;
     }
 
-    void deleteCache(ulong cookie)
+    void markForPrune(ulong cookie)
     {
         _cachePruneQueue ~= cookie;
     }
 
-    void renderFrame(immutable(RenderFrame) frame)
+    void pruneCache()
     {
-        if (!_context.makeCurrent(frame.windowHandle)) {
-            error("could not make rendering context current!");
-            return;
-        }
-        scope(exit) _context.doneCurrent();
-
-        _context.swapInterval = 1;
-
         foreach(cookie; _cachePruneQueue) {
             auto d = cookie in _objectCache;
             if (d) {
@@ -328,73 +382,102 @@ class Renderer
             }
         }
         _cachePruneQueue.length = 0;
+    }
 
-        _size = frame.viewport.size;
+
+    void renderFrames(immutable(RenderFrame)[] frames)
+    {
+        foreach (i, f; frames) {
+            if (!_context.makeCurrent(f.windowHandle)) {
+                error("could not make rendering context current!");
+                return;
+            }
+            scope(exit) _context.doneCurrent();
+
+            if (i == 0) {
+                pruneCache();
+            }
+
+            _context.swapInterval = (i == frames.length-1) ? 1 : 0;
+
+            doFrame(f);
+        }
+    }
+
+    void renderFrame(immutable(RenderFrame) frame)
+    {
+        if (!_context.makeCurrent(frame.windowHandle)) {
+            error("could not make rendering context current!");
+            return;
+        }
+        scope(exit) _context.doneCurrent();
+
+        pruneCache();
+        _context.swapInterval = 1;
+
+        doFrame(frame);
+    }
+
+    void doFrame(immutable(RenderFrame) frame)
+    {
         if (!_device) {
             initialize();
             log("renderer initialized");
         }
 
-        if (!_bufTex || _bufTex.width != _size.width || _bufTex.height != _size.height) {
-            TexUsageFlags usage = TextureUsage.ShaderResource | TextureUsage.RenderTarget;
-            _bufTex = new Texture2D!Rgba8(usage, 1, cast(ushort)_size.width, cast(ushort)_size.height, []);
-            _bufRtv = _bufTex.viewAsRenderTarget(0, none!ubyte);
-            _bufSrv = _bufTex.viewAsShaderResource(0, 0, newSwizzle());
-            _bufSampler = new Sampler(
-                _bufSrv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
-            );
-        }
+        immutable size = frame.viewport.size;
+
+        auto pw = windowCache(frame.windowHandle, size);
 
         immutable vp = cast(Rect!ushort)frame.viewport;
         _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
 
         if (frame.hasClearColor) {
             auto col = frame.clearColor;
-            _encoder.clear!Rgba8(_bufRtv, [col.r, col.g, col.b, col.a]);
+            _encoder.clear!Rgba8(pw.bufRtv, [col.r, col.g, col.b, col.a]);
         }
 
         if (frame.root) {
-            _viewProj = orthoProj(0, vp.width, vp.height, 0, 1, -1); // Y=0 at the top
-            renderNode(frame.root, FMat4.identity);
+            renderNode(frame.root, pw, FMat4.identity);
         }
 
         // blit from texture to screen
         immutable vpTr =
-                        translation!float(0f, _size.height, 0f) *
-                        scale!float(_size.width, -_size.height, 1f);
-        _blitPipeline.updateUniforms(transpose(_viewProj * vpTr));
-        _blitPipeline.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), _bufSrv.obj, _bufSampler.obj, _rtv);
+                        translation!float(0f, size.height, 0f) *
+                        scale!float(size.width, -size.height, 1f);
+        _blitPipeline.updateUniforms(transpose(pw.viewProj * vpTr));
+        _blitPipeline.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), pw.bufSrv.obj, pw.bufSampler.obj, pw.rtv);
 
         _encoder.flush(_device);
         _context.swapBuffers(frame.windowHandle);
     }
 
-    void renderNode(immutable(RenderNode) node, in FMat4 model)
+    void renderNode(immutable(RenderNode) node, PerWindow pw, in FMat4 model)
     {
         final switch(node.type)
         {
         case RenderNode.Type.group:
             immutable grNode = unsafeCast!(immutable(GroupRenderNode))(node);
             foreach (immutable n; grNode.children) {
-                renderNode(n, model);
+                renderNode(n, pw, model);
             }
             break;
         case RenderNode.Type.transform:
             immutable trNode = unsafeCast!(immutable(TransformRenderNode))(node);
-            renderNode(trNode.child, model * trNode.transform);
+            renderNode(trNode.child, pw, model * trNode.transform);
             break;
         case RenderNode.Type.color:
-            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node), model);
+            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node), pw, model);
             break;
         case RenderNode.Type.image:
-            renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), model);
+            renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), pw, model);
             break;
         case RenderNode.Type.text:
-            renderTextNode(unsafeCast!(immutable(TextRenderNode))(node), model);
+            renderTextNode(unsafeCast!(immutable(TextRenderNode))(node), pw, model);
         }
     }
 
-    void renderColorNode(immutable(ColorRenderNode) node, in FMat4 model)
+    void renderColorNode(immutable(ColorRenderNode) node, PerWindow pw, in FMat4 model)
     {
         immutable color = node.color;
         immutable rect = node.bounds;
@@ -402,16 +485,16 @@ class Renderer
             scale!float(rect.width, rect.height, 1f),
             fvec(rect.topLeft, 0f)
         );
-        immutable mvp = transpose(_viewProj * model * rectTr);
+        immutable mvp = transpose(pw.viewProj * model * rectTr);
 
         SolidPipeline pl = color.a == 1f ?
             _solidPipeline : _solidBlendPipeline;
 
         pl.updateUniforms(mvp, color);
-        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), _bufRtv);
+        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), pw.bufRtv);
     }
 
-    void renderImageNode(immutable(ImageRenderNode) node, in FMat4 model)
+    void renderImageNode(immutable(ImageRenderNode) node, PerWindow pw, in FMat4 model)
     {
         immutable img = node.image;
         Rc!(ShaderResourceView!Rgba8) srv;
@@ -467,11 +550,11 @@ class Renderer
             scale!float(rect.width, rect.height, 1f),
             fvec(rect.topLeft, 0f)
         );
-        pl.updateUniforms(transpose(_viewProj * model * rectTr));
-        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _bufRtv);
+        pl.updateUniforms(transpose(pw.viewProj * model * rectTr));
+        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
     }
 
-    void renderTextNode(immutable(TextRenderNode) node, in FMat4 model)
+    void renderTextNode(immutable(TextRenderNode) node, PerWindow pw, in FMat4 model)
     {
         _textPipeline.updateColor(node.color);
         foreach(gl; node.glyphs) {
@@ -527,8 +610,8 @@ class Renderer
             ];
             auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 
-            _textPipeline.updateMVP(transpose(_viewProj * model));
-            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, _bufRtv);
+            _textPipeline.updateMVP(transpose(pw.viewProj * model));
+            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
         }
     }
 }
