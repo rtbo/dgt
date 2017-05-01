@@ -55,7 +55,42 @@ abstract class SgNode
         return _nextSibling;
     }
 
-    /// The transformedBounds of this nodes in local node coordinates.
+    ///
+    void measure(in FSize size)
+    {
+        measurement = size;
+    }
+
+    ///
+    final @property FSize measurement() const
+    {
+        return _measurement;
+    }
+
+    final protected @property void measurement(in FSize sz)
+    {
+        _measurement = sz;
+    }
+
+    ///
+    void layout(in FRect rect)
+    {
+        layoutRect = rect;
+    }
+
+    ///
+    final @property FRect layoutRect() const
+    {
+        return _layoutRect;
+    }
+
+    final protected @property layoutRect(in FRect rect)
+    {
+        _layoutRect = rect;
+    }
+
+
+    /// The bounds of this nodes in local node coordinates.
     @property FRect bounds()
     {
         if (_bounds.dirty) _bounds = computeBounds();
@@ -118,9 +153,13 @@ abstract class SgNode
     {
         immutable toBeTransformed = collectRenderNode();
         if (!toBeTransformed) return null;
-        else if (hasTransform) {
+        else if (hasTransform || _layoutRect.point != FPoint(0f, 0f)) {
+            FMat4 tr = translation!float(fvec(_layoutRect.point, 0));
+            if (hasTransform) {
+                tr = tr * _transform;
+            }
             return new immutable TransformRenderNode(
-                _transform, toBeTransformed
+                tr, toBeTransformed
             );
         }
         else {
@@ -181,7 +220,11 @@ abstract class SgNode
     package SgNode _prevSibling;
     package SgNode _nextSibling;
 
-    // transformedBounds
+    // layout
+    private FSize  _measurement;
+    private FRect  _layoutRect;
+
+    // bounds
     private Lazy!FRect _bounds;
     private Lazy!FRect _transformedBounds;
 

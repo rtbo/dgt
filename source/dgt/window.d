@@ -447,7 +447,6 @@ class Window
                     handleEvent(new ShowEvent(this));
                 }
                 if (!(_evCompress & EvCompress.resize)) {
-                    logf("size = %s", size);
                     handleEvent(new ResizeEvent(this, size));
                 }
             }
@@ -461,6 +460,11 @@ class Window
         immutable(RenderFrame) collectFrame()
         {
             scope(exit) _dirtyReg = new Region;
+            if (_root) {
+                immutable fs = cast(FSize)size;
+                _root.measure(fs);
+                _root.layout(FRect(0, 0, fs));
+            }
             return new immutable RenderFrame (
                 nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
                 _root ? _root.collectRenderNode() : null

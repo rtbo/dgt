@@ -1,5 +1,6 @@
 module dgt.sg.group;
 
+import dgt.geometry;
 import dgt.sg.node;
 import dgt.sg.parent;
 
@@ -26,5 +27,15 @@ class SgGroup : SgParent
     override public void removeChild(SgNode child)
     {
         super.removeChild(child);
+    }
+
+    override void measure(in FSize size)
+    {
+        measurement = transformedBounds.size;
+    }
+
+    override void layout(in FRect rect)
+    {
+        layoutRect = rect;
     }
 }
