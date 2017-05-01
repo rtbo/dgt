@@ -1,10 +1,29 @@
 /// Global enumerations.
 module dgt.enums;
 
+/// horizontal or vertical orientation
 enum Orientation
 {
     horizontal,
     vertical
+}
+
+/// ditto
+@property bool isHorizontal(in Orientation orientation) pure
+{
+    return orientation == Orientation.horizontal;
+}
+
+/// ditto
+@property bool isVertical(in Orientation orientation) pure
+{
+    return orientation == Orientation.vertical;
+}
+
+/// ditto
+@property Orientation other(in Orientation orientation) pure
+{
+    return orientation.isHorizontal ? Orientation.vertical : Orientation.horizontal;
 }
 
 enum MouseButton
