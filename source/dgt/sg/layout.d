@@ -48,6 +48,96 @@ struct MeasureSpec
     }
 }
 
+/// Describe how ui elements should be placed and stretched when there is additional space
+/// This enum treats gravity in both axis
+enum Gravity {
+    /// No gravity applied
+    none            = 0x00,
+    /// Content should be centered within container
+    centerBit       = 0x01,
+    /// State how left and top edge should be placed
+    pullBeforeBit   = 0x02,
+    /// State how right and bottom edge should be placed
+    pullAfterBit    = 0x04,
+    /// Whether the right and bottom edge should be clipped to the container
+    clipBit         = 0x08,
+
+    /// Mask for the gravity of one axis
+    mask            = 0x0f,
+    /// ditto
+    horMask         = 0x0f,
+    /// ditto
+    verMask         = 0xf0,
+
+    /// Shift value to apply to get the the horizontal gravity
+    horShift        = 0,
+    /// Shift value to apply to get the the horizontal gravity
+    verShift        = 4,
+
+    /// whether top edge should fit the parent
+    left            = pullBeforeBit << horShift,
+    /// whether top edge should fit the parent
+    top             = pullBeforeBit << verShift,
+    /// whether top edge should fit the parent
+    right           = pullAfterBit << horShift,
+    /// whether top edge should fit the parent
+    bottom          = pullAfterBit << verShift,
+
+    /// whether the child should be centered horizontally
+    centerHor       = centerBit << horShift,
+    /// whether the child should be centered vertically
+    centerVer       = centerBit << verShift,
+    /// whether the child should be centered on both axis
+    center          = centerHor | centerVer,
+
+    /// whether the child should be filled horizontally
+    fillHor         = left | right,
+    /// whether the child should be filled vertically
+    fillVer         = top | bottom,
+    /// whether the child should be filled on both axis
+    fill            = fillHor | fillVer,
+
+    /// whether the child should be clipped horizontally
+    clipHor         = clipBit << horShift,
+    /// whether the child should be clipped vertically
+    clipVer         = clipBit << verShift,
+    /// whether the child should be clipped on both axis
+    clip            = clipHor | clipVer,
+}
+
+
+/// Treats gravity in one axis
+enum AxisGravity
+{
+    none            = 0x00,
+
+    center          = 0x01,
+    pullBefore      = 0x02,
+    pullAfter       = 0x04,
+    clip            = 0x08,
+
+    mask            = 0x0f,
+
+    fill            = pullBefore | pullAfter,
+}
+
+/// Extract horizontal gravity
+@property AxisGravity horizontal(in Gravity grav) pure
+{
+    return cast(AxisGravity)(grav & Gravity.horMask);
+}
+/// Extract vertical gravity
+@property AxisGravity vertical(in Gravity grav) pure
+{
+    return cast(AxisGravity)((grav >> Gravity.verShift) & Gravity.mask);
+}
+/// Extract gravity for the orientation given
+AxisGravity extract(in Gravity gravity, in Orientation orientation) pure
+{
+    return orientation.isHorizontal ? gravity.horizontal : gravity.vertical;
+}
+
+
 /// Special value for Layout.Params.width and height.
 enum float wrapContent = -1f;
 /// ditto
@@ -162,6 +252,18 @@ class SgLinearLayout : SgLayout
         _orientation = Orientation.vertical;
     }
 
+    /// The gravity to be applied to the children
+    @property Gravity gravity() const
+    {
+        return _gravity;
+    }
+
+    /// ditto
+    @property void gravity(in Gravity gravity)
+    {
+        _gravity = gravity;
+    }
+
     /// The spacing between the elements of this layout.
     @property float spacing() const
     {
@@ -176,12 +278,8 @@ class SgLinearLayout : SgLayout
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        if (isHorizontal) {
-            measureHorizontal(widthSpec, heightSpec);
-        }
-        else {
-            measureVertical(widthSpec, heightSpec);
-        }
+        if (isVertical) measureVertical(widthSpec, heightSpec);
+        else measureHorizontal(widthSpec, heightSpec);
     }
 
     private void measureVertical(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
@@ -209,6 +307,8 @@ class SgLinearLayout : SgLayout
         if (wTooSmall || hTooSmall) {
             warningf("layout too small for %s", name);
         }
+
+        _totalLength = totalHeight;
     }
 
     private void measureHorizontal(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
@@ -236,26 +336,114 @@ class SgLinearLayout : SgLayout
         if (wTooSmall || hTooSmall) {
             warningf("layout too small for %s", name);
         }
+
+        _totalLength = totalWidth;
     }
 
     override void layout(in FRect rect)
     {
-        import std.range : enumerate;
-        FPoint pos = FPoint(margins.left, margins.top);
-        foreach (i, c; enumerate(children, 1)) {
-            immutable m = c.measurement;
-            c.layout(FRect(pos, m));
-            float add = m.get(orientation);
-            if (i != childCount) {
-                add += spacing;
-            }
-            pos += isHorizontal ? FVec2(add, 0f) : FVec2(0f, add);
-        }
+        if (isVertical) layoutVertical(rect);
+        else layoutHorizontal(rect);
         layoutRect = rect;
     }
 
+    private void layoutVertical(in FRect rect)
+    {
+        import std.range : enumerate;
+
+        immutable childRight = rect.width - margins.right;
+        immutable childSpace = rect.width - margins.right - margins.left;
+
+        immutable mainGrav = _gravity & Gravity.verMask;
+        immutable otherGrav = _gravity & Gravity.horMask;
+
+        float childTop;
+        switch (mainGrav) {
+        case Gravity.bottom:
+            childTop = margins.top + rect.height - _totalLength;
+            break;
+        case Gravity.centerVer:
+            childTop = margins.top + (rect.height - _totalLength) / 2f;
+            break;
+        case Gravity.top:
+        default:
+            childTop = margins.top;
+            break;
+        }
+
+        foreach(i, c; enumerate(children)) {
+            immutable mes = c.measurement;
+            float childLeft;
+            switch (otherGrav) {
+            case Gravity.right:
+                childLeft = childRight - mes.width;
+                break;
+            case Gravity.centerHor:
+                childLeft = margins.left + (childSpace - mes.width) / 2f;
+                break;
+            case Gravity.left:
+            default:
+                childLeft = margins.left;
+                break;
+            }
+
+            if (i != 0) childTop += spacing;
+            c.layout(FRect(FPoint(childLeft, childTop), mes));
+            childTop += mes.height;
+        }
+    }
+
+    private void layoutHorizontal(in FRect rect)
+    {
+        import std.range : enumerate;
+
+        immutable childBottom = rect.height - margins.bottom;
+        immutable childSpace = rect.height - margins.bottom - margins.top;
+
+        immutable mainGrav = _gravity & Gravity.horMask;
+        immutable otherGrav = _gravity & Gravity.verMask;
+
+        float childLeft;
+        switch (mainGrav) {
+        case Gravity.right:
+            childLeft = margins.left + rect.width - _totalLength;
+            break;
+        case Gravity.centerHor:
+            childLeft = margins.left + (rect.width - _totalLength) / 2f;
+            break;
+        case Gravity.left:
+        default:
+            childLeft = margins.left;
+            break;
+        }
+
+        foreach(i, c; enumerate(children)) {
+            immutable mes = c.measurement;
+            float childTop;
+            switch (otherGrav) {
+            case Gravity.bottom:
+                childTop = childBottom - mes.height;
+                break;
+            case Gravity.centerVer:
+                childTop = margins.top + (childSpace - mes.height) / 2f;
+                break;
+            case Gravity.top:
+            default:
+                childTop = margins.top;
+                break;
+            }
+
+            if (i != 0) childLeft += spacing;
+            c.layout(FRect(FPoint(childLeft, childTop), mes));
+            childLeft += mes.width;
+        }
+    }
+
     private Orientation _orientation;
-    private float _spacing=0f;
+    private Gravity _gravity            = Gravity.left | Gravity.top;
+    private float _spacing              = 0f;
+
+    private float _totalLength          = 0f;
 }
 
 

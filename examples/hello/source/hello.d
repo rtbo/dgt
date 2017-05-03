@@ -76,7 +76,8 @@ int main()
 
     auto textLayout = new SgLinearLayout;
     textLayout.orientation = Orientation.vertical;
-    textLayout.spacing = 6f;
+    textLayout.spacing = 26f;
+    textLayout.gravity = Gravity.center;
     textLayout.name = "text-layout";
     textLayout.appendChild(helloNode);
     textLayout.appendChild(arHelloNode);
@@ -84,6 +85,8 @@ int main()
     auto root = new SgLinearLayout;
     root.name = "root";
     root.orientation = Orientation.horizontal;
+    root.spacing = 26f;
+    root.gravity = Gravity.center;
     root.appendChild(textLayout);
     root.appendChild(logoNode);
 

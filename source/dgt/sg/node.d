@@ -87,7 +87,6 @@ abstract class SgNode
     /// Ask this node to measure itself by assigning the measurement property.
     void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        logf("measure %s, %s", widthSpec.size, heightSpec.size);
         measurement = FSize(widthSpec.size, heightSpec.size);
     }
 
@@ -99,7 +98,6 @@ abstract class SgNode
 
     final protected @property void measurement(in FSize sz)
     {
-        logf("%s.measurement = %s", this.className, sz);
         _measurement = sz;
     }
 
