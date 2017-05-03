@@ -17,11 +17,11 @@ struct MeasureSpec
 {
     enum {
         /// node should measure its content
-        content,
+        unspecified,
         /// node should measure its content bounded to the given size
-        bounded,
+        atMost,
         /// node should assign its measurement to the given size regardless of its content
-        fixed,
+        exactly,
     }
 
     int mode;
@@ -32,36 +32,36 @@ struct MeasureSpec
         this.size = size;
     }
 
-    /// make a content spec
-    static MeasureSpec makeContent(in float size=0f) pure {
-        return MeasureSpec(content, size);
+    /// make an unspecified spec
+    static MeasureSpec makeUnspecified(in float size=0f) pure {
+        return MeasureSpec(unspecified, size);
     }
 
-    /// make a bounded spec
-    static MeasureSpec makeBounded(in float size) pure {
-        return MeasureSpec(bounded, size);
+    /// make an atMost spec
+    static MeasureSpec makeAtMost(in float size) pure {
+        return MeasureSpec(atMost, size);
     }
 
-    /// make a fixed spec
-    static MeasureSpec makeFixed(in float size) pure {
-        return MeasureSpec(fixed, size);
+    /// make an exactly spec
+    static MeasureSpec makeExactly(in float size) pure {
+        return MeasureSpec(exactly, size);
     }
 }
 
 /// Special value for Layout.Params.width and height.
 enum float wrapContent = -1f;
 /// ditto
-enum float fitParent = -2f;
+enum float matchParent = -2f;
 
 /// general layout class
 class SgLayout : SgParent
 {
     /// Params attached to each node for use with their parent
     static class Params {
-        /// Either an actual dimension in pixels, or special values wrapContent or fitParent
-        float width=wrapContent;
-        /// Either an actual dimension in pixels, or special values wrapContent or fitParent
-        float height=wrapContent;
+        /// Either an actual dimension in pixels, or special values wrapContent or matchParent
+        float width     = wrapContent;
+        /// Either an actual dimension in pixels, or special values wrapContent or matchParent
+        float height    = wrapContent;
     }
 
     /// Build a new layout
@@ -148,6 +148,18 @@ class SgLinearLayout : SgLayout
     @property bool isVertical() const
     {
         return _orientation.isVertical;
+    }
+
+    /// ditto
+    void setHorizontal()
+    {
+        _orientation = Orientation.horizontal;
+    }
+
+    /// ditto
+    void setVertical()
+    {
+        _orientation = Orientation.vertical;
     }
 
     /// The spacing between the elements of this layout.
@@ -257,25 +269,25 @@ public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in float removed,
     import std.algorithm : max;
 
     if (childLayoutSize >= 0f) {
-        return MeasureSpec.makeFixed(childLayoutSize);
+        return MeasureSpec.makeExactly(childLayoutSize);
     }
-    enforce(childLayoutSize == wrapContent || childLayoutSize == fitParent);
+    enforce(childLayoutSize == wrapContent || childLayoutSize == matchParent);
 
     immutable size = max(0f, parentSpec.size - removed);
 
     switch (parentSpec.mode) {
-    case MeasureSpec.fixed:
+    case MeasureSpec.exactly:
         if (childLayoutSize == wrapContent) {
-            return MeasureSpec.makeBounded(size);
+            return MeasureSpec.makeAtMost(size);
         }
         else {
-            assert(childLayoutSize == fitParent);
-            return MeasureSpec.makeFixed(size);
+            assert(childLayoutSize == matchParent);
+            return MeasureSpec.makeExactly(size);
         }
-    case MeasureSpec.bounded:
-        return MeasureSpec.makeBounded(size);
-    case MeasureSpec.content:
-        return MeasureSpec.makeContent();
+    case MeasureSpec.atMost:
+        return MeasureSpec.makeAtMost(size);
+    case MeasureSpec.unspecified:
+        return MeasureSpec.makeUnspecified();
     default:
         assert(false);
     }
@@ -286,7 +298,7 @@ public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in float removed,
 float resolveSize(in float size, in MeasureSpec measureSpec, out bool tooSmall) pure
 {
     switch (measureSpec.mode) {
-    case MeasureSpec.bounded:
+    case MeasureSpec.atMost:
         if (size > measureSpec.size) {
             tooSmall = true;
             return measureSpec.size;
@@ -294,9 +306,9 @@ float resolveSize(in float size, in MeasureSpec measureSpec, out bool tooSmall) 
         else {
             return size;
         }
-    case MeasureSpec.fixed:
+    case MeasureSpec.exactly:
         return measureSpec.size;
-    case MeasureSpec.content:
+    case MeasureSpec.unspecified:
         return size;
     default:
         assert(false);

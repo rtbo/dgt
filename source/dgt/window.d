@@ -464,8 +464,8 @@ class Window
                 import dgt.sg.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
                 _root.measure(
-                    MeasureSpec.makeBounded(fs.width),
-                    MeasureSpec.makeBounded(fs.height)
+                    MeasureSpec.makeAtMost(fs.width),
+                    MeasureSpec.makeAtMost(fs.height)
                 );
                 _root.layout(FRect(0, 0, fs));
             }
