@@ -581,8 +581,10 @@ class Renderer
                     usage, 1, cast(ushort)runImg.width, cast(ushort)runImg.height, [pixels]
                 ).rc();
                 srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+                // FilterMethod.Scale maps to GL_NEAREST
+                // no need to filter what is already filtered
                 sampler = new Sampler(
-                    srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+                    srv, SamplerInfo(FilterMethod.Scale, WrapMode.init)
                 );
                 if (cookie) {
                     _objectCache[cookie] = new GlyphRunObjectCache(
@@ -599,8 +601,10 @@ class Renderer
                 txRect.topLeft / fSize,
                 FSize(txRect.width / fSize.x, txRect.height / fSize.y)
             );
-            immutable vertRect = FRect(
-                gl.layoutPos, txRect.size
+            immutable vertRect = roundRect(
+                transformBounds(FRect(
+                    gl.layoutPos, txRect.size
+                ), model)
             );
             auto quadVerts = [
                 P2T2Vertex([vertRect.left, vertRect.top], [normRect.left, normRect.top]),
@@ -610,13 +614,20 @@ class Renderer
             ];
             auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 
-            _textPipeline.updateMVP(transpose(pw.viewProj * model));
+            _textPipeline.updateMVP(transpose(pw.viewProj));
             _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
         }
     }
 }
 
-FMat4 orthoProj(float l, float r, float b, float t, float n, float f)
+// used for hinting
+FRect roundRect(in FRect rect)
+{
+    import std.math : round;
+    return FRect(round(rect.x), round(rect.y), round(rect.width), round(rect.height));
+}
+
+FMat4 orthoProj(float l, float r, float b, float t, float n, float f) pure
 {
     return FMat4(
         2f/(r-l), 0, 0, -(r+l)/(r-l),
