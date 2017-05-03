@@ -58,30 +58,30 @@ abstract class SgNode
         return _nextSibling;
     }
 
-    /// The layout params of this node
+    /// The layout parameters of this node
     @property inout(SgLayout.Params) layoutParams() inout
     {
         return _layoutParams;
-    }
-
-
-    /// The margins of the node, that is, how much empty space is required
-    /// around the node.
-    @property FMargins margins() const
-    {
-        return _margins;
-    }
-
-    /// ditto
-    @property void margins(in FMargins margins)
-    {
-        _margins = margins;
     }
 
     /// ditto
     @property void layoutParams(SgLayout.Params params)
     {
         _layoutParams = params;
+    }
+
+    /// The padding of the node, that is, how much empty space is required
+    /// around the content.
+    /// Padding is always within the node's rect.
+    @property FPadding padding() const
+    {
+        return _padding;
+    }
+
+    /// ditto
+    @property void padding(in FPadding padding)
+    {
+        _padding = padding;
     }
 
     /// Ask this node to measure itself by assigning the measurement property.
@@ -149,7 +149,8 @@ abstract class SgNode
     }
 
     /// The transform affecting this node and its children.
-    /// Define the transform from parent coordinates to local coordinates.
+    /// The transform does not affect the layout, but affects rendering.
+    /// It should be used for animation mainly.
     @property FMat4 transform() const { return _transform; }
 
     /// ditto
@@ -250,7 +251,7 @@ abstract class SgNode
     package SgNode _nextSibling;
 
     // layout
-    private FMargins        _margins;
+    private FPadding        _padding;
     private SgLayout.Params _layoutParams;
     private FSize           _measurement;
     private FRect           _layoutRect;

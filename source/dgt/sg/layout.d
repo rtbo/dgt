@@ -200,9 +200,9 @@ class SgLayout : SgParent
         auto lp = cast(SgLayout.Params)node.layoutParams;
 
         immutable ws = childMeasureSpec(parentWidthSpec,
-                    margins.left+margins.right+usedWidth, lp.width);
+                    padding.left+padding.right+usedWidth, lp.width);
         immutable hs = childMeasureSpec(parentHeightSpec,
-                    margins.top+margins.bottom+usedHeight, lp.height);
+                    padding.top+padding.bottom+usedHeight, lp.height);
 
         node.measure(ws, hs);
     }
@@ -296,8 +296,8 @@ class SgLinearLayout : SgLayout
             totalHeight += c.measurement.height;
             largestWidth = max(largestWidth, c.measurement.width);
         }
-        largestWidth += margins.left + margins.right;
-        totalHeight += margins.top + margins.bottom;
+        largestWidth += padding.left + padding.right;
+        totalHeight += padding.top + padding.bottom;
 
         bool wTooSmall, hTooSmall;
         measurement = FSize(
@@ -325,8 +325,8 @@ class SgLinearLayout : SgLayout
             totalWidth += c.measurement.width;
             largestHeight = max(largestHeight, c.measurement.height);
         }
-        totalWidth += margins.left + margins.right;
-        largestHeight += margins.top + margins.bottom;
+        totalWidth += padding.left + padding.right;
+        largestHeight += padding.top + padding.bottom;
 
         bool wTooSmall, hTooSmall;
         measurement = FSize(
@@ -351,8 +351,8 @@ class SgLinearLayout : SgLayout
     {
         import std.range : enumerate;
 
-        immutable childRight = rect.width - margins.right;
-        immutable childSpace = rect.width - margins.right - margins.left;
+        immutable childRight = rect.width - padding.right;
+        immutable childSpace = rect.width - padding.right - padding.left;
 
         immutable mainGrav = _gravity & Gravity.verMask;
         immutable otherGrav = _gravity & Gravity.horMask;
@@ -360,14 +360,14 @@ class SgLinearLayout : SgLayout
         float childTop;
         switch (mainGrav) {
         case Gravity.bottom:
-            childTop = margins.top + rect.height - _totalLength;
+            childTop = padding.top + rect.height - _totalLength;
             break;
         case Gravity.centerVer:
-            childTop = margins.top + (rect.height - _totalLength) / 2f;
+            childTop = padding.top + (rect.height - _totalLength) / 2f;
             break;
         case Gravity.top:
         default:
-            childTop = margins.top;
+            childTop = padding.top;
             break;
         }
 
@@ -379,11 +379,11 @@ class SgLinearLayout : SgLayout
                 childLeft = childRight - mes.width;
                 break;
             case Gravity.centerHor:
-                childLeft = margins.left + (childSpace - mes.width) / 2f;
+                childLeft = padding.left + (childSpace - mes.width) / 2f;
                 break;
             case Gravity.left:
             default:
-                childLeft = margins.left;
+                childLeft = padding.left;
                 break;
             }
 
@@ -397,8 +397,8 @@ class SgLinearLayout : SgLayout
     {
         import std.range : enumerate;
 
-        immutable childBottom = rect.height - margins.bottom;
-        immutable childSpace = rect.height - margins.bottom - margins.top;
+        immutable childBottom = rect.height - padding.bottom;
+        immutable childSpace = rect.height - padding.bottom - padding.top;
 
         immutable mainGrav = _gravity & Gravity.horMask;
         immutable otherGrav = _gravity & Gravity.verMask;
@@ -406,14 +406,14 @@ class SgLinearLayout : SgLayout
         float childLeft;
         switch (mainGrav) {
         case Gravity.right:
-            childLeft = margins.left + rect.width - _totalLength;
+            childLeft = padding.left + rect.width - _totalLength;
             break;
         case Gravity.centerHor:
-            childLeft = margins.left + (rect.width - _totalLength) / 2f;
+            childLeft = padding.left + (rect.width - _totalLength) / 2f;
             break;
         case Gravity.left:
         default:
-            childLeft = margins.left;
+            childLeft = padding.left;
             break;
         }
 
@@ -425,11 +425,11 @@ class SgLinearLayout : SgLayout
                 childTop = childBottom - mes.height;
                 break;
             case Gravity.centerVer:
-                childTop = margins.top + (childSpace - mes.height) / 2f;
+                childTop = padding.top + (childSpace - mes.height) / 2f;
                 break;
             case Gravity.top:
             default:
-                childTop = margins.top;
+                childTop = padding.top;
                 break;
             }
 
@@ -511,6 +511,11 @@ private float get(in FSize s, in Orientation orientation) pure
 private float get(in FPoint p, in Orientation orientation) pure
 {
     return orientation.isHorizontal ? p.x : p.y;
+}
+
+private float[2] get(in FPadding p, in Orientation orientation) pure
+{
+    return orientation.isHorizontal ? [p.left, p.right] : [p.top, p.bottom];
 }
 
 private float[2] get(in FMargins m, in Orientation orientation) pure

@@ -14,6 +14,8 @@ alias IPoint = Point!int;
 alias FSize = Size!float;
 alias ISize = Size!int;
 
+alias FPadding = Padding!float;
+alias IPadding = Padding!int;
 alias FMargins = Margins!float;
 alias IMargins = Margins!int;
 
@@ -54,6 +56,20 @@ unittest
 
     static assert(__traits(compiles, sd = cast(FSize)si));
     static assert(__traits(compiles, si = cast(ISize)sd));
+}
+
+/// Represents padding inside a rectangular area
+struct Padding(T) if (isNumeric!T)
+{
+    T left =0;
+    T top =0;
+    T right =0;
+    T bottom =0;
+
+    U opCast(U : Padding!V, V)() const
+    {
+        return Padding!V(cast(V) left, cast(V) top, cast(V) right, cast(V) bottom);
+    }
 }
 
 /// Represents margins around a rectangular area
