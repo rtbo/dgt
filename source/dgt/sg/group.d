@@ -1,6 +1,7 @@
 module dgt.sg.group;
 
 import dgt.geometry;
+import dgt.sg.layout;
 import dgt.sg.node;
 import dgt.sg.parent;
 
@@ -29,7 +30,7 @@ class SgGroup : SgParent
         super.removeChild(child);
     }
 
-    override void measure(in FSize size)
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
         measurement = transformedBounds.size;
     }

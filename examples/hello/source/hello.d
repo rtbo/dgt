@@ -76,6 +76,7 @@ int main()
 
     auto textLayout = new SgLinearLayout;
     textLayout.orientation = Orientation.vertical;
+    textLayout.spacing = 6f;
     textLayout.name = "text-layout";
     textLayout.appendChild(helloNode);
     textLayout.appendChild(arHelloNode);

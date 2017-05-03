@@ -5,6 +5,7 @@ import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.render.node;
+import dgt.sg.layout;
 import dgt.sg.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
@@ -29,6 +30,11 @@ class SgColorRect : SgNode
     {
         _rect = rect;
         dirtyBounds();
+    }
+
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        measurement = _rect.size;
     }
 
     override protected FRect computeBounds()
@@ -71,6 +77,13 @@ class SgImage : SgNode
     {
         _topLeft = topLeft;
         dirtyBounds();
+    }
+
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        if (_immutImg) measurement = cast(FSize)_immutImg.size;
+        else if (_image) measurement = cast(FSize)_image.size;
+        else super.measure(widthSpec, heightSpec);
     }
 
     protected override FRect computeBounds()
@@ -134,6 +147,12 @@ class SgText : SgNode
     {
         ensureLayout();
         return _metrics;
+    }
+
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        ensureLayout();
+        measurement = FSize(_metrics.size.x, _metrics.size.y);
     }
 
     override protected FRect computeBounds()

@@ -461,8 +461,12 @@ class Window
         {
             scope(exit) _dirtyReg = new Region;
             if (_root) {
+                import dgt.sg.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
-                _root.measure(fs);
+                _root.measure(
+                    MeasureSpec.makeBounded(fs.width),
+                    MeasureSpec.makeBounded(fs.height)
+                );
                 _root.layout(FRect(0, 0, fs));
             }
             return new immutable RenderFrame (

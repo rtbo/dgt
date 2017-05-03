@@ -5,15 +5,18 @@ import dgt.geometry;
 import dgt.math;
 import dgt.render;
 import dgt.render.node;
+import dgt.sg.layout;
 import dgt.sg.parent;
 import dgt.window;
 
 import std.exception;
+import std.experimental.logger;
 import std.typecons;
 
 /// A node for a 2D scene-graph
 abstract class SgNode
 {
+    /// builds a new node
     this() {}
 
     /// The window this node is attached to.
@@ -55,13 +58,40 @@ abstract class SgNode
         return _nextSibling;
     }
 
-    ///
-    void measure(in FSize size)
+    /// The layout params of this node
+    @property inout(SgLayout.Params) layoutParams() inout
     {
-        measurement = size;
+        return _layoutParams;
     }
 
-    ///
+
+    /// The margins of the node, that is, how much empty space is required
+    /// around the node.
+    @property FMargins margins() const
+    {
+        return _margins;
+    }
+
+    /// ditto
+    @property void margins(in FMargins margins)
+    {
+        _margins = margins;
+    }
+
+    /// ditto
+    @property void layoutParams(SgLayout.Params params)
+    {
+        _layoutParams = params;
+    }
+
+    /// Ask this node to measure itself by assigning the measurement property.
+    void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        logf("measure %s, %s", widthSpec.size, heightSpec.size);
+        measurement = FSize(widthSpec.size, heightSpec.size);
+    }
+
+    /// Size set by the node during measure phase
     final @property FSize measurement() const
     {
         return _measurement;
@@ -69,16 +99,17 @@ abstract class SgNode
 
     final protected @property void measurement(in FSize sz)
     {
+        logf("%s.measurement = %s", this.className, sz);
         _measurement = sz;
     }
 
-    ///
+    /// Ask the node to layout itself in the given rect
     void layout(in FRect rect)
     {
         layoutRect = rect;
     }
 
-    ///
+    /// Rect set by the node during layout phase.
     final @property FRect layoutRect() const
     {
         return _layoutRect;
@@ -221,8 +252,10 @@ abstract class SgNode
     package SgNode _nextSibling;
 
     // layout
-    private FSize  _measurement;
-    private FRect  _layoutRect;
+    private FMargins        _margins;
+    private SgLayout.Params _layoutParams;
+    private FSize           _measurement;
+    private FRect           _layoutRect;
 
     // bounds
     private Lazy!FRect _bounds;
