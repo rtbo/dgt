@@ -213,8 +213,38 @@ class SgLayout : SgParent
 /// layout its children in a linear way
 class SgLinearLayout : SgLayout
 {
+    static class Params : SgLayout.Params
+    {
+        /// Specify how much of the layout extra space will be allocated
+        /// to a child
+        float weight    = 0f;
+
+        /// Specify a possible per-child override for where to attach the child
+        /// the orthogonal direction of this layout
+        Gravity gravity = Gravity.none;
+
+        /// Build a default value
+        this() {}
+
+        /// Build a value from an existing object of type SgLayout.Params
+        this(SgLayout.Params params)
+        {
+            this.width = params.width;
+            this.height = params.height;
+        }
+    }
+
     /// Build a new linear layout
     this() {}
+
+    override protected void ensureLayout(SgNode node) {
+        auto llp = cast(Params)node.layoutParams;
+        if (!llp) {
+            auto lp = cast(SgLayout.Params)node.layoutParams;
+            if (lp) node.layoutParams = new Params(lp);
+            else node.layoutParams = new Params;
+        }
+    }
 
     /// The orientation of the layout.
     @property Orientation orientation() const
@@ -284,28 +314,59 @@ class SgLinearLayout : SgLayout
 
     private void measureVertical(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
+        import dgt.math.approx : approxUlpAndAbs;
         import std.algorithm : max;
         import std.range : enumerate;
 
-        // compute vertical space that all children want to have
         float totalHeight =0;
         float largestWidth = 0;
+        float totalWeight = 0;
+
+        // compute vertical space that all children want to have
         foreach(i, c; enumerate(children)) {
             if (i != 0) totalHeight += spacing;
+
             measureChild(c, widthSpec, heightSpec, 0f, totalHeight);
             totalHeight += c.measurement.height;
             largestWidth = max(largestWidth, c.measurement.width);
+
+            auto lp = cast(SgLinearLayout.Params)layoutParams;
+            if (lp) totalWeight += lp.weight;
         }
-        largestWidth += padding.left + padding.right;
         totalHeight += padding.top + padding.bottom;
 
         bool wTooSmall, hTooSmall;
+        immutable finalHeight = resolveSize(totalHeight, heightSpec, hTooSmall);
+        auto remainExcess = finalHeight - totalHeight;
+        enum pixelTol = 0.1f;
+        // share remain excess (positive or negative) between all weighted children
+        if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
+            totalHeight = 0f;
+            foreach(c; children) {
+                auto lp = cast(SgLinearLayout.Params)layoutParams;
+                immutable weight = lp ? lp.weight : 0f;
+                if (weight > 0f) {
+                    immutable share = remainExcess * weight / totalWeight;
+                    totalWeight -= weight;
+                    remainExcess -= share;
+                    immutable childHeight = c.measurement.height + share;
+                    immutable childHeightSpec = MeasureSpec.makeExactly(childHeight);
+                    immutable childWidthSpec = childMeasureSpec(widthSpec, padding.left + padding.right, lp.width);
+                    c.measure(childHeightSpec, childWidthSpec);
+                }
+                totalHeight += c.measurement.height;
+                largestWidth = max(largestWidth, c.measurement.width);
+            }
+            totalHeight += padding.top + padding.bottom;
+        }
+
+        largestWidth += padding.left + padding.right;
         measurement = FSize(
             resolveSize(largestWidth, widthSpec, wTooSmall),
             resolveSize(totalHeight, heightSpec, hTooSmall),
         );
         if (wTooSmall || hTooSmall) {
-            warningf("layout too small for %s", name);
+            warningf("layout too small for '%s'", name);
         }
 
         _totalLength = totalHeight;
@@ -313,28 +374,59 @@ class SgLinearLayout : SgLayout
 
     private void measureHorizontal(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
+        import dgt.math.approx : approxUlpAndAbs;
         import std.algorithm : max;
         import std.range : enumerate;
 
-        // compute vertical space that all children want to have
         float totalWidth = 0;
         float largestHeight = 0;
+        float totalWeight = 0;
+
+        // compute horizontal space that all children want to have
         foreach(i, c; enumerate(children)) {
             if (i != 0) totalWidth += spacing;
+
             measureChild(c, widthSpec, heightSpec, totalWidth, 0f);
             totalWidth += c.measurement.width;
             largestHeight = max(largestHeight, c.measurement.height);
+
+            auto lp = cast(SgLinearLayout.Params)layoutParams;
+            if (lp) totalWeight += lp.weight;
         }
         totalWidth += padding.left + padding.right;
-        largestHeight += padding.top + padding.bottom;
 
         bool wTooSmall, hTooSmall;
+        immutable finalWidth = resolveSize(totalWidth, widthSpec, wTooSmall);
+        auto remainExcess = finalWidth - totalWidth;
+        enum pixelTol = 0.1f;
+        // share remain excess (positive or negative) between all weighted children
+        if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
+            totalWidth = 0f;
+            foreach(c; children) {
+                auto lp = cast(SgLinearLayout.Params)layoutParams;
+                immutable weight = lp ? lp.weight : 0f;
+                if (weight > 0f) {
+                    immutable share = remainExcess * weight / totalWeight;
+                    totalWeight -= weight;
+                    remainExcess -= share;
+                    immutable childWidth = c.measurement.height + share;
+                    immutable childWidthSpec = MeasureSpec.makeExactly(childWidth);
+                    immutable childHeightSpec = childMeasureSpec(heightSpec, padding.top + padding.bottom, lp.height);
+                    c.measure(childWidthSpec, childHeightSpec);
+                }
+                totalWidth += c.measurement.width;
+                largestHeight = max(largestHeight, c.measurement.height);
+            }
+            totalWidth += padding.left + padding.right;
+        }
+
+        largestHeight += padding.top + padding.bottom;
         measurement = FSize(
             resolveSize(totalWidth, widthSpec, wTooSmall),
             resolveSize(largestHeight, heightSpec, hTooSmall),
         );
         if (wTooSmall || hTooSmall) {
-            warningf("layout too small for %s", name);
+            warningf("layout too small for '%s'", name);
         }
 
         _totalLength = totalWidth;
@@ -354,11 +446,8 @@ class SgLinearLayout : SgLayout
         immutable childRight = rect.width - padding.right;
         immutable childSpace = rect.width - padding.right - padding.left;
 
-        immutable mainGrav = _gravity & Gravity.verMask;
-        immutable otherGrav = _gravity & Gravity.horMask;
-
         float childTop;
-        switch (mainGrav) {
+        switch (_gravity & Gravity.verMask) {
         case Gravity.bottom:
             childTop = padding.top + rect.height - _totalLength;
             break;
@@ -372,9 +461,14 @@ class SgLinearLayout : SgLayout
         }
 
         foreach(i, c; enumerate(children)) {
+
+            auto lp = cast(Params)c.layoutParams;
+            immutable og = (lp && (lp.gravity != Gravity.none)) ?
+                    lp.gravity : _gravity;
+
             immutable mes = c.measurement;
             float childLeft;
-            switch (otherGrav) {
+            switch (og & Gravity.horMask) {
             case Gravity.right:
                 childLeft = childRight - mes.width;
                 break;
@@ -400,11 +494,8 @@ class SgLinearLayout : SgLayout
         immutable childBottom = rect.height - padding.bottom;
         immutable childSpace = rect.height - padding.bottom - padding.top;
 
-        immutable mainGrav = _gravity & Gravity.horMask;
-        immutable otherGrav = _gravity & Gravity.verMask;
-
         float childLeft;
-        switch (mainGrav) {
+        switch (_gravity & Gravity.horMask) {
         case Gravity.right:
             childLeft = padding.left + rect.width - _totalLength;
             break;
@@ -418,9 +509,14 @@ class SgLinearLayout : SgLayout
         }
 
         foreach(i, c; enumerate(children)) {
+
+            auto lp = cast(Params)c.layoutParams;
+            immutable og = (lp && (lp.gravity != Gravity.none)) ?
+                    lp.gravity : _gravity;
+
             immutable mes = c.measurement;
             float childTop;
-            switch (otherGrav) {
+            switch (og & Gravity.verMask) {
             case Gravity.bottom:
                 childTop = childBottom - mes.height;
                 break;
