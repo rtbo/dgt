@@ -17,6 +17,7 @@ import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.vg;
 import dgt.widget.group;
+import dgt.widget.label;
 import dgt.widget.layout;
 import dgt.window;
 
@@ -65,37 +66,15 @@ int main()
     font.family = "serif";
     font.size = FontSize.pts(100);
 
-    auto helloNode = textNode("Hello", font, textPaint);
-    helloNode.name = "hello-en";
-    auto arHelloNode = textNode("مرحبا", font, textPaint);
-    arHelloNode.name = "hello-ar";
+    immutable logoImg = assumeUnique (
+        Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb)
+    );
+    auto lbl = new Label;
+    lbl.text = "Hello";
+    lbl.icon = logoImg;
+    lbl.alignment = Alignment.center;
 
-    immutable logoImg = assumeUnique(Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb));
-    auto logoNode = new SgImage;
-    logoNode.image = logoImg;
-    logoNode.name = "logo";
-
-    auto logoGrpNode = new Group;
-    logoGrpNode.name = "logo-grp";
-    logoGrpNode.appendChild(logoNode);
-
-    auto textLayout = new LinearLayout;
-    textLayout.orientation = Orientation.vertical;
-    textLayout.spacing = 26f;
-    textLayout.gravity = Gravity.center;
-    textLayout.name = "text-layout";
-    textLayout.appendWidget(helloNode);
-    textLayout.appendWidget(arHelloNode);
-
-    auto root = new LinearLayout;
-    root.name = "root";
-    root.orientation = Orientation.horizontal;
-    root.spacing = 26f;
-    root.gravity = Gravity.center;
-    root.appendWidget(textLayout);
-    root.appendWidget(logoGrpNode);
-
-    win.root = root;
+    win.root = lbl;
 
     // auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
     // auto treePath = new Path([0, 0]);
