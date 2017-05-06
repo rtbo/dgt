@@ -1,10 +1,10 @@
-module dgt.sg.group;
+module dgt.widget.group;
 
 import dgt.geometry;
-import dgt.sg.layout;
 import dgt.sg.node;
 import dgt.sg.parent;
-import dgt.sg.widget;
+import dgt.widget.layout;
+import dgt.widget.widget;
 
 
 class Group : Widget

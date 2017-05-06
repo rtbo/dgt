@@ -12,9 +12,9 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.sg.parent;
-import dgt.sg.widget;
 import dgt.signal;
 import dgt.util;
+import dgt.widget.widget;
 
 import gfx.foundation.rc;
 
@@ -466,7 +466,7 @@ class Window
         {
             scope(exit) _dirtyReg = new Region;
             if (_widget) {
-                import dgt.sg.layout : MeasureSpec;
+                import dgt.widget.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
                 _widget.measure(
                     MeasureSpec.makeAtMost(fs.width),

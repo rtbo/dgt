@@ -9,8 +9,6 @@ import dgt.keys;
 import dgt.math;
 import dgt.render.frame;
 import dgt.render.node;
-import dgt.sg.group;
-import dgt.sg.layout;
 import dgt.sg.miscnodes;
 import dgt.sg.node;
 import dgt.sg.parent;
@@ -18,6 +16,8 @@ import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.vg;
+import dgt.widget.group;
+import dgt.widget.layout;
 import dgt.window;
 
 import gfx.foundation.rc;

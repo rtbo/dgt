@@ -3,7 +3,6 @@ module dgt.sg.parent;
 import dgt.geometry;
 import dgt.render.node;
 import dgt.sg.node;
-import dgt.sg.widget;
 import dgt.window;
 
 import std.exception;

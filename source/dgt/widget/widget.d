@@ -1,12 +1,12 @@
 /// Widget module
-module dgt.sg.widget;
+module dgt.widget.widget;
 
 import dgt.geometry;
 import dgt.math;
 import dgt.render.node;
-import dgt.sg.layout;
 import dgt.sg.node;
 import dgt.sg.parent;
+import dgt.widget.layout;
 
 import std.experimental.logger;
 

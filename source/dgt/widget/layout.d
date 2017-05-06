@@ -1,12 +1,12 @@
 /// layout module
-module dgt.sg.layout;
+module dgt.widget.layout;
 
 import dgt.enums;
 import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
 import dgt.sg.parent;
-import dgt.sg.widget;
+import dgt.widget.widget;
 
 import gfx.foundation.typecons;
 
