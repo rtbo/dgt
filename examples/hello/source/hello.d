@@ -13,6 +13,7 @@ import dgt.sg.group;
 import dgt.sg.layout;
 import dgt.sg.miscnodes;
 import dgt.sg.node;
+import dgt.sg.parent;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
@@ -74,21 +75,25 @@ int main()
     logoNode.image = logoImg;
     logoNode.name = "logo";
 
-    auto textLayout = new SgLinearLayout;
+    auto logoGrpNode = new Group;
+    logoGrpNode.name = "logo-grp";
+    logoGrpNode.appendChild(logoNode);
+
+    auto textLayout = new LinearLayout;
     textLayout.orientation = Orientation.vertical;
     textLayout.spacing = 26f;
     textLayout.gravity = Gravity.center;
     textLayout.name = "text-layout";
-    textLayout.appendChild(helloNode);
-    textLayout.appendChild(arHelloNode);
+    textLayout.appendWidget(helloNode);
+    textLayout.appendWidget(arHelloNode);
 
-    auto root = new SgLinearLayout;
+    auto root = new LinearLayout;
     root.name = "root";
     root.orientation = Orientation.horizontal;
     root.spacing = 26f;
     root.gravity = Gravity.center;
-    root.appendChild(textLayout);
-    root.appendChild(logoNode);
+    root.appendWidget(textLayout);
+    root.appendWidget(logoGrpNode);
 
     win.root = root;
 
@@ -102,7 +107,7 @@ int main()
 
 private:
 
-SgNode textNode(string text, FontRequest font, Paint paint)
+Group textNode(string text, FontRequest font, Paint paint)
 {
     auto textNode = new SgText;
     textNode.text = text;
@@ -115,7 +120,7 @@ SgNode textNode(string text, FontRequest font, Paint paint)
     ulNode.color = fvec(1, 1, 1, 0.5);
     ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
 
-    auto node = new SgGroup;
+    auto node = new Group;
     node.appendChild(textNode);
     node.appendChild(ulNode);
     node.transform = translation!float(fvec(metrics.bearing, 0f));

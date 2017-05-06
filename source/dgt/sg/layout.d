@@ -6,21 +6,23 @@ import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
 import dgt.sg.parent;
+import dgt.sg.widget;
 
 import gfx.foundation.typecons;
 
 import std.exception;
 import std.experimental.logger;
 
-/// Specifies how a node should measure itself
+
+/// Specifies how a widget should measure itself
 struct MeasureSpec
 {
     enum {
-        /// node should measure its content
+        /// widget should measure its content
         unspecified,
-        /// node should measure its content bounded to the given size
+        /// widget should measure its content bounded to the given size
         atMost,
-        /// node should assign its measurement to the given size regardless of its content
+        /// widget should assign its measurement to the given size regardless of its content
         exactly,
     }
 
@@ -144,7 +146,7 @@ enum float wrapContent = -1f;
 enum float matchParent = -2f;
 
 /// general layout class
-class SgLayout : SgParent
+class Layout : Widget
 {
     /// Params attached to each node for use with their parent
     static class Params {
@@ -157,63 +159,75 @@ class SgLayout : SgParent
     /// Build a new layout
     this() {}
 
-    override void appendChild(SgNode node)
+    /// Return a bidirectional range of the widget children
+    @property auto widgets() const
     {
-        ensureLayout(node);
-        super.appendChild(node);
+        import std.algorithm : map;
+        return children.map!(c => cast(const(Widget))c);
     }
 
-    override public void prependChild(SgNode node)
+    /// ditto
+    @property auto widgets()
     {
-        ensureLayout(node);
-        super.prependChild(node);
+        import std.algorithm : map;
+        return children.map!(c => cast(Widget)c);
     }
 
-    override public void insertChildBefore(SgNode node, SgNode child)
+    void appendWidget(Widget widget)
     {
-        ensureLayout(node);
-        super.insertChildBefore(node, child);
+        ensureLayout(widget);
+        appendChild(widget);
     }
 
-    override public void removeChild(SgNode child)
+    public void prependWidget(Widget widget)
     {
-        super.removeChild(child);
+        ensureLayout(widget);
+        prependChild(widget);
     }
 
-    /// Ensure that this node has layout params and that they are compatible
+    public void insertWidgetBefore(Widget widget, Widget child)
+    {
+        ensureLayout(widget);
+        insertChildBefore(widget, child);
+    }
+
+    public void removeWidget(Widget child)
+    {
+        removeChild(child);
+    }
+
+    /// Ensure that this child has layout params and that they are compatible
     /// with this layout. If not, default params are assigned.
-    protected void ensureLayout(SgNode node)
+    protected void ensureLayout(Widget child)
     {
-        auto lp = cast(SgLayout.Params)node.layoutParams;
-        if (!lp) {
-            node.layoutParams = new SgLayout.Params;
+        if (!child.layoutParams) {
+            child.layoutParams = new Layout.Params;
         }
     }
 
     /// Ask a child to measure itself taking into account the measureSpecs
     /// given to this layout, the padding and the size that have been consumed
     /// by other children.
-    protected void measureChild(SgNode node, in MeasureSpec parentWidthSpec,
+    protected void measureChild(Widget child, in MeasureSpec parentWidthSpec,
                                 in MeasureSpec parentHeightSpec,
                                 in float usedWidth=0f, in float usedHeight=0f)
     {
-        auto lp = cast(SgLayout.Params)node.layoutParams;
+        auto lp = cast(Layout.Params)child.layoutParams;
 
         immutable ws = childMeasureSpec(parentWidthSpec,
                     padding.left+padding.right+usedWidth, lp.width);
         immutable hs = childMeasureSpec(parentHeightSpec,
                     padding.top+padding.bottom+usedHeight, lp.height);
 
-        node.measure(ws, hs);
+        child.measure(ws, hs);
     }
-
 
 }
 
 /// layout its children in a linear way
-class SgLinearLayout : SgLayout
+class LinearLayout : Layout
 {
-    static class Params : SgLayout.Params
+    static class Params : Layout.Params
     {
         /// Specify how much of the layout extra space will be allocated
         /// to a child
@@ -226,8 +240,8 @@ class SgLinearLayout : SgLayout
         /// Build a default value
         this() {}
 
-        /// Build a value from an existing object of type SgLayout.Params
-        this(SgLayout.Params params)
+        /// Build a value from an existing object of type Layout.Params
+        this(Layout.Params params)
         {
             this.width = params.width;
             this.height = params.height;
@@ -237,10 +251,10 @@ class SgLinearLayout : SgLayout
     /// Build a new linear layout
     this() {}
 
-    override protected void ensureLayout(SgNode node) {
+    override protected void ensureLayout(Widget node) {
         auto llp = cast(Params)node.layoutParams;
         if (!llp) {
-            auto lp = cast(SgLayout.Params)node.layoutParams;
+            auto lp = cast(Layout.Params)node.layoutParams;
             if (lp) node.layoutParams = new Params(lp);
             else node.layoutParams = new Params;
         }
@@ -323,14 +337,14 @@ class SgLinearLayout : SgLayout
         float totalWeight = 0;
 
         // compute vertical space that all children want to have
-        foreach(i, c; enumerate(children)) {
+        foreach(i, c; enumerate(widgets)) {
             if (i != 0) totalHeight += spacing;
 
             measureChild(c, widthSpec, heightSpec, 0f, totalHeight);
             totalHeight += c.measurement.height;
             largestWidth = max(largestWidth, c.measurement.width);
 
-            auto lp = cast(SgLinearLayout.Params)layoutParams;
+            auto lp = cast(Params)layoutParams;
             if (lp) totalWeight += lp.weight;
         }
         totalHeight += padding.top + padding.bottom;
@@ -342,8 +356,8 @@ class SgLinearLayout : SgLayout
         // share remain excess (positive or negative) between all weighted children
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalHeight = 0f;
-            foreach(c; children) {
-                auto lp = cast(SgLinearLayout.Params)layoutParams;
+            foreach(c; widgets) {
+                auto lp = cast(LinearLayout.Params)layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
                     immutable share = remainExcess * weight / totalWeight;
@@ -383,14 +397,14 @@ class SgLinearLayout : SgLayout
         float totalWeight = 0;
 
         // compute horizontal space that all children want to have
-        foreach(i, c; enumerate(children)) {
+        foreach(i, c; enumerate(widgets)) {
             if (i != 0) totalWidth += spacing;
 
             measureChild(c, widthSpec, heightSpec, totalWidth, 0f);
             totalWidth += c.measurement.width;
             largestHeight = max(largestHeight, c.measurement.height);
 
-            auto lp = cast(SgLinearLayout.Params)layoutParams;
+            auto lp = cast(LinearLayout.Params)layoutParams;
             if (lp) totalWeight += lp.weight;
         }
         totalWidth += padding.left + padding.right;
@@ -402,8 +416,8 @@ class SgLinearLayout : SgLayout
         // share remain excess (positive or negative) between all weighted children
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalWidth = 0f;
-            foreach(c; children) {
-                auto lp = cast(SgLinearLayout.Params)layoutParams;
+            foreach(c; widgets) {
+                auto lp = cast(Params)layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
                     immutable share = remainExcess * weight / totalWeight;
@@ -460,7 +474,7 @@ class SgLinearLayout : SgLayout
             break;
         }
 
-        foreach(i, c; enumerate(children)) {
+        foreach(i, c; enumerate(widgets)) {
 
             auto lp = cast(Params)c.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
@@ -508,7 +522,7 @@ class SgLinearLayout : SgLayout
             break;
         }
 
-        foreach(i, c; enumerate(children)) {
+        foreach(i, c; enumerate(widgets)) {
 
             auto lp = cast(Params)c.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?

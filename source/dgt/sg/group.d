@@ -4,9 +4,10 @@ import dgt.geometry;
 import dgt.sg.layout;
 import dgt.sg.node;
 import dgt.sg.parent;
+import dgt.sg.widget;
 
 
-class SgGroup : SgParent
+class Group : Widget
 {
     this() {}
 
@@ -38,5 +39,13 @@ class SgGroup : SgParent
     override void layout(in FRect rect)
     {
         layoutRect = rect;
+    }
+
+    override protected FRect computeBounds()
+    {
+        import std.algorithm : map;
+        return computeRectsExtents(
+            children.map!(c => c.transformedBounds)
+        );
     }
 }

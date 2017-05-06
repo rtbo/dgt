@@ -12,6 +12,7 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.sg.parent;
+import dgt.sg.widget;
 import dgt.signal;
 import dgt.util;
 
@@ -289,7 +290,11 @@ class Window
             _root._window = null;
         }
         _root = root;
-        _root._window = this;
+        _widget = cast(Widget)_root;
+        if (_root) {
+            _root._window = this;
+            //collectWidgetRoots(_root, _widgetRoots);
+        }
     }
 
     /// The region that needs update
@@ -460,14 +465,14 @@ class Window
         immutable(RenderFrame) collectFrame()
         {
             scope(exit) _dirtyReg = new Region;
-            if (_root) {
+            if (_widget) {
                 import dgt.sg.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
-                _root.measure(
+                _widget.measure(
                     MeasureSpec.makeAtMost(fs.width),
                     MeasureSpec.makeAtMost(fs.height)
                 );
-                _root.layout(FRect(0, 0, fs));
+                _widget.layout(FRect(0, 0, fs));
             }
             return new immutable RenderFrame (
                 nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
@@ -488,9 +493,6 @@ class Window
 
         void handleExpose(ExposeEvent ev)
         {
-            if (_root) {
-                //RenderThread.instance.frame(collectFrame);
-            }
         }
 
         EvT getEvent(EvT)(EventType type)
@@ -519,10 +521,26 @@ class Window
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
         SgParent _root;
+        Widget _widget;
+        // Widget[] _widgetRoots;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;
 
         Rebindable!Region _dirtyReg = new Region;
     }
+}
+
+
+private void collectWidgetRoots(SgParent parent, ref Widget[] roots)
+{
+    auto w = cast(Widget)parent;
+    if (w && !cast(Widget)w.parent) {
+        roots ~= w;
+    }
+    import std.algorithm : each, filter, map;
+    parent.children
+        .map!(n => cast(SgParent)n)
+        .filter!(p => p !is null)
+        .each!(p => collectWidgetRoots(p, roots));
 }

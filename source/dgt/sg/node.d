@@ -5,7 +5,6 @@ import dgt.geometry;
 import dgt.math;
 import dgt.render;
 import dgt.render.node;
-import dgt.sg.layout;
 import dgt.sg.parent;
 import dgt.window;
 
@@ -58,67 +57,6 @@ abstract class SgNode
         return _nextSibling;
     }
 
-    /// The layout parameters of this node
-    @property inout(SgLayout.Params) layoutParams() inout
-    {
-        return _layoutParams;
-    }
-
-    /// ditto
-    @property void layoutParams(SgLayout.Params params)
-    {
-        _layoutParams = params;
-    }
-
-    /// The padding of the node, that is, how much empty space is required
-    /// around the content.
-    /// Padding is always within the node's rect.
-    @property FPadding padding() const
-    {
-        return _padding;
-    }
-
-    /// ditto
-    @property void padding(in FPadding padding)
-    {
-        _padding = padding;
-    }
-
-    /// Ask this node to measure itself by assigning the measurement property.
-    void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
-    {
-        measurement = FSize(widthSpec.size, heightSpec.size);
-    }
-
-    /// Size set by the node during measure phase
-    final @property FSize measurement() const
-    {
-        return _measurement;
-    }
-
-    final protected @property void measurement(in FSize sz)
-    {
-        _measurement = sz;
-    }
-
-    /// Ask the node to layout itself in the given rect
-    void layout(in FRect rect)
-    {
-        layoutRect = rect;
-    }
-
-    /// Rect set by the node during layout phase.
-    final @property FRect layoutRect() const
-    {
-        return _layoutRect;
-    }
-
-    final protected @property layoutRect(in FRect rect)
-    {
-        _layoutRect = rect;
-    }
-
-
     /// The bounds of this nodes in local node coordinates.
     @property FRect bounds()
     {
@@ -169,7 +107,7 @@ abstract class SgNode
     /// Dynamic basically means that the rendering data can vary
     /// about every frame. Whether the transform changes at every frame
     /// or not should not influence this flag.
-    /// This flag mainly impact caching policy.
+    /// This flag mainly impacts caching policy.
     @property bool dynamic() const { return _dynamic; }
 
     /// ditto
@@ -183,13 +121,9 @@ abstract class SgNode
     {
         immutable toBeTransformed = collectRenderNode();
         if (!toBeTransformed) return null;
-        else if (hasTransform || _layoutRect.point != FPoint(0f, 0f)) {
-            FMat4 tr = translation!float(fvec(_layoutRect.point, 0));
-            if (hasTransform) {
-                tr = tr * _transform;
-            }
+        else if (hasTransform) {
             return new immutable TransformRenderNode(
-                tr, toBeTransformed
+                _transform, toBeTransformed
             );
         }
         else {
@@ -249,12 +183,6 @@ abstract class SgNode
 
     package SgNode _prevSibling;
     package SgNode _nextSibling;
-
-    // layout
-    private FPadding        _padding;
-    private SgLayout.Params _layoutParams;
-    private FSize           _measurement;
-    private FRect           _layoutRect;
 
     // bounds
     private Lazy!FRect _bounds;
