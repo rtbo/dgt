@@ -9,8 +9,6 @@ import dgt.sg.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
 
-import gfx.foundation.rc;
-
 import std.typecons;
 import std.experimental.logger;
 
@@ -110,7 +108,7 @@ class SgText : SgNode
     {
         _text = text;
         _renderNode = null;
-        _layout.unload();
+        _layout = null;
         dirtyBounds();
     }
 
@@ -119,7 +117,7 @@ class SgText : SgNode
     {
         _font = font;
         _renderNode = null;
-        _layout.unload();
+        _layout = null;
         dirtyBounds();
     }
 
@@ -155,16 +153,10 @@ class SgText : SgNode
         return _renderNode;
     }
 
-    override void disposeResources()
-    {
-        _layout.unload();
-        _renderNode = null;
-    }
-
     private void ensureLayout()
     {
         if (!_layout) {
-            _layout = makeRc!TextLayout(_text, TextFormat.plain, _font);
+            _layout = new TextLayout(_text, TextFormat.plain, _font);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;
@@ -174,7 +166,7 @@ class SgText : SgNode
     private string _text;
     private FontRequest _font;
     private FVec4 _color;
-    private Rc!TextLayout _layout;
+    private TextLayout _layout;
     private TextMetrics _metrics;
     private Rebindable!(immutable(TextRenderNode)) _renderNode;
 }

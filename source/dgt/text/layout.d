@@ -1,15 +1,14 @@
 /// Text layout and shaping
 module dgt.text.layout;
 
-import dgt.text.fontcache;
-import dgt.text.font;
-import gfx.foundation.rc;
-import dgt.vg.context;
+import dgt.bindings.harfbuzz;
 import dgt.image;
-import dgt.math.vec;
 import dgt.math.mat;
 import dgt.math.transform;
-import dgt.bindings.harfbuzz;
+import dgt.math.vec;
+import dgt.text.font;
+import dgt.text.fontcache;
+import dgt.vg.context;
 
 import std.exception;
 import std.experimental.logger;
@@ -27,7 +26,7 @@ enum TextFormat
 struct TextItem
 {
     string text;
-    Rc!Font font;
+    FontResult font;
     ImageFormat renderFormat;
     uint argbColor;
 }
@@ -36,7 +35,7 @@ struct TextItem
 struct TextShape
 {
     string text;
-    Rc!Font font;
+    FontResult font;
     GlyphInfo[] glyphs;
 }
 
@@ -96,9 +95,8 @@ struct TextMetrics
 }
 
 /// A single line text layout
-class TextLayout : RefCounted
+class TextLayout
 {
-    mixin(rcCode);
     /// Builds a layout
     this(string text, TextFormat format, FontRequest font)
     {
@@ -108,20 +106,13 @@ class TextLayout : RefCounted
         enforce(_matchedFonts.length, "Text layout could not match any font for '"~text~"'");
     }
 
-    override void dispose()
-    {
-        reinit(_matchedFonts);
-        reinit(_items);
-        reinit(_shapes);
-    }
-
     /// This is the operation of splitting the text into items and to shape
     /// each of them.
     void layout()
     {
-        import std.algorithm : find, all;
-        reinit(_items);
-        reinit(_shapes);
+        import std.algorithm : all, find;
+        _items = null;
+        _shapes = null;
 
         // find the first font that cover the whole string
         auto mf = _matchedFonts.find!(
@@ -136,7 +127,7 @@ class TextLayout : RefCounted
 
         // only plain text single item support
         _items = [TextItem(
-            _text, FontCache.instance.createOrGetFont(mf[0]), ImageFormat.a8, 0,
+            _text, mf[0], ImageFormat.a8, 0,
         )];
         foreach(ref i; _items)
         {
@@ -159,9 +150,10 @@ class TextLayout : RefCounted
 
         foreach (TextShape ts; _shapes)
         {
+            auto font = FontCache.instance.createOrGetFont(ts.font);
             foreach (i, GlyphInfo gi; ts.glyphs)
             {
-                immutable gm = ts.font.glyphMetrics(gi.index);
+                immutable gm = font.glyphMetrics(gi.index);
                 if (i == 0)
                 {
                     bearingX = -gm.horBearing.x;
@@ -191,7 +183,8 @@ class TextLayout : RefCounted
     {
         import std.algorithm : map;
         foreach(ref ts; _shapes) {
-            ts.font.prepareGlyphRun(ts.glyphs.map!(gl => gl.index));
+            auto font = FontCache.instance.createOrGetFont(ts.font);
+            font.prepareGlyphRun(ts.glyphs.map!(gl => gl.index));
         }
     }
 
@@ -201,15 +194,16 @@ class TextLayout : RefCounted
         immutable(ShapedGlyph)[] res;
         auto advance = fvec(0, 0);
         foreach(ref ts; _shapes) {
-            ts.font.realizeGlyphRun();
+            auto font = FontCache.instance.createOrGetFont(ts.font);
+            font.realizeGlyphRun();
             foreach (gi; ts.glyphs) {
-                immutable rg = ts.font.renderedGlyph(gi.index);
+                immutable rg = font.renderedGlyph(gi.index);
                 if (rg) {
                     auto layoutPos = gi.offset +
                             ivec(rg.metrics.horBearing.x, -rg.metrics.horBearing.y) +
                             ivec(floor(advance.x), floor(advance.y));
                     res ~= immutable(ShapedGlyph)(
-                        ts.font.renderedGlyph(gi.index), gi.advance, gi.offset, cast(FVec2)layoutPos
+                        font.renderedGlyph(gi.index), gi.advance, gi.offset, cast(FVec2)layoutPos
                     );
                 }
                 advance += gi.advance;
@@ -230,9 +224,10 @@ class TextLayout : RefCounted
         auto advance = fvec(0, 0);
         foreach (TextShape ts; _shapes)
         {
+            auto font = FontCache.instance.createOrGetFont(ts.font);
             foreach (i, GlyphInfo gi; ts.glyphs)
             {
-                auto rg = ts.font.rasterizeGlyph(gi.index);
+                auto rg = font.rasterizeGlyph(gi.index);
                 if (rg)
                 {
                     context.transform = origTr.translate(
@@ -257,11 +252,13 @@ class TextLayout : RefCounted
 
 private TextShape shapeItem(ref TextItem item)
 {
+    auto font = FontCache.instance.createOrGetFont(item.font);
+
     auto hbb = hb_buffer_create();
     scope(exit) hb_buffer_destroy(hbb);
     hb_buffer_add_utf8(hbb, item.text.ptr, cast(int)item.text.length, 0, -1);
     hb_buffer_guess_segment_properties(hbb);
-    hb_shape(item.font.hbFont, hbb, null, 0);
+    hb_shape(font.hbFont, hbb, null, 0);
     auto numGlyphs = hb_buffer_get_length(hbb);
     auto glyphInfos = hb_buffer_get_glyph_infos(hbb, null);
     auto glyphPos = hb_buffer_get_glyph_positions(hbb, null);

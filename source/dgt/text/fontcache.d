@@ -86,7 +86,7 @@ class FontCache : Disposable
     private FcConfig* _config;
     private string[] _appFontFiles;
 
-    private Weak!Font[size_t]   _liveCache;
+    private Font[size_t]   _liveCache;
 
     private this()
     {
@@ -97,6 +97,7 @@ class FontCache : Disposable
 
     override void dispose()
     {
+        release(_liveCache);
         FcFini();
     }
 
@@ -125,21 +126,20 @@ class FontCache : Disposable
         auto pat = FcPatternCreate();
         scope(exit)
             FcPatternDestroy(pat);
-        FcPatternAddString(pat, FC_FAMILY, toStringz(req.family));
+        if (req.family.length) {
+            FcPatternAddString(pat, FC_FAMILY, toStringz(req.family));
+        }
         FcPatternAddInteger(pat, FC_SLANT, styleToFcSlant(req.style));
         FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(req.weight));
         // FIXME: get dpi from Screen
         FcPatternAddDouble(pat, FC_DPI, 96.0);
-        if (req.size.unit == FontSize.Unit.px)
-        {
+        if (req.size.unit == FontSize.Unit.px) {
             FcPatternAddDouble(pat, FC_PIXEL_SIZE, req.size.value);
         }
-        else
-        {
+        else {
             FcPatternAddDouble(pat, FC_SIZE, req.size.value);
         }
-        if (req.foundry.length)
-        {
+        if (req.foundry.length) {
             FcPatternAddString(pat, FC_FOUNDRY, toStringz(req.foundry));
         }
         FcPatternAddBool(pat, FC_OUTLINE, FcTrue);
@@ -150,8 +150,7 @@ class FontCache : Disposable
 
         FcResult dummy;
         auto patterns = FcFontSort(_config, pat, FcTrue, null, &dummy);
-        if (!patterns)
-        {
+        if (!patterns) {
             errorf("could not match any font.");
             return [];
         }
@@ -159,11 +158,9 @@ class FontCache : Disposable
             FcFontSetDestroy(patterns);
 
         FontResult[] res;
-        foreach (i; 0 .. patterns.nfont)
-        {
+        foreach (i; 0 .. patterns.nfont) {
             auto p = FcFontRenderPrepare(_config, pat, patterns.fonts[i]);
-            if (p)
-            {
+            if (p) {
                 scope(exit)
                     FcPatternDestroy(p);
                 double dval = void;
@@ -171,41 +168,33 @@ class FontCache : Disposable
                 int ival = void;
                 FcCharSet *csval = void;
                 FontResult fr;
-                if (FcPatternGetString(p, FC_FAMILY, 0, &sval) == FcResultMatch)
-                {
+                if (FcPatternGetString(p, FC_FAMILY, 0, &sval) == FcResultMatch) {
                     fr.family = fromStringz(sval).idup;
                 }
-                if (FcPatternGetInteger(p, FC_SLANT, 0, &ival) == FcResultMatch)
-                {
+                if (FcPatternGetInteger(p, FC_SLANT, 0, &ival) == FcResultMatch) {
                     fr.style = fcSlantToStyle(ival);
                 }
-                if (FcPatternGetInteger(p, FC_WEIGHT, 0, &ival) == FcResultMatch)
-                {
+                if (FcPatternGetInteger(p, FC_WEIGHT, 0, &ival) == FcResultMatch) {
                     fr.weight = FcWeightToOpenType(ival);
                 }
                 immutable key = req.size.unit == FontSize.Unit.pts ? FC_SIZE : FC_PIXEL_SIZE;
-                if (FcPatternGetDouble(p, toStringz(key), 0, &dval) == FcResultMatch)
-                {
+                if (FcPatternGetDouble(p, toStringz(key), 0, &dval) == FcResultMatch) {
                     fr.size = req.size.unit == FontSize.Unit.pts ?
                         FontSize.pts(dval) : FontSize.px(dval);
                 }
-                if (FcPatternGetString(p, FC_FOUNDRY, 0, &sval) == FcResultMatch)
-                {
+                if (FcPatternGetString(p, FC_FOUNDRY, 0, &sval) == FcResultMatch) {
                     fr.foundry = fromStringz(sval).idup;
                 }
                 string fn;
                 int fi;
                 CodepointSet cps;
-                if (FcPatternGetString(p, FC_FILE, 0, &sval) == FcResultMatch)
-                {
+                if (FcPatternGetString(p, FC_FILE, 0, &sval) == FcResultMatch) {
                     fr.filename = fromStringz(sval).idup;
                 }
-                if (FcPatternGetInteger(p, FC_INDEX, 0, &ival) == FcResultMatch)
-                {
+                if (FcPatternGetInteger(p, FC_INDEX, 0, &ival) == FcResultMatch) {
                     fr.faceIndex = ival;
                 }
-                if (FcPatternGetCharSet(p, FC_CHARSET, 0, &csval) == FcResultMatch)
-                {
+                if (FcPatternGetCharSet(p, FC_CHARSET, 0, &csval) == FcResultMatch) {
                     fr.coverage = buildCoverage(csval);
                 }
                 res ~= fr;
@@ -216,17 +205,18 @@ class FontCache : Disposable
 
     /// Create a new font based on the font result, or fetch it from the cache
     /// if it was created before.
-    Rc!Font createOrGetFont(in FontResult res)
+    Font createOrGetFont(in FontResult res)
     {
+        Font f;
         immutable hash = res.hash;
-        Rc!Font f;
-        Weak!Font wf;
-        auto wfp = hash in _liveCache;
-        if (wfp) wf = *wfp;
-        f = wf.lock();
-        if (!f.loaded) {
+        auto fp = hash in _liveCache;
+        if (fp) {
+            f = *fp;
+        }
+        else {
             f = new Font(res);
-            _liveCache[hash] = Weak!Font(f);
+            f.retain();
+            _liveCache[hash] = f;
         }
         return f;
     }
