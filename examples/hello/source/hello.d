@@ -69,97 +69,22 @@ int main()
     immutable logoImg = assumeUnique (
         Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb)
     );
-    auto lbl = new Label;
-    lbl.text = "Hello";
-    lbl.icon = logoImg;
-    lbl.alignment = Alignment.center;
+    auto hello = new Label;
+    hello.text = "Hello";
+    hello.alignment = Alignment.center;
 
-    win.root = lbl;
+    auto icon = new Label;
+    icon.icon = logoImg;
+    icon.alignment = Alignment.center;
 
-    // auto tree = FractalBranch(branchStart, 0, 1, numFractalLevels);
-    // auto treePath = new Path([0, 0]);
-    // treePath.lineTo([branchVec.x, branchVec.y]);
+    auto layout = new LinearLayout;
+    layout.orientation = Orientation.horizontal;
+    layout.appendWidget(hello);
+    layout.appendWidget(icon);
+    layout.gravity = Gravity.center;
+
+    win.root = layout;
 
     win.show();
     return app.loop();
-}
-
-private:
-
-Group textNode(string text, FontRequest font, Paint paint)
-{
-    auto textNode = new SgText;
-    textNode.text = text;
-    textNode.font = font;
-    textNode.color = (cast(ColorPaint)paint).color;
-    immutable metrics = textNode.metrics;
-    immutable topLeft = cast(FVec2)(-metrics.bearing);
-
-    auto ulNode = new SgColorRect;
-    ulNode.color = fvec(1, 1, 1, 0.5);
-    ulNode.rect = FRect(topLeft.x, 5, metrics.size.x, 5);
-
-    auto node = new Group;
-    node.appendChild(textNode);
-    node.appendChild(ulNode);
-    node.transform = translation!float(fvec(metrics.bearing, 0f));
-    return node;
-}
-
-enum branchScale = 0.7f;
-enum branchAngle = PI / 8;
-immutable branchVec = fvec(0, -150);
-immutable branchStart = fvec(320, 460);
-immutable subBranches = [ 1.5, -0.5, -2.0 ];
-enum numFractalLevels = 5;
-
-struct FractalBranch
-{
-    Transform base;
-    FractalBranch[] branches;
-
-    this(in FVec2 pos, in real angle, in float scale, in int remainingDepth)
-    {
-        assert(remainingDepth >= 0);
-
-        this.base = Transform.identity
-            .scale(scale, scale)
-            .rotate(angle)
-            .translate(pos);
-
-        if (remainingDepth)
-        {
-            immutable endPos = pos +
-                branchVec.transform(
-                    Transform.identity
-                        .scale(scale, scale)
-                        .rotate(angle)
-                );
-            void addBranch(in real angle)
-            {
-                branches ~= FractalBranch (
-                    endPos, angle, scale*branchScale, remainingDepth-1
-                );
-            }
-
-            import std.algorithm : each;
-
-            subBranches.each!(
-                sb => addBranch(angle + sb * branchAngle)
-            );
-        }
-    }
-
-    void draw(in Path path, VgContext context)
-    {
-        context.sandbox!({
-            context.transform = base;
-            context.drawPath(path, PaintMode.stroke);
-        });
-        foreach(br; branches)
-        {
-            br.draw(path, context);
-        }
-    }
-
 }
