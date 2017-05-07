@@ -66,6 +66,40 @@ struct Padding(T) if (isNumeric!T)
     T right =0;
     T bottom =0;
 
+    this(in T left, in T top, in T right, in T bottom)
+    {
+        this.left = left;
+        this.top = top;
+        this.right = right;
+        this.bottom = bottom;
+    }
+
+    this(in T hor, in T ver)
+    {
+        this.left = hor;
+        this.top = ver;
+        this.right = hor;
+        this.bottom = ver;
+    }
+
+    this(in T constant)
+    {
+        left = constant;
+        top = constant;
+        right = constant;
+        bottom = constant;
+    }
+
+    @property T horizontal() const
+    {
+        return left + right;
+    }
+
+    @property T vertical() const
+    {
+        return top + bottom;
+    }
+
     U opCast(U : Padding!V, V)() const
     {
         return Padding!V(cast(V) left, cast(V) top, cast(V) right, cast(V) bottom);
@@ -79,6 +113,40 @@ struct Margins(T) if (isNumeric!T)
     T top =0;
     T right =0;
     T bottom =0;
+
+    this(in T left, in T top, in T right, in T bottom)
+    {
+        this.left = left;
+        this.top = top;
+        this.right = right;
+        this.bottom = bottom;
+    }
+
+    this(in T hor, in T ver)
+    {
+        this.left = hor;
+        this.top = ver;
+        this.right = hor;
+        this.bottom = ver;
+    }
+
+    this(in T constant)
+    {
+        left = constant;
+        top = constant;
+        right = constant;
+        bottom = constant;
+    }
+
+    @property T horizontal() const
+    {
+        return left + right;
+    }
+
+    @property T vertical() const
+    {
+        return top + bottom;
+    }
 
     U opCast(U : Margins!V, V)() const
     {
