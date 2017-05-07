@@ -1,11 +1,14 @@
 module dgt.sg.parent;
 
+import dgt.event;
 import dgt.geometry;
+import dgt.math;
 import dgt.render.node;
 import dgt.sg.node;
 import dgt.window;
 
 import std.exception;
+import std.experimental.logger;
 import std.range;
 import std.typecons;
 
@@ -151,6 +154,53 @@ class SgParent : SgNode
             children.map!(c => transformBounds(c.transformedBounds, tr))
         );
     }
+
+    override SgNode eventChain(SgNode[] chain, Event event)
+    {
+        // fiter phase
+        if (filterEvent(event)) return this;
+
+        // chaining phase
+        if (chain.length) {
+            auto res = chain[0].eventChain(chain[1 .. $], event);
+            if (res) return res;
+        }
+
+        // bubbling phase
+        if (handleEvent(event)) return this;
+        else return null;
+    }
+
+    override SgNode eventTargetedChain(MouseEvent event)
+    {
+        /// filter phase
+        if (filterEvent(event)) return this;
+
+        /// chaining phase
+        foreach (c; children)
+        {
+            immutable point = cast(FVec2)event.point;
+            if (c.bounds.contains!float(point)) {
+                immutable pos = c.pos;
+
+                auto next = new MouseEvent(
+                    event.type, event.window,
+                    ivec(point.x - pos.x, point.y - pos.y),
+                    event.button, event.state, event.modifiers
+                );
+
+                auto res = c.eventTargetedChain(next);
+                if (res) return res;
+
+                assert(!next.consumed);
+            }
+        }
+
+        /// bubbling phase
+        if (handleEvent(event)) return this;
+        else return null;
+    }
+
 
     override immutable(RenderNode) collectRenderNode()
     {

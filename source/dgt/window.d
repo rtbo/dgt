@@ -327,18 +327,10 @@ class Window
             handleResize(cast(ResizeEvent) wEv);
             break;
         case EventType.mouseDown:
-            _onMouse.fire(cast(MouseEvent) wEv);
-            if (!wEv.consumed)
-            {
-                _onMouseDown.fire(cast(MouseEvent) wEv);
-            }
+            handleMouseDown(cast(MouseEvent) wEv);
             break;
         case EventType.mouseUp:
-            _onMouse.fire(cast(MouseEvent) wEv);
-            if (!wEv.consumed)
-            {
-                _onMouseUp.fire(cast(MouseEvent) wEv);
-            }
+            handleMouseUp(cast(MouseEvent) wEv);
             break;
         case EventType.keyDown:
             auto kEv = cast(KeyEvent) wEv;
@@ -482,6 +474,26 @@ class Window
 
         void handleExpose(ExposeEvent ev)
         {
+        }
+
+        void handleMouseDown(MouseEvent ev)
+        {
+            assert(ev.type == EventType.mouseDown);
+            _onMouse.fire(ev);
+            if (!ev.consumed) _onMouseDown.fire(ev);
+            if (!ev.consumed && _root) {
+                _root.eventTargetedChain(ev);
+            }
+        }
+
+        void handleMouseUp(MouseEvent ev)
+        {
+            assert(ev.type == EventType.mouseUp);
+            _onMouse.fire(ev);
+            if (!ev.consumed) _onMouseUp.fire(ev);
+            if (!ev.consumed && _root) {
+                _root.eventTargetedChain(ev);
+            }
         }
 
         EvT getEvent(EvT)(EventType type)

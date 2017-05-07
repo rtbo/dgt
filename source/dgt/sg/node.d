@@ -1,6 +1,7 @@
 /// Scene graph module
 module dgt.sg.node;
 
+import dgt.event;
 import dgt.geometry;
 import dgt.math;
 import dgt.render;
@@ -16,7 +17,11 @@ import std.typecons;
 abstract class SgNode
 {
     /// builds a new node
-    this() {}
+    this()
+    {
+        _onMouseDown = new Handler!MouseEvent;
+        _onMouseUp = new Handler!MouseEvent;
+    }
 
     /// The window this node is attached to.
     @property Window window()
@@ -115,6 +120,90 @@ abstract class SgNode
     /// Whether this node has a transform set. (Other than identity)
     @property bool hasTransform() const { return _hasTransform; }
 
+
+    /// Give possibility to filter any event passing by
+    /// To effectively filter an event, the filter delegate must consume it.
+    final @property void eventFilter(EventFilter filter)
+    {
+        _evFilter = filter;
+    }
+    /// ditto
+    final protected @property EventFilter eventFilter()
+    {
+        return _evFilter;
+    }
+
+    /// Activated when user clicks on this node
+    final @property void onMouseDown(Slot!MouseEvent slot)
+    {
+        _onMouseDown.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseDown()
+    {
+        return _onMouseDown;
+    }
+    /// ditto
+    final @property void onMouseUp(Slot!MouseEvent slot)
+    {
+        _onMouseUp.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseUp()
+    {
+        return _onMouseUp;
+    }
+
+    /// Chain an event until its final target, giving each parent in the chain
+    /// the opportunity to filter it, or to handle it after its children if
+    /// the event hasn't been consumed by any of them
+    SgNode eventChain(SgNode[] chain, Event event)
+    {
+        /// unexhausted chain must land in Parent.eventChain
+        assert(!chain.length);
+
+        if (filterEvent(event)) return this;
+        else if (handleEvent(event)) return this;
+        else return null;
+    }
+
+    /// Event chain whose final target is inferred by the event
+    SgNode eventTargetedChain(MouseEvent event)
+    {
+        return eventChain(null, event);
+    }
+
+    final protected bool filterEvent(Event event)
+    {
+        if (_evFilter) {
+            _evFilter(event);
+            return event.consumed;
+        }
+        else {
+            return false;
+        }
+    }
+
+    final protected bool handleEvent(Event event)
+    {
+        immutable et = event.type;
+        if (et & EventType.mouseMask) {
+            auto mev = cast(MouseEvent)event;
+            switch (et) {
+            case EventType.mouseDown:
+                onMouseDown.fire(mev);
+                break;
+            case EventType.mouseUp:
+                onMouseUp.fire(mev);
+                break;
+            default:
+                break;
+            }
+        }
+        return event.consumed;
+    }
+
+
     /// Whether this node is dynamic.
     /// Dynamic basically means that the rendering data can vary
     /// about every frame. Whether the transform changes at every frame
@@ -204,6 +293,11 @@ abstract class SgNode
     // transform
     private FMat4 _transform = FMat4.identity;
     private bool _hasTransform;
+
+    // events
+    private EventFilter _evFilter;
+    private Handler!MouseEvent _onMouseDown;
+    private Handler!MouseEvent _onMouseUp;
 
     // cache policy
     private bool _dynamic=false;

@@ -70,14 +70,18 @@ int main()
         Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb)
     );
     auto hello = new Label;
+    hello.name = "hello";
     hello.text = "Hello";
     hello.alignment = Alignment.center;
+    hello.onMouseDown = (MouseEvent ev) { ev.consume(); writeln("hello mouse down"); };
 
     auto icon = new Label;
+    icon.name = "icon";
     icon.icon = logoImg;
     icon.alignment = Alignment.center;
 
     auto layout = new LinearLayout;
+    layout.name = "layout";
     layout.orientation = Orientation.horizontal;
     layout.appendWidget(hello);
     layout.appendWidget(icon);
