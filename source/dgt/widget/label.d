@@ -20,7 +20,10 @@ import std.typecons : Rebindable;
 class Label : Widget
 {
     /// build a new label
-    this() {}
+    this()
+    {
+        padding = FPadding(6);
+    }
 
     /// Alignment that is applied when the container has too much space,
     /// and/or when both icon and text are requested and do not have the same
@@ -65,8 +68,8 @@ class Label : Widget
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        float width = padding.left + padding.right;
-        float height = padding.top + padding.bottom;
+        float width = 0;
+        float height = 0;
         if (_text.length) {
             ensureLayout();
             width += _metrics.size.x;
@@ -80,7 +83,7 @@ class Label : Widget
                 width += spacing;
             }
         }
-        measurement = FSize(width, height);
+        measurement = FSize(width+padding.horizontal, height+padding.vertical);
     }
 
     override immutable(RenderNode) collectRenderNode()
@@ -88,24 +91,26 @@ class Label : Widget
         immutable r = rect;
         immutable mes = measurement;
 
+        // mes includes padding
         float left;
         if (alignment & Alignment.centerH) {
-            left = (r.width - mes.width) / 2f;
+            left = padding.left + (r.width - mes.width) / 2f;
         }
         else if (alignment & Alignment.right) {
-            left = (r.width - mes.width);
+            left = padding.left + (r.width - mes.width);
         }
         else {
             left = padding.left;
         }
 
         float topAlignment(in float height) {
+            // height does not include padding
             float top;
             if (alignment & Alignment.centerV) {
-                top = (r.height - height) / 2f;
+                top = (r.height - height + padding.top - padding.bottom) / 2f;
             }
             else if (alignment & Alignment.bottom) {
-                top = (r.height - height);
+                top = r.height - height - padding.bottom;
             }
             else {
                 top = padding.top;
