@@ -93,24 +93,6 @@ class Widget : SgParent
         return rect;
     }
 
-    override immutable(RenderNode) collectTransformedRenderNode()
-    {
-        immutable toBeTransformed = collectRenderNode();
-        if (!toBeTransformed) return null;
-        else if (hasTransform || rect.point != FPoint(0, 0)) {
-            FMat4 tr = translation!float(fvec(rect.point, 0));
-            if (hasTransform) {
-                tr = tr * transform;
-            }
-            return new immutable TransformRenderNode(
-                tr, toBeTransformed
-            );
-        }
-        else {
-            return toBeTransformed;
-        }
-    }
-
     // layout
     private FPadding        _padding;
     private Layout.Params   _layoutParams;

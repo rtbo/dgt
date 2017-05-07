@@ -217,18 +217,33 @@ abstract class SgNode
         _dynamic = dynamic;
     }
 
-    /// Collect the render node for this node.
+    /// Collect transformed render node for this node
     immutable(RenderNode) collectTransformedRenderNode()
     {
         immutable toBeTransformed = collectRenderNode();
         if (!toBeTransformed) return null;
-        else if (hasTransform) {
-            return new immutable TransformRenderNode(
-                _transform, toBeTransformed
+
+        FMat4 tr = translation!float(fvec(pos, 0));
+        if (hasTransform) {
+            tr = tr * transform;
+        }
+
+        immutable transformedNode = new immutable(TransformRenderNode)(
+            tr, toBeTransformed
+        );
+
+        debug(nodeFrame) {
+            return new immutable(GroupRenderNode) (
+                bounds, [
+                    transformedNode,
+                    new immutable(RectStrokeRenderNode)(
+                        fvec(0, 0, 0, 1), bounds
+                    )
+                ]
             );
         }
         else {
-            return toBeTransformed;
+            return transformedNode;
         }
     }
 

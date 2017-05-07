@@ -242,10 +242,13 @@ class Renderer
     TexPipeline     _texBlendArgbPremultPipeline;
     TextPipeline    _textPipeline;
     BlitPipeline    _blitPipeline;
+    LinesPipeline   _linesPipeline;
 
     VertexBuffer!P2Vertex   _solidQuadVBuf;
     VertexBuffer!P2T2Vertex _texQuadVBuf;
     IndexBuffer!ushort      _quadIBuf;
+    VertexBuffer!P2Vertex   _frameVBuf;
+    enum frameVBufCount = 8;
 
     Disposable[ulong]   _objectCache;
     ulong[]             _cachePruneQueue;
@@ -289,6 +292,8 @@ class Renderer
 
         _blitPipeline = new BlitPipeline(cmdBuf.obj);
 
+        _linesPipeline = new LinesPipeline(cmdBuf.obj, none!Blend);
+
         auto quadSolidVerts = [
             P2Vertex([0f, 0f]),
             P2Vertex([0f, 1f]),
@@ -311,6 +316,15 @@ class Renderer
         _quadIBuf = new IndexBuffer!ushort(quadInds);
         _quadIBuf.retain();
 
+        auto frameVerts = [
+            P2Vertex([0f, 0f]), P2Vertex([1f, 0f]),
+            P2Vertex([1f, 0f]), P2Vertex([1f, 1f]),
+            P2Vertex([1f, 1f]), P2Vertex([0f, 1f]),
+            P2Vertex([0f, 1f]), P2Vertex([0f, 0f])
+        ];
+        _frameVBuf = new VertexBuffer!P2Vertex(frameVerts);
+        _frameVBuf.retain();
+
         _encoder = Encoder(cmdBuf.obj);
     }
 
@@ -325,6 +339,7 @@ class Renderer
         _texQuadVBuf.release();
         _solidQuadVBuf.release();
         _quadIBuf.release();
+        _frameVBuf.release();
         _solidPipeline.dispose();
         _solidBlendPipeline.dispose();
         _texPipeline.dispose();
@@ -332,6 +347,7 @@ class Renderer
         _texBlendArgbPremultPipeline.dispose();
         _textPipeline.dispose();
         _blitPipeline.dispose();
+        _linesPipeline.dispose();
         dispose(_windowCache);
         _device.release();
 
@@ -466,8 +482,11 @@ class Renderer
             immutable trNode = unsafeCast!(immutable(TransformRenderNode))(node);
             renderNode(trNode.child, pw, model * trNode.transform);
             break;
-        case RenderNode.Type.color:
-            renderColorNode(unsafeCast!(immutable(ColorRenderNode))(node), pw, model);
+        case RenderNode.Type.rectFill:
+            renderRectFillNode(unsafeCast!(immutable(RectFillRenderNode))(node), pw, model);
+            break;
+        case RenderNode.Type.rectStroke:
+            renderRectStrokeNode(unsafeCast!(immutable(RectStrokeRenderNode))(node), pw, model);
             break;
         case RenderNode.Type.image:
             renderImageNode(unsafeCast!(immutable(ImageRenderNode))(node), pw, model);
@@ -477,7 +496,7 @@ class Renderer
         }
     }
 
-    void renderColorNode(immutable(ColorRenderNode) node, PerWindow pw, in FMat4 model)
+    void renderRectFillNode(immutable(RectFillRenderNode) node, PerWindow pw, in FMat4 model)
     {
         immutable color = node.color;
         immutable rect = node.bounds;
@@ -492,6 +511,20 @@ class Renderer
 
         pl.updateUniforms(mvp, color);
         pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), pw.bufRtv);
+    }
+
+    void renderRectStrokeNode(immutable(RectStrokeRenderNode) node, PerWindow pw, in FMat4 model)
+    {
+        immutable color = node.color;
+        immutable rect = node.bounds;
+        immutable rectTr = translate(
+            scale!float(rect.width, rect.height, 1f),
+            fvec(rect.topLeft, 0f)
+        );
+        immutable mvp = transpose(pw.viewProj * model * rectTr);
+
+        _linesPipeline.updateUniforms(mvp, color);
+        _linesPipeline.draw(_frameVBuf, VertexBufferSlice(frameVBufCount), pw.bufRtv);
     }
 
     void renderImageNode(immutable(ImageRenderNode) node, PerWindow pw, in FMat4 model)

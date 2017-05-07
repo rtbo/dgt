@@ -36,7 +36,7 @@ class SgColorRect : SgNode
 
     override protected immutable(RenderNode) collectRenderNode()
     {
-        return new immutable ColorRenderNode(_color, rect);
+        return new immutable RectFillRenderNode(_color, rect);
     }
 
     private FVec4 _color;

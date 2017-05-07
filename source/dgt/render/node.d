@@ -16,7 +16,8 @@ abstract class RenderNode
     {
         group,
         transform,
-        color,
+        rectFill,
+        rectStroke,
         image,
         text,
     }
@@ -72,14 +73,27 @@ class TransformRenderNode : RenderNode
 }
 
 
-class ColorRenderNode : RenderNode
+class RectFillRenderNode : RenderNode
 {
     private FVec4 _color;
 
     immutable this(in FVec4 color, in FRect bounds)
     {
         _color = color;
-        super(Type.color, bounds);
+        super(Type.rectFill, bounds);
+    }
+
+    @property FVec4 color() const { return _color; }
+}
+
+class RectStrokeRenderNode : RenderNode
+{
+    private FVec4 _color;
+
+    immutable this(in FVec4 color, in FRect bounds)
+    {
+        _color = color;
+        super(Type.rectStroke, bounds);
     }
 
     @property FVec4 color() const { return _color; }
