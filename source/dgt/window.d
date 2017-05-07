@@ -12,7 +12,6 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.sg.parent;
-import dgt.signal;
 import dgt.util;
 import dgt.widget.widget;
 

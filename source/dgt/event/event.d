@@ -1,10 +1,9 @@
 /// Events module
-module dgt.event;
+module dgt.event.event;
 
 import dgt.enums;
 import dgt.geometry : IPoint, IRect, ISize;
 import dgt.keys;
-import dgt.signal;
 import dgt.window : Window, WindowState;
 
 

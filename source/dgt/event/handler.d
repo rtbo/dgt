@@ -1,7 +1,7 @@
-/// Signal definition module
-module dgt.signal;
+/// Handler and Signal definition module
+module dgt.event.handler;
 
-import dgt.event : Event;
+import dgt.event.event : Event;
 
 /// A slot type
 alias Slot(P...) = void delegate(P);
