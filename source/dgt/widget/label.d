@@ -127,7 +127,7 @@ class Label : Widget
             ensureLayout();
             auto top = topAlignment(_metrics.size.y);
             textNode = new immutable(TextRenderNode)(
-                _layout.render(), fvec(left, top), fvec(0, 0, 0, 1)  // FIXME: CSS
+                _layout.render(), fvec(left, top)+_metrics.bearing, fvec(0, 0, 0, 1)  // FIXME: CSS
             );
         }
 
