@@ -56,11 +56,6 @@ int main()
         }
     };
 
-    // preparing drawing
-    auto fillPaint = new ColorPaint();
-    auto strokePaint = new ColorPaint(fvec(0.8, 0.2, 0.2, 1));
-    auto textPaint = new ColorPaint(fvec(0, 0, 1, 1));
-
     // preparing text
     FontRequest font;
     font.family = "serif";
