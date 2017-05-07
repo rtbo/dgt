@@ -6,6 +6,10 @@ import dgt.event.event : Event;
 /// A slot type
 alias Slot(P...) = void delegate(P);
 
+/// A generic event filter
+alias EventFilter = void delegate(Event ev);
+
+
 /// Simple handler type (one slot can be assigned)
 final class Handler(P...)
 {
@@ -24,6 +28,11 @@ final class Handler(P...)
         _slot = slot;
     }
 
+    SlotType get()
+    {
+        return _slot;
+    }
+
     void clear()
     {
         _slot = null;
@@ -34,10 +43,15 @@ final class Handler(P...)
         return _slot !is null;
     }
 
+    void blindFire(ParamsType params)
+    {
+        assert(engaged);
+        _slot(params);
+    }
+
     void fire(ParamsType params)
     {
-        if (!engaged) return;
-        else _slot(params);
+        if (_slot) _slot(params);
     }
 }
 
