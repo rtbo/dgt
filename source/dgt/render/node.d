@@ -104,15 +104,18 @@ class ImageRenderNode : RenderNode
 class TextRenderNode : RenderNode
 {
     private immutable(ShapedGlyph)[] _glyphs;
+    private FVec2 _pos;
     private FVec4 _color;
 
-    immutable this (immutable(ShapedGlyph)[] glyphs, in FVec4 color)
+    immutable this (immutable(ShapedGlyph)[] glyphs, in FVec2 pos, in FVec4 color)
     {
         _glyphs = glyphs;
+        _pos = pos;
         _color = color;
         super(Type.text, FRect(0, 0, 0, 0));
     }
 
     @property immutable(ShapedGlyph)[] glyphs() const { return _glyphs; }
+    @property FVec2 pos() const { return _pos; }
     @property FVec4 color() const { return _color; }
 }

@@ -85,15 +85,15 @@ class Label : Widget
 
     override immutable(RenderNode) collectRenderNode()
     {
-        immutable rect = layoutRect;
+        immutable r = rect;
         immutable mes = measurement;
 
         float left;
         if (alignment & Alignment.centerH) {
-            left = (rect.width - mes.width) / 2f;
+            left = (r.width - mes.width) / 2f;
         }
         else if (alignment & Alignment.right) {
-            left = (rect.width - mes.width);
+            left = (r.width - mes.width);
         }
         else {
             left = padding.left;
@@ -102,10 +102,10 @@ class Label : Widget
         float topAlignment(in float height) {
             float top;
             if (alignment & Alignment.centerV) {
-                top = (rect.height - height) / 2f;
+                top = (r.height - height) / 2f;
             }
             else if (alignment & Alignment.bottom) {
-                top = (rect.height - height);
+                top = (r.height - height);
             }
             else {
                 top = padding.top;
@@ -126,18 +126,14 @@ class Label : Widget
         if (_text.length) {
             ensureLayout();
             auto top = topAlignment(_metrics.size.y);
-            auto tr = fvec(left, top) + _metrics.bearing;
-            immutable tn = new immutable(TextRenderNode)(
-                _layout.render(), fvec(0, 0, 0, 1)  // FIXME: CSS
-            );
-            textNode = new immutable(TransformRenderNode)(
-                translation!float(fvec(tr, 0)), tn
+            textNode = new immutable(TextRenderNode)(
+                _layout.render(), fvec(left, top), fvec(0, 0, 0, 1)  // FIXME: CSS
             );
         }
 
         if (iconNode && textNode) {
             return new immutable(GroupRenderNode)(
-                layoutRect, [iconNode, textNode]
+                rect, [iconNode, textNode]
             );
         }
         else if (textNode) {

@@ -332,7 +332,7 @@ class LinearLayout : Layout
         import std.algorithm : max;
         import std.range : enumerate;
 
-        float totalHeight =0;
+        float totalHeight = 0;
         float largestWidth = 0;
         float totalWeight = 0;
 
@@ -450,7 +450,7 @@ class LinearLayout : Layout
     {
         if (isVertical) layoutVertical(rect);
         else layoutHorizontal(rect);
-        layoutRect = rect;
+        this.rect = rect;
     }
 
     private void layoutVertical(in FRect rect)

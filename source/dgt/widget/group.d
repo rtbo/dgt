@@ -36,16 +36,12 @@ class Group : Widget
         measurement = transformedBounds.size;
     }
 
-    override void layout(in FRect rect)
-    {
-        layoutRect = rect;
-    }
-
     override protected FRect computeBounds()
     {
         import std.algorithm : map;
-        return computeRectsExtents(
+        immutable cr = computeRectsExtents(
             children.map!(c => c.transformedBounds)
         );
+        return FRect(pos + cr.point, cr.size);
     }
 }

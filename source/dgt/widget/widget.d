@@ -63,31 +63,42 @@ class Widget : SgParent
     /// Ask the node to layout itself in the given rect
     void layout(in FRect rect)
     {
-        layoutRect = rect;
+        this.rect = rect;
+    }
+
+    final @property FSize size() const
+    {
+        return _size;
+    }
+
+    final protected @property void size(in FSize size)
+    {
+        _size = size;
     }
 
     /// Rect set by the node during layout phase.
-    final @property FRect layoutRect() const
+    final @property FRect rect() const
     {
-        return _layoutRect;
+        return FRect(pos, _size);
     }
 
-    final protected @property layoutRect(in FRect rect)
+    final protected @property rect(in FRect rect)
     {
-        _layoutRect = rect;
+        _size = rect.size;
+        pos = rect.point;
     }
 
     override protected FRect computeBounds()
     {
-        return _layoutRect;
+        return rect;
     }
 
     override immutable(RenderNode) collectTransformedRenderNode()
     {
         immutable toBeTransformed = collectRenderNode();
         if (!toBeTransformed) return null;
-        else if (hasTransform || _layoutRect.point != FPoint(0, 0)) {
-            FMat4 tr = translation!float(fvec(_layoutRect.point, 0));
+        else if (hasTransform || rect.point != FPoint(0, 0)) {
+            FMat4 tr = translation!float(fvec(rect.point, 0));
             if (hasTransform) {
                 tr = tr * transform;
             }
@@ -104,5 +115,5 @@ class Widget : SgParent
     private FPadding        _padding;
     private Layout.Params   _layoutParams;
     private FSize           _measurement;
-    private FRect           _layoutRect;
+    private FSize           _size;
 }

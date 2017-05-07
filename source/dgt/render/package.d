@@ -557,6 +557,7 @@ class Renderer
     void renderTextNode(immutable(TextRenderNode) node, PerWindow pw, in FMat4 model)
     {
         _textPipeline.updateColor(node.color);
+        immutable pos = node.pos;
         foreach(gl; node.glyphs) {
             Rc!(ShaderResourceView!Alpha8) srv;
             Rc!Sampler sampler;
@@ -607,10 +608,10 @@ class Renderer
                 ), model)
             );
             auto quadVerts = [
-                P2T2Vertex([vertRect.left, vertRect.top], [normRect.left, normRect.top]),
-                P2T2Vertex([vertRect.left, vertRect.bottom], [normRect.left, normRect.bottom]),
-                P2T2Vertex([vertRect.right, vertRect.bottom], [normRect.right, normRect.bottom]),
-                P2T2Vertex([vertRect.right, vertRect.top], [normRect.right, normRect.top]),
+                P2T2Vertex([vertRect.left+pos.x, vertRect.top+pos.y], [normRect.left, normRect.top]),
+                P2T2Vertex([vertRect.left+pos.x, vertRect.bottom+pos.y], [normRect.left, normRect.bottom]),
+                P2T2Vertex([vertRect.right+pos.x, vertRect.bottom+pos.y], [normRect.right, normRect.bottom]),
+                P2T2Vertex([vertRect.right+pos.x, vertRect.top+pos.y], [normRect.right, normRect.top]),
             ];
             auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 

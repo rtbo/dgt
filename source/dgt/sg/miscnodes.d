@@ -22,25 +22,25 @@ class SgColorRect : SgNode
         _color = color;
     }
 
-    @property FRect rect() const { return _rect; }
+    @property FRect rect() const { return FRect(pos, _size); }
     @property void rect(in FRect rect)
     {
-        _rect = rect;
-        dirtyBounds();
+        _size = rect.size;
+        pos = rect.point;
     }
 
     override protected FRect computeBounds()
     {
-        return _rect;
+        return rect;
     }
 
     override protected immutable(RenderNode) collectRenderNode()
     {
-        return new immutable ColorRenderNode(_color, bounds);
+        return new immutable ColorRenderNode(_color, rect);
     }
 
     private FVec4 _color;
-    private FRect _rect;
+    private FSize _size;
 }
 
 
@@ -64,16 +64,9 @@ class SgImage : SgNode
         dirtyBounds();
     }
 
-    @property FPoint topLeft() const { return _topLeft; }
-    @property void topLeft(in FPoint topLeft)
-    {
-        _topLeft = topLeft;
-        dirtyBounds();
-    }
-
     protected override FRect computeBounds()
     {
-        return FRect(_topLeft, _size);
+        return FRect(pos, _size);
     }
 
     override protected immutable(RenderNode) collectRenderNode()
@@ -82,7 +75,7 @@ class SgImage : SgNode
 
         if (_immutImg) {
             return new immutable ImageRenderNode (
-                _topLeft, _immutImg, _rcc.collectCookie(dynamic)
+                pos, _immutImg, _rcc.collectCookie(dynamic)
             );
         }
         else {
@@ -91,7 +84,6 @@ class SgImage : SgNode
     }
 
 
-    private FPoint _topLeft;
     private FSize _size;
     private Image _image;
     private Rebindable!(immutable(Image)) _immutImg;
@@ -137,7 +129,7 @@ class SgText : SgNode
     override protected FRect computeBounds()
     {
         ensureLayout();
-        immutable topLeft = cast(FVec2)(-_metrics.bearing);
+        immutable topLeft = pos - cast(FVec2)_metrics.bearing;
         immutable size = cast(FVec2)_metrics.size;
         return FRect(topLeft, FSize(size));
     }
@@ -147,7 +139,7 @@ class SgText : SgNode
         if (!_renderNode) {
             ensureLayout();
             _renderNode = new immutable(TextRenderNode)(
-                _layout.render(), _color
+                _layout.render(), pos, _color
             );
         }
         return _renderNode;

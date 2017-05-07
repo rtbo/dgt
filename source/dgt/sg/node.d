@@ -57,7 +57,19 @@ abstract class SgNode
         return _nextSibling;
     }
 
-    /// The bounds of this nodes in local node coordinates.
+    /// The position of the node relative to its parent.
+    @property FPoint pos() const
+    {
+        return _pos;
+    }
+    /// ditto
+    @property void pos(in FPoint pos)
+    {
+        _pos = pos;
+        dirtyBounds();
+    }
+
+    /// The bounds of this nodes in parent node coordinates.
     @property FRect bounds()
     {
         if (_bounds.dirty) _bounds = computeBounds();
@@ -185,8 +197,9 @@ abstract class SgNode
     package SgNode _nextSibling;
 
     // bounds
-    private Lazy!FRect _bounds;
-    private Lazy!FRect _transformedBounds;
+    private FPoint      _pos;
+    private Lazy!FRect  _bounds;
+    private Lazy!FRect  _transformedBounds;
 
     // transform
     private FMat4 _transform = FMat4.identity;
