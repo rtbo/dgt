@@ -33,7 +33,7 @@ int main()
     scope(exit) app.dispose();
 
     auto win = new Window("Hello DGT");
-    win.onKeyDown += (KeyEvent ev) {
+    win.onKeyDown = (KeyEvent ev) {
         switch (ev.sym)
         {
         case KeySym.f:

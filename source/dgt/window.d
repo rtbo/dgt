@@ -39,66 +39,6 @@ enum WindowFlags
     dummy = 1,
 }
 
-interface OnWindowShowHandler
-{
-    void onWindowMove(ShowEvent ev);
-}
-
-interface OnWindowHideHandler
-{
-    void onWindowHide(HideEvent ev);
-}
-
-interface OnWindowMoveHandler
-{
-    void onWindowMove(MoveEvent ev);
-}
-
-interface OnWindowResizeHandler
-{
-    void onWindowResize(ResizeEvent ev);
-}
-
-interface OnWindowMouseHandler
-{
-    void onWindowMouse(MouseEvent ev);
-}
-
-interface OnWindowMouseDownHandler
-{
-    void onWindowMouseDown(MouseEvent ev);
-}
-
-interface OnWindowMouseUpHandler
-{
-    void onWindowMouseUp(MouseEvent ev);
-}
-
-interface OnWindowKeyHandler
-{
-    void onWindowKey(KeyEvent ev);
-}
-
-interface OnWindowKeyDownHandler
-{
-    void onWindowKeyDown(KeyEvent ev);
-}
-
-interface OnWindowKeyUpHandler
-{
-    void onWindowKeyUp(KeyEvent ev);
-}
-
-interface OnWindowStateChangeHandler
-{
-    void onWindowStateChange(StateChangeEvent ev);
-}
-
-interface OnWindowCloseHandler
-{
-    void onWindowClose(CloseEvent ev);
-}
-
 
 class Window
 {
@@ -264,21 +204,71 @@ class Window
         return _platformWindow.nativeHandle;
     }
 
-    mixin SignalMixin!("onTitleChange", string);
-    mixin EventHandlerSignalMixin!("onShow", OnWindowShowHandler);
-    mixin EventHandlerSignalMixin!("onHide", OnWindowHideHandler);
-    mixin EventHandlerSignalMixin!("onMove", OnWindowMoveHandler);
-    mixin EventHandlerSignalMixin!("onResize", OnWindowResizeHandler);
-    mixin EventHandlerSignalMixin!("onMouse", OnWindowMouseHandler);
-    mixin EventHandlerSignalMixin!("onMouseDown", OnWindowMouseDownHandler);
-    mixin EventHandlerSignalMixin!("onMouseUp", OnWindowMouseUpHandler);
-    mixin EventHandlerSignalMixin!("onKey", OnWindowKeyHandler);
-    mixin EventHandlerSignalMixin!("onKeyDown", OnWindowKeyDownHandler);
-    mixin EventHandlerSignalMixin!("onKeyUp", OnWindowKeyUpHandler);
-    mixin EventHandlerSignalMixin!("onStateChange", OnWindowStateChangeHandler);
-    mixin EventHandlerSignalMixin!("onClose", OnWindowCloseHandler);
-    mixin SignalMixin!("onClosed", Window);
+    @property Signal!string onTitleChange()
+    {
+        return _onTitleChange;
+    }
 
+    @property void onShow(Slot!ShowEvent slot)
+    {
+        _onShow.set(slot);
+    }
+
+    @property void onHide(Slot!HideEvent slot)
+    {
+        _onHide.set(slot);
+    }
+
+    @property void onMove(Slot!MoveEvent slot)
+    {
+        _onMove.set(slot);
+    }
+
+    @property void onResize(Slot!ResizeEvent slot)
+    {
+        _onResize.set(slot);
+    }
+
+    @property void onMouse(Slot!MouseEvent slot)
+    {
+        _onMouse.set(slot);
+    }
+    @property void onMouseDown(Slot!MouseEvent slot)
+    {
+        _onMouseDown.set(slot);
+    }
+    @property void onMouseUp(Slot!MouseEvent slot)
+    {
+        _onMouseUp.set(slot);
+    }
+
+    @property void onKey(Slot!KeyEvent slot)
+    {
+        _onKey.set(slot);
+    }
+    @property void onKeyDown(Slot!KeyEvent slot)
+    {
+        _onKeyDown.set(slot);
+    }
+    @property void onKeyUp(Slot!KeyEvent slot)
+    {
+        _onKeyUp.set(slot);
+    }
+
+    @property void onStateChange(Slot!StateChangeEvent slot)
+    {
+        _onStateChange.set(slot);
+    }
+
+    @property void onClose(Slot!CloseEvent slot)
+    {
+        _onClose.set(slot);
+    }
+
+    @property Signal!Window onClosed()
+    {
+        return _onClosed;
+    }
 
     /// The scene graph root attached to this window
     @property inout(SgParent) root() inout { return _root; }
@@ -528,6 +518,21 @@ class Window
         WindowEvent[] _events;
 
         Rebindable!Region _dirtyReg = new Region;
+
+        FireableSignal!string    _onTitleChange = new FireableSignal!string;
+        Handler!ShowEvent        _onShow        = new Handler!ShowEvent;
+        Handler!HideEvent        _onHide        = new Handler!HideEvent;
+        Handler!MoveEvent        _onMove        = new Handler!MoveEvent;
+        Handler!ResizeEvent      _onResize      = new Handler!ResizeEvent;
+        Handler!MouseEvent       _onMouse       = new Handler!MouseEvent;
+        Handler!MouseEvent       _onMouseDown   = new Handler!MouseEvent;
+        Handler!MouseEvent       _onMouseUp     = new Handler!MouseEvent;
+        Handler!KeyEvent         _onKey         = new Handler!KeyEvent;
+        Handler!KeyEvent         _onKeyDown     = new Handler!KeyEvent;
+        Handler!KeyEvent         _onKeyUp       = new Handler!KeyEvent;
+        Handler!StateChangeEvent _onStateChange = new Handler!StateChangeEvent;
+        Handler!CloseEvent       _onClose       = new Handler!CloseEvent;
+        FireableSignal!Window    _onClosed      = new FireableSignal!Window;
     }
 }
 
