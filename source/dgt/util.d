@@ -46,64 +46,6 @@ mixin template ReadOnlyValueProperty(T, string __name, T defaultVal = T.init)
     mixin("public @property T " ~ __name ~ "() const { return _" ~ __name ~ "; }");
 }
 
-/// the expression:
-///
-/// mixin SignalValueProperty!("title", string);
-///
-/// will generate the following declarations:
-///
-/// private string _title;
-/// private FireableSignal!string _onTitleChange = new FireableSignal!string;
-///
-/// public @property string title() const { return _title; }
-/// public @property void title(string value) {
-///     if (value != _title) {
-///         _title = value;
-///         onTitleChange_.fire(value);
-///     }
-/// }
-/// public @property Signal!string onTitleChange() { return onTitleChange_; }
-///
-mixin template SignalValueProperty(string __name, T, T defaultVal = T.init)
-{
-    import dgt.signal;
-    import std.traits;
-
-    // the present value type definition is "type without aliasing"
-    static assert(!hasAliasing!(T));
-
-    mixin("private T _" ~ __name ~ " = defaultVal;");
-    mixin("private FireableSignal!T _" ~ onChangeSigName(__name) ~ " = new FireableSignal!T;");
-
-    mixin("public @property T " ~ __name ~ "() const { return _" ~ __name ~ "; }");
-    mixin("public @property void " ~ __name ~ "(T value) {\n" ~ "    if (value != _" ~ __name ~ ") {\n" ~ //"        writeln(\"writing "~__name~":\", value);\n" ~
-            "        _" ~ __name
-            ~ " = value;\n" ~ "        _" ~ onChangeSigName(
-                __name) ~ ".fire(value);\n" ~ "    }\n" ~ "}");
-    mixin("public @property Signal!T " ~ onChangeSigName(
-            __name) ~ "() {\n" ~ "    return _" ~ onChangeSigName(__name) ~ ";\n" ~ "}");
-
-}
-
-mixin template SmiSignalMixin(string __name, Iface)
-{
-    import dgt.signal;
-
-    static assert(isSmi!Iface, "SmiSignalMixin must be used with 'Single Method Interface's");
-
-    mixin("private FireableSmiSignal!Iface _" ~ __name ~ " = new FireableSmiSignal!Iface;");
-
-    mixin("public @property SmiSignal!Iface " ~ __name ~ "() { return _" ~ __name ~ "; }");
-}
-
-mixin template SignalMixin(string __name, T...)
-{
-    import dgt.signal;
-
-    mixin("private FireableSignal!T _" ~ __name ~ " = new FireableSignal!T;");
-
-    mixin("public @property Signal!T " ~ __name ~ "() { return _" ~ __name ~ "; }");
-}
 
 // some utility to compose mixin templates
 
