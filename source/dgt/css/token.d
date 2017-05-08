@@ -1,10 +1,10 @@
-/// CSS syntax module
+/// CSS tokenizer module
 ///
 /// Standards:
-///    this module is an implementation of CSS-SYNTAX-3.
+///    this module is an implementation of CSS-SYNTAX-3 §3 and §4.
 ///    https://www.w3.org/TR/css-syntax-3
 ///    The snapshot 2017 was used as reference.
-module dgt.css.syntax;
+module dgt.css.token;
 
 import std.exception;
 import std.range;
@@ -14,13 +14,121 @@ import std.utf;
 
 package:
 
-
-
 auto makeTokenInput(Input)(Input input)
 if (isInputRange!Input && is(ElementType!Input == dchar))
 {
     alias CI = CharInput!Input;
     return TokenInput!CI(CharInput!Input(input));
+}
+
+// self contained token
+struct Token
+{
+    Tok tok;
+    dstring sval;
+    double nval;
+    dchar rstart;
+    dchar rend;
+    dstring unit;
+
+    Flag!"id" hashFlag;
+    Flag!"integer" numberFlag;
+
+    this (in Tok tok)
+    {
+        this.tok = tok;
+    }
+
+    this (in Tok tok, in dstring sval, in Flag!"id" hashFlag = No.id)
+    {
+        this.tok = tok;
+        this.sval = sval;
+        this.hashFlag = hashFlag;
+    }
+
+    this (in Tok tok, in dchar val)
+    {
+        this.tok = tok;
+        this.sval = [ val ];
+    }
+
+    this (in Tok tok, in dchar start, in dchar end)
+    {
+        this.tok = tok;
+        this.rstart = start;
+        this.rend = end;
+    }
+
+    this (in Tok tok, in dstring sval, in int nval)
+    {
+        this.tok = tok;
+        this.sval = sval;
+        this.nval = nval;
+        this.numberFlag = Yes.integer;
+    }
+
+    this (in Tok tok, in dstring sval, in double nval)
+    {
+        this.tok = tok;
+        this.sval = sval;
+        this.nval = nval;
+        this.numberFlag = No.integer;
+    }
+
+    this (in Tok tok, in dstring sval, in double nval, in Flag!"integer" numFlag)
+    {
+        this.tok = tok;
+        this.sval = sval;
+        this.nval = nval;
+        this.numberFlag = No.integer;
+    }
+
+    this (in Tok tok, in dstring sval, in double nval,
+            in Flag!"integer" numFlag, in dstring unit)
+    {
+        this.tok = tok;
+        this.sval = sval;
+        this.nval = nval;
+        this.numberFlag = No.integer;
+        this.unit = unit;
+    }
+}
+
+enum Tok
+{
+    none,
+    eoi,
+    ident,
+    func,
+    atKwd,
+    hash,
+    str,
+    badStr,
+    url,
+    badUrl,
+    delim,
+    number,
+    percentage,
+    dimension,
+    uniRange,
+    inclMatch,
+    dashMatch,
+    prefixMatch,
+    suffixMatch,
+    substrMatch,
+    column,
+    whitespace,
+    cdOp,
+    cdCl,
+    colon,
+    semicolon,
+    comma,
+    brackOp,
+    brackCl,
+    parenOp,
+    parenCl,
+    braceOp,
+    braceCl,
 }
 
 private:
@@ -50,13 +158,81 @@ unittest
     }
     import std.algorithm : equal, filter, map;
     assert(equal(expected, toks.map!(t => t.tok).filter!(t => t != Tok.whitespace)));
+    // check that exhausted input always give Tok.eoi
+    assert(tokInput.consumeToken().tok == Tok.eoi);
+    assert(tokInput.consumeToken().tok == Tok.eoi);
+    assert(tokInput.consumeToken().tok == Tok.eoi);
+    assert(tokInput.consumeToken().tok == Tok.eoi);
 }
+
+// §4.2 - definitions
 
 enum dchar endOfInput = cast(dchar)0xffff_ffff;
 enum dchar lineFeed = '\u000A';
 enum dchar nullCP = '\u0000';
 enum dchar replacementCP = '\uFFFD';
 enum dchar lastCP = '\U0010FFFF';
+
+@property bool isDigit(in dchar c)
+{
+    return c >= '\u0030' && c <= '\u0039';
+}
+
+@property bool isHexDigit(in dchar c)
+{
+    return c.isDigit ||
+            (c >= '\u0041' && c <= '\u0046') ||
+            (c >= '\u0061' && c <= '\u0066');
+}
+
+@property bool isUCaseLetter(in dchar c)
+{
+    return (c >= '\u0041' && c <= '\u005A');
+}
+
+@property bool isLCaseLetter(in dchar c)
+{
+    return (c >= '\u0061' && c <= '\u007A');
+}
+
+@property bool isLetter(in dchar c)
+{
+    return c.isUCaseLetter || c.isLCaseLetter;
+}
+
+@property bool isNonASCII(in dchar c)
+{
+    return c >= '\u0080' && c <= lastCP;
+}
+
+@property bool isNameStart(in dchar c)
+{
+    return c.isLetter || c.isNonASCII || c == '\u005F';
+}
+
+@property bool isName(in dchar c)
+{
+    return c.isNameStart || c.isDigit || c == '\u002D';
+}
+
+@property bool isNotPrintable(in dchar c)
+{
+    return (c >= '\u0000' && c <= '\u0008') ||
+            c == '\u000B' ||
+           (c >= '\u000E' && c <= '\u001F') ||
+            c == '\u007F';
+}
+
+@property bool isNewLine(in dchar c)
+{
+    return c == lineFeed;
+}
+
+@property bool isWhitespace(in dchar c)
+{
+    return c.isNewLine || c == '\u0020' || c == '\u0009';
+}
+
 
 struct CharInput(DCharRange)
 if (isInputRange!DCharRange && is(ElementType!DCharRange == dchar))
@@ -676,176 +852,4 @@ struct TokenInput(CharInput)
             }
         }
     }
-}
-
-// self contained token
-struct Token
-{
-    Tok tok;
-    dstring sval;
-    double nval;
-    dchar rstart;
-    dchar rend;
-    dstring unit;
-
-    Flag!"id" hashFlag;
-    Flag!"integer" numberFlag;
-
-    this (in Tok tok)
-    {
-        this.tok = tok;
-    }
-
-    this (in Tok tok, in dstring sval, in Flag!"id" hashFlag = No.id)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.hashFlag = hashFlag;
-    }
-
-    this (in Tok tok, in dchar val)
-    {
-        this.tok = tok;
-        this.sval = [ val ];
-    }
-
-    this (in Tok tok, in dchar start, in dchar end)
-    {
-        this.tok = tok;
-        this.rstart = start;
-        this.rend = end;
-    }
-
-    this (in Tok tok, in dstring sval, in int nval)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = Yes.integer;
-    }
-
-    this (in Tok tok, in dstring sval, in double nval)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = No.integer;
-    }
-
-    this (in Tok tok, in dstring sval, in double nval, in Flag!"integer" numFlag)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = No.integer;
-    }
-
-    this (in Tok tok, in dstring sval, in double nval,
-            in Flag!"integer" numFlag, in dstring unit)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = No.integer;
-        this.unit = unit;
-    }
-}
-
-enum Tok
-{
-    none,
-    eoi,
-    ident,
-    func,
-    atKwd,
-    hash,
-    str,
-    badStr,
-    url,
-    badUrl,
-    delim,
-    number,
-    percentage,
-    dimension,
-    uniRange,
-    inclMatch,
-    dashMatch,
-    prefixMatch,
-    suffixMatch,
-    substrMatch,
-    column,
-    whitespace,
-    cdOp,
-    cdCl,
-    colon,
-    semicolon,
-    comma,
-    brackOp,
-    brackCl,
-    parenOp,
-    parenCl,
-    braceOp,
-    braceCl,
-}
-
-// §4.2 - definitions
-
-@property bool isDigit(in dchar c)
-{
-    return c >= '\u0030' && c <= '\u0039';
-}
-
-@property bool isHexDigit(in dchar c)
-{
-    return c.isDigit ||
-            (c >= '\u0041' && c <= '\u0046') ||
-            (c >= '\u0061' && c <= '\u0066');
-}
-
-@property bool isUCaseLetter(in dchar c)
-{
-    return (c >= '\u0041' && c <= '\u005A');
-}
-
-@property bool isLCaseLetter(in dchar c)
-{
-    return (c >= '\u0061' && c <= '\u007A');
-}
-
-@property bool isLetter(in dchar c)
-{
-    return c.isUCaseLetter || c.isLCaseLetter;
-}
-
-@property bool isNonASCII(in dchar c)
-{
-    return c >= '\u0080' && c <= lastCP;
-}
-
-@property bool isNameStart(in dchar c)
-{
-    return c.isLetter || c.isNonASCII || c == '\u005F';
-}
-
-@property bool isName(in dchar c)
-{
-    return c.isNameStart || c.isDigit || c == '\u002D';
-}
-
-@property bool isNotPrintable(in dchar c)
-{
-    return (c >= '\u0000' && c <= '\u0008') ||
-            c == '\u000B' ||
-           (c >= '\u000E' && c <= '\u001F') ||
-            c == '\u007F';
-}
-
-@property bool isNewLine(in dchar c)
-{
-    return c == lineFeed;
-}
-
-@property bool isWhitespace(in dchar c)
-{
-    return c.isNewLine || c == '\u0020' || c == '\u0009';
 }
