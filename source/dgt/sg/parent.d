@@ -317,12 +317,12 @@ static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
 
 unittest
 {
-    import dgt.sg.group : SgGroup;
+    import dgt.widget.group : Group;
     import std.algorithm : equal;
 
-    auto root = new SgGroup;
-    auto c1 = new SgGroup;
-    auto c2 = new SgGroup;
+    auto root = new Group;
+    auto c1 = new Group;
+    auto c2 = new Group;
     root.name = "root";
     c1.name = "c1";
     c2.name = "c2";
