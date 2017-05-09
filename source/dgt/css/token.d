@@ -59,22 +59,6 @@ struct Token
         this.rend = end;
     }
 
-    this (in Tok tok, in dstring sval, in int nval)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = Yes.integer;
-    }
-
-    this (in Tok tok, in dstring sval, in double nval)
-    {
-        this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = No.integer;
-    }
-
     this (in Tok tok, in dstring sval, in double nval, in Flag!"integer" numFlag)
     {
         this.tok = tok;
