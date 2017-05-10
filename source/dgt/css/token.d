@@ -14,6 +14,19 @@ import std.utf;
 
 package:
 
+enum ParseStage
+{
+    token,
+    parse,
+}
+
+struct ParseError
+{
+    ParseStage stage;
+    int lineNum;
+    string msg;
+}
+
 auto makeTokenInput(Input)(Input input)
 if (isInputRange!Input && is(ElementType!Input == dchar))
 {
@@ -268,18 +281,20 @@ if (isInputRange!DCharRange && is(ElementType!DCharRange == dchar))
 
 struct TokenInput(CharInput)
 {
-    static struct Error {
-        int lineNum;
-        string msg;
-    }
-
     CharInput input;
     int lineNum = 1;
-    Error[] errors;
+    ParseError[] errors;
 
     this(CharInput input)
     {
         this.input = input;
+    }
+
+    void pushError(ParseStage stage, string msg)
+    {
+        errors ~= ParseError(
+            stage, lineNum, msg
+        );
     }
 
     dchar getChar()
