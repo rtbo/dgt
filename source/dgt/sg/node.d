@@ -120,6 +120,30 @@ abstract class SgNode
     /// Whether this node has a transform set. (Other than identity)
     @property bool hasTransform() const { return _hasTransform; }
 
+    /// A CSS formatted style attached to this node.
+    /// It can be either rules with a selector, or only declarations.
+    /// In the latter case, a single * selector is implied.
+    /// The rules attached here will impact this node and its children.
+    @property string cssStyle() { return _cssStyle; }
+    /// ditto
+    @property void cssStyle(string css) { _cssStyle = css; }
+
+    /// The type used in css type selector.
+    /// e.g. in the following style rule, "label" is the CSS type:
+    /// `label { font-family: serif; }`
+    @property string cssType() { return null; }
+
+    /// The id of this node.
+    /// Used in CSS '#' selector, and for debug printing if name is not set.
+    final @property string id() { return _id; }
+    /// ditto
+    final @property void id(in string id) { _id = id; }
+
+    /// The CSS class of this node.
+    /// Used in CSS '.' selector.
+    final @property string cssClass() { return _cssClass; }
+    /// ditto
+    final @property void cssClass(in string cssClass) { _cssClass = cssClass; }
 
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
@@ -268,7 +292,10 @@ abstract class SgNode
         return lev;
     }
 
-    @property string name() const { return _name; }
+    @property string name() const
+    {
+        return _name.length ? _name : _id;
+    }
     @property void name(string name)
     {
         _name = name;
@@ -309,6 +336,11 @@ abstract class SgNode
     private FMat4 _transform = FMat4.identity;
     private bool _hasTransform;
 
+    // style
+    private string _cssStyle;
+    private string _id;
+    private string _cssClass;
+
     // events
     private EventFilter _evFilter;
     private Handler!MouseEvent _onMouseDown;
@@ -318,7 +350,7 @@ abstract class SgNode
     private bool _dynamic=false;
 
     // debug info
-    private string _name;
+    private string _name; // id will be used if name is empty
 }
 
 struct Lazy(T)
