@@ -16,13 +16,7 @@ interface Selector
 Selector parseSelector(string css)
 {
     import std.utf : byDchar;
-    auto input = makeTokenInput(byDchar(css));
-    Token[] tokens;
-    Token t = input.consumeToken();
-    while (t.tok != Tok.eoi) {
-        tokens ~= t;
-        t = input.consumeToken();
-    }
+    auto tokens = makeTokenInput(byDchar(css));
     return parseSelectorGroup(tokens);
 }
 

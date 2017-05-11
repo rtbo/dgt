@@ -6,6 +6,8 @@
 ///    The snapshot 2017 was used as reference.
 module dgt.css.token;
 
+import dgt.css.parse : CssError, CssErrorCollector, ParseStage;
+
 import std.exception;
 import std.range;
 import std.typecons;
@@ -14,24 +16,10 @@ import std.utf;
 
 package:
 
-enum ParseStage
-{
-    token,
-    parse,
-}
-
-struct ParseError
-{
-    ParseStage stage;
-    int lineNum;
-    string msg;
-}
-
-auto makeTokenInput(Input)(Input input)
+auto makeTokenInput(Input)(Input input, CssErrorCollector errors=null)
 if (isInputRange!Input && is(ElementType!Input == dchar))
 {
-    alias CI = CharInput!Input;
-    return TokenInput!CI(CharInput!Input(input));
+    return TokenInput!Input(input, errors);
 }
 
 // self contained token
@@ -138,28 +126,16 @@ unittest
             text-align: center;
         }
     `;
-    auto tokInput = makeTokenInput(byDchar(test));
     immutable Tok[] expected = [  // with whitespaces trimmed
         Tok.ident, Tok.braceOp,
             Tok.ident, Tok.colon, Tok.hash, Tok.semicolon,
             Tok.ident, Tok.colon, Tok.ident, Tok.semicolon,
-        Tok.braceCl, Tok.eoi
+        Tok.braceCl
     ];
-    Token[] toks;
-    while(true) {
-        immutable tok = tokInput.consumeToken();
-        toks ~= tok;
-        if (tok.tok == Tok.eoi) {
-            break;
-        }
-    }
+
+    auto tokInput = makeTokenInput(byDchar(test));
     import std.algorithm : equal, filter, map;
-    assert(equal(expected, toks.map!(t => t.tok).filter!(t => t != Tok.whitespace)));
-    // check that exhausted input always give Tok.eoi
-    assert(tokInput.consumeToken().tok == Tok.eoi);
-    assert(tokInput.consumeToken().tok == Tok.eoi);
-    assert(tokInput.consumeToken().tok == Tok.eoi);
-    assert(tokInput.consumeToken().tok == Tok.eoi);
+    assert(equal(expected, tokInput.map!(t => t.tok).filter!(t => t != Tok.whitespace)));
 }
 
 // §4.2 - definitions
@@ -231,76 +207,91 @@ enum dchar lastCP = '\U0010FFFF';
 }
 
 
-struct CharInput(DCharRange)
-if (isInputRange!DCharRange && is(ElementType!DCharRange == dchar))
+struct TokenInput(DCharRange)
+if (isForwardRange!DCharRange && is(ElementType!DCharRange == dchar))
 {
-    DCharRange input;
-    dchar[8] aheadBuf;
-    dchar[] ahead;
-
-    this(DCharRange input)
+    this(DCharRange input, CssErrorCollector errors)
     {
-        this.input = input;
+        this.errors = errors;
+        pp = Preprocessor(input);
+        frontTok = consumeToken();
     }
 
-    dchar getChar()
+    @property bool empty()
     {
-        dchar c = void;
-        if (!ahead.empty) {
-            c = ahead.back;
-            ahead.popBack();
+        return frontTok.tok == Tok.eoi;
+    }
+
+    @property Token front()
+    {
+        return frontTok;
+    }
+
+    void popFront()
+    {
+        frontTok = consumeToken();
+    }
+
+private:
+
+    CssErrorCollector errors;
+    Preprocessor pp;
+    Token frontTok;
+
+
+    static struct Preprocessor
+    {
+        DCharRange input;
+        dchar[8] aheadBuf;
+        size_t aheadLen;
+
+        this(DCharRange input)
+        {
+            this.input = input;
         }
-        else if (!input.empty) {
-            c = input.front;
-            input.popFront();
-            // §3.3 - preprocessing
-            if (c == '\u000D' || c == '\u000C') { // CR or FF
-                c = lineFeed;
-                if (!input.empty && input.save.front == lineFeed) {
-                    input.popFront();
+
+        dchar getChar()
+        {
+            dchar c = void;
+            if (aheadLen) {
+                c = aheadBuf[--aheadLen];
+            }
+            else if (!input.empty) {
+                c = input.front;
+                input.popFront();
+                // §3.3 - preprocessing
+                if (c == '\u000D' || c == '\u000C') { // CR or FF
+                    c = lineFeed;
+                    if (!input.empty && input.save.front == lineFeed) {
+                        input.popFront();
+                    }
+                }
+                else if (c == nullCP) {
+                    c = replacementCP;
                 }
             }
-            else if (c == nullCP) {
-                c = replacementCP;
+            else {
+                c = endOfInput;
             }
+            return c;
         }
-        else {
-            c = endOfInput;
+
+        void putChar(in dchar c)
+        {
+            enforce(aheadLen < aheadBuf.length, "CSS parser internal error: reached the maximum look ahead number");
+            aheadBuf[aheadLen++] = c;
         }
-        return c;
     }
 
-    void putChar(in dchar c)
+    void error(string msg)
     {
-        immutable ahl = ahead.length;
-        enforce(ahl < aheadBuf.length, "CSS parser internal error: reached the maximum look ahead number");
-        aheadBuf[ahl] = c;
-        ahead = aheadBuf[0 .. ahl+1];
-    }
-}
-
-struct TokenInput(CharInput)
-{
-    CharInput input;
-    int lineNum = 1;
-    ParseError[] errors;
-
-    this(CharInput input)
-    {
-        this.input = input;
-    }
-
-    void pushError(ParseStage stage, string msg)
-    {
-        errors ~= ParseError(
-            stage, lineNum, msg
-        );
+        if (errors) errors.pushError(ParseStage.token, msg);
     }
 
     dchar getChar()
     {
-        immutable dchar c = input.getChar();
-        if (c.isNewLine) lineNum++;
+        immutable dchar c = pp.getChar();
+        if (c.isNewLine && errors) errors.incrLineNum();
         return c;
     }
 
@@ -310,15 +301,15 @@ struct TokenInput(CharInput)
         import std.traits : Unqual;
         foreach(c; chars) {
             static assert(is(Unqual!(typeof(c)) == dchar));
-            input.putChar(c);
-            if (c.isNewLine) lineNum--;
+            pp.putChar(c);
+            if (c.isNewLine && errors) errors.decrLineNum();
         }
     }
 
     dchar peekChar()
     {
-        immutable c = input.getChar();
-        input.putChar(c);
+        immutable c = pp.getChar();
+        pp.putChar(c);
         return c;
     }
 

@@ -6,12 +6,63 @@
 ///    The snapshot 2017 was used as reference.
 module dgt.css.parse;
 
+import std.exception;
+import std.range;
+
+enum ParseStage
+{
+    token,
+    parse,
+}
+
+struct CssError
+{
+    ParseStage stage;
+    int lineNum;
+    string msg;
+}
+
+class CssErrorCollector
+{
+    void pushError(ParseStage stage, string msg)
+    {
+        _errors ~= CssError(stage, _lineNum, msg);
+    }
+
+    @property int lineNum()
+    {
+        return _lineNum;
+    }
+
+    @property void lineNum(int lineNum)
+    {
+        _lineNum = lineNum;
+    }
+
+    void incrLineNum()
+    {
+        _lineNum++;
+    }
+
+    void decrLineNum()
+    {
+        _lineNum--;
+    }
+
+    @property CssError[] errors()
+    {
+        return _errors;
+    }
+
+    private int _lineNum = 1;
+    private CssError[] _errors;
+}
+
+
 package:
 
 import dgt.css.omimpl;
 import dgt.css.token;
-
-import std.exception;
 
 unittest
 {
@@ -46,35 +97,38 @@ unittest
     assert(!taDecl.important);
 }
 
-struct ParsedRule
+struct ParseRule
 {
     Token[] selectorToks;
-    ParsedDecl[] decls;
+    ParseDecl[] decls;
 }
 
-struct ParsedDecl
+struct ParseDecl
 {
     string property;
     Token[] valueToks;
     bool important;
 }
 
-auto makeParser(TokenInput)(TokenInput tokenInput)
+auto makeParser(TokenInput)(TokenInput tokenInput, CssErrorCollector errors=null)
+if (isInputRange!TokenInput && is(ElementType!TokenInput == Token))
 {
-    return CSSParser!TokenInput(tokenInput);
+    return CSSParser!TokenInput(tokenInput, errors);
 }
 
 struct CSSParser(TokenInput)
 {
     TokenInput tokenInput;
     enum bool toplevel = true;
+    CssErrorCollector errors;
 
     Token[2] aheadBuf;
     Token[] ahead;
 
-    this(TokenInput tokenInput)
+    this(TokenInput tokenInput, CssErrorCollector errors)
     {
         this.tokenInput = tokenInput;
+        this.errors = errors;
     }
 
     Token getToken()
@@ -84,8 +138,13 @@ struct CSSParser(TokenInput)
             ahead = ahead[0 .. $-1];
             return tok;
         }
+        else if (tokenInput.empty) {
+            return Token(Tok.eoi);
+        }
         else {
-            return tokenInput.consumeToken();
+            auto tok = tokenInput.front;
+            tokenInput.popFront();
+            return tok;
         }
     }
 
@@ -99,7 +158,7 @@ struct CSSParser(TokenInput)
 
     void error(string msg)
     {
-        tokenInput.pushError(ParseStage.parse, msg);
+        if (errors) errors.pushError(ParseStage.parse, msg);
     }
 
     void atRule()
@@ -108,9 +167,9 @@ struct CSSParser(TokenInput)
     }
 
     // §5.4.1
-    ParsedRule[] consumeRuleList()
+    ParseRule[] consumeRuleList()
     {
-        ParsedRule[] rules;
+        ParseRule[] rules;
         while(true) {
             auto tok = getToken();
             switch (tok.tok) {
@@ -122,7 +181,7 @@ struct CSSParser(TokenInput)
             case Tok.cdCl:
                 if (!toplevel) {
                     putToken(tok);
-                    ParsedRule r = void;
+                    ParseRule r = void;
                     if (consumeQualRule(r)) {
                         rules ~= r;
                     }
@@ -133,7 +192,7 @@ struct CSSParser(TokenInput)
                 break;
             default:
                 putToken(tok);
-                ParsedRule r = void;
+                ParseRule r = void;
                 if (consumeQualRule(r)) {
                     rules ~= r;
                 }
@@ -143,7 +202,7 @@ struct CSSParser(TokenInput)
     }
 
     // §5.4.3
-    bool consumeQualRule(out ParsedRule rule)
+    bool consumeQualRule(out ParseRule rule)
     {
         while(true) {
             auto tok = getToken();
@@ -170,9 +229,9 @@ struct CSSParser(TokenInput)
 
     // Only block consisting of declarations are supported.
     // this is a mix between §5.4.4 and §5.4.7
-    ParsedDecl[] consumeDeclarationList(Tok* endTok=null)
+    ParseDecl[] consumeDeclarationList(Tok* endTok=null)
     {
-        ParsedDecl[] decls;
+        ParseDecl[] decls;
         while(true) {
             auto tok = getToken();
             switch(tok.tok) {
@@ -195,7 +254,7 @@ struct CSSParser(TokenInput)
                 }
                 while (tok.tok != Tok.eoi && tok.tok != Tok.braceCl && tok.tok != Tok.semicolon);
                 putToken(tok); // for proper ending
-                ParsedDecl decl = void;
+                ParseDecl decl = void;
                 if (consumeDeclaration(toks, decl)) decls ~= decl;
                 break;
             default:
@@ -212,7 +271,7 @@ struct CSSParser(TokenInput)
 
 }
 
-bool consumeDeclaration(Token[] tokens, out ParsedDecl decl)
+bool consumeDeclaration(Token[] tokens, out ParseDecl decl)
 {
     import std.algorithm : filter;
     import std.array : array;
