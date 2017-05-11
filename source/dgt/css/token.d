@@ -437,6 +437,9 @@ struct TokenInput(CharInput)
                 putChar(c2);
             }
         }
+        else if (c == '\u002C') {
+            return Token(Tok.comma);
+        }
         else if (c == '\u003A') {
             return Token(Tok.colon);
         }
