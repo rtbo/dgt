@@ -61,7 +61,6 @@ class CssErrorCollector
 
 package:
 
-import dgt.css.omimpl;
 import dgt.css.token;
 
 unittest
