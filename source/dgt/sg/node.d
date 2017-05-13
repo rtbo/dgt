@@ -1,6 +1,7 @@
 /// Scene graph module
 module dgt.sg.node;
 
+import dgt.css.style;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
@@ -21,6 +22,7 @@ abstract class SgNode
     {
         _onMouseDown = new Handler!MouseEvent;
         _onMouseUp = new Handler!MouseEvent;
+        _style = new Style(this);
     }
 
     /// The window this node is attached to.
@@ -119,6 +121,12 @@ abstract class SgNode
 
     /// Whether this node has a transform set. (Other than identity)
     @property bool hasTransform() const { return _hasTransform; }
+
+    /// The Style object attached to this node
+    @property Style style()
+    {
+        return _style;
+    }
 
     /// A CSS formatted style attached to this node.
     /// It can be either rules with a selector, or only declarations.
@@ -337,6 +345,7 @@ abstract class SgNode
     private bool _hasTransform;
 
     // style
+    private Style _style;
     private string _cssStyle;
     private string _id;
     private string _cssClass;
