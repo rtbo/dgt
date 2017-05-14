@@ -10,6 +10,7 @@ import std.range;
 interface Selector
 {
     bool matches(SgNode node);
+    @property int specificity();
 }
 
 Selector parseSelector(string css)
@@ -52,7 +53,17 @@ class SimpleSelectorSeq : AbstractSelector
         return Type.simpleSeq;
     }
 
-    bool matches(SgNode node) { return false; }
+    bool matches(SgNode node)
+    {
+        import std.algorithm : all;
+        return seq.all!(s => s.matches(node));
+    }
+
+    @property int specificity()
+    {
+        import std.algorithm : map, sum;
+        return seq.map!(s => s.specificity).sum();
+    }
 }
 
 class SimpleSelector : AbstractSelector
@@ -74,7 +85,44 @@ class SimpleSelector : AbstractSelector
         return Type.simple;
     }
 
-    bool matches(SgNode node) { return false; }
+    bool matches(SgNode node)
+    {
+        final switch(ssType) {
+        case SSType.type:
+            return node.cssType == val;
+        case SSType.universal:
+            return true;
+        case SSType.class_:
+            return node.cssClass == val;
+        case SSType.id:
+            return node.id == val;
+        case SSType.pseudo:
+            if (val == "root") {
+                return node.isRoot;
+            }
+            else {
+                throw new Exception("Unsupported pseudo selector: "~val);
+            }
+        case SSType.attr:
+            assert(false, "unimplemented");
+        }
+    }
+
+    @property int specificity()
+    {
+        final switch(ssType) {
+        case SSType.type:
+            return 1;
+        case SSType.class_:
+        case SSType.attr:
+        case SSType.pseudo:
+            return 10;
+        case SSType.id:
+            return 100;
+        case SSType.universal:
+            return 0;
+        }
+    }
 }
 
 class Group : AbstractSelector
@@ -86,7 +134,17 @@ class Group : AbstractSelector
         return Type.group;
     }
 
-    bool matches(SgNode node) { return false; }
+    bool matches(SgNode node)
+    {
+        import std.algorithm : any;
+        return selectors.any!(s => s.matches(node));
+    }
+
+    @property int specificity()
+    {
+        import std.algorithm : map, sum;
+        return selectors.map!(s => s.specificity).sum();
+    }
 }
 
 class Combinator : AbstractSelector
@@ -100,7 +158,39 @@ class Combinator : AbstractSelector
         return _type;
     }
 
-    bool matches(SgNode node) { return false; }
+    bool matches(SgNode node)
+    {
+        if (!rhs.matches(node)) return false;
+        switch(_type) {
+        case Type.descendant:
+            auto p = node.parent;
+            while (p) {
+                if (lhs.matches(p)) return true;
+                else p = p.parent;
+            }
+            return false;
+        case Type.child:
+            auto p = node.parent;
+            return p ? lhs.matches(p) : false;
+        case Type.adjSibl:
+            auto s = node.prevSibling;
+            return s ? lhs.matches(s) : false;
+        case Type.genSibl:
+            auto s = node.prevSibling;
+            while (s) {
+                if (lhs.matches(s)) return true;
+                else s = s.prevSibling;
+            }
+            return false;
+        default:
+            assert(false);
+        }
+    }
+
+    @property int specificity()
+    {
+        return lhs.specificity + rhs.specificity;
+    }
 }
 
 
@@ -254,15 +344,6 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
         tokens.popFront();
     }
 
-    void addSel(SimpleSelector s) {
-        if (!seq.length) {
-            auto u = new SimpleSelector;
-            u.ssType = SimpleSelector.SSType.universal;
-            seq ~= u;
-        }
-        seq ~= s;
-    }
-
     while (!tokens.empty) {
         tok = tokens.front;
 
@@ -272,7 +353,7 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
             auto s = new SimpleSelector;
             s.ssType = SimpleSelector.SSType.id;
             s.val = tok.str;
-            addSel(s);
+            seq ~= s;
         }
         else if (tok.tok == Tok.delim) {
             switch(tok.delimCP) {
@@ -284,7 +365,7 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
                 auto s = new SimpleSelector;
                 s.ssType = SimpleSelector.SSType.class_;
                 s.val = tok.str;
-                addSel(s);
+                seq ~= s;
                 break;
             case '~':
             case '+':
@@ -310,7 +391,7 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
             auto s = new SimpleSelector;
             s.ssType = SimpleSelector.SSType.pseudo;
             s.val = tokens.front.str;
-            addSel(s);
+            seq ~= s;
         }
         else {
             throw new Exception("unexpected selector token");
