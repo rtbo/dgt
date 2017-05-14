@@ -90,12 +90,14 @@ class Decl
 Stylesheet parseCSS(CharRange)(in CharRange css, CssErrorCollector errors=null, Origin origin=Origin.app)
 if (isInputRange!CharRange && isSomeChar!(ElementEncodingType!CharRange))
 {
+    import std.utf : byDchar;
     auto tokens = makeTokenInput(byDchar(css), errors);
     auto parser = makeParser(tokens, errors);
     auto rules = parser.consumeRuleList();
     auto ss = new Stylesheet;
     ss.origin = origin;
     ss.rules = rules;
+    return ss;
 }
 
 package:

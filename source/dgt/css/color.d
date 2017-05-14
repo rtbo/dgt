@@ -50,7 +50,8 @@ struct Color
     {
         import std.utf : byDchar;
         auto tokens = makeTokenInput(byDchar(cssColor));
-        return parseColor(tokens);
+        auto c = parseColor(tokens);
+        _argb = c._argb;
     }
 
     @property uint argb() { return _argb; }
@@ -97,6 +98,7 @@ if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
         enforce(cp !is null, ident ~ " is not a valid CSS color");
         c = *cp;
         tokens.popFront();
+        break;
     default:
         throw new Exception("Unexpected token instead of color: "~tokens.front.tok.to!string);
     }
