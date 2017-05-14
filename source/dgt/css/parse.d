@@ -6,8 +6,11 @@
 ///    The snapshot 2017 was used as reference.
 module dgt.css.parse;
 
+import dgt.css.selector;
+
 import std.exception;
 import std.range;
+import std.traits;
 
 enum ParseStage
 {
@@ -58,6 +61,42 @@ class CssErrorCollector
     private CssError[] _errors;
 }
 
+enum Origin
+{
+    app,
+    user,
+    dgt,
+}
+
+class Stylesheet
+{
+    Origin origin;
+    Rule[] rules;
+}
+
+class Rule
+{
+    Selector selector;
+    Decl[] decls;
+}
+
+class Decl
+{
+    string property;
+    Token[] valueTokens;
+    bool important;
+}
+
+Stylesheet parseCSS(CharRange)(in CharRange css, CssErrorCollector errors=null, Origin origin=Origin.app)
+if (isInputRange!CharRange && isSomeChar!(ElementEncodingType!CharRange))
+{
+    auto tokens = makeTokenInput(byDchar(css), errors);
+    auto parser = makeParser(tokens, errors);
+    auto rules = parser.consumeRuleList();
+    auto ss = new Stylesheet;
+    ss.origin = origin;
+    ss.rules = rules;
+}
 
 package:
 
@@ -80,33 +119,20 @@ unittest
     assert(rules[0].selectorToks.length == 1);
     auto selTok = rules[0].selectorToks[0];
     assert(selTok.tok == Tok.ident);
-    assert(selTok.sval == "h1");
+    assert(selTok.str == "h1");
     assert(rules[0].decls.length == 2);
     auto colDecl = rules[0].decls[0];
     auto taDecl = rules[0].decls[1];
     assert(colDecl.property == "color");
     assert(colDecl.valueToks.length == 1);
     assert(colDecl.valueToks[0].tok == Tok.hash);
-    assert(colDecl.valueToks[0].sval == "123456");
+    assert(colDecl.valueToks[0].str == "123456");
     assert(!colDecl.important);
     assert(taDecl.property == "text-align");
     assert(taDecl.valueToks.length == 1);
     assert(taDecl.valueToks[0].tok == Tok.ident);
-    assert(taDecl.valueToks[0].sval == "center");
+    assert(taDecl.valueToks[0].str == "center");
     assert(!taDecl.important);
-}
-
-struct ParseRule
-{
-    Token[] selectorToks;
-    ParseDecl[] decls;
-}
-
-struct ParseDecl
-{
-    string property;
-    Token[] valueToks;
-    bool important;
 }
 
 auto makeParser(TokenInput)(TokenInput tokenInput, CssErrorCollector errors=null)
@@ -166,9 +192,9 @@ struct CSSParser(TokenInput)
     }
 
     // §5.4.1
-    ParseRule[] consumeRuleList()
+    Rule[] consumeRuleList()
     {
-        ParseRule[] rules;
+        Rule[] rules;
         while(true) {
             auto tok = getToken();
             switch (tok.tok) {
@@ -180,10 +206,8 @@ struct CSSParser(TokenInput)
             case Tok.cdCl:
                 if (!toplevel) {
                     putToken(tok);
-                    ParseRule r = void;
-                    if (consumeQualRule(r)) {
-                        rules ~= r;
-                    }
+                    auto r = consumeQualRule();
+                    if (r) rules ~= r;
                 }
                 break;
             case Tok.atKwd:
@@ -191,36 +215,38 @@ struct CSSParser(TokenInput)
                 break;
             default:
                 putToken(tok);
-                ParseRule r = void;
-                if (consumeQualRule(r)) {
-                    rules ~= r;
-                }
+                auto r = consumeQualRule();
+                if (r) rules ~= r;
                 break;
             }
         }
     }
 
     // §5.4.3
-    bool consumeQualRule(out ParseRule rule)
+    Rule consumeQualRule()
     {
+        Token[] selectorToks;
         while(true) {
             auto tok = getToken();
             switch(tok.tok) {
             case Tok.eoi:
                 error("unexpected token while parsing qualified rule: end of input");
-                return false;
+                return null;
             case Tok.braceOp:
-                // consumeDeclarationList returns when it sees either eoi or
+                // consumeDeclarationList returns when it sees either eoi or }
                 Tok endTok;
-                rule.decls = consumeDeclarationList(&endTok);
+                auto decls = consumeDeclarationList(&endTok);
                 if (endTok != Tok.braceCl) {
                     error("was expecting <}-token> at end of qualified rule");
                 }
-                return true;
+                auto r = new Rule;
+                r.selector = parseSelector(selectorToks);
+                r.decls = decls;
+                return r;
             case Tok.whitespace:
                 break;
             default:
-                rule.selectorToks ~= tok;
+                selectorToks ~= tok;
                 break;
             }
         }
@@ -228,9 +254,9 @@ struct CSSParser(TokenInput)
 
     // Only block consisting of declarations are supported.
     // this is a mix between §5.4.4 and §5.4.7
-    ParseDecl[] consumeDeclarationList(Tok* endTok=null)
+    Decl[] consumeDeclarationList(Tok* endTok=null)
     {
-        ParseDecl[] decls;
+        Decl[] decls;
         while(true) {
             auto tok = getToken();
             switch(tok.tok) {
@@ -253,8 +279,8 @@ struct CSSParser(TokenInput)
                 }
                 while (tok.tok != Tok.eoi && tok.tok != Tok.braceCl && tok.tok != Tok.semicolon);
                 putToken(tok); // for proper ending
-                ParseDecl decl = void;
-                if (consumeDeclaration(toks, decl)) decls ~= decl;
+                auto d = consumeDeclaration(toks);
+                if (d) decls ~= d;
                 break;
             default:
                 import std.format : format;
@@ -270,7 +296,7 @@ struct CSSParser(TokenInput)
 
 }
 
-bool consumeDeclaration(Token[] tokens, out ParseDecl decl)
+Decl consumeDeclaration(Token[] tokens)
 {
     import std.algorithm : filter;
     import std.array : array;
@@ -279,23 +305,30 @@ bool consumeDeclaration(Token[] tokens, out ParseDecl decl)
     // removing all whitespace tokens
     tokens = tokens.filter!(t => t.tok != Tok.whitespace).array;
 
-    if (tokens.length < 3 || tokens[0].tok != Tok.ident) return false;
-    decl.property = tokens[0].sval.to!string;
-    if (tokens[1].tok != Tok.colon) return false;
+    if (tokens.length < 3 || tokens[0].tok != Tok.ident) return null;
+    if (tokens[1].tok != Tok.colon) return null;
+
+    string property = tokens[0].str;
+    Token[] valueToks;
+    bool important = false;
 
     tokens = tokens[2 .. $];
 
     import std.uni : toLower;
     while (tokens.length) {
-        if (tokens.length == 2 && tokens[0].tok == Tok.delim && tokens[0].sval == "!" &&
-                tokens[1].tok == Tok.ident && tokens[1].sval.toLower == "important")
+        if (tokens.length == 2 && tokens[0].tok == Tok.delim && tokens[0].delimCP == '!' &&
+                tokens[1].tok == Tok.ident && tokens[1].str.toLower == "important")
         {
-            decl.important = true;
+            important = true;
         }
         else {
-            decl.valueToks ~= tokens[0];
+            valueToks ~= tokens[0];
         }
         tokens = tokens[1 .. $];
     }
-    return true;
+    auto d = new Decl;
+    d.property = property;
+    d.valueTokens = valueToks;
+    d.important = important;
+    return d;
 }

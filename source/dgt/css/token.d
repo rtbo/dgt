@@ -22,59 +22,88 @@ if (isInputRange!Input && is(ElementType!Input == dchar))
     return TokenInput!Input(input, errors);
 }
 
+void popSpaces(TokRange)(ref TokRange tokens)
+if (isInputRange!TokRange && is(ElementType!TokRange == Token))
+{
+    while (!tokens.empty && tokens.front.tok == Tok.whitespace) {
+        tokens.popFront();
+    }
+}
+
 // self contained token
 struct Token
 {
     Tok tok;
-    dstring sval;
-    double nval;
-    dchar rstart;
-    dchar rend;
-    dstring unit;
 
-    Flag!"id" hashFlag;
-    Flag!"integer" numberFlag;
+    union {
+        dchar delimCP;
+        struct {
+            string str;
+            Flag!"id" id;
+        }
+        struct {
+            string numStr;
+            double num;
+            Flag!"integer" integer;
+            string unit;
+        }
+        struct {
+            dchar startCP;
+            dchar endCP;
+        }
+    }
 
     this (in Tok tok)
     {
         this.tok = tok;
     }
 
-    this (in Tok tok, in dstring sval, in Flag!"id" hashFlag = No.id)
+    this (in Tok tok, in string str)
     {
+        assert(tok == Tok.ident || tok == Tok.func || tok == Tok.atKwd || tok == Tok.str || tok == Tok.url);
         this.tok = tok;
-        this.sval = sval;
-        this.hashFlag = hashFlag;
+        this.str = str;
     }
 
-    this (in Tok tok, in dchar val)
+    this (in Tok tok, in string str, in Flag!"id" id = No.id)
     {
+        assert(tok == Tok.hash);
         this.tok = tok;
-        this.sval = [ val ];
+        this.str = str;
+        this.id = id;
     }
 
-    this (in Tok tok, in dchar start, in dchar end)
+    this (in Tok tok, in dchar cp)
     {
+        assert(tok == Tok.delim);
         this.tok = tok;
-        this.rstart = start;
-        this.rend = end;
+        this.delimCP = cp;
     }
 
-    this (in Tok tok, in dstring sval, in double nval, in Flag!"integer" numFlag)
+    this (in Tok tok, in dchar startCP, in dchar endCP)
     {
+        assert(tok == Tok.uniRange);
         this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = No.integer;
+        this.startCP = startCP;
+        this.endCP = endCP;
     }
 
-    this (in Tok tok, in dstring sval, in double nval,
-            in Flag!"integer" numFlag, in dstring unit)
+    this (in Tok tok, in string numStr, in double num, in Flag!"integer" integer)
+    {
+        assert(tok == Tok.number || tok == Tok.percentage);
+        this.tok = tok;
+        this.numStr = numStr;
+        this.num = num;
+        this.integer = integer;
+    }
+
+    this (in Tok tok, in string numStr, in double num,
+            in Flag!"integer" integer, in string unit)
     {
         this.tok = tok;
-        this.sval = sval;
-        this.nval = nval;
-        this.numberFlag = No.integer;
+        this.numStr = numStr;
+        this.num = num;
+        this.integer = integer;
         this.unit = unit;
     }
 }
@@ -334,9 +363,9 @@ private:
             immutable c2 = getChar();
             if (c1.isName || isValidEscape(c1, c2)) {
                 immutable c3 = getChar();
-                Flag!"id" hashFlag = isIdentStart(c1, c2, c3) ? Yes.id : No.id;
+                Flag!"id" id = isIdentStart(c1, c2, c3) ? Yes.id : No.id;
                 putChar(c3, c2, c1);
-                return Token(Tok.hash, consumeName(), hashFlag);
+                return Token(Tok.hash, consumeName(), id);
             }
             else {
                 putChar(c2, c1);
@@ -531,7 +560,7 @@ private:
     {
         immutable name = consumeName();
         immutable c = getChar();
-        if (name.toLower == "url"d && c == '\u0028') {      // (
+        if (name.toLower == "url" && c == '\u0028') {      // (
             return consumeUrlToken();
         }
         else if (c == '\u0028') {                           // (
@@ -546,7 +575,7 @@ private:
     // §4.3.4
     Token consumeStringToken(in dchar endCP)
     {
-        dstring val;
+        string val;
         dchar c = void;
         do {
             c = getChar();
@@ -591,7 +620,7 @@ private:
                 consumeBadUrlRemnants();
                 return Token(Tok.badUrl);
             }
-            tok.sval = strTok.sval;
+            tok.str = strTok.str;
             c = getChar();
             while (c.isWhitespace) {
                 c = getChar();
@@ -619,7 +648,7 @@ private:
                 immutable c2 = getChar();
                 putChar(c2);
                 if (isValidEscape(c, c2)) {
-                    tok.sval ~= consumeEscape();
+                    tok.str ~= consumeEscape();
                 }
                 else {
                     consumeBadUrlRemnants();
@@ -627,7 +656,7 @@ private:
                 }
             }
             else {
-                tok.sval ~= c;
+                tok.str ~= c;
             }
 
             c = getChar();
@@ -757,9 +786,9 @@ private:
     }
 
     // §4.3.11
-    dstring consumeName()
+    string consumeName()
     {
-        dstring name;
+        string name;
         while (true) {
             immutable c1 = getChar();
             immutable c2 = peekChar();
@@ -778,10 +807,11 @@ private:
     }
 
     // $4.3.12
-    Tuple!(dstring, double, Flag!"integer") consumeNumber()
+    Tuple!(string, double, Flag!"integer") consumeNumber()
     {
+        import std.conv : to;
         // 1 - init
-        dstring repr;
+        string repr;
         Flag!"integer" flag = Yes.integer;
         // 2 - sign
         auto c1 = getChar();
@@ -797,7 +827,8 @@ private:
         // 4 - decimal part
         auto c2 = getChar();
         if (c1 == '\u002E' /+ . +/ && c2.isDigit()) {
-            repr ~= [ c1, c2 ];
+            repr ~= c1;
+            repr ~= c2;
             flag = No.integer;
             c1 = getChar();
             while (c1.isDigit) {
@@ -811,7 +842,8 @@ private:
         if ((c1 == '\u0045' || c1 == '\u0065') && (c2.isDigit ||        // E or e
                 ((c2 == '\u002B' || c2 == '\u002D') && c3.isDigit))) {  // + or -
             // e(+-)123 or E(+-)123
-            repr ~= [c1, c2];
+            repr ~= c1;
+            repr ~= c2;
             flag = No.integer;
             c1 = c3.isDigit ? c3 : getChar();
             while (c1.isDigit) {
@@ -824,7 +856,6 @@ private:
         }
         putChar(c1);
         // 6 - conversion
-        import std.conv : to;
         immutable nval = repr.to!double();
         // 7 - result
         return typeof(return)(repr, nval, flag);

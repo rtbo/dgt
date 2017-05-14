@@ -3,7 +3,6 @@ module dgt.css.selector;
 
 import dgt.css.token;
 import dgt.sg.node;
-import dgt.text.font;
 
 import std.exception;
 import std.range;
@@ -17,6 +16,12 @@ Selector parseSelector(string css)
 {
     import std.utf : byDchar;
     auto tokens = makeTokenInput(byDchar(css));
+    return parseSelectorGroup(tokens);
+}
+
+Selector parseSelector(Tokens)(Tokens tokens)
+if (isInputRange!Tokens && is(ElementType!Tokens == Token))
+{
     return parseSelectorGroup(tokens);
 }
 
@@ -57,8 +62,8 @@ class SimpleSelector : AbstractSelector
         universal,
         class_,
         id,
+        pseudo,
         attr,       // unsupported
-        pseudo,     // unsupported
     }
 
     SSType ssType;
@@ -112,7 +117,6 @@ enum SelOp
 }
 
 AbstractSelector parseSelectorGroup(Tokens)(Tokens tokens)
-if (isInputRange!Tokens && is(ElementType!Tokens == Token))
 {
     import std.algorithm : until;
 
@@ -203,7 +207,7 @@ SelOp parseSelOp(Tokens)(ref Tokens tokens)
             hadWS = true;
         }
         else if (tok.tok == Tok.delim) {
-            switch (tok.sval[0]) {
+            switch (tok.delimCP) {
             case '~':
                 return SelOp.genSibl;
             case '+':
@@ -239,11 +243,11 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
     if (tok.tok == Tok.ident) {
         auto s = new SimpleSelector;
         s.ssType = SimpleSelector.SSType.type;
-        s.val = tok.sval.to!string;
+        s.val = tok.str;
         seq ~= s;
         tokens.popFront();
     }
-    else if (tok.tok == Tok.delim && tok.sval[0] == '*') {
+    else if (tok.tok == Tok.delim && tok.delimCP == '*') {
         auto s = new SimpleSelector;
         s.ssType = SimpleSelector.SSType.universal;
         seq ~= s;
@@ -267,11 +271,11 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
         if (tok.tok == Tok.hash) {
             auto s = new SimpleSelector;
             s.ssType = SimpleSelector.SSType.id;
-            s.val = tok.sval.to!string;
+            s.val = tok.str;
             addSel(s);
         }
         else if (tok.tok == Tok.delim) {
-            switch(tok.sval[0]) {
+            switch(tok.delimCP) {
             case '.':
                 tokens.popFront();
                 if (tokens.empty || tokens.front.tok != Tok.ident) {
@@ -279,7 +283,7 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
                 }
                 auto s = new SimpleSelector;
                 s.ssType = SimpleSelector.SSType.class_;
-                s.val = tok.sval.to!string;
+                s.val = tok.str;
                 addSel(s);
                 break;
             case '~':
@@ -298,7 +302,15 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
             assert(false, "attribute selectors unimplemented");
         }
         else if (tok.tok == Tok.colon) {
-            assert(false, "pseudo class selectors unimplemented");
+            tokens.popFront();
+            enforce(
+                !tokens.empty && tokens.front.tok == Tok.ident,
+                "invalid or unsupported selector pseudo class"
+            );
+            auto s = new SimpleSelector;
+            s.ssType = SimpleSelector.SSType.pseudo;
+            s.val = tokens.front.str;
+            addSel(s);
         }
         else {
             throw new Exception("unexpected selector token");
