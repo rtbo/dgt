@@ -35,10 +35,18 @@ class Style
     {
         return _fontFamily;
     }
+    @property void fontFamily(in string family)
+    {
+        _fontFamily = family;
+    }
 
     @property Length fontSize()
     {
         return _fontSize;
+    }
+    @property void fontSize(Length l)
+    {
+        _fontSize = l;
     }
 
     @property Color textColor()
