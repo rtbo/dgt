@@ -33,33 +33,6 @@ int main()
     scope(exit) app.dispose();
 
     auto win = new Window("Hello DGT");
-    win.onKeyDown = (KeyEvent ev) {
-        switch (ev.sym)
-        {
-        case KeySym.f:
-            win.showFullscreen();
-            break;
-        case KeySym.n:
-            win.showNormal();
-            break;
-        case KeySym.m:
-            win.showMaximized();
-            break;
-        case KeySym.s:
-            win.showMinimized();
-            break;
-        case KeySym.escape:
-            win.close();
-            break;
-        default:
-            break;
-        }
-    };
-
-    // preparing text
-    FontRequest font;
-    font.family = "serif";
-    font.size = FontSize.pts(100);
 
     immutable logoImg = assumeUnique (
         Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb)
