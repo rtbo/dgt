@@ -264,18 +264,36 @@ abstract class SgNode
             tr, toBeTransformed
         );
 
+        immutable bg = backgroundRenderNode();
+
         debug(nodeFrame) {
+            immutable fn = new immutable RectStrokeRenderNode(
+                fvec(0, 0, 0, 1), bounds
+            );
+            immutable nodes = bg ? [
+                bg, transformedNode, fn
+            ] : [
+                transformedNode, fn
+            ];
             return new immutable(GroupRenderNode) (
-                bounds, [
-                    transformedNode,
-                    new immutable(RectStrokeRenderNode)(
-                        fvec(0, 0, 0, 1), bounds
-                    )
-                ]
+                bounds, nodes
             );
         }
         else {
-            return transformedNode;
+            return bg ?
+                new immutable GroupRenderNode(bounds, [bg, transformedNode]) :
+                transformedNode;
+        }
+    }
+
+    immutable(RenderNode) backgroundRenderNode()
+    {
+        auto col = style.backgroundColor;
+        if (col.argb & 0xff000000) {
+            return new immutable RectFillRenderNode(col.asVec, bounds);
+        }
+        else {
+            return null;
         }
     }
 
