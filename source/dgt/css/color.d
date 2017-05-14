@@ -2,6 +2,7 @@
 module dgt.css.color;
 
 import dgt.css.token;
+import dgt.math.vec;
 
 import std.exception;
 import std.range;
@@ -42,6 +43,14 @@ struct Color
                 ((cast(int)rgba[1]*255)&0xff) << 8  |
                 ((cast(int)rgba[2]*255)&0xff);
     }
+    this(in FVec3 rgb)
+    {
+        this(rgb.data[0 .. 3]);
+    }
+    this(in FVec4 rgba)
+    {
+        this(rgba.data[0 .. 4]);
+    }
     this(in ColorName name)
     {
         _argb = cast(uint)name;
@@ -54,7 +63,38 @@ struct Color
         _argb = c._argb;
     }
 
-    @property uint argb() { return _argb; }
+    @property uint argb() const { return _argb; }
+
+    @property ubyte[4] asBytes() const
+    {
+        immutable argb = _argb;
+        return [
+            (argb >> 16) & 0xff,
+            (argb >> 8) & 0xff,
+            argb & 0xff,
+            (argb >> 24) & 0xff
+        ];
+    }
+    @property float[4] asFloats() const
+    {
+        immutable argb = _argb;
+        return [
+            ((argb >> 16) & 0xff) / 255f,
+            ((argb >> 8) & 0xff) / 255f,
+            (argb & 0xff) / 255f,
+            ((argb >> 24) & 0xff) / 255f,
+        ];
+    }
+    @property FVec4 asVec() const
+    {
+        immutable argb = _argb;
+        return fvec(
+            ((argb >> 16) & 0xff) / 255f,
+            ((argb >> 8) & 0xff) / 255f,
+            (argb & 0xff) / 255f,
+            ((argb >> 24) & 0xff) / 255f,
+        );
+    }
 
     private uint _argb;
 }
