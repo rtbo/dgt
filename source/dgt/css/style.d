@@ -21,10 +21,6 @@ class Style
         auto p = _node.parent;
         return p ? p.style : null;
     }
-    @property Style root()
-    {
-        return _node.root.style;
-    }
 
     @property Color backgroundColor()
     {

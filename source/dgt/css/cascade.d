@@ -60,28 +60,30 @@ abstract class CSSProperty
         return parseValue(tokens);
     }
 
-    final void applyCascade(Style target, Style parent, CSSValueBase cascaded)
+    final void applyCascade(Style target, CSSValueBase cascaded)
     {
+        const parent = target.parent;
+
         if (!cascaded || cascaded.unset) {
             if (inherited && parent) {
-                applyFromParent(target, parent);
+                applyFromParent(target);
             }
             else {
-                applyFromValue(target, initial, null);
+                applyFromValue(target, initial);
             }
         }
         else {
             if (cascaded.inherit && parent) {
-                applyFromParent(target, parent);
+                applyFromParent(target);
             }
             else if (cascaded.inherit && !parent) {
-                applyFromValue(target, initial, null);
+                applyFromValue(target, initial);
             }
             else if (cascaded.initial) {
-                applyFromValue(target, initial, null);
+                applyFromValue(target, initial);
             }
             else {
-                applyFromValue(target, cascaded, parent);
+                applyFromValue(target, cascaded);
             }
         }
     }
@@ -89,8 +91,8 @@ abstract class CSSProperty
     abstract CSSValueBase makeValue(CSSWideValue value);
     abstract CSSValueBase parseValue(Token[] tokens);
 
-    abstract void applyFromParent(Style target, Style parent);
-    abstract void applyFromValue(Style target, CSSValueBase value, Style parent);
+    abstract void applyFromParent(Style target);
+    abstract void applyFromValue(Style target, CSSValueBase value);
 
     private string _name;
     private ValueType _type;
@@ -119,12 +121,12 @@ final class BackgroundColorProperty : CSSProperty
         return new CSSValue!Color(parseColor(tokens));
     }
 
-    override void applyFromParent(Style target, Style parent)
+    override void applyFromParent(Style target)
     {
-        target.backgroundColor = parent.backgroundColor;
+        target.backgroundColor = target.parent.backgroundColor;
     }
 
-    override void applyFromValue(Style target, CSSValueBase value, Style parent)
+    override void applyFromValue(Style target, CSSValueBase value)
     {
         auto cv = cast(CSSValue!Color) value;
         assert(cv);
@@ -221,8 +223,7 @@ final class CascadeContext
                 cascadedVal = cascaded.value;
             }
 
-            auto ps = node.parent ? node.parent.style : null;
-            p.applyCascade(node.style, ps, cascadedVal);
+            p.applyCascade(node.style, cascadedVal);
         }
     }
 }
