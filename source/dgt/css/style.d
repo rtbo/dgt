@@ -2,22 +2,8 @@
 module dgt.css.style;
 
 import dgt.css.color;
+import dgt.css.value;
 import dgt.sg.node;
-
-struct Length
-{
-    enum Unit {
-        // relative
-        em, ex, ch, rem,
-        // viewport relative
-        vw, vh, vmin, vmax,
-        // absolute
-        cm, mm, q, in_, pt, pc, px
-    }
-    float val;
-    Unit unit;
-}
-
 
 class Style
 {
@@ -43,6 +29,10 @@ class Style
     @property Color backgroundColor()
     {
         return _backgroundColor;
+    }
+    @property void backgroundColor(in Color color)
+    {
+        _backgroundColor = color;
     }
 
     @property string fontFamily()

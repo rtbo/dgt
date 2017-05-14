@@ -6,6 +6,7 @@
 ///    The snapshot 2017 was used as reference.
 module dgt.css.parse;
 
+import dgt.css.om;
 import dgt.css.selector;
 
 import std.exception;
@@ -59,32 +60,6 @@ class CssErrorCollector
 
     private int _lineNum = 1;
     private CssError[] _errors;
-}
-
-enum Origin
-{
-    app,
-    user,
-    dgt,
-}
-
-class Stylesheet
-{
-    Origin origin;
-    Rule[] rules;
-}
-
-class Rule
-{
-    Selector selector;
-    Decl[] decls;
-}
-
-class Decl
-{
-    string property;
-    Token[] valueTokens;
-    bool important;
 }
 
 Stylesheet parseCSS(CharRange)(in CharRange css, CssErrorCollector errors=null, Origin origin=Origin.app)
@@ -241,8 +216,13 @@ struct CSSParser(TokenInput)
                 if (endTok != Tok.braceCl) {
                     error("was expecting <}-token> at end of qualified rule");
                 }
+                auto sel = parseSelector(selectorToks);
+                if (!sel) {
+                    error("rule without valid selector");
+                    return null;
+                }
                 auto r = new Rule;
-                r.selector = parseSelector(selectorToks);
+                r.selector = sel;
                 r.decls = decls;
                 return r;
             case Tok.whitespace:
