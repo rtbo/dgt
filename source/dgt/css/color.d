@@ -14,12 +14,26 @@ struct Color
     {
         _argb = argb;
     }
+    this(in ubyte[3] rgb)
+    {
+        _argb = 0xff000000    |
+                rgb[0] << 16 |
+                rgb[1] << 8  |
+                rgb[2];
+    }
     this(in ubyte[4] rgba)
     {
         _argb = rgba[3] << 24 |
                 rgba[0] << 16 |
                 rgba[1] << 8  |
                 rgba[2];
+    }
+    this(in float[3] rgb)
+    {
+        _argb = 0xff000000                          |
+                ((cast(int)rgb[0]*255)&0xff) << 16 |
+                ((cast(int)rgb[1]*255)&0xff) << 8  |
+                ((cast(int)rgb[2]*255)&0xff);
     }
     this(in float[4] rgba)
     {
@@ -28,18 +42,74 @@ struct Color
                 ((cast(int)rgba[1]*255)&0xff) << 8  |
                 ((cast(int)rgba[2]*255)&0xff);
     }
+    this(in ColorName name)
+    {
+        _argb = cast(uint)name;
+    }
     this(in string cssColor)
     {
-        immutable c = cssColor in cssColors;
-        if (!c) throw new Exception(cssColor ~ " is not a CSS color");
-        _argb = c._argb;
+        import std.utf : byDchar;
+        auto tokens = makeTokenInput(byDchar(cssColor));
+        return parseColor(tokens);
     }
+
+    @property uint argb() { return _argb; }
 
     private uint _argb;
 }
 
+
+Color parseColor(TokenRange)(TokenRange tokens)
+if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
+{
+    import std.conv : to;
+    import std.uni : toLower;
+
+    tokens.popSpaces();
+
+    enforce(!tokens.empty);
+
+    Color c;
+    switch(tokens.front.tok) {
+    case Tok.hash:
+        auto hexStr = tokens.front.str;
+        switch(hexStr.length) {
+        case 3:
+            hexStr = [
+                hexStr[0], hexStr[0],
+                hexStr[1], hexStr[1],
+                hexStr[2], hexStr[2],
+            ];
+            break;
+        case 6:
+            break;
+        default:
+            throw new Exception("unsupported color hash string: "~hexStr);
+        }
+        hexStr = "ff" ~ hexStr.toLower;
+        assert(hexStr.length == 8);
+        c = Color(hexStr.to!uint(16));
+        tokens.popFront();
+        break;
+    case Tok.ident:
+        auto ident = tokens.front.str;
+        auto cp = ident in cssColors;
+        enforce(cp !is null, ident ~ " is not a valid CSS color");
+        c = *cp;
+        tokens.popFront();
+    default:
+        throw new Exception("Unexpected token instead of color: "~tokens.front.tok.to!string);
+    }
+
+    tokens.popSpaces();
+    enforce(tokens.empty, "Unexpected token after color: "~tokens.front.tok.to!string);
+    return c;
+}
+
 enum ColorName
 {
+    transparent             = 0x00000000,
+
     aliceblue               = 0xfff0f8ff,
     antiquewhite            = 0xfffaebd7,
     aqua                    = 0xff00ffff,
