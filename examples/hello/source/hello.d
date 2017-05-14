@@ -80,7 +80,11 @@ int main()
     layout.orientation = Orientation.horizontal;
     layout.appendWidget(hello);
     layout.appendWidget(icon);
+    layout.spacing = 6;
     layout.gravity = Gravity.center;
+    layout.cssStyle = `
+        :root { background-color: lavenderblush; }
+    `;
 
     win.root = layout;
 

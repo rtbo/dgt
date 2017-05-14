@@ -446,6 +446,10 @@ class Window
         immutable(RenderFrame) collectFrame()
         {
             scope(exit) _dirtyReg = new Region;
+            if (_root) {
+                import dgt.css.cascade;
+                cssCascade(_root);
+            }
             if (_widget) {
                 import dgt.widget.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
@@ -456,8 +460,8 @@ class Window
                 _widget.layout(FRect(0, 0, fs));
             }
             return new immutable RenderFrame (
-                nativeHandle, IRect(0, 0, size), fvec(0.6, 0.7, 0.8, 1),
-                _root ? _root.collectRenderNode() : null
+                nativeHandle, IRect(0, 0, size),
+                _root ? _root.collectTransformedRenderNode() : null
             );
         }
     }
