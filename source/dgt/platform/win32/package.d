@@ -7,7 +7,6 @@ import dgt.event;
 import dgt.geometry;
 import dgt.platform;
 import dgt.platform.win32.context;
-import dgt.platform.win32.screen;
 import dgt.platform.win32.window;
 import dgt.screen;
 import dgt.window;
