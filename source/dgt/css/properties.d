@@ -15,7 +15,7 @@ final class BackgroundColorProperty : CSSProperty
     this()
     {
         super(
-            "background-color", ValueType.color, false,
+            "background-color", false,
             new CSSValue!Color(Color(ColorName.transparent))
         );
     }

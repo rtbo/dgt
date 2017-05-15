@@ -29,10 +29,9 @@ body {
 /// and to a field in the Style class (e.g. "backgroundColor")
 abstract class CSSProperty
 {
-    this(in string name, in ValueType type, in bool inherited, CSSValueBase initial)
+    this(in string name, in bool inherited, CSSValueBase initial)
     {
         _name = name;
-        _type = type;
         _inherited = inherited;
         _initial = initial;
     }
@@ -41,11 +40,6 @@ abstract class CSSProperty
     final @property string name()
     {
         return _name;
-    }
-
-    final @property ValueType type()
-    {
-        return _type;
     }
 
     /// Whether this property gets inherited when no cascaded value is found
@@ -114,7 +108,6 @@ abstract class CSSProperty
     abstract void applyFromValue(Style target, CSSValueBase value);
 
     private string _name;
-    private ValueType _type;
     private bool _inherited;
     private CSSValueBase _initial;
 }
