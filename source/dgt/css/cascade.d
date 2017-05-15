@@ -1,6 +1,5 @@
 module dgt.css.cascade;
 
-import dgt.css.color;
 import dgt.css.om;
 import dgt.css.parse;
 import dgt.css.selector;
@@ -12,6 +11,22 @@ import dgt.sg.parent;
 
 import std.range;
 
+/// Entry point of the Style pass before rendering
+/// This function interates over the whole tree and assign each style property
+/// of each node
+void cssCascade(SgParent root)
+in {
+    assert(root.isRoot);
+}
+body {
+    auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
+    auto ctx = new CascadeContext;
+    ctx.cascade(root, [dgtCSS]);
+}
+
+/// A style property.
+/// Each instance of this class map to a CSS property (e.g. "background-color")
+/// and to a field in the Style class (e.g. "backgroundColor")
 abstract class CSSProperty
 {
     this(in string name, in ValueType type, in bool inherited, CSSValueBase initial)
@@ -22,6 +37,7 @@ abstract class CSSProperty
         _initial = initial;
     }
 
+    /// The name of the CSS property as it appears in the style sheets
     final @property string name()
     {
         return _name;
@@ -32,16 +48,19 @@ abstract class CSSProperty
         return _type;
     }
 
+    /// Whether this property gets inherited when no cascaded value is found
     final @property bool inherited()
     {
         return _inherited;
     }
 
+    /// The initial value of this property
     final @property CSSValueBase initial()
     {
         return _initial;
     }
 
+    /// Parse the value from the tokens read in the style sheet
     final CSSValueBase parse(Token[] tokens)
     {
         if (tokens.empty) return null;
@@ -100,57 +119,17 @@ abstract class CSSProperty
     private CSSValueBase _initial;
 }
 
-
-final class BackgroundColorProperty : CSSProperty
-{
-    this()
-    {
-        super(
-            "background-color", ValueType.color, false,
-            new CSSValue!Color(Color(ColorName.transparent))
-        );
-    }
-
-    override CSSValue!Color makeValue(CSSWideValue value)
-    {
-        return new CSSValue!Color(value);
-    }
-
-    override CSSValue!Color parseValue(Token[] tokens)
-    {
-        return new CSSValue!Color(parseColor(tokens));
-    }
-
-    override void applyFromParent(Style target)
-    {
-        target.backgroundColor = target.parent.backgroundColor;
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto cv = cast(CSSValue!Color) value;
-        assert(cv);
-        target.backgroundColor = cv.value;
-    }
-}
+private:
 
 __gshared CSSProperty[] supportedProperties;
 
 shared static this()
 {
+    import dgt.css.properties;
+
     supportedProperties = [
         new BackgroundColorProperty,
     ];
-}
-
-void cssCascade(SgParent root)
-in {
-    assert(root.isRoot);
-}
-body {
-    auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
-    auto ctx = new CascadeContext;
-    ctx.cascade(root, [dgtCSS]);
 }
 
 final class CascadeContext
