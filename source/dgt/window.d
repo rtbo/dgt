@@ -11,6 +11,7 @@ import dgt.platform;
 import dgt.region;
 import dgt.render;
 import dgt.render.frame;
+import dgt.screen;
 import dgt.sg.parent;
 import dgt.util;
 import dgt.widget.widget;
@@ -284,6 +285,28 @@ class Window
             _root._window = this;
             //collectWidgetRoots(_root, _widgetRoots);
         }
+    }
+
+    /// The screen this window is on. If the window overlaps more than one screen,
+    /// the screen with biggest overlap is returned.
+    /// If for some reason the window is not overlapping any screen, the main monitor is returned.
+    @property Screen screen() const
+    {
+        int overlap=-1;
+        int num=-1;
+        auto screens = Application.platform.screens;
+        immutable rect = geometry;
+        foreach (s; screens) {
+            immutable sr = s.rect;
+            if (sr.overlaps(rect)) {
+                immutable ol = intersection(sr, rect).area;
+                if (ol > overlap) {
+                    overlap = ol;
+                    num = s.num;
+                }
+            }
+        }
+        return num >= 0 ? screens[num] : screens[0];
     }
 
     /// The region that needs update
