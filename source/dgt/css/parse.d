@@ -8,59 +8,11 @@ module dgt.css.parse;
 
 import dgt.css.om;
 import dgt.css.selector;
+import dgt.css.token;
 
 import std.exception;
 import std.range;
 import std.traits;
-
-enum ParseStage
-{
-    token,
-    parse,
-}
-
-struct CssError
-{
-    ParseStage stage;
-    int lineNum;
-    string msg;
-}
-
-class CssErrorCollector
-{
-    void pushError(ParseStage stage, string msg)
-    {
-        _errors ~= CssError(stage, _lineNum, msg);
-    }
-
-    @property int lineNum()
-    {
-        return _lineNum;
-    }
-
-    @property void lineNum(int lineNum)
-    {
-        _lineNum = lineNum;
-    }
-
-    void incrLineNum()
-    {
-        _lineNum++;
-    }
-
-    void decrLineNum()
-    {
-        _lineNum--;
-    }
-
-    @property CssError[] errors()
-    {
-        return _errors;
-    }
-
-    private int _lineNum = 1;
-    private CssError[] _errors;
-}
 
 Stylesheet parseCSS(CharRange)(in CharRange css, CssErrorCollector errors=null, Origin origin=Origin.app)
 if (isInputRange!CharRange && isSomeChar!(ElementEncodingType!CharRange))
@@ -77,7 +29,6 @@ if (isInputRange!CharRange && isSomeChar!(ElementEncodingType!CharRange))
 
 package:
 
-import dgt.css.token;
 
 unittest
 {

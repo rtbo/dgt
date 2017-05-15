@@ -6,15 +6,62 @@
 ///    The snapshot 2017 was used as reference.
 module dgt.css.token;
 
-import dgt.css.parse : CssError, CssErrorCollector, ParseStage;
-
 import std.exception;
 import std.range;
 import std.typecons;
 import std.uni : isSurrogate, toLower;
 import std.utf;
 
-package:
+
+enum ParseStage
+{
+    token,
+    parse,
+}
+
+struct CssError
+{
+    ParseStage stage;
+    int lineNum;
+    string msg;
+}
+
+class CssErrorCollector
+{
+    void pushError(ParseStage stage, string msg)
+    {
+        _errors ~= CssError(stage, _lineNum, msg);
+    }
+
+    @property int lineNum()
+    {
+        return _lineNum;
+    }
+
+    @property void lineNum(int lineNum)
+    {
+        _lineNum = lineNum;
+    }
+
+    void incrLineNum()
+    {
+        _lineNum++;
+    }
+
+    void decrLineNum()
+    {
+        _lineNum--;
+    }
+
+    @property CssError[] errors()
+    {
+        return _errors;
+    }
+
+    private int _lineNum = 1;
+    private CssError[] _errors;
+}
+
 
 auto makeTokenInput(Input)(Input input, CssErrorCollector errors=null)
 if (isInputRange!Input && is(ElementType!Input == dchar))
