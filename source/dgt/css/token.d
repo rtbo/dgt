@@ -623,9 +623,8 @@ private:
     Token consumeStringToken(in dchar endCP)
     {
         string val;
-        dchar c = void;
-        do {
-            c = getChar();
+        dchar c = getChar();
+        while (c != endCP && c != endOfInput) {
             if (c.isNewLine) {
                 return Token(Tok.badStr, val);
             }
@@ -641,8 +640,8 @@ private:
             else {
                 val ~= c;
             }
+            c = getChar();
         }
-        while (c != endCP && c != endOfInput);
 
         return Token(Tok.str, val);
     }
