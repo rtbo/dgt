@@ -4,6 +4,7 @@ version(Windows):
 
 import dgt.context;
 import dgt.event;
+import dgt.geometry;
 import dgt.platform;
 import dgt.platform.win32.context;
 import dgt.platform.win32.screen;
@@ -22,6 +23,7 @@ class Win32Platform : Platform
 {
     private wstring[] _registeredClasses;
     private Win32Window[HWND] _windows;
+    private Screen[] _screens;
 
     private void delegate(Event) _collector;
 
@@ -37,6 +39,7 @@ class Win32Platform : Platform
         assert(_w32Inst is null);
         _w32Inst = this;
         _collector = &internalCollect;
+        fetchScreens();
     }
 
     override void initialize()
@@ -189,6 +192,13 @@ class Win32Platform : Platform
         _windows.remove(hWnd);
     }
 
+    private void fetchScreens()
+    {
+        _screens = [];
+        auto dc = GetDC(null);
+        EnumDisplayMonitors(dc, null, &win32MonitorEnumProc, 0);
+        ReleaseDC(null, dc);
+    }
 
     private Win32Window findWithHWnd(HWND hWnd)
     {
@@ -244,6 +254,24 @@ class Win32Platform : Platform
     }
 }
 
+class Win32Screen : Screen
+{
+    int _num;
+    IRect _rect;
+    double _dpi;
+
+    this(int num, IRect rect, double dpi)
+    {
+        _num = num; _rect = rect; _dpi = dpi;
+        import std.stdio;
+        writefln("%s, %s, %s", num, rect, dpi);
+    }
+
+    @property int num() const { return _num; }
+    @property IRect rect() const { return _rect; }
+    @property double dpi() const { return _dpi; }
+}
+
 extern(Windows) nothrow
 private LRESULT win32WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -262,4 +290,22 @@ private LRESULT win32WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         catch(Exception) {}
     }
     return res;
+}
+
+extern(Windows) nothrow
+private BOOL win32MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
+    try
+    {
+        auto num = _w32Inst._screens.length;
+        auto rect = rectFromWin32(*lprcMonitor);
+        auto dpi = GetDeviceCaps(hdcMonitor, LOGPIXELSX);
+        _w32Inst._screens ~= new Win32Screen(cast(int)num, rect, cast(double)dpi);
+    }
+    catch(Exception ex)
+    {
+        try { errorf("Win32 Monitor Proc exception: %s", ex.msg); }
+        catch(Exception) {}
+    }
+    return TRUE;
 }

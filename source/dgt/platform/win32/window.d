@@ -477,42 +477,43 @@ class Win32Window : PlatformWindow
 
             if (stateCond && geomCond) _paintEvPackage = true;
         }
-
-        static IRect rectFromWin32(in RECT r) pure
-        {
-            return IRect(r.left, r.top, r.right-r.left, r.bottom-r.top);
-        }
-
-        static RECT rectToWin32(in IRect r) pure
-        {
-            return RECT(r.point.x, r.point.y, r.point.x+r.width, r.point.y+r.height);
-        }
-
-        static int GET_X_LPARAM(LPARAM lp) pure
-        {
-            return cast(int)(lp & 0x0000ffff);
-        }
-
-        static int GET_Y_LPARAM(LPARAM lp) pure
-        {
-            return cast(int)((lp & 0xffff0000) >> 16);
-        }
-
-        static @property KeyMods keyMods()
-        {
-            KeyMods mods = KeyMods.none;
-
-            if (GetKeyState(VK_LSHIFT) & 0x8000) mods |= KeyMods.leftShift;
-            if (GetKeyState(VK_LCONTROL) & 0x8000) mods |= KeyMods.leftCtrl;
-            if (GetKeyState(VK_LMENU) & 0x8000) mods |= KeyMods.leftAlt;
-            if (GetKeyState(VK_LWIN) & 0x8000) mods |= KeyMods.leftSuper;
-
-            if (GetKeyState(VK_RSHIFT) & 0x8000) mods |= KeyMods.rightShift;
-            if (GetKeyState(VK_RCONTROL) & 0x8000) mods |= KeyMods.rightCtrl;
-            if (GetKeyState(VK_RMENU) & 0x8000) mods |= KeyMods.rightAlt;
-            if (GetKeyState(VK_RWIN) & 0x8000) mods |= KeyMods.rightSuper;
-
-            return mods;
-        }
     }
+}
+
+
+IRect rectFromWin32(in RECT r) pure
+{
+    return IRect(r.left, r.top, r.right-r.left, r.bottom-r.top);
+}
+
+RECT rectToWin32(in IRect r) pure
+{
+    return RECT(r.point.x, r.point.y, r.point.x+r.width, r.point.y+r.height);
+}
+
+int GET_X_LPARAM(LPARAM lp) pure
+{
+    return cast(int)(lp & 0x0000ffff);
+}
+
+int GET_Y_LPARAM(LPARAM lp) pure
+{
+    return cast(int)((lp & 0xffff0000) >> 16);
+}
+
+@property KeyMods keyMods()
+{
+    KeyMods mods = KeyMods.none;
+
+    if (GetKeyState(VK_LSHIFT) & 0x8000) mods |= KeyMods.leftShift;
+    if (GetKeyState(VK_LCONTROL) & 0x8000) mods |= KeyMods.leftCtrl;
+    if (GetKeyState(VK_LMENU) & 0x8000) mods |= KeyMods.leftAlt;
+    if (GetKeyState(VK_LWIN) & 0x8000) mods |= KeyMods.leftSuper;
+
+    if (GetKeyState(VK_RSHIFT) & 0x8000) mods |= KeyMods.rightShift;
+    if (GetKeyState(VK_RCONTROL) & 0x8000) mods |= KeyMods.rightCtrl;
+    if (GetKeyState(VK_RMENU) & 0x8000) mods |= KeyMods.rightAlt;
+    if (GetKeyState(VK_RWIN) & 0x8000) mods |= KeyMods.rightSuper;
+
+    return mods;
 }
