@@ -23,14 +23,9 @@ class XcbScreen : Screen
         return _num;
     }
 
-    override @property int width() const
+    override @property IRect rect() const
     {
-        return _s.width_in_pixels;
-    }
-
-    override @property int height() const
-    {
-        return _s.height_in_pixels;
+        return IRect(0, 0, _s.width_in_pixels, _s.height_in_pixels);
     }
 
     override @property double dpi() const
