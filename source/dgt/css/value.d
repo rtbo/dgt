@@ -24,76 +24,31 @@ enum CSSWideValue
     unset,
 }
 
-enum ValueType
-{
-    none        = 0,
-    str,
-    color,
-    length,
-}
 
-enum uint cssWideShift          = 24;
-enum uint typeMask              = 0x00ff_ffff;
-enum uint cssWideMask           = 0xff00_0000;
-enum uint cssWideShiftedMask    = 0x0000_00ff;
-enum uint initialBits           = CSSWideValue.initial << cssWideShift;
-enum uint inheritBits           = CSSWideValue.inherit << cssWideShift;
-enum uint unsetBits             = CSSWideValue.unset   << cssWideShift;
-
-uint valueFlags(CSSWideValue cw, ValueType vt)
+class CSSValueBase
 {
-    return (cast(uint)cw) << cssWideShift | cast(uint)vt;
-}
+    this()
+    {}
 
-template valueType(T)
-{
-    static if (is(T == string)) {
-        enum valueType = ValueType.str;
-    }
-    else static if (is(T == Color)) {
-        enum valueType = ValueType.color;
-    }
-    else static if (is(T == Length)) {
-        enum valueType = ValueType.length;
-    }
-    else {
-        static assert(false, T.stringof ~ " is not a supported CSS value type");
-    }
-}
-
-abstract class CSSValueBase
-{
-    this(uint flags)
+    this(CSSWideValue val)
     {
-        _flags = flags;
-    }
-
-    final @property uint flags() { return _flags; }
-
-    final @property ValueType type()
-    {
-        return cast(ValueType)(_flags & typeMask);
-    }
-
-    final @property CSSWideValue cssWideValue()
-    {
-        return cast(CSSWideValue)((_flags >> cssWideShift) & cssWideShiftedMask);
+        _cssWideVal = val;
     }
 
     final @property bool initial()
     {
-        return cssWideValue == CSSWideValue.initial;
+        return _cssWideVal == CSSWideValue.initial;
     }
     final @property bool inherit()
     {
-        return cssWideValue == CSSWideValue.inherit;
+        return _cssWideVal == CSSWideValue.inherit;
     }
     final @property bool unset()
     {
-        return cssWideValue == CSSWideValue.unset;
+        return _cssWideVal == CSSWideValue.unset;
     }
 
-    private uint _flags;
+    private CSSWideValue _cssWideVal = CSSWideValue.none;
 }
 
 
@@ -101,13 +56,7 @@ class CSSValue(T) : CSSValueBase
 {
     this(T value)
     {
-        super(valueType!T);
         _value = value;
-    }
-
-    this(CSSWideValue cssWide)
-    {
-        super(valueFlags(cssWide, valueType!T));
     }
 
     final @property T value()

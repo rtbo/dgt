@@ -54,24 +54,28 @@ abstract class CSSProperty
         return _initial;
     }
 
-    /// Parse the value from the tokens read in the style sheet
-    final CSSValueBase parse(Token[] tokens)
+    /// Parse the value from the tokens read in the style sheet.
+    /// Starts by checking whether the values is "inherit", "initial" or "unset",
+    /// and calls parseValueImpl if it is none of the three.
+    final CSSValueBase parseValue(Token[] tokens)
     {
         if (tokens.empty) return null;
         immutable tok = tokens.front;
         if (tok.tok == Tok.ident) {
             if (tok.str == "inherit") {
-                return makeValue(CSSWideValue.inherit);
+                return new CSSValueBase(CSSWideValue.inherit);
             }
             else if (tok.str == "initial") {
-                return makeValue(CSSWideValue.initial);
+                return new CSSValueBase(CSSWideValue.initial);
             }
             else if (tok.str == "unset") {
-                return makeValue(CSSWideValue.unset);
+                return new CSSValueBase(CSSWideValue.unset);
             }
         }
-        return parseValue(tokens);
+        return parseValueImpl(tokens);
     }
+
+    abstract CSSValueBase parseValueImpl(Token[] tokens);
 
     final void applyCascade(Style target, CSSValueBase cascaded)
     {
@@ -100,9 +104,6 @@ abstract class CSSProperty
             }
         }
     }
-
-    abstract CSSValueBase makeValue(CSSWideValue value);
-    abstract CSSValueBase parseValue(Token[] tokens);
 
     abstract void applyFromParent(Style target);
     abstract void applyFromValue(Style target, CSSValueBase value);
@@ -191,7 +192,7 @@ final class CascadeContext
             auto cascaded = decls.length ? decls[0] : null;
             CSSValueBase cascadedVal;
             if (cascaded && !cascaded.value) {
-                if (!cascaded.value) cascaded.value = p.parse(cascaded.valueTokens);
+                if (!cascaded.value) cascaded.value = p.parseValue(cascaded.valueTokens);
                 cascadedVal = cascaded.value;
             }
 

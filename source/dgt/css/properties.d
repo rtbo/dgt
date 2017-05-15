@@ -20,12 +20,7 @@ final class BackgroundColorProperty : CSSProperty
         );
     }
 
-    override CSSValue!Color makeValue(CSSWideValue value)
-    {
-        return new CSSValue!Color(value);
-    }
-
-    override CSSValue!Color parseValue(Token[] tokens)
+    override CSSValue!Color parseValueImpl(Token[] tokens)
     {
         return new CSSValue!Color(parseColor(tokens));
     }
