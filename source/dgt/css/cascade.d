@@ -123,6 +123,7 @@ shared static this()
 
     supportedProperties = [
         new BackgroundColorProperty,
+        new FontFamilyProperty,
     ];
 }
 

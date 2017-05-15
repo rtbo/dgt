@@ -156,8 +156,11 @@ class Label : Widget
     {
         assert(_text.length);
         if (!_layout) {
-            // FIXME: CSS font
-            _layout = new TextLayout(_text, TextFormat.plain, FontRequest.init);
+            FontRequest fr;
+            if (style.fontFamily.length) {
+                fr.family = style.fontFamily[0];
+            }
+            _layout = new TextLayout(_text, TextFormat.plain, fr);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;

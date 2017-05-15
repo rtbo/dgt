@@ -31,11 +31,11 @@ class Style
         _backgroundColor = color;
     }
 
-    @property string fontFamily()
+    @property string[] fontFamily()
     {
         return _fontFamily;
     }
-    @property void fontFamily(in string family)
+    @property void fontFamily(string[] family)
     {
         _fontFamily = family;
     }
@@ -56,7 +56,7 @@ class Style
 
     SgNode _node;
     Color _backgroundColor;
-    string _fontFamily;
+    string[] _fontFamily;
     Length _fontSize;
     Color _textColor;
 }

@@ -37,3 +37,56 @@ final class BackgroundColorProperty : CSSProperty
         target.backgroundColor = cv.value;
     }
 }
+
+final class FontFamilyProperty : CSSProperty
+{
+    this()
+    {
+        super(
+            "font-family", true,
+            new CSSValue!(string[])(["sans-serif"])
+        );
+    }
+
+    override CSSValue!(string[]) parseValueImpl(Token[] tokens)
+    {
+        import std.algorithm : filter;
+        auto toks = tokens.filter!(t => t.tok != Tok.whitespace);
+
+        string[] families;
+        while (!toks.empty) {
+            if (toks.front.tok == Tok.ident) {
+                string fam = toks.front.str;
+                toks.popFront();
+                while (!toks.empty && toks.front.tok == Tok.ident) {
+                    fam ~= " " ~ toks.front.str;
+                    toks.popFront();
+                }
+                families ~= fam;
+            }
+            else if (toks.front.tok == Tok.str) {
+                families ~= toks.front.str;
+                toks.popFront();
+            }
+            if (!toks.empty && toks.front.tok != Tok.comma) {
+                return null; // invalid
+            }
+            else if (!toks.empty) {
+                toks.popFront();
+            }
+        }
+        return new CSSValue!(string[])(families);
+    }
+
+    override void applyFromParent(Style target)
+    {
+        target.fontFamily = target.parent.fontFamily;
+    }
+
+    override void applyFromValue(Style target, CSSValueBase value)
+    {
+        auto cv = cast(CSSValue!(string[])) value;
+        assert(cv);
+        target.fontFamily = cv.value;
+    }
+}
