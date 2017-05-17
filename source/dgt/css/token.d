@@ -90,9 +90,9 @@ struct Token
         }
         struct {
             string numStr;
-            double num;
-            Flag!"integer" integer;
             string unit;
+            float num;
+            Flag!"integer" integer;
         }
         struct {
             dchar startCP;
@@ -583,22 +583,22 @@ private:
     // $4.3.2
     Token consumeNumberToken()
     {
-        auto num = consumeNumber();
+        auto numTup = consumeNumber();
         auto c1 = getChar();
         auto c2 = getChar();
         auto c3 = getChar();
         if (isIdentStart(c1, c2, c3)) {
             putChar(c3, c2, c1);
             immutable unit = consumeName();
-            return Token(Tok.dimension, num.expand, unit);
+            return Token(Tok.dimension, numTup.expand, unit);
         }
         else if (c1 == '\u0025') {      // %
             putChar(c3, c2);
-            return Token(Tok.percentage, num.expand);
+            return Token(Tok.percentage, numTup.expand);
         }
         else {
             putChar(c3, c2, c1);
-            return Token(Tok.number, num.expand);
+            return Token(Tok.number, numTup.expand);
         }
     }
 
@@ -853,7 +853,7 @@ private:
     }
 
     // $4.3.12
-    Tuple!(string, double, Flag!"integer") consumeNumber()
+    Tuple!(string, float, Flag!"integer") consumeNumber()
     {
         import std.conv : to;
         // 1 - init
@@ -902,7 +902,7 @@ private:
         }
         putChar(c1);
         // 6 - conversion
-        immutable nval = repr.to!double();
+        immutable nval = repr.to!float();
         // 7 - result
         return typeof(return)(repr, nval, flag);
     }
