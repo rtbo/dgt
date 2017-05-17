@@ -130,11 +130,19 @@ abstract class SgNode
 
     /// A CSS formatted style attached to this node.
     /// It can be either rules with a selector, or only declarations.
-    /// In the latter case, a single * selector is implied.
-    /// The rules attached here will impact this node and its children.
+    /// In the latter case, a single * selector is implied
+    /// (if '{' is not found in the passed string, it is assumed to be only declarations).
+    /// The rules attached here are scoped to this node and its children.
     @property string cssStyle() { return _cssStyle; }
     /// ditto
-    @property void cssStyle(string css) { _cssStyle = css; }
+    @property void cssStyle(string css)
+    {
+        import std.algorithm : canFind;
+        if (!css.canFind("{")) {
+            css = "*{"~css~"}";
+        }
+        _cssStyle = css;
+    }
 
     /// The type used in css type selector.
     /// e.g. in the following style rule, "label" is the CSS type:
