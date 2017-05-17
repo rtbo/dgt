@@ -34,6 +34,11 @@ class SgColorRect : SgNode
         return rect;
     }
 
+    override @property string cssType()
+    {
+        return "rect";
+    }
+
     override protected immutable(RenderNode) collectRenderNode()
     {
         return new immutable RectFillRenderNode(_color, rect);
@@ -67,6 +72,11 @@ class SgImage : SgNode
     protected override FRect computeBounds()
     {
         return FRect(pos, _size);
+    }
+
+    override @property string cssType()
+    {
+        return "image";
     }
 
     override protected immutable(RenderNode) collectRenderNode()
@@ -123,6 +133,11 @@ class SgText : SgNode
         immutable topLeft = pos - cast(FVec2)_metrics.bearing;
         immutable size = cast(FVec2)_metrics.size;
         return FRect(topLeft, FSize(size));
+    }
+
+    override @property string cssType()
+    {
+        return "text";
     }
 
     override protected immutable(RenderNode) collectRenderNode()

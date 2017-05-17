@@ -25,6 +25,11 @@ class Label : Widget
         padding = FPadding(6);
     }
 
+    override @property string cssType()
+    {
+        return "label";
+    }
+
     /// Alignment that is applied when the container has too much space,
     /// and/or when both icon and text are requested and do not have the same
     /// height
