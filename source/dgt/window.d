@@ -128,6 +128,15 @@ class Window
         }
     }
 
+    @property int width() const
+    {
+        return geometry.width;
+    }
+    @property int height() const
+    {
+        return geometry.height;
+    }
+
     @property GlAttribs attribs() const
     {
         return _attribs;
