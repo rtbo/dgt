@@ -5,10 +5,10 @@ package:
 
 import dgt.css.cascade;
 import dgt.css.color;
-import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
 import dgt.geometry;
+import dgt.sg.style;
 
 import std.experimental.logger;
 import std.range;

@@ -3,11 +3,11 @@ module dgt.css.cascade;
 import dgt.css.om;
 import dgt.css.parse;
 import dgt.css.selector;
-import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
 import dgt.sg.node;
 import dgt.sg.parent;
+import dgt.sg.style;
 
 import std.range;
 

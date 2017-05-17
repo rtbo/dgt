@@ -1,14 +1,14 @@
 /// Font file manipulation
 module dgt.text.font;
 
-import dgt.css.style;
-import dgt.text.fontcache;
+import dgt.bindings.harfbuzz;
+import dgt.geometry;
 import dgt.image;
 import dgt.math.vec;
+import dgt.sg.style;
+import dgt.text.fontcache;
 import dgt.util;
-import dgt.bindings.harfbuzz;
 import dgt.vg;
-import dgt.geometry;
 
 import gfx.foundation.rc;
 

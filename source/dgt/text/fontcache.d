@@ -1,15 +1,16 @@
 module dgt.text.fontcache;
 
-import dgt.css.style;
-import dgt.text.font;
 import dgt.bindings.fontconfig;
+import dgt.sg.style;
+import dgt.text.font;
+
 import gfx.foundation.rc;
 
 import std.exception;
-import std.string;
 import std.experimental.logger;
+import std.string;
+import std.typecons : Flag, No, Yes;
 import std.uni;
-import std.typecons : Flag, Yes, No;
 
 
 /// A structured font request.

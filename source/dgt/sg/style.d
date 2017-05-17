@@ -1,5 +1,5 @@
-/// CSS Style
-module dgt.css.style;
+/// Node style module
+module dgt.sg.style;
 
 import dgt.css.color;
 import dgt.sg.node;

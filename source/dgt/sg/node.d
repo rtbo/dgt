@@ -1,13 +1,13 @@
 /// Scene graph module
 module dgt.sg.node;
 
-import dgt.css.style;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
 import dgt.render;
 import dgt.render.node;
 import dgt.sg.parent;
+import dgt.sg.style;
 import dgt.window;
 
 import std.exception;
