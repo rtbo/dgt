@@ -427,7 +427,8 @@ struct RenderCacheCookie
     }
 }
 
-package @property string className(Object obj)
+/// The runtime class name of obj.
+@property string className(Object obj)
 {
     import std.algorithm : splitter;
     return typeid(obj).toString().splitter('.').back;

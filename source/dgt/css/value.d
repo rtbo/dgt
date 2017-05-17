@@ -111,6 +111,12 @@ class CSSValueBase
         return _cssWideVal == CSSWideValue.unset;
     }
 
+    override string toString()
+    {
+        import std.format : format;
+        return format("CSSValueBase (%s)", _cssWideVal);
+    }
+
     private CSSWideValue _cssWideVal = CSSWideValue.none;
 }
 
@@ -130,6 +136,17 @@ class CSSValue(T) : CSSValueBase
     final @property T value()
     {
         return _value;
+    }
+
+    override string toString()
+    {
+        if (_cssWideVal != CSSWideValue.none) {
+            return super.toString();
+        }
+        else {
+            import std.format : format;
+            return format("CSSValue!%s(%s)", T.stringof, _cssWideVal);
+        }
     }
 
     private T _value;
