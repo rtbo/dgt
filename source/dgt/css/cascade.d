@@ -113,12 +113,8 @@ abstract class CSSProperty
     private CSSValueBase _initial;
 }
 
-private:
-
-__gshared CSSProperty[] supportedProperties;
-
-shared static this()
-{
+package(dgt)
+void initializeCSSCascade() {
     import dgt.css.properties;
 
     supportedProperties = [
@@ -127,6 +123,10 @@ shared static this()
         new FontSizeProperty,
     ];
 }
+
+private:
+
+__gshared CSSProperty[] supportedProperties;
 
 final class CascadeContext
 {

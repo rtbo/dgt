@@ -45,13 +45,13 @@ class Application : EventLoop, Disposable
 
         // init bindings to C libraries
         {
-            import dgt.bindings.libpng.load : loadLibPngSymbols;
-            import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
+            import derelict.freetype.ft : DerelictFT;
+            import derelict.opengl3.gl3 : DerelictGL3;
             import dgt.bindings.cairo.load : loadCairoSymbols;
             import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
             import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
-            import derelict.opengl3.gl3 : DerelictGL3;
-            import derelict.freetype.ft : DerelictFT;
+            import dgt.bindings.libpng.load : loadLibPngSymbols;
+            import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
 
             DerelictGL3.load();
             DerelictFT.load();
@@ -62,6 +62,10 @@ class Application : EventLoop, Disposable
             loadHarfbuzzSymbols();
         }
 
+        // init style engine
+        import dgt.css.cascade : initializeCSSCascade;
+        initializeCSSCascade();
+
         // init platform
         if (!platform) platform = makeDefaultPlatform();
         _platform = platform;
@@ -71,8 +75,8 @@ class Application : EventLoop, Disposable
 
         // init other singletons
         {
-            import dgt.text.font : FontEngine;
             import dgt.text.fontcache : FontCache;
+            import dgt.text.font : FontEngine;
             FontEngine.initialize();
             FontCache.initialize();
             RenderThread.initialize();
