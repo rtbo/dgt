@@ -5,7 +5,6 @@ version(linux):
 import dgt.platform.xcb : xcbEventType;
 import dgt.keys;
 import dgt.event;
-import dgt.window;
 
 import xkbcommon.xkbcommon;
 import xkbcommon.keysyms;
