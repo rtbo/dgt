@@ -42,7 +42,7 @@ int main()
     hello.text = "Hello";
     hello.alignment = Alignment.center;
     hello.onMouseDown = (MouseEvent ev) { ev.consume(); writeln("hello mouse down"); };
-    hello.cssStyle = "font-size:1in";
+    hello.cssStyle = "font-size: 1in; font-weight: bold;";
 
     auto icon = new Label;
     icon.name = "icon";

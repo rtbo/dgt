@@ -161,6 +161,7 @@ class Label : Widget
                 fr.family = style.fontFamily[0];
             }
             fr.size = FontSize(FontSize.Unit.px, style.fontSize);
+            fr.weight = style.fontWeight;
             _layout = new TextLayout(_text, TextFormat.plain, fr);
             _layout.layout();
             _layout.prepareGlyphRuns();

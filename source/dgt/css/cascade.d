@@ -120,6 +120,7 @@ void initializeCSSCascade() {
     supportedProperties = [
         new BackgroundColorProperty,
         new FontFamilyProperty,
+        new FontWeightProperty,
         new FontSizeProperty,
     ];
 }

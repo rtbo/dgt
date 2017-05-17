@@ -10,6 +10,7 @@ import dgt.css.token;
 import dgt.css.value;
 import dgt.geometry;
 
+import std.experimental.logger;
 import std.range;
 
 final class BackgroundColorProperty : CSSProperty
@@ -93,10 +94,104 @@ final class FontFamilyProperty : CSSProperty
     }
 }
 
+final class FontWeightProperty : CSSProperty
+{
+    enum initialFW = 400;
+    this() {
+        super(
+            "font-weight", true,
+            new CSSValue!FontWeight(initialFW)
+        );
+    }
+
+    enum RelativeKwd
+    {
+        lighter, bolder,
+    }
+
+    static struct FontWeight {
+        enum Type {
+            absolute, relative,
+        }
+        Type type;
+        union {
+            int abs;
+            RelativeKwd rel;
+        }
+        this(int w) {
+            type = Type.absolute;
+            abs = w;
+        }
+        this(RelativeKwd rel) {
+            type = Type.relative;
+            this.rel = rel;
+        }
+    }
+
+    override CSSValue!FontWeight parseValueImpl(Token[] tokens)
+    {
+        popSpaces(tokens);
+        if (tokens.empty) return null;
+        auto tok = tokens.front;
+        if (tok.tok == Tok.ident) {
+            switch (tok.str) {
+            case "normal":
+                return new CSSValue!FontWeight(400);
+            case "bold":
+                return new CSSValue!FontWeight(700);
+            case "lighter":
+                return new CSSValue!FontWeight(RelativeKwd.lighter);
+            case "bolder":
+                return new CSSValue!FontWeight(RelativeKwd.bolder);
+            default:
+                return null;
+            }
+        }
+        else if (tok.tok == Tok.number && tok.integer) {
+            return new CSSValue!FontWeight(cast(int)tok.num);
+        }
+        else {
+            return null;
+        }
+    }
+
+    override void applyFromParent(Style target)
+    {
+        target.fontWeight = target.parent.fontWeight;
+    }
+
+    override void applyFromValue(Style target, CSSValueBase value)
+    {
+        auto val = cast(CSSValue!FontWeight)value;
+        assert(val);
+        immutable fw = val.value;
+        if (fw.type == FontWeight.Type.absolute) {
+            target.fontWeight = fw.abs;
+        }
+        else {
+            immutable int pfw = target.parent ? target.parent.fontWeight : initialFW;
+            if (pfw >= 100 && pfw <= 300) {
+                target.fontWeight = fw.rel == RelativeKwd.lighter ? 100 : 400;
+            }
+            else if (pfw >= 301 && pfw <= 599) {
+                target.fontWeight = fw.rel == RelativeKwd.lighter ? 100 : 700;
+            }
+            else if (pfw >= 600 && pfw <= 799) {
+                target.fontWeight = fw.rel == RelativeKwd.lighter ? 400 : 900;
+            }
+            else if (pfw >= 800 && pfw <= 900) {
+                target.fontWeight = fw.rel == RelativeKwd.lighter ? 700 : 900;
+            }
+            else {
+                warningf("out of range font-weight: %s", pfw);
+            }
+        }
+    }
+}
+
 final class FontSizeProperty : CSSProperty
 {
-    this()
-    {
+    this() {
         super(
             "font-size", true,
             new CSSValue!FontSize(AbsoluteKwd.medium)

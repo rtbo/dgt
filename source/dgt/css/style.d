@@ -43,11 +43,25 @@ class Style
         _fontFamily = family;
     }
 
-    /// Size in pixels
+    /// Font weight as described by the CSS specification
+    /// This is the integer from 100 to 900.
+    /// Standards: https://www.w3.org/TR/css-fonts-3/#propdef-font-weight
+    @property int fontWeight()
+    {
+        return _fontWeight;
+    }
+    /// ditto
+    @property void fontWeight(int val)
+    {
+        _fontWeight = val;
+    }
+
+    /// Size of the EM box in pixels
     @property int fontSize()
     {
         return _fontSize;
     }
+    /// ditto
     @property void fontSize(int l)
     {
         _fontSize = l;
@@ -61,6 +75,7 @@ class Style
     SgNode _node;
     Color _backgroundColor;
     string[] _fontFamily;
+    int _fontWeight;
     int _fontSize;
     Color _textColor;
 }
