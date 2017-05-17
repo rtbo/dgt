@@ -2,6 +2,7 @@ module dgt.platform.xcb.screen;
 
 version(linux):
 
+import dgt.geometry;
 import dgt.screen;
 
 import xcb.xcb;
@@ -30,7 +31,7 @@ class XcbScreen : Screen
 
     override @property double dpi() const
     {
-        return width / (_s.width_in_millimeters / 25.4);
+        return _s.width_in_pixels / (_s.width_in_millimeters / 25.4);
     }
 
     @property inout(xcb_screen_t*) xcbScreen() inout
