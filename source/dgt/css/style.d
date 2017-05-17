@@ -2,7 +2,6 @@
 module dgt.css.style;
 
 import dgt.css.color;
-import dgt.css.value;
 import dgt.sg.node;
 
 class Style
@@ -20,6 +19,10 @@ class Style
     {
         auto p = _node.parent;
         return p ? p.style : null;
+    }
+    @property Style root()
+    {
+        return _node.root.style;
     }
 
     @property Color backgroundColor()
@@ -40,11 +43,12 @@ class Style
         _fontFamily = family;
     }
 
-    @property Length fontSize()
+    /// Size in pixels
+    @property int fontSize()
     {
         return _fontSize;
     }
-    @property void fontSize(Length l)
+    @property void fontSize(int l)
     {
         _fontSize = l;
     }
@@ -57,6 +61,6 @@ class Style
     SgNode _node;
     Color _backgroundColor;
     string[] _fontFamily;
-    Length _fontSize;
+    int _fontSize;
     Color _textColor;
 }
