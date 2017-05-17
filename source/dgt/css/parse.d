@@ -44,22 +44,18 @@ unittest
     auto rules = parser.consumeRuleList();
 
     assert(rules.length == 1);
-    assert(rules[0].selectorToks.length == 1);
-    auto selTok = rules[0].selectorToks[0];
-    assert(selTok.tok == Tok.ident);
-    assert(selTok.str == "h1");
     assert(rules[0].decls.length == 2);
     auto colDecl = rules[0].decls[0];
     auto taDecl = rules[0].decls[1];
     assert(colDecl.property == "color");
-    assert(colDecl.valueToks.length == 1);
-    assert(colDecl.valueToks[0].tok == Tok.hash);
-    assert(colDecl.valueToks[0].str == "123456");
+    assert(colDecl.valueTokens.length == 1);
+    assert(colDecl.valueTokens[0].tok == Tok.hash);
+    assert(colDecl.valueTokens[0].str == "123456");
     assert(!colDecl.important);
     assert(taDecl.property == "text-align");
-    assert(taDecl.valueToks.length == 1);
-    assert(taDecl.valueToks[0].tok == Tok.ident);
-    assert(taDecl.valueToks[0].str == "center");
+    assert(taDecl.valueTokens.length == 1);
+    assert(taDecl.valueTokens[0].tok == Tok.ident);
+    assert(taDecl.valueTokens[0].str == "center");
     assert(!taDecl.important);
 }
 
