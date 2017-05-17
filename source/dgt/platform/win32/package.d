@@ -262,8 +262,6 @@ class Win32Screen : Screen
     this(int num, IRect rect, double dpi)
     {
         _num = num; _rect = rect; _dpi = dpi;
-        import std.stdio;
-        writefln("%s, %s, %s", num, rect, dpi);
     }
 
     @property int num() const { return _num; }
