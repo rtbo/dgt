@@ -65,12 +65,12 @@ class Win32Platform : Platform
 
     override @property inout(Screen) defaultScreen() inout
     {
-        return null;
+        return _screens[0];
     }
 
     override @property inout(Screen)[] screens() inout
     {
-        return [];
+        return _screens;
     }
 
     override PlatformWindow createWindow(Window window)
