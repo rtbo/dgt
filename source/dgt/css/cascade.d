@@ -180,18 +180,17 @@ final class CascadeContext
         // the rest is handled property by property
         foreach (p; supportedProperties) {
             // selecting the highest priority origin and importance
-            Decl[] decls = null;
+            Decl cascaded;
             foreach(origImp; origImpDecls) {
                 foreach(d; origImp) {
                     if (d.property == p.name) {
-                        decls = origImp;
+                        cascaded = d;
                         break;
                     }
                 }
-                if (decls.length) break;
+                if (cascaded) break;
             }
 
-            auto cascaded = decls.length ? decls[0] : null;
             CSSValueBase cascadedVal;
             if (cascaded && !cascaded.value) {
                 if (!cascaded.value) cascaded.value = p.parseValue(cascaded.valueTokens);
