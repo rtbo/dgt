@@ -1,6 +1,7 @@
 /// Font file manipulation
 module dgt.text.font;
 
+import dgt.css.style;
 import dgt.text.fontcache;
 import dgt.image;
 import dgt.math.vec;
@@ -44,14 +45,6 @@ struct FontSize
     {
         return FontSize(Unit.px, px);
     }
-}
-
-/// Font style as defined by the CSS specification
-enum FontStyle
-{
-    normal,
-    italic,
-    oblique,
 }
 
 /// Font weight as defined by the CSS specification.

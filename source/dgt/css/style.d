@@ -4,6 +4,17 @@ module dgt.css.style;
 import dgt.css.color;
 import dgt.sg.node;
 
+
+/// Font style as defined by the CSS specification
+enum FontStyle
+{
+    normal,
+    italic,
+    oblique,
+}
+
+/// The style class groups all properties affecting visual appearance of nodes.
+/// It is populated during the CSS pass.
 class Style
 {
     this(SgNode node)
@@ -11,15 +22,18 @@ class Style
         _node = node;
     }
 
+    /// The node associated with this style.
     @property SgNode node()
     {
         return _node;
     }
+    /// The style of the parent `node`.
     @property Style parent()
     {
         auto p = _node.parent;
         return p ? p.style : null;
     }
+    /// The style of the root of `node`.
     @property Style root()
     {
         return _node.root.style;
@@ -45,15 +59,24 @@ class Style
 
     /// Font weight as described by the CSS specification
     /// This is the integer from 100 to 900.
-    /// Standards: https://www.w3.org/TR/css-fonts-3/#propdef-font-weight
+    /// Standards: $(LINK https://www.w3.org/TR/css-fonts-3/#propdef-font-weight)
     @property int fontWeight()
     {
         return _fontWeight;
     }
     /// ditto
-    @property void fontWeight(int val)
+    @property void fontWeight(in int val)
     {
         _fontWeight = val;
+    }
+
+    @property FontStyle fontStyle()
+    {
+        return _fontStyle;
+    }
+    @property void fontStyle(in FontStyle val)
+    {
+        _fontStyle = val;
     }
 
     /// Size of the EM box in pixels
@@ -72,10 +95,12 @@ class Style
         return _textColor;
     }
 
+private:
     SgNode _node;
     Color _backgroundColor;
     string[] _fontFamily;
     int _fontWeight;
+    FontStyle _fontStyle;
     int _fontSize;
     Color _textColor;
 }

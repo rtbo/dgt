@@ -189,13 +189,44 @@ final class FontWeightProperty : CSSProperty
     }
 }
 
+final class FontStyleProperty : CSSProperty
+{
+    this() {
+        super("font-style", true, new CSSValue!FontStyle(FontStyle.normal));
+    }
+
+    override CSSValue!FontStyle parseValueImpl(Token[] tokens)
+    {
+        popSpaces(tokens);
+        if (tokens.front.tok == Tok.ident) {
+            switch (tokens.front.str) {
+            case "normal": return new CSSValue!FontStyle(FontStyle.normal);
+            case "italic": return new CSSValue!FontStyle(FontStyle.italic);
+            case "oblique": return new CSSValue!FontStyle(FontStyle.oblique);
+            default:
+                break;
+            }
+        }
+        return null;
+    }
+
+    override void applyFromParent(Style target)
+    {
+        target.fontStyle = target.parent.fontStyle;
+    }
+
+    override void applyFromValue(Style target, CSSValueBase value)
+    {
+        auto val = cast(CSSValue!FontStyle)value;
+        assert(val);
+        target.fontStyle = val.value;
+    }
+}
+
 final class FontSizeProperty : CSSProperty
 {
     this() {
-        super(
-            "font-size", true,
-            new CSSValue!FontSize(AbsoluteKwd.medium)
-        );
+        super("font-size", true, new CSSValue!FontSize(AbsoluteKwd.medium));
 
         typeof(relativeMap) rm;
         rm[10] = [ 9, 12];      // xxSmall

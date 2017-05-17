@@ -121,6 +121,7 @@ void initializeCSSCascade() {
         new BackgroundColorProperty,
         new FontFamilyProperty,
         new FontWeightProperty,
+        new FontStyleProperty,
         new FontSizeProperty,
     ];
 }
