@@ -104,15 +104,6 @@ class SgText : SgNode
         dirtyBounds();
     }
 
-    @property FontRequest font() const { return _font; }
-    @property void font(FontRequest font)
-    {
-        _font = font;
-        _renderNode = null;
-        _layout = null;
-        dirtyBounds();
-    }
-
     @property FVec4 color() const { return _color; }
     @property void color(in FVec4 color)
     {
@@ -148,7 +139,7 @@ class SgText : SgNode
     private void ensureLayout()
     {
         if (!_layout) {
-            _layout = new TextLayout(_text, TextFormat.plain, _font);
+            _layout = new TextLayout(_text, TextFormat.plain, style);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;
@@ -156,7 +147,6 @@ class SgText : SgNode
     }
 
     private string _text;
-    private FontRequest _font;
     private FVec4 _color;
     private TextLayout _layout;
     private TextMetrics _metrics;

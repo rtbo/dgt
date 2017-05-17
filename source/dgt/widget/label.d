@@ -156,14 +156,7 @@ class Label : Widget
     {
         assert(_text.length);
         if (!_layout) {
-            FontRequest fr;
-            if (style.fontFamily.length) {
-                fr.family = style.fontFamily[0];
-            }
-            fr.weight = style.fontWeight;
-            fr.style = style.fontStyle;
-            fr.size = FontSize(FontSize.Unit.px, style.fontSize);
-            _layout = new TextLayout(_text, TextFormat.plain, fr);
+            _layout = new TextLayout(_text, TextFormat.plain, style);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;

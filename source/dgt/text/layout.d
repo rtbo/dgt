@@ -6,6 +6,7 @@ import dgt.image;
 import dgt.math.mat;
 import dgt.math.transform;
 import dgt.math.vec;
+import dgt.sg.style;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.vg.context;
@@ -98,11 +99,11 @@ struct TextMetrics
 class TextLayout
 {
     /// Builds a layout
-    this(string text, TextFormat format, FontRequest font)
+    this(string text, TextFormat format, Style style)
     {
         _text = text;
         _format = format;
-        _matchedFonts = FontCache.instance.requestFont(font);
+        _matchedFonts = FontCache.instance.requestFont(style);
         enforce(_matchedFonts.length, "Text layout could not match any font for '"~text~"'");
     }
 

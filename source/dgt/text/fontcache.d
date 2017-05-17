@@ -13,20 +13,6 @@ import std.typecons : Flag, No, Yes;
 import std.uni;
 
 
-/// A structured font request.
-/// Although taking parameters as defined by the CSS specification,
-/// no guarantee is made that the font matching will be 100% CSS compliant.
-struct FontRequest
-{
-    string family;
-    FontSize size = FontSize.pts(10);
-    FontStyle style = FontStyle.normal;
-    int weight = FontWeight.normal;
-    FontVariant variant = FontVariant.normal;
-    string foundry;
-}
-
-
 /// Result of a font request. A request typically returns a range of those results.
 /// The first element will be the best match, the next ones fallbacks.
 /// Has same fields as the font request, so that application can check what was
@@ -123,27 +109,17 @@ class FontCache : Disposable
         _appFontFiles ~= file;
     }
 
-    FontResult[] requestFont(in FontRequest req)
+    FontResult[] requestFont(Style style)
     {
         auto pat = FcPatternCreate();
         scope(exit)
             FcPatternDestroy(pat);
-        if (req.family.length) {
-            FcPatternAddString(pat, FC_FAMILY, toStringz(req.family));
+        if (style.fontFamily.length) {
+            FcPatternAddString(pat, FC_FAMILY, toStringz(style.fontFamily[0]));
         }
-        FcPatternAddInteger(pat, FC_SLANT, styleToFcSlant(req.style));
-        FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(req.weight));
-        // FIXME: get dpi from Screen
-        FcPatternAddDouble(pat, FC_DPI, 96.0);
-        if (req.size.unit == FontSize.Unit.px) {
-            FcPatternAddDouble(pat, FC_PIXEL_SIZE, req.size.value);
-        }
-        else {
-            FcPatternAddDouble(pat, FC_SIZE, req.size.value);
-        }
-        if (req.foundry.length) {
-            FcPatternAddString(pat, FC_FOUNDRY, toStringz(req.foundry));
-        }
+        FcPatternAddInteger(pat, FC_SLANT, styleToFcSlant(style.fontStyle));
+        FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(style.fontWeight));
+        FcPatternAddDouble(pat, FC_PIXEL_SIZE, style.fontSize);
         FcPatternAddBool(pat, FC_OUTLINE, FcTrue);
         FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
 
@@ -179,13 +155,8 @@ class FontCache : Disposable
                 if (FcPatternGetInteger(p, FC_WEIGHT, 0, &ival) == FcResultMatch) {
                     fr.weight = FcWeightToOpenType(ival);
                 }
-                immutable key = req.size.unit == FontSize.Unit.pts ? FC_SIZE : FC_PIXEL_SIZE;
-                if (FcPatternGetDouble(p, toStringz(key), 0, &dval) == FcResultMatch) {
-                    fr.size = req.size.unit == FontSize.Unit.pts ?
-                        FontSize.pts(dval) : FontSize.px(dval);
-                }
-                if (FcPatternGetString(p, FC_FOUNDRY, 0, &sval) == FcResultMatch) {
-                    fr.foundry = fromStringz(sval).idup;
+                if (FcPatternGetDouble(p, toStringz(FC_PIXEL_SIZE), 0, &dval) == FcResultMatch) {
+                    fr.size = FontSize.px(dval);
                 }
                 string fn;
                 int fi;
