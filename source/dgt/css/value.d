@@ -74,7 +74,7 @@ body {
     default:
         return false;
     }
-    l = Length(cast(float)tok.num);
+    l = Length(cast(float)tok.num, unit);
     return true;
 }
 
