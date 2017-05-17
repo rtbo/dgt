@@ -302,20 +302,20 @@ class Window
     @property Screen screen() const
     {
         int overlap=-1;
-        int num=-1;
+        size_t ind = size_t.max;
         auto screens = Application.platform.screens;
         immutable rect = geometry;
-        foreach (s; screens) {
+        foreach (i, s; screens) {
             immutable sr = s.rect;
             if (sr.overlaps(rect)) {
                 immutable ol = intersection(sr, rect).area;
                 if (ol > overlap) {
                     overlap = ol;
-                    num = s.num;
+                    ind = i;
                 }
             }
         }
-        return num >= 0 ? screens[num] : screens[0];
+        return ind != size_t.max ? screens[ind] : screens[0];
     }
 
     /// The region that needs update
