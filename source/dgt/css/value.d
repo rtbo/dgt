@@ -24,8 +24,9 @@ in {
     assert(tok.tok == Tok.dimension);
 }
 body {
+    import std.uni : toLower;
     Length.Unit unit;
-    switch(tok.unit) {
+    switch(tok.unit.toLower) {
     case "em":
         unit = Length.Unit.em;
         break;
