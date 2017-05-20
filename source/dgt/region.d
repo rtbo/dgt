@@ -56,11 +56,11 @@ class _Region
     }
 
     bool contains(in IPoint p) const {
-        if (!_extents.contains!int(p)) return false;
+        if (!_extents.contains(p)) return false;
         else if (rects.length == 1) return true;
 
         foreach (ref r; _rects) {
-            if (r.contains!int(p)) return true;
+            if (r.contains(p)) return true;
         }
         return false;
     }

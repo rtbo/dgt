@@ -249,7 +249,7 @@ class Path
         FRect res;
         void addPoint(in FPoint point) {
             if (firstSet) {
-                res.extend!float(point);
+                res.extend(point);
             }
             else {
                 res.x = point.x;

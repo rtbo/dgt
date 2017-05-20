@@ -1,15 +1,17 @@
 /// Geometric primitives module
 module dgt.geometry;
 
-import dgt.math;
+import dgt.math.mat;
+public import dgt.math.vec;
 
-import std.traits : isNumeric;
-import std.algorithm : min, max;
+import std.algorithm : max, min;
 import std.range;
+import std.traits : isNumeric;
 
 alias Point(T) = Vec2!T;
 alias FPoint = Point!float;
 alias IPoint = Point!int;
+alias isPoint(T) = isVec!(2, T);
 
 alias FSize = Size!float;
 alias ISize = Size!int;
@@ -25,6 +27,8 @@ alias IRect = Rect!int;
 /// Represents a two dimensional size
 struct Size(T) if (isNumeric!T)
 {
+    alias Scalar = T;
+
     T width =0;
     T height =0;
 
@@ -58,9 +62,23 @@ unittest
     static assert(__traits(compiles, si = cast(ISize)sd));
 }
 
+/// Compile time checks that T is a size
+template isSize(T)
+{
+    import std.traits : TemplateOf;
+    enum isSize = __traits(isSame, TemplateOf!T, Size);
+}
+
+static assert(  isSize!FSize);
+static assert(  isSize!ISize);
+static assert(! isSize!FPoint);
+
+
 /// Represents padding inside a rectangular area
 struct Padding(T) if (isNumeric!T)
 {
+    alias Scalar = T;
+
     T left =0;
     T top =0;
     T right =0;
@@ -106,9 +124,22 @@ struct Padding(T) if (isNumeric!T)
     }
 }
 
+/// Compile time checks that T is a padding
+template isPadding(T)
+{
+    import std.traits : TemplateOf;
+    enum isPadding = __traits(isSame, TemplateOf!T, Padding);
+}
+
+static assert(  isPadding!FPadding);
+static assert(  isPadding!IPadding);
+static assert(! isPadding!IMargins);
+
 /// Represents margins around a rectangular area
 struct Margins(T) if (isNumeric!T)
 {
+    alias Scalar = T;
+
     T left =0;
     T top =0;
     T right =0;
@@ -163,7 +194,18 @@ unittest
     static assert(__traits(compiles, mi = cast(IMargins) md));
 }
 
-/// Represents a rectangular area
+/// Compile time checks that T is margins
+template isMargins(T)
+{
+    import std.traits : TemplateOf;
+    enum isMargins = __traits(isSame, TemplateOf!T, Margins);
+}
+
+static assert(  isMargins!FMargins);
+static assert(  isMargins!IMargins);
+static assert(! isMargins!FPadding);
+
+/// Represents a rectangular area, defined by a position and a size
 struct Rect(T) if (isNumeric!T)
 {
     private
@@ -416,30 +458,88 @@ struct Rect(T) if (isNumeric!T)
     }
 }
 
-bool contains(T)(in Size!T big, in Size!T small)
+/// Compile time checks that T is a rect
+template isRect(T)
+{
+    import std.traits : TemplateOf;
+    enum isRect = __traits(isSame, TemplateOf!T, Rect);
+}
+
+static assert(  isRect!FRect);
+static assert(  isRect!IRect);
+static assert(! isRect!FPadding);
+
+/// Build a rect from point and size components
+auto rect(X, Y, W, H)(in X x, in Y y, in W w, in H h)
+if (isNumeric!X && isNumeric!Y && isNumeric!W && isNumeric!H)
+{
+    import std.traits : CommonType;
+    alias T = CommonType!(X, Y, W, H);
+    return Rect!T(x, y, w, h);
+}
+
+/// Build a rect from point and size components
+auto rect(P, W, H)(in P p, in W w, in H h)
+if (isPoint!P && isNumeric!W && isNumeric!H)
+{
+    import std.traits : CommonType;
+    alias T = CommonType!(P.Scalar, W, H);
+    return Rect!T(p, w, h);
+}
+
+/// Build a rect from point and size components
+auto rect(X, Y, S)(in X x, in Y y, in S s)
+if (isNumeric!X && isNumeric!Y && isSize!S)
+{
+    import std.traits : CommonType;
+    alias T = CommonType!(X, Y, S.Scalar);
+    return Rect!T(x, y, s);
+}
+
+/// Build a rect from point and size components
+auto rect(P, S)(in P p, in S s)
+if (isPoint!P && isSize!S)
+{
+    import std.traits : CommonType;
+    alias T = CommonType!(P.Scalar, S.Scalar);
+    return Rect!T(p, s);
+}
+
+/// Checks whether big contains small
+bool contains(S1, S2)(in S1 big, in S2 small)
+if (isSize!S1 && isSize!S2)
 {
     return big.width >= small.width && big.height >= small.height;
 }
 
-bool contains(T)(in Rect!T r, in Point!T p)
+/// Checks whether r contains p
+bool contains(R, P)(in R r, in P p)
+if (isRect!R && isPoint!P)
 {
     return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
 }
 
-bool contains(T)(in Rect!T rl, in Rect!T rr)
+/// Checks whether rl contains rr
+bool contains(R1, R2)(in R1 r1, in R2 r2)
+if (isRect!R1 && isRect!R2)
 {
-    // is rr fully within rl?
-    return rr.left >= rl.left && rr.right <= rl.right && rr.top >= rl.top && rr.bottom <= rl.bottom;
+    // is r2 fully within r1?
+    return r2.left >= r1.left && r2.right <= r1.right && r2.top >= r1.top && r2.bottom <= r1.bottom;
 }
 
-bool overlaps(T)(in Rect!T rl, in Rect!T rr)
+/// Checks whether rl overlaps with rr
+bool overlaps(R1, R2)(in R1 r1, in R2 r2)
+if (isRect!R1 && isRect!R2)
 {
-    return rl.right >= rr.left && rl.left <= rr.right && rl.bottom >= rr.top && rl.top <= rr.bottom;
+    return r1.right >= r2.left && r1.left <= r2.right && r1.bottom >= r2.top && r1.top <= r2.bottom;
 }
 
-Rect!T intersection(T)(in Rect!T r1, in Rect!T r2)
+/// Computes the intersection of r1 with r2
+auto intersection(R1, R2)(in R1 r1, in R2 r2)
+if (isRect!R1 && isRect!R2)
 {
-    Rect!T r;
+    import std.traits : CommonType;
+    Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
     r.left = max(r1.left, r2.left);
     r.right = max(min(r1.right, r2.right), r.left);
     r.top = max(r1.top, r2.top);
@@ -447,9 +547,12 @@ Rect!T intersection(T)(in Rect!T r1, in Rect!T r2)
     return r;
 }
 
-Rect!T extents(T)(in Rect!T r1, in Rect!T r2)
+/// Compute the extents of r1 and r2
+auto extents(R1, R2)(in R1 r1, in R2 r2)
+if (isRect!R1 && isRect!R2)
 {
-    Rect!T r;
+    import std.traits : CommonType;
+    Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
     r.left = min(r1.left, r2.left);
     r.right = max(r1.right, r2.right);
     r.top = min(r1.top, r2.top);
@@ -458,7 +561,8 @@ Rect!T extents(T)(in Rect!T r1, in Rect!T r2)
 }
 
 /// Extend a rect with the given point
-void extend(T)(ref Rect!T r, in Point!T p)
+void extend(R, P)(ref R r, in P p)
+if (isRect!R && isPoint!P)
 {
     if (r.left > p.x) r.left = p.x;
     else if (r.right < p.x) r.right = p.x;
@@ -466,11 +570,13 @@ void extend(T)(ref Rect!T r, in Point!T p)
     else if (r.bottom < p.y) r.bottom = p.y;
 }
 
+/// The area of size s
 @property T area(T)(in Size!T s)
 {
     return s.width * s.height;
 }
 
+/// The area of rect r
 @property T area(T)(in Rect!T r)
 {
     return r.size.area;

@@ -180,7 +180,7 @@ class SgParent : SgNode
         foreach (c; children)
         {
             immutable point = cast(FVec2)event.point;
-            if (c.bounds.contains!float(point)) {
+            if (c.bounds.contains(point)) {
                 immutable pos = c.pos;
 
                 auto next = new MouseEvent(
