@@ -305,12 +305,22 @@ shared static this()
 {
     import std.conv : to;
     import std.exception : assumeUnique;
+    import std.meta : NoDuplicates;
     import std.traits : EnumMembers;
 
     Color[string] colors;
-    foreach(em; EnumMembers!ColorName) {
+    foreach(em; NoDuplicates!(EnumMembers!ColorName)) {
         colors[em.to!string] = Color(cast(uint)em);
     }
+    // adding duplicates that do not yield a string by EnumMembers
+    colors["cyan"]              = Color(ColorName.cyan);
+    colors["darkgrey"]          = Color(ColorName.darkgrey);
+    colors["darkslategrey"]     = Color(ColorName.darkslategrey);
+    colors["grey"]              = Color(ColorName.grey);
+    colors["lightgrey"]         = Color(ColorName.lightgrey);
+    colors["lightslategrey"]    = Color(ColorName.lightslategrey);
+    colors["magenta"]           = Color(ColorName.magenta);
+    colors["slategrey"]         = Color(ColorName.slategrey);
     colors = colors.rehash;
     cssColors = assumeUnique(colors);
 }
