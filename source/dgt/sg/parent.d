@@ -137,6 +137,28 @@ class SgParent : SgNode
         --_childCount;
     }
 
+    override SgNode nodeAtPos(in FVec2 pos)
+    {
+        foreach (c; children) {
+            if (c.bounds.contains(pos)) {
+                return c.nodeAtPos(pos - c.pos);
+            }
+        }
+        return super.nodeAtPos(pos);
+    }
+
+    override void nodesAtPos(in FVec2 pos, ref SgNode[] nodes)
+    {
+        if (rect(0, 0, bounds.size).contains(pos)) {
+            nodes ~= this;
+        }
+        foreach (c; children) {
+            if (c.bounds.contains(pos)) {
+                c.nodesAtPos(pos - c.pos, nodes);
+            }
+        }
+    }
+
     override protected FRect computeBounds()
     {
         import std.algorithm : map;
@@ -155,48 +177,20 @@ class SgParent : SgNode
         );
     }
 
-    override SgNode eventChain(SgNode[] chain, Event event)
+    override SgNode chainEvent(SgNode[] chain, Event event, EventAdapter adapter)
     {
         // fiter phase
         if (filterEvent(event)) return this;
 
         // chaining phase
         if (chain.length) {
-            auto res = chain[0].eventChain(chain[1 .. $], event);
+            auto c = chain[0];
+            auto ev = adapter(event, c);
+            auto res = c.chainEvent(chain[1 .. $], ev, adapter);
             if (res) return res;
         }
 
         // bubbling phase
-        if (handleEvent(event)) return this;
-        else return null;
-    }
-
-    override SgNode eventTargetedChain(MouseEvent event)
-    {
-        /// filter phase
-        if (filterEvent(event)) return this;
-
-        /// chaining phase
-        foreach (c; children)
-        {
-            immutable point = cast(FVec2)event.point;
-            if (c.bounds.contains(point)) {
-                immutable pos = c.pos;
-
-                auto next = new MouseEvent(
-                    event.type, event.window,
-                    ivec(point.x - pos.x, point.y - pos.y),
-                    event.button, event.state, event.modifiers
-                );
-
-                auto res = c.eventTargetedChain(next);
-                if (res) return res;
-
-                assert(!next.consumed);
-            }
-        }
-
-        /// bubbling phase
         if (handleEvent(event)) return this;
         else return null;
     }

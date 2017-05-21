@@ -12,6 +12,7 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.screen;
+import dgt.sg.node;
 import dgt.sg.parent;
 import dgt.util;
 import dgt.widget.widget;
@@ -364,6 +365,9 @@ class Window
         case EventType.mouseUp:
             handleMouseUp(cast(MouseEvent) wEv);
             break;
+        case EventType.mouseMove:
+            handleMouseMove(cast(MouseEvent) wEv);
+            break;
         case EventType.keyDown:
             auto kEv = cast(KeyEvent) wEv;
             _onKey.fire(kEv);
@@ -518,7 +522,42 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseDown.fire(ev);
             if (!ev.consumed && _root) {
-                _root.eventTargetedChain(ev);
+                _dragChain.length = 0;
+                _root.nodesAtPos(cast(FVec2)ev.point, _dragChain);
+                auto consumer = _root.chainEvent(_dragChain, ev, &mouseAdapter);
+                if (consumer) {
+                    // if a node has explicitely consumed the event, we trim
+                    // the chain after it, such as its children won't receive
+                    // the drag event.
+                    import std.algorithm : countUntil;
+                    auto ind = _dragChain.countUntil!"a is b"(consumer);
+                    _dragChain = _dragChain[0 .. ind+1];
+                }
+            }
+        }
+
+        void handleMouseMove(MouseEvent ev)
+        {
+            assert(ev.type == EventType.mouseMove);
+            _onMouse.fire(ev);
+            if (!ev.consumed) _onMouseUp.fire(ev);
+            if (!ev.consumed && _root) {
+                if (_dragChain.length) {
+                    // following does not compile although type is `package(dgt)`
+                    // ev.type = EventType.mouseDrag;
+                    auto dragEv = new MouseEvent(
+                        EventType.mouseDrag, ev.window, ev.point,
+                        ev.button, ev.state, ev.modifiers
+                    );
+                    _root.chainEvent(_dragChain, dragEv, &mouseAdapter);
+                }
+                else {
+                    // take advantage of existing allocation
+                    static SgNode[] chain;
+                    _root.nodesAtPos(cast(FVec2)ev.point, chain);
+                    _root.chainEvent(chain, ev, &mouseAdapter);
+                    chain.length = 0;
+                }
             }
         }
 
@@ -528,7 +567,16 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
-                _root.eventTargetedChain(ev);
+                if (_dragChain.length) {
+                    _root.chainEvent(_dragChain, ev, &mouseAdapter);
+                }
+                else {
+                    // should not happen
+                    warning("mouse up without drag?");
+                    _root.nodesAtPos(cast(FVec2)ev.point, _dragChain);
+                    _root.chainEvent(_dragChain, ev, &mouseAdapter);
+                }
+                _dragChain.length = 0;
             }
         }
 
@@ -560,6 +608,7 @@ class Window
         SgParent _root;
         Widget _widget;
         // Widget[] _widgetRoots;
+        SgNode[] _dragChain;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;

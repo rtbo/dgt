@@ -14,6 +14,29 @@ import std.exception;
 import std.experimental.logger;
 import std.typecons;
 
+
+/// An event adapter
+/// Functions of this type are used to adapt an event before being propagated
+/// to the next node in a chain.
+alias EventAdapter = Event function(Event ev, SgNode next);
+
+/// identity event adapter
+Event identityAdapter(Event ev, SgNode /+next+/)
+{
+    return ev;
+}
+
+/// Mouse event adapter
+Event mouseAdapter(Event ev, SgNode next)
+{
+    auto mev = cast(MouseEvent)ev;
+    return new MouseEvent(
+           mev.type, mev.window, mev.point - cast(IVec2)next.pos,
+           mev.button, mev.state, mev.modifiers
+    );
+}
+
+
 /// A node for a 2D scene-graph
 abstract class SgNode
 {
@@ -22,6 +45,8 @@ abstract class SgNode
     {
         _onMouseDown = new Handler!MouseEvent;
         _onMouseUp = new Handler!MouseEvent;
+        _onMouseDrag = new Handler!MouseEvent;
+        _onMouseMove = new Handler!MouseEvent;
         _style = new Style(this);
     }
 
@@ -74,6 +99,25 @@ abstract class SgNode
     {
         _pos = pos;
         dirtyBounds();
+    }
+
+    /// Get a node at position given by pos.
+    SgNode nodeAtPos(in FVec2 pos)
+    {
+        if (FRect(0f, 0f, bounds.size).contains(pos)) {
+            return this;
+        }
+        else {
+            return null;
+        }
+    }
+
+    /// Recursively append nodes that are located at pos from root to end target.
+    void nodesAtPos(in FVec2 pos, ref SgNode[] nodes)
+    {
+        if (FRect(0f, 0f, bounds.size).contains(pos)) {
+            nodes ~= this;
+        }
     }
 
     /// The bounds of this nodes in parent node coordinates.
@@ -193,24 +237,39 @@ abstract class SgNode
     {
         return _onMouseUp;
     }
+    /// ditto
+    final @property void onMouseDrag(Slot!MouseEvent slot)
+    {
+        _onMouseDrag.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseDrag()
+    {
+        return _onMouseDrag;
+    }
+    /// ditto
+    final @property void onMouseMove(Slot!MouseEvent slot)
+    {
+        _onMouseMove.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseMove()
+    {
+        return _onMouseMove;
+    }
 
     /// Chain an event until its final target, giving each parent in the chain
     /// the opportunity to filter it, or to handle it after its children if
-    /// the event hasn't been consumed by any of them
-    SgNode eventChain(SgNode[] chain, Event event)
+    /// the event hasn't been consumed by any of them.
+    /// Returns: the node that has consumed the event, or null.
+    SgNode chainEvent(SgNode[] chain, Event event, EventAdapter /+adapter+/)
     {
         /// unexhausted chain must land in Parent.eventChain
         assert(!chain.length);
 
         if (filterEvent(event)) return this;
         else if (handleEvent(event)) return this;
-        else return null;
-    }
-
-    /// Event chain whose final target is inferred by the event
-    SgNode eventTargetedChain(MouseEvent event)
-    {
-        return eventChain(null, event);
+        return null;
     }
 
     final protected bool filterEvent(Event event)
@@ -227,7 +286,7 @@ abstract class SgNode
     final protected bool handleEvent(Event event)
     {
         immutable et = event.type;
-        if (et & EventType.mouseMask) {
+        if (et & EventType.mouseBit) {
             auto mev = cast(MouseEvent)event;
             switch (et) {
             case EventType.mouseDown:
@@ -235,6 +294,12 @@ abstract class SgNode
                 break;
             case EventType.mouseUp:
                 onMouseUp.fire(mev);
+                break;
+            case EventType.mouseDrag:
+                onMouseDrag.fire(mev);
+                break;
+            case EventType.mouseMove:
+                onMouseMove.fire(mev);
                 break;
             default:
                 break;
@@ -380,6 +445,8 @@ abstract class SgNode
     private EventFilter _evFilter;
     private Handler!MouseEvent _onMouseDown;
     private Handler!MouseEvent _onMouseUp;
+    private Handler!MouseEvent _onMouseMove;
+    private Handler!MouseEvent _onMouseDrag;
 
     // cache policy
     private bool _dynamic=false;

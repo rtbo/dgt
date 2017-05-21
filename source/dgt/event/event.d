@@ -8,40 +8,42 @@ import dgt.window : Window, WindowState;
 
 
 /// Type of event. 3 categories: app, window and user.
-/// Category can be tested using masks.
+/// Category can be tested using bitwise AND.
 enum EventType : int
 {
-    appMask = 0x01000000,
-    timer,
+    appBit          = 0x1000_0000,
+    windowBit       = 0x2000_0000,
+    userBit         = 0x4000_0000,
 
-    windowMask = 0x02000000,
-    show,
+    focusBit        = 0x0100_0000,
+    mouseBit        = 0x0200_0000,
+    keyBit          = 0x0400_0000,
+
+    timer           = appBit | 1,
+
+    show            = windowBit | 1,
     hide,
     expose,
     resize,
     move,
     close,
     stateChange,
-    focusMask       = windowMask | 0x1000,
-    focusIn,
+    focusIn         = windowBit | focusBit | 1,
     focusOut,
-    mouseMask       = windowMask | 0x2000,
-    mouseDown,
+    mouseDown       = windowBit | mouseBit | 1,
     mouseUp,
     mouseMove,
+    mouseDrag,
     mouseEnter,
     mouseLeave,
-    keyMask         = windowMask | 0x4000,
-    keyDown,
+    keyDown         = windowBit | keyBit | 1,
     keyUp,
-
-    userMask = 0x0400000,
 }
 
 /// Tests whether the event type is of the app category
 bool isAppEventType(EventType type)
 {
-    return (type & EventType.appMask) != 0;
+    return (type & EventType.appBit) != 0;
 }
 
 /// Tests whether the event type is of the app category
@@ -53,7 +55,7 @@ bool isAppEvent(in Event ev)
 /// Tests whether the event type is of the window category
 bool isWindowEventType(EventType type)
 {
-    return (type & EventType.windowMask) != 0;
+    return (type & EventType.windowBit) != 0;
 }
 
 /// Tests whether the event type is of the window category
@@ -65,7 +67,7 @@ bool isWindowEvent(in Event ev)
 /// Tests whether the event type is of the user category
 bool isUserEventType(EventType type)
 {
-    return (type & EventType.userMask) != 0;
+    return (type & EventType.userBit) != 0;
 }
 
 /// Tests whether the event type is of the user category
@@ -91,17 +93,22 @@ abstract class Event
         _type = type;
     }
 
-    @property EventType type() const
+    final @property EventType type() const
     {
         return _type;
     }
 
-    @property bool consumed() const
+    package(dgt) @property void type(in EventType type)
+    {
+        _type = type;
+    }
+
+    final @property bool consumed() const
     {
         return _consumed;
     }
 
-    void consume()
+    final void consume()
     {
         _consumed = true;
     }
@@ -289,8 +296,7 @@ class MouseEvent : WindowEvent
             MouseState state, KeyMods modifiers)
     in
     {
-        assert(type == EventType.mouseDown || type == EventType.mouseUp || type == EventType.mouseMove
-                || type == EventType.mouseEnter || type == EventType.mouseLeave);
+        assert(type & EventType.mouseBit);
     }
     body
     {
