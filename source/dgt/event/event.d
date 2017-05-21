@@ -9,8 +9,11 @@ import dgt.window : Window, WindowState;
 
 /// Type of event. 3 categories: app, window and user.
 /// Category can be tested using bitwise AND.
-enum EventType : int
+enum EventType : uint
 {
+    noneMask        = 0x0000_0000,
+    allMask         = 0xffff_ffff,
+
     appBit          = 0x1000_0000,
     windowBit       = 0x2000_0000,
     userBit         = 0x4000_0000,

@@ -207,14 +207,29 @@ abstract class SgNode
 
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
-    final @property void eventFilter(EventFilter filter)
+    /// Params:
+    ///     filter  =   a filter delegate
+    ///     mask    =   a bitwise mask that will be used to test if a filter
+    ///                 applies to a given event type
+    /// Returns: the filter given as parameter. Can be used for later uninstall.
+    final EventFilter addEventFilter(EventFilter filter, EventType mask=EventType.allMask)
     {
-        _evFilter = filter;
+        _evFilters ~= MaskedFilter(filter, mask);
+        return filter;
     }
-    /// ditto
-    final protected @property EventFilter eventFilter()
+
+    /// Remove an install event filter.
+    final void removeEventFilter(EventFilter filter)
     {
-        return _evFilter;
+        import std.algorithm : remove;
+        _evFilters = _evFilters.remove!(f => f.filter is filter);
+    }
+
+    /// Remove installed event filters whose mask have an intersection with given mask.
+    final void removeEventFilters(EventType mask)
+    {
+        import std.algorithm : remove;
+        _evFilters = _evFilters.remove!(f => (f.mask & cast(uint)mask) != 0);
     }
 
     /// Activated when user clicks on this node
@@ -274,13 +289,14 @@ abstract class SgNode
 
     final protected bool filterEvent(Event event)
     {
-        if (_evFilter) {
-            _evFilter(event);
-            return event.consumed;
+        immutable type = event.type;
+        foreach (ref f; _evFilters) {
+            if (f.mask & type) {
+                f.filter(event);
+                if (event.consumed) return true;
+            }
         }
-        else {
-            return false;
-        }
+        return false;
     }
 
     final protected bool handleEvent(Event event)
@@ -420,6 +436,12 @@ abstract class SgNode
         return format("%s%s { %(%-(%s:%), %) }", indent, this.className, properties);
     }
 
+    private static struct MaskedFilter
+    {
+        EventFilter filter;
+        uint mask;
+    }
+
     // graph
     package SgParent _parent;
 
@@ -442,7 +464,7 @@ abstract class SgNode
     private string _cssClass;
 
     // events
-    private EventFilter _evFilter;
+    private MaskedFilter[] _evFilters;
     private Handler!MouseEvent _onMouseDown;
     private Handler!MouseEvent _onMouseUp;
     private Handler!MouseEvent _onMouseMove;
