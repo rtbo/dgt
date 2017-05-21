@@ -567,16 +567,30 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
+
+                /// static to avoid allocation at each calls
+                static SgNode[] chain;
+                _root.nodesAtPos(cast(FVec2)ev.point, chain);
+
                 if (_dragChain.length) {
                     _root.chainEvent(_dragChain, ev, &mouseAdapter);
+                    if (chain.length >= _dragChain.length &&
+                        _dragChain[$-1] is chain[_dragChain.length-1])
+                    {
+                        // still on same node => trigger click
+                        _root.chainEvent(
+                            _dragChain, new MouseEvent(EventType.mouseClick, this,
+                            ev.point, ev.button, ev.state, ev.modifiers), &mouseAdapter
+                        );
+                    }
                 }
                 else {
                     // should not happen
                     warning("mouse up without drag?");
-                    _root.nodesAtPos(cast(FVec2)ev.point, _dragChain);
-                    _root.chainEvent(_dragChain, ev, &mouseAdapter);
+                    _root.chainEvent(chain, ev, &mouseAdapter);
                 }
-                _dragChain.length = 0;
+
+                chain.length = 0;
             }
         }
 

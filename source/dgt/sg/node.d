@@ -47,6 +47,8 @@ abstract class SgNode
         _onMouseUp = new Handler!MouseEvent;
         _onMouseDrag = new Handler!MouseEvent;
         _onMouseMove = new Handler!MouseEvent;
+        _onMouseClick = new Handler!MouseEvent;
+        _onMouseDblClick = new Handler!MouseEvent;
         _style = new Style(this);
     }
 
@@ -272,6 +274,26 @@ abstract class SgNode
     {
         return _onMouseMove;
     }
+    /// ditto
+    final @property void onMouseClick(Slot!MouseEvent slot)
+    {
+        _onMouseClick.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseClick()
+    {
+        return _onMouseClick;
+    }
+    /// ditto
+    final @property void onMouseDblClick(Slot!MouseEvent slot)
+    {
+        _onMouseDblClick.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseDblClick()
+    {
+        return _onMouseDblClick;
+    }
 
     /// Chain an event until its final target, giving each parent in the chain
     /// the opportunity to filter it, or to handle it after its children if
@@ -316,6 +338,12 @@ abstract class SgNode
                 break;
             case EventType.mouseMove:
                 onMouseMove.fire(mev);
+                break;
+            case EventType.mouseClick:
+                onMouseClick.fire(mev);
+                break;
+            case EventType.mouseDblClick:
+                onMouseDblClick.fire(mev);
                 break;
             default:
                 break;
@@ -469,6 +497,8 @@ abstract class SgNode
     private Handler!MouseEvent _onMouseUp;
     private Handler!MouseEvent _onMouseMove;
     private Handler!MouseEvent _onMouseDrag;
+    private Handler!MouseEvent _onMouseClick;
+    private Handler!MouseEvent _onMouseDblClick;
 
     // cache policy
     private bool _dynamic=false;

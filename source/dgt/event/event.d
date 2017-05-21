@@ -37,6 +37,8 @@ enum EventType : uint
     mouseUp,
     mouseMove,
     mouseDrag,
+    mouseClick,
+    mouseDblClick,
     mouseEnter,
     mouseLeave,
     keyDown         = windowBit | keyBit | 1,
