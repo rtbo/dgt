@@ -1,3 +1,7 @@
 :root {
-    background-color: white
+    background-color: white;
+}
+
+button {
+    background-color: #bbb;
 }

@@ -12,7 +12,7 @@ import dgt.sg.parent;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
-import dgt.widget.group;
+import dgt.widget.button;
 import dgt.widget.label;
 import dgt.widget.layout;
 import dgt.window;
@@ -36,9 +36,9 @@ int main()
     auto hello = new Label;
     hello.name = "hello";
     hello.text = "Hello";
+    int count;
     hello.alignment = Alignment.center;
-    hello.onMouseDown = (MouseEvent ev) { ev.consume(); writeln("hello mouse down"); };
-    hello.cssStyle = "font-size: 1in; font-weight: bold;";
+    hello.cssStyle = "font-family: serif; font-style: italic; font-size: 1in;";
 
     auto icon = new Label;
     icon.name = "icon";
@@ -52,11 +52,26 @@ int main()
     layout.appendWidget(icon);
     layout.spacing = 6;
     layout.gravity = Gravity.center;
-    layout.cssStyle = `
+
+    auto exit = new Button;
+    exit.name = "exit";
+    exit.text = "Exit";
+    exit.onClick += {
+        app.exit(0);
+    };
+
+    auto root = new LinearLayout;
+    root.name = "root";
+    root.setVertical();
+    root.appendWidget(layout);
+    root.appendWidget(exit);
+    root.spacing = 6;
+    root.gravity = Gravity.center;
+    root.cssStyle = `
         :root { background-color: lavenderblush; }
     `;
 
-    win.root = layout;
+    win.root = root;
 
     win.show();
     return app.loop();
