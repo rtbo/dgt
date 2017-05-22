@@ -15,28 +15,6 @@ import std.experimental.logger;
 import std.typecons;
 
 
-/// An event adapter
-/// Functions of this type are used to adapt an event before being propagated
-/// to the next node in a chain.
-alias EventAdapter = Event function(Event ev, SgNode next);
-
-/// identity event adapter
-Event identityAdapter(Event ev, SgNode /+next+/)
-{
-    return ev;
-}
-
-/// Mouse event adapter
-Event mouseAdapter(Event ev, SgNode next)
-{
-    auto mev = cast(MouseEvent)ev;
-    return new MouseEvent(
-           mev.type, mev.point - cast(IVec2)next.pos,
-           mev.button, mev.state, mev.modifiers
-    );
-}
-
-
 /// A node for a 2D scene-graph
 abstract class SgNode
 {
@@ -299,14 +277,20 @@ abstract class SgNode
     /// the opportunity to filter it, or to handle it after its children if
     /// the event hasn't been consumed by any of them.
     /// Returns: the node that has consumed the event, or null.
-    SgNode chainEvent(SgNode[] chain, Event event, EventAdapter /+adapter+/)
+    final SgNode chainEvent(Event event)
     {
-        /// unexhausted chain must land in Parent.eventChain
-        assert(!chain.length);
-
+        // fiter phase
         if (filterEvent(event)) return this;
-        else if (handleEvent(event)) return this;
-        return null;
+
+        // chaining phase
+        if (event.nodeChain.length) {
+            auto res = event.chainToNext();
+            if (res) return res;
+        }
+
+        // bubbling phase
+        if (handleEvent(event)) return this;
+        else return null;
     }
 
     final protected bool filterEvent(Event event)

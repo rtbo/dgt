@@ -177,25 +177,6 @@ class SgParent : SgNode
         );
     }
 
-    override SgNode chainEvent(SgNode[] chain, Event event, EventAdapter adapter)
-    {
-        // fiter phase
-        if (filterEvent(event)) return this;
-
-        // chaining phase
-        if (chain.length) {
-            auto c = chain[0];
-            auto ev = adapter(event, c);
-            auto res = c.chainEvent(chain[1 .. $], ev, adapter);
-            if (res) return res;
-        }
-
-        // bubbling phase
-        if (handleEvent(event)) return this;
-        else return null;
-    }
-
-
     override immutable(RenderNode) collectRenderNode()
     {
         import std.algorithm : filter, map;

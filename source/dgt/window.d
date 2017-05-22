@@ -523,15 +523,17 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseDown.fire(ev);
             if (!ev.consumed && _root) {
+                import std.typecons : scoped;
+
+                immutable pos = cast(FVec2)ev.point;
+
                 _dragChain.length = 0;
-                _root.nodesAtPos(cast(FVec2)ev.point, _dragChain);
+                _root.nodesAtPos(pos, _dragChain);
 
-                auto sceneEv = new MouseEvent(
-                    EventType.mouseDown, ev.point,
-                    ev.button, ev.state, ev.modifiers
+                auto sceneEv = scoped!MouseEvent(
+                    EventType.mouseDown, _dragChain, pos, pos, ev.button, ev.state, ev.modifiers
                 );
-
-                auto consumer = _root.chainEvent(_dragChain, sceneEv, &mouseAdapter);
+                auto consumer = sceneEv.chainToNext();
                 if (consumer) {
                     // if a node has explicitely consumed the event, we trim
                     // the chain after it, such as its children won't receive
@@ -549,24 +551,29 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
+                import std.typecons : scoped;
+
+                immutable pos = cast(FPoint)ev.point;
+
                 if (_dragChain.length) {
-                    // following does not compile although type is `package(dgt)`
-                    // ev.type = EventType.mouseDrag;
-                    auto dragEv = new MouseEvent(
-                        EventType.mouseDrag, ev.point,
+                    auto dragEv = scoped!MouseEvent(
+                        EventType.mouseDrag, _dragChain, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
-                    _root.chainEvent(_dragChain, dragEv, &mouseAdapter);
+                    dragEv.chainToNext();
                 }
                 else {
-                    // take advantage of existing allocation
+                    // static to avoid allocation at each calls
                     static SgNode[] chain;
+                    assert(!chain.length);
                     _root.nodesAtPos(cast(FVec2)ev.point, chain);
-                    auto scEv = new MouseEvent(
-                        EventType.mouseMove, ev.point,
+
+                    auto moveEv = scoped!MouseEvent(
+                        EventType.mouseMove, chain, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
-                    _root.chainEvent(chain, scEv, &mouseAdapter);
+                    moveEv.chainToNext();
+
                     chain.length = 0;
                 }
             }
@@ -578,32 +585,43 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
+                import std.typecons : scoped;
 
-                /// static to avoid allocation at each calls
+                immutable pos = cast(FVec2)ev.point;
+
+                // static to avoid allocation at each calls
                 static SgNode[] chain;
-                _root.nodesAtPos(cast(FVec2)ev.point, chain);
-
-                auto sceneEv = new MouseEvent(
-                    EventType.mouseUp, ev.point,
-                    ev.button, ev.state, ev.modifiers
-                );
+                assert(!chain.length);
+                _root.nodesAtPos(pos, chain);
 
                 if (_dragChain.length) {
-                    _root.chainEvent(_dragChain, sceneEv, &mouseAdapter);
+                    auto upEv = scoped!MouseEvent(
+                        EventType.mouseUp, _dragChain, pos, pos,
+                        ev.button, ev.state, ev.modifiers
+                    );
+                    upEv.chainToNext();
+
                     if (chain.length >= _dragChain.length &&
                         _dragChain[$-1] is chain[_dragChain.length-1])
                     {
                         // still on same node => trigger click
-                        _root.chainEvent(
-                            _dragChain, new MouseEvent(EventType.mouseClick,
-                            ev.point, ev.button, ev.state, ev.modifiers), &mouseAdapter
+                        auto clickEv = scoped!MouseEvent(
+                            EventType.mouseClick, _dragChain, pos, pos,
+                            ev.button, ev.state, ev.modifiers
                         );
+                        clickEv.chainToNext();
                     }
+
+                    _dragChain.length = 0;
                 }
                 else {
                     // should not happen
                     warning("mouse up without drag?");
-                    _root.chainEvent(chain, sceneEv, &mouseAdapter);
+                    auto upEv = scoped!MouseEvent(
+                        EventType.mouseUp, chain, pos, pos,
+                        ev.button, ev.state, ev.modifiers
+                    );
+                    upEv.chainToNext();
                 }
 
                 chain.length = 0;
