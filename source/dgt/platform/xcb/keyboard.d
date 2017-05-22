@@ -111,7 +111,7 @@ class XcbKeyboard
         xkb_context_unref(_context);
     }
 
-    void processEvent(xcb_key_press_event_t *xcbEv, Window w, void delegate(Event) collector)
+    void processEvent(xcb_key_press_event_t *xcbEv, Window w, void delegate(PlEvent) collector)
     {
         immutable keycode = xcbEv.detail;
         immutable keysym = xkb_state_key_get_one_sym(_state, keycode);
@@ -120,11 +120,11 @@ class XcbKeyboard
         immutable sym = symForKeysym(keysym);
         immutable mods = modsForCode(code);
         string text;
-        EventType et;
+        PlEventType et;
 
         if (xcbEventType(xcbEv) == XCB_KEY_PRESS)
         {
-            et = EventType.keyDown;
+            et = PlEventType.keyDown;
             _mods |= mods;
             auto size = xkb_state_key_get_utf8(_state, keycode, null, 0);
             if (size > 0) {
@@ -137,11 +137,11 @@ class XcbKeyboard
         else
         {
             assert(xcbEventType(xcbEv) == XCB_KEY_RELEASE);
-            et = EventType.keyUp;
+            et = PlEventType.keyUp;
             _mods &= ~mods;
         }
 
-        auto ev = new KeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
+        auto ev = new PlKeyEvent(et, w, sym, code, _mods, text, keycode, keysym);
         collector(ev);
     }
 

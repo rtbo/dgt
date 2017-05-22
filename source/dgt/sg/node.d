@@ -31,7 +31,7 @@ Event mouseAdapter(Event ev, SgNode next)
 {
     auto mev = cast(MouseEvent)ev;
     return new MouseEvent(
-           mev.type, mev.window, mev.point - cast(IVec2)next.pos,
+           mev.type, mev.point - cast(IVec2)next.pos,
            mev.button, mev.state, mev.modifiers
     );
 }
@@ -324,7 +324,7 @@ abstract class SgNode
     final protected bool handleEvent(Event event)
     {
         immutable et = event.type;
-        if (et & EventType.mouseBit) {
+        if (et & EventType.mouseMask) {
             auto mev = cast(MouseEvent)event;
             switch (et) {
             case EventType.mouseDown:

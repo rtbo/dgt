@@ -3,9 +3,9 @@ module dgt.platform.win32;
 version(Windows):
 
 import dgt.context;
-import dgt.event;
 import dgt.geometry;
 import dgt.platform;
+import dgt.platform.event;
 import dgt.platform.win32.context;
 import dgt.platform.win32.window;
 import dgt.screen;
@@ -24,7 +24,7 @@ class Win32Platform : Platform
     private Win32Window[HWND] _windows;
     private Screen[] _screens;
 
-    private void delegate(Event) _collector;
+    private void delegate(PlEvent) _collector;
 
     /// Instance access
     static Win32Platform instance()
@@ -79,7 +79,7 @@ class Win32Platform : Platform
     }
 
 
-    override void collectEvents(void delegate(Event) collector)
+    override void collectEvents(void delegate(PlEvent) collector)
     {
         _collector = collector;
         scope(exit) _collector = &internalCollect;
@@ -93,7 +93,7 @@ class Win32Platform : Platform
 
     override void processEvents()
     {
-        _collector = (Event ev) {
+        _collector = (PlEvent ev) {
             auto wEv = cast(WindowEvent)ev;
             if (wEv) {
                 wEv.window.handleEvent(wEv);
@@ -247,7 +247,7 @@ class Win32Platform : Platform
         }
     }
 
-    private void internalCollect(Event ev)
+    private void internalCollect(PlEvent ev)
     {
         // TODO: impl an temp event buf
     }

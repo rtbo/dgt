@@ -163,7 +163,7 @@ class XcbPlatform : Platform
         return new XcbWindow(window, this);
     }
 
-    override void collectEvents(void delegate(Event) collector)
+    override void collectEvents(void delegate(PlEvent) collector)
     {
         while(true) {
             xcb_generic_event_t* e = xcb_poll_for_event(g_connection);
@@ -181,7 +181,7 @@ class XcbPlatform : Platform
             free(e);
             xcb_flush(g_connection);
         }
-        handleEvent(e, (Event ev) {
+        handleEvent(e, (PlEvent ev) {
             auto wEv = cast(WindowEvent)ev;
             if (wEv) {
                 wEv.window.handleEvent(wEv);
@@ -231,7 +231,7 @@ class XcbPlatform : Platform
         write(_vsyncWriteFd, cast(const(void*))buf.ptr, 4);
     }
 
-    private void handleEvent(xcb_generic_event_t* e, void delegate(Event) collector)
+    private void handleEvent(xcb_generic_event_t* e, void delegate(PlEvent) collector)
     {
         immutable xcbType = xcbEventType(e);
 
@@ -470,7 +470,7 @@ class XcbPlatform : Platform
         }
 
         void processWindowEvent(SpecializedEvent, string processingMethod, string seField = "event")(
-                xcb_generic_event_t* xcbEv, void delegate(Event) collector)
+                xcb_generic_event_t* xcbEv, void delegate(PlEvent) collector)
         {
             auto se = cast(SpecializedEvent*)xcbEv;
             auto xcbWin = xcbWindow(mixin("se." ~ seField));
@@ -479,13 +479,13 @@ class XcbPlatform : Platform
             }
         }
 
-        void processKeyEvent(xcb_key_press_event_t* xcbEv, void delegate(Event) collector)
+        void processKeyEvent(xcb_key_press_event_t* xcbEv, void delegate(PlEvent) collector)
         {
             auto xcbWin = xcbWindow(xcbEv.event);
             _kbd.processEvent(xcbEv, xcbWin.window, collector);
         }
 
-        void processClientEvent(xcb_client_message_event_t* xcbEv, void delegate(Event) collector)
+        void processClientEvent(xcb_client_message_event_t* xcbEv, void delegate(PlEvent) collector)
         {
             if (xcbEv.data.data32[0] == atom(Atom.WM_DELETE_WINDOW))
             {

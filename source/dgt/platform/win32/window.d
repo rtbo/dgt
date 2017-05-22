@@ -2,21 +2,22 @@ module dgt.platform.win32.window;
 
 version(Windows):
 
+import dgt.enums;
+import dgt.geometry;
+import dgt.keys;
+import dgt.platform;
+import dgt.platform.event;
 import dgt.platform.win32;
 import dgt.platform.win32.buffer;
-import dgt.platform;
-import gfx.foundation.rc;
-import dgt.window;
-import dgt.geometry;
-import dgt.event;
 import dgt.vg;
-import dgt.enums;
-import dgt.keys;
+import dgt.window;
 
-import std.utf : toUTF16z;
+import gfx.foundation.rc;
+
+import core.sys.windows.windows;
 import std.exception : enforce;
 import std.experimental.logger;
-import core.sys.windows.windows;
+import std.utf : toUTF16z;
 
 /// Win32 window implementation
 class Win32Window : PlatformWindow
@@ -157,14 +158,14 @@ class Win32Window : PlatformWindow
             return _hWnd;
         }
 
-        bool handleClose(void delegate(Event) collector)
+        bool handleClose(void delegate(PlEvent) collector)
         {
             auto ev = new CloseEvent(_win);
             collector(ev);
             return true;
         }
 
-		bool handlePaint(UINT msg, WPARAM /+wParam+/, LPARAM /+lParam+/, void delegate(Event) collector)
+		bool handlePaint(UINT msg, WPARAM /+wParam+/, LPARAM /+lParam+/, void delegate(PlEvent) collector)
 		{
             if (!_paintEvPackage) {
                 handlePaintEvPackage(collector);
@@ -184,7 +185,7 @@ class Win32Window : PlatformWindow
 			return true;
 		}
 
-        bool handleMove(UINT /+msg+/, WPARAM /+wParam+/, LPARAM /+lParam+/, void delegate(Event) collector)
+        bool handleMove(UINT /+msg+/, WPARAM /+wParam+/, LPARAM /+lParam+/, void delegate(PlEvent) collector)
         {
             if (!IsIconic(_hWnd)) // do not fire when minimized
             {
@@ -193,7 +194,7 @@ class Win32Window : PlatformWindow
             return true;
         }
 
-        bool handleResize(UINT /+msg+/, WPARAM wParam, LPARAM /+lParam+/, void delegate(Event) collector)
+        bool handleResize(UINT /+msg+/, WPARAM wParam, LPARAM /+lParam+/, void delegate(PlEvent) collector)
         {
             switch (wParam)
             {
@@ -216,7 +217,7 @@ class Win32Window : PlatformWindow
             }
         }
 
-        void handleGeometryChange(void delegate(Event) collector)
+        void handleGeometryChange(void delegate(PlEvent) collector)
         {
             immutable oldG = geometry;
             immutable g = sysGeometry;
@@ -236,7 +237,7 @@ class Win32Window : PlatformWindow
             InvalidateRect(_hWnd, null, true);
         }
 
-        bool handleShow(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(Event) collector)
+        bool handleShow(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(PlEvent) collector)
         {
             if (lParam) return false; // only handle calls subsequent to ShowWindow
 
@@ -253,9 +254,9 @@ class Win32Window : PlatformWindow
         }
 
 
-        bool handleMouse(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(Event) collector)
+        bool handleMouse(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(PlEvent) collector)
         {
-            EventType t;
+            PlEventType t;
             auto pos = IPoint(GET_X_LPARAM(lParam),
                               GET_Y_LPARAM(lParam));
             auto but = MouseButton.none;
@@ -265,32 +266,32 @@ class Win32Window : PlatformWindow
             {
             case WM_LBUTTONDOWN:
                 but = MouseButton.left;
-                t = EventType.mouseDown;
+                t = PlEventType.mouseDown;
                 _mouseState |= MouseState.left;
                 break;
             case WM_MBUTTONDOWN:
                 but = MouseButton.middle;
-                t = EventType.mouseDown;
+                t = PlEventType.mouseDown;
                 _mouseState |= MouseState.middle;
                 break;
             case WM_RBUTTONDOWN:
                 but = MouseButton.right;
-                t = EventType.mouseDown;
+                t = PlEventType.mouseDown;
                 _mouseState |= MouseState.right;
                 break;
             case WM_LBUTTONUP:
                 but = MouseButton.left;
-                t = EventType.mouseUp;
+                t = PlEventType.mouseUp;
                 _mouseState &= ~MouseState.left;
                 break;
             case WM_MBUTTONUP:
                 but = MouseButton.middle;
-                t = EventType.mouseUp;
+                t = PlEventType.mouseUp;
                 _mouseState &= ~MouseState.middle;
                 break;
             case WM_RBUTTONUP:
                 but = MouseButton.right;
-                t = EventType.mouseUp;
+                t = PlEventType.mouseUp;
                 _mouseState &= ~MouseState.right;
                 break;
             case WM_MOUSEMOVE: {
@@ -299,8 +300,8 @@ class Win32Window : PlatformWindow
                     _mouseOut = false;
 
                     // mouse was out: deliver enter event
-                    auto ev = new MouseEvent(
-                        EventType.mouseEnter, _win, pos, MouseButton.none,
+                    auto ev = new PlMouseEvent(
+                        PlEventType.mouseEnter, _win, pos, MouseButton.none,
                         _mouseState, mods
                     );
                     collector(ev);
@@ -313,21 +314,21 @@ class Win32Window : PlatformWindow
                     tm.dwHoverTime = 0;
                     TrackMouseEvent(&tm);
                 }
-                t = EventType.mouseMove;
+                t = PlEventType.mouseMove;
                 _mousePos = pos;
                 break;
             }
             case WM_MOUSELEAVE: {
                 _mouseOut = true;
                 pos = _mousePos;
-                t = EventType.mouseLeave;
+                t = PlEventType.mouseLeave;
                 break;
             }
             default:
                 break;
             }
             {
-                auto ev = new MouseEvent(
+                auto ev = new PlMouseEvent(
                     t, _win, pos, but, _mouseState, mods
                 );
                 collector(ev);
@@ -335,7 +336,7 @@ class Win32Window : PlatformWindow
             return true;
         }
 
-        bool handleKey(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(Event) collector)
+        bool handleKey(UINT msg, WPARAM wParam, LPARAM lParam, void delegate(PlEvent) collector)
         {
             import dgt.platform.win32.keymap : getKeysym, getKeycode;
             import std.conv : to;
@@ -360,16 +361,16 @@ class Win32Window : PlatformWindow
                 immutable repeat = ((lParam & previousStateMask) != 0);
                 immutable repeatCount = lParam & repeatCountMask;
 
-                auto ev = new KeyEvent(
-                    EventType.keyDown, _win, sym, code, keyMods,
+                auto ev = new PlKeyEvent(
+                    PlEventType.keyDown, _win, sym, code, keyMods,
                     text.to!string, scancode, cast(uint)wParam, repeat, repeatCount
                 );
                 collector(ev);
             }
             else
             {
-                auto ev = new KeyEvent(
-                    EventType.keyDown, _win, sym, code, keyMods,
+                auto ev = new PlKeyEvent(
+                    PlEventType.keyDown, _win, sym, code, keyMods,
                     "", scancode, cast(uint)wParam
                 );
                 collector(ev);
@@ -379,7 +380,7 @@ class Win32Window : PlatformWindow
         }
 
 
-        void handleWindowStateChange(WindowState ws, void delegate(Event) collector)
+        void handleWindowStateChange(WindowState ws, void delegate(PlEvent) collector)
         {
             auto ev = new StateChangeEvent(_win, ws);
             collector(ev);
@@ -459,7 +460,7 @@ class Win32Window : PlatformWindow
             return "";
         }
 
-        void handlePaintEvPackage(void delegate(Event) collector)
+        void handlePaintEvPackage(void delegate(PlEvent) collector)
         {
             immutable state = sysState;
             immutable geom = sysGeometry;

@@ -8,6 +8,7 @@ import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.platform;
+import dgt.platform.event;
 import dgt.region;
 import dgt.render;
 import dgt.render.frame;
@@ -239,28 +240,28 @@ class Window
         _onResize.set(slot);
     }
 
-    @property void onMouse(Slot!MouseEvent slot)
+    @property void onMouse(Slot!PlMouseEvent slot)
     {
         _onMouse.set(slot);
     }
-    @property void onMouseDown(Slot!MouseEvent slot)
+    @property void onMouseDown(Slot!PlMouseEvent slot)
     {
         _onMouseDown.set(slot);
     }
-    @property void onMouseUp(Slot!MouseEvent slot)
+    @property void onMouseUp(Slot!PlMouseEvent slot)
     {
         _onMouseUp.set(slot);
     }
 
-    @property void onKey(Slot!KeyEvent slot)
+    @property void onKey(Slot!PlKeyEvent slot)
     {
         _onKey.set(slot);
     }
-    @property void onKeyDown(Slot!KeyEvent slot)
+    @property void onKeyDown(Slot!PlKeyEvent slot)
     {
         _onKeyDown.set(slot);
     }
-    @property void onKeyUp(Slot!KeyEvent slot)
+    @property void onKeyUp(Slot!PlKeyEvent slot)
     {
         _onKeyUp.set(slot);
     }
@@ -342,52 +343,52 @@ class Window
         assert(wEv.window is this);
         switch (wEv.type)
         {
-        case EventType.expose:
+        case PlEventType.expose:
             handleExpose(cast(ExposeEvent)wEv);
             break;
-        case EventType.show:
+        case PlEventType.show:
             _onShow.fire(cast(ShowEvent)wEv);
             break;
-        case EventType.hide:
+        case PlEventType.hide:
             _onHide.fire(cast(HideEvent)wEv);
             break;
-        case EventType.move:
+        case PlEventType.move:
             auto wmEv = cast(MoveEvent) wEv;
             _position = wmEv.point;
             _onMove.fire(cast(MoveEvent) wEv);
             break;
-        case EventType.resize:
+        case PlEventType.resize:
             handleResize(cast(ResizeEvent) wEv);
             break;
-        case EventType.mouseDown:
-            handleMouseDown(cast(MouseEvent) wEv);
+        case PlEventType.mouseDown:
+            handleMouseDown(cast(PlMouseEvent) wEv);
             break;
-        case EventType.mouseUp:
-            handleMouseUp(cast(MouseEvent) wEv);
+        case PlEventType.mouseUp:
+            handleMouseUp(cast(PlMouseEvent) wEv);
             break;
-        case EventType.mouseMove:
-            handleMouseMove(cast(MouseEvent) wEv);
+        case PlEventType.mouseMove:
+            handleMouseMove(cast(PlMouseEvent) wEv);
             break;
-        case EventType.keyDown:
-            auto kEv = cast(KeyEvent) wEv;
+        case PlEventType.keyDown:
+            auto kEv = cast(PlKeyEvent) wEv;
             _onKey.fire(kEv);
             if (!kEv.consumed)
             {
                 _onKeyDown.fire(kEv);
             }
             break;
-        case EventType.keyUp:
-            auto kEv = cast(KeyEvent) wEv;
+        case PlEventType.keyUp:
+            auto kEv = cast(PlKeyEvent) wEv;
             _onKey.fire(kEv);
             if (!kEv.consumed)
             {
                 _onKeyUp.fire(kEv);
             }
             break;
-        case EventType.stateChange:
+        case PlEventType.stateChange:
             _onStateChange.fire(cast(StateChangeEvent) wEv);
             break;
-        case EventType.close:
+        case PlEventType.close:
             auto cev = cast(CloseEvent) wEv;
             _onClose.fire(cev);
             if (!cev.declined)
@@ -417,9 +418,9 @@ class Window
 
         void compressEvent(WindowEvent ev)
         {
-            if (ev.type == EventType.move) {
+            if (ev.type == PlEventType.move) {
                 if (_evCompress & EvCompress.move) {
-                    auto prev = getEvent!MoveEvent(EventType.move);
+                    auto prev = getEvent!MoveEvent(PlEventType.move);
                     auto cur = cast(MoveEvent)ev;
                     prev.point = cur.point;
                 }
@@ -428,9 +429,9 @@ class Window
                     _evCompress |= EvCompress.move;
                 }
             }
-            else if (ev.type == EventType.resize) {
+            else if (ev.type == PlEventType.resize) {
                 if (_evCompress & EvCompress.resize) {
-                    auto prev = getEvent!ResizeEvent(EventType.resize);
+                    auto prev = getEvent!ResizeEvent(PlEventType.resize);
                     auto cur = cast(ResizeEvent)ev;
                     prev.size = cur.size;
                 }
@@ -439,10 +440,10 @@ class Window
                     _evCompress |= EvCompress.resize;
                 }
             }
-            else if (ev.type == EventType.mouseMove) {
+            else if (ev.type == PlEventType.mouseMove) {
                 if (_evCompress & EvCompress.mouseMove && !(_evCompress & EvCompress.click)) {
-                    auto prev = getEvent!MouseEvent(EventType.mouseMove);
-                    auto cur = cast(MouseEvent)ev;
+                    auto prev = getEvent!PlMouseEvent(PlEventType.mouseMove);
+                    auto cur = cast(PlMouseEvent)ev;
                     prev.point = cur.point;
                     prev.modifiers = prev.modifiers | cur.modifiers;
                 }
@@ -452,10 +453,10 @@ class Window
                 }
             }
             else {
-                if (ev.type == EventType.mouseDown || ev.type == EventType.mouseUp) {
+                if (ev.type == PlEventType.mouseDown || ev.type == PlEventType.mouseUp) {
                     _evCompress |= EvCompress.click;
                 }
-                else if (ev.type == EventType.show) {
+                else if (ev.type == PlEventType.show) {
                     _evCompress |= EvCompress.show;
                 }
                 _events ~= ev;
@@ -516,15 +517,21 @@ class Window
         {
         }
 
-        void handleMouseDown(MouseEvent ev)
+        void handleMouseDown(PlMouseEvent ev)
         {
-            assert(ev.type == EventType.mouseDown);
+            assert(ev.type == PlEventType.mouseDown);
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseDown.fire(ev);
             if (!ev.consumed && _root) {
                 _dragChain.length = 0;
                 _root.nodesAtPos(cast(FVec2)ev.point, _dragChain);
-                auto consumer = _root.chainEvent(_dragChain, ev, &mouseAdapter);
+
+                auto sceneEv = new MouseEvent(
+                    EventType.mouseDown, ev.point,
+                    ev.button, ev.state, ev.modifiers
+                );
+
+                auto consumer = _root.chainEvent(_dragChain, sceneEv, &mouseAdapter);
                 if (consumer) {
                     // if a node has explicitely consumed the event, we trim
                     // the chain after it, such as its children won't receive
@@ -536,9 +543,9 @@ class Window
             }
         }
 
-        void handleMouseMove(MouseEvent ev)
+        void handleMouseMove(PlMouseEvent ev)
         {
-            assert(ev.type == EventType.mouseMove);
+            assert(ev.type == PlEventType.mouseMove);
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
@@ -546,7 +553,7 @@ class Window
                     // following does not compile although type is `package(dgt)`
                     // ev.type = EventType.mouseDrag;
                     auto dragEv = new MouseEvent(
-                        EventType.mouseDrag, ev.window, ev.point,
+                        EventType.mouseDrag, ev.point,
                         ev.button, ev.state, ev.modifiers
                     );
                     _root.chainEvent(_dragChain, dragEv, &mouseAdapter);
@@ -555,15 +562,19 @@ class Window
                     // take advantage of existing allocation
                     static SgNode[] chain;
                     _root.nodesAtPos(cast(FVec2)ev.point, chain);
-                    _root.chainEvent(chain, ev, &mouseAdapter);
+                    auto scEv = new MouseEvent(
+                        EventType.mouseMove, ev.point,
+                        ev.button, ev.state, ev.modifiers
+                    );
+                    _root.chainEvent(chain, scEv, &mouseAdapter);
                     chain.length = 0;
                 }
             }
         }
 
-        void handleMouseUp(MouseEvent ev)
+        void handleMouseUp(PlMouseEvent ev)
         {
-            assert(ev.type == EventType.mouseUp);
+            assert(ev.type == PlEventType.mouseUp);
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
@@ -572,14 +583,19 @@ class Window
                 static SgNode[] chain;
                 _root.nodesAtPos(cast(FVec2)ev.point, chain);
 
+                auto sceneEv = new MouseEvent(
+                    EventType.mouseUp, ev.point,
+                    ev.button, ev.state, ev.modifiers
+                );
+
                 if (_dragChain.length) {
-                    _root.chainEvent(_dragChain, ev, &mouseAdapter);
+                    _root.chainEvent(_dragChain, sceneEv, &mouseAdapter);
                     if (chain.length >= _dragChain.length &&
                         _dragChain[$-1] is chain[_dragChain.length-1])
                     {
                         // still on same node => trigger click
                         _root.chainEvent(
-                            _dragChain, new MouseEvent(EventType.mouseClick, this,
+                            _dragChain, new MouseEvent(EventType.mouseClick,
                             ev.point, ev.button, ev.state, ev.modifiers), &mouseAdapter
                         );
                     }
@@ -587,14 +603,14 @@ class Window
                 else {
                     // should not happen
                     warning("mouse up without drag?");
-                    _root.chainEvent(chain, ev, &mouseAdapter);
+                    _root.chainEvent(chain, sceneEv, &mouseAdapter);
                 }
 
                 chain.length = 0;
             }
         }
 
-        EvT getEvent(EvT)(EventType type)
+        EvT getEvent(EvT)(PlEventType type)
         {
             foreach(e; _events) {
                 if (e.type == type) return cast(EvT)e;
@@ -634,12 +650,12 @@ class Window
         Handler!HideEvent        _onHide        = new Handler!HideEvent;
         Handler!MoveEvent        _onMove        = new Handler!MoveEvent;
         Handler!ResizeEvent      _onResize      = new Handler!ResizeEvent;
-        Handler!MouseEvent       _onMouse       = new Handler!MouseEvent;
-        Handler!MouseEvent       _onMouseDown   = new Handler!MouseEvent;
-        Handler!MouseEvent       _onMouseUp     = new Handler!MouseEvent;
-        Handler!KeyEvent         _onKey         = new Handler!KeyEvent;
-        Handler!KeyEvent         _onKeyDown     = new Handler!KeyEvent;
-        Handler!KeyEvent         _onKeyUp       = new Handler!KeyEvent;
+        Handler!PlMouseEvent       _onMouse       = new Handler!PlMouseEvent;
+        Handler!PlMouseEvent       _onMouseDown   = new Handler!PlMouseEvent;
+        Handler!PlMouseEvent       _onMouseUp     = new Handler!PlMouseEvent;
+        Handler!PlKeyEvent         _onKey         = new Handler!PlKeyEvent;
+        Handler!PlKeyEvent         _onKeyDown     = new Handler!PlKeyEvent;
+        Handler!PlKeyEvent         _onKeyUp       = new Handler!PlKeyEvent;
         Handler!StateChangeEvent _onStateChange = new Handler!StateChangeEvent;
         Handler!CloseEvent       _onClose       = new Handler!CloseEvent;
         FireableSignal!Window    _onClosed      = new FireableSignal!Window;

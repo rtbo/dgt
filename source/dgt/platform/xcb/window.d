@@ -326,45 +326,45 @@ class XcbWindow : PlatformWindow
             return _format;
         }
 
-        void processButtonEvent(xcb_button_press_event_t* e, void delegate(Event) collector)
+        void processButtonEvent(xcb_button_press_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.event == _xcbWin);
         }
         body
         {
-            auto ev = new MouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? EventType.mouseDown
-                    : EventType.mouseUp, _win, IPoint(e.event_x, e.event_y),
+            auto ev = new PlMouseEvent((xcbEventType(e) == XCB_BUTTON_PRESS) ? PlEventType.mouseDown
+                    : PlEventType.mouseUp, _win, IPoint(e.event_x, e.event_y),
                     dgtMouseButton(e.detail), dgtMouseState(e.state), dgtKeyMods(e.state));
             collector(ev);
         }
 
-        void processMotionEvent(xcb_motion_notify_event_t* e, void delegate(Event) collector)
+        void processMotionEvent(xcb_motion_notify_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.event == _xcbWin);
         }
         body
         {
-            auto ev = new MouseEvent(EventType.mouseMove, _win, IPoint(e.event_x,
+            auto ev = new PlMouseEvent(PlEventType.mouseMove, _win, IPoint(e.event_x,
                     e.event_y), MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
             collector(ev);
         }
 
-        void processEnterLeaveEvent(xcb_enter_notify_event_t* e, void delegate(Event) collector)
+        void processEnterLeaveEvent(xcb_enter_notify_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.event == _xcbWin);
         }
         body
         {
-            auto ev = new MouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? EventType.mouseEnter
-                    : EventType.mouseLeave, _win, IPoint(e.event_x, e.event_y),
+            auto ev = new PlMouseEvent(xcbEventType(e) == XCB_ENTER_NOTIFY ? PlEventType.mouseEnter
+                    : PlEventType.mouseLeave, _win, IPoint(e.event_x, e.event_y),
                     MouseButton.none, dgtMouseState(e.state), dgtKeyMods(e.state));
             collector(ev);
         }
 
-        void processConfigureEvent(xcb_configure_notify_event_t* e, void delegate(Event) collector)
+        void processConfigureEvent(xcb_configure_notify_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.event == _xcbWin);
@@ -383,7 +383,7 @@ class XcbWindow : PlatformWindow
             }
         }
 
-        void processUnmapEvent(xcb_unmap_notify_event_t* e, void delegate(Event) collector)
+        void processUnmapEvent(xcb_unmap_notify_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.event == _xcbWin);
@@ -395,7 +395,7 @@ class XcbWindow : PlatformWindow
             collector(ev);
         }
 
-        void processMapEvent(xcb_map_notify_event_t* e, void delegate(Event) collector)
+        void processMapEvent(xcb_map_notify_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.event == _xcbWin);
@@ -407,7 +407,7 @@ class XcbWindow : PlatformWindow
             collector(ev);
         }
 
-        void processPropertyEvent(xcb_property_notify_event_t* e, void delegate(Event) collector)
+        void processPropertyEvent(xcb_property_notify_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.window == _xcbWin);
@@ -426,7 +426,7 @@ class XcbWindow : PlatformWindow
             }
         }
 
-        void processExposeEvent(xcb_expose_event_t* e, void delegate(Event) collector)
+        void processExposeEvent(xcb_expose_event_t* e, void delegate(PlEvent) collector)
         in
         {
             assert(e.window == _xcbWin);

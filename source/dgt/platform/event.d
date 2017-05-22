@@ -30,6 +30,16 @@ abstract class PlEvent
         return _type;
     }
 
+    final @property bool consumed() const
+    {
+        return _consumed;
+    }
+
+    void consume()
+    {
+        _consumed = true;
+    }
+
     override string toString()
     {
         import std.conv : to;
@@ -38,6 +48,7 @@ abstract class PlEvent
     }
 
     private PlEventType _type;
+    private bool _consumed;
 }
 
 abstract class WindowEvent : PlEvent
@@ -223,6 +234,15 @@ class PlMouseEvent : WindowEvent
     @property KeyMods modifiers() const
     {
         return _modifiers;
+    }
+
+    package(dgt) @property void point(in IPoint point)
+    {
+        _point = point;
+    }
+    package(dgt) @property void modifiers(in KeyMods mods)
+    {
+        _modifiers = mods;
     }
 
     private

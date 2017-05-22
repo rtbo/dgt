@@ -2,9 +2,9 @@
 module dgt.platform;
 
 import dgt.context;
-import dgt.event;
 import dgt.geometry;
 import dgt.image;
+import dgt.platform.event;
 import dgt.screen;
 import dgt.window;
 import gfx.foundation.rc;
@@ -37,7 +37,7 @@ interface Platform : Disposable
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
 
-    void collectEvents(void delegate(Event) collector);
+    void collectEvents(void delegate(PlEvent) collector);
     void processEvents();
     Wait waitFor(Wait flags);
     void vsync();

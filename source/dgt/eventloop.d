@@ -1,10 +1,10 @@
 module dgt.eventloop;
 
 import dgt.application;
-import dgt.event;
+import dgt.platform;
+import dgt.platform.event;
 import dgt.render;
 import dgt.window;
-import dgt.platform;
 
 import std.experimental.logger;
 
@@ -99,14 +99,14 @@ class EventLoop
     protected void onRegisterWindow(Window w) {}
     protected void onUnregisterWindow(Window w) {}
 
-    private void compressEvent(Event ev)
+    private void compressEvent(PlEvent ev)
     {
         auto wEv = cast(WindowEvent)ev;
         if (wEv) {
             assert(hasWindow(wEv.window));
             version(Windows) {
                 // windows has modal resize and move envents
-                if (wEv.type == EventType.resize || wEv.type == EventType.move) {
+                if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
                     wEv.window.handleEvent(wEv);
                     if (RenderThread.hadVSync)
                         RenderThread.instance.frame(wEv.window.collectFrame());
