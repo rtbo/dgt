@@ -41,7 +41,11 @@ class EventLoop
                 }
             }
             Application.platform.waitFor(Wait.all);
-
+        }
+        // Window.close removes itself from _windows, so we need to dup.
+        auto ws = _windows.dup;
+        foreach(w; ws) {
+            w.close();
         }
         return _exitCode;
     }
