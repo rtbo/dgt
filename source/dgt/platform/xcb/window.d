@@ -2,18 +2,19 @@ module dgt.platform.xcb.window;
 
 version(linux):
 
-import dgt.platform.xcb;
-import dgt.platform.xcb.context;
-import dgt.platform.xcb.buffer;
-import gfx.foundation.rc;
-import dgt.vg;
-import dgt.screen;
-import dgt.platform;
 import dgt.context;
-import dgt.window;
-import dgt.geometry;
-import dgt.event;
 import dgt.enums;
+import dgt.geometry;
+import dgt.platform;
+import dgt.platform.event;
+import dgt.platform.xcb;
+import dgt.platform.xcb.buffer;
+import dgt.platform.xcb.context;
+import dgt.screen;
+import dgt.vg;
+import dgt.window;
+
+import gfx.foundation.rc;
 
 import xcb.xcb;
 import xcb.xcb_icccm;

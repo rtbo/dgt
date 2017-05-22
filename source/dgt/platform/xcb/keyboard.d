@@ -2,19 +2,19 @@ module dgt.platform.xcb.keyboard;
 
 version(linux):
 
-import dgt.platform.xcb : xcbEventType;
 import dgt.keys;
-import dgt.event;
+import dgt.platform.event;
+import dgt.platform.xcb : xcbEventType;
+import dgt.window;
 
-import xkbcommon.xkbcommon;
-import xkbcommon.keysyms;
-import xkbcommon.x11;
 import xcb.xcb;
 import xcb.xkb;
+import xkbcommon.keysyms;
+import xkbcommon.x11;
+import xkbcommon.xkbcommon;
 
-import std.experimental.logger;
 import std.exception : assumeUnique;
-
+import std.experimental.logger;
 
 class XcbKeyboard
 {

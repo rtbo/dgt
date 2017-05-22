@@ -2,27 +2,27 @@ module dgt.platform.xcb;
 
 version(linux):
 
+import dgt.context;
+import dgt.enums;
+import dgt.geometry;
+import dgt.image;
+import dgt.keys;
+import dgt.platform;
+import dgt.platform.event;
+import dgt.platform.xcb.context;
 import dgt.platform.xcb.keyboard;
 import dgt.platform.xcb.screen;
 import dgt.platform.xcb.window;
-import dgt.platform.xcb.context;
-import dgt.platform;
-import dgt.window;
-import dgt.context;
 import dgt.screen;
-import dgt.geometry;
-import dgt.enums;
-import dgt.event;
-import dgt.image;
-import dgt.keys;
+import dgt.window;
 
-import xcb.xcb;
-import xcb.xkb;
+import derelict.opengl3.gl3;
 import xcb.dri2;
 import xcb.dri3;
-import X11.Xlib;
+import xcb.xcb;
+import xcb.xkb;
 import X11.Xlib_xcb;
-import derelict.opengl3.gl3;
+import X11.Xlib;
 
 import std.exception : enforce;
 import std.string : toStringz;
