@@ -283,6 +283,11 @@ abstract class SgNode
         pseudoState = _pseudoState & (~flags);
     }
 
+    /// Flag that causes PseudoState.hover to be set when the cursor hovers the node
+    final bool hoverSensitive() { return _hoverSensitive; }
+    /// ditto
+    final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
+
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
     /// Params:
@@ -442,10 +447,16 @@ abstract class SgNode
                 onMouseMove.fire(mev);
                 break;
             case EventType.mouseEnter:
+                if (_hoverSensitive) {
+                    addPseudoState(PseudoState.hover);
+                }
                 onMouseEnter.fire(mev);
                 break;
             case EventType.mouseLeave:
                 onMouseLeave.fire(mev);
+                if (_hoverSensitive) {
+                    remPseudoState(PseudoState.hover);
+                }
                 break;
             case EventType.mouseClick:
                 onMouseClick.fire(mev);
@@ -602,6 +613,7 @@ abstract class SgNode
     private string _id;
     private string _cssClass;
     private PseudoState _pseudoState;
+    private bool _hoverSensitive;
 
     // events
     private MaskedFilter[] _evFilters;
