@@ -68,7 +68,11 @@ body {
 
 PseudoState translatePseudoClass(string pseudoClass)
 {
-    return _pseudoClassTranslator.translate(pseudoClass);
+    immutable ps = _pseudoClassTranslator.translate(pseudoClass);
+    if (ps == PseudoState.def && pseudoClass.length) {
+        warningf("unrecognized pseudoClass: "~pseudoClass);
+    }
+    return ps;
 }
 
 
@@ -165,7 +169,6 @@ class SimpleSelector : AbstractSelector
                     return true;
                 }
             }
-            warningf("unrecognized CSS pseudo-class: "~val);
             return false;
         case SSType.attr:
             assert(false, "unimplemented");

@@ -381,6 +381,12 @@ class Window
         case PlEventType.mouseMove:
             handleMouseMove(cast(PlMouseEvent) wEv);
             break;
+        case PlEventType.mouseEnter:
+            handleMouseEnter(cast(PlMouseEvent) wEv);
+            break;
+        case PlEventType.mouseLeave:
+            handleMouseLeave(cast(PlMouseEvent) wEv);
+            break;
         case PlEventType.keyDown:
             auto kEv = cast(PlKeyEvent) wEv;
             _onKey.fire(kEv);
@@ -541,8 +547,11 @@ class Window
 
                 immutable pos = cast(FVec2)ev.point;
 
-                _dragChain.length = 0;
-                _root.nodesAtPos(pos, _dragChain);
+                if (!_mouseNodes.length) {
+                    errorf("mouse down without prior move");
+                    _root.nodesAtPos(pos, _mouseNodes);
+                }
+                _dragChain = _mouseNodes;
 
                 auto sceneEv = scoped!MouseEvent(
                     EventType.mouseDown, _dragChain, pos, pos, ev.button, ev.state, ev.modifiers
@@ -565,9 +574,17 @@ class Window
             _onMouse.fire(ev);
             if (!ev.consumed) _onMouseUp.fire(ev);
             if (!ev.consumed && _root) {
+                import std.algorithm : swap;
                 import std.typecons : scoped;
 
                 immutable pos = cast(FPoint)ev.point;
+
+                assert(!_tempNodes.length);
+                _root.nodesAtPos(pos, _tempNodes);
+                checkEnterLeave(_mouseNodes, _tempNodes, ev);
+
+                swap(_mouseNodes, _tempNodes);
+                _tempNodes.length = 0;
 
                 if (_dragChain.length) {
                     auto dragEv = scoped!MouseEvent(
@@ -577,18 +594,11 @@ class Window
                     dragEv.chainToNext();
                 }
                 else {
-                    // static to avoid allocation at each calls
-                    static SgNode[] chain;
-                    assert(!chain.length);
-                    _root.nodesAtPos(cast(FVec2)ev.point, chain);
-
                     auto moveEv = scoped!MouseEvent(
-                        EventType.mouseMove, chain, pos, pos,
+                        EventType.mouseMove, _mouseNodes, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
                     moveEv.chainToNext();
-
-                    chain.length = 0;
                 }
             }
         }
@@ -603,11 +613,6 @@ class Window
 
                 immutable pos = cast(FVec2)ev.point;
 
-                // static to avoid allocation at each calls
-                static SgNode[] chain;
-                assert(!chain.length);
-                _root.nodesAtPos(pos, chain);
-
                 if (_dragChain.length) {
                     auto upEv = scoped!MouseEvent(
                         EventType.mouseUp, _dragChain, pos, pos,
@@ -615,8 +620,8 @@ class Window
                     );
                     upEv.chainToNext();
 
-                    if (chain.length >= _dragChain.length &&
-                        _dragChain[$-1] is chain[_dragChain.length-1])
+                    if (_mouseNodes.length >= _dragChain.length &&
+                        _dragChain[$-1] is _mouseNodes[_dragChain.length-1])
                     {
                         // still on same node => trigger click
                         auto clickEv = scoped!MouseEvent(
@@ -632,13 +637,71 @@ class Window
                     // should not happen
                     warning("mouse up without drag?");
                     auto upEv = scoped!MouseEvent(
-                        EventType.mouseUp, chain, pos, pos,
+                        EventType.mouseUp, _mouseNodes, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
                     upEv.chainToNext();
                 }
 
-                chain.length = 0;
+                _mouseNodes.length = 0;
+            }
+        }
+
+        void handleMouseEnter(PlMouseEvent ev)
+        {
+            if (_root) {
+                import std.algorithm : swap;
+                immutable pos = cast(FPoint)ev.point;
+
+                if (_mouseNodes.length) {
+                    errorf("Enter window while having already nodes under mouse??");
+                    _mouseNodes.length = 0;
+                }
+                assert(!_tempNodes.length);
+                _root.nodesAtPos(pos, _mouseNodes);
+                checkEnterLeave(_tempNodes, _mouseNodes, ev);
+            }
+        }
+
+        void handleMouseLeave(PlMouseEvent ev)
+        {
+            if (_root) {
+                import std.algorithm : swap;
+                immutable pos = cast(FPoint)ev.point;
+
+                assert(!_tempNodes.length);
+                checkEnterLeave(_mouseNodes, _tempNodes, ev);
+
+                swap(_mouseNodes, _tempNodes);
+                _tempNodes.length = 0;
+            }
+        }
+
+        static void emitEnterLeave(SgNode node, EventType type, PlMouseEvent src)
+        {
+            import std.typecons : scoped;
+            immutable scPos = cast(FPoint)src.point;
+            auto ev = scoped!MouseEvent(
+                type, [node], scPos - node.scenePos, scPos, src.button, src.state, src.modifiers
+            );
+            ev.chainToNext();
+        }
+
+        static checkEnterLeave(SgNode[] was, SgNode[] now, PlMouseEvent src)
+        {
+            import std.algorithm : min;
+            immutable common = min(was.length, now.length);
+            foreach (i; 0 .. common) {
+                if (was[i] !is now[i]) {
+                    emitEnterLeave(was[i], EventType.mouseLeave, src);
+                    emitEnterLeave(now[i], EventType.mouseEnter, src);
+                }
+            }
+            foreach (n; was[common .. $]) {
+                emitEnterLeave(n, EventType.mouseLeave, src);
+            }
+            foreach (n; now[common .. $]) {
+                emitEnterLeave(n, EventType.mouseEnter, src);
             }
         }
 
@@ -671,6 +734,8 @@ class Window
         Widget _widget;
         // Widget[] _widgetRoots;
         SgNode[] _dragChain;
+        SgNode[] _mouseNodes;
+        SgNode[] _tempNodes;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;

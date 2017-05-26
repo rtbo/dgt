@@ -37,12 +37,14 @@ abstract class SgNode
     /// builds a new node
     this()
     {
-        _onMouseDown = new Handler!MouseEvent;
-        _onMouseUp = new Handler!MouseEvent;
-        _onMouseDrag = new Handler!MouseEvent;
-        _onMouseMove = new Handler!MouseEvent;
-        _onMouseClick = new Handler!MouseEvent;
-        _onMouseDblClick = new Handler!MouseEvent;
+        _onMouseDown        = new Handler!MouseEvent;
+        _onMouseUp          = new Handler!MouseEvent;
+        _onMouseDrag        = new Handler!MouseEvent;
+        _onMouseMove        = new Handler!MouseEvent;
+        _onMouseEnter       = new Handler!MouseEvent;
+        _onMouseLeave       = new Handler!MouseEvent;
+        _onMouseClick       = new Handler!MouseEvent;
+        _onMouseDblClick    = new Handler!MouseEvent;
         _style = new Style(this);
     }
 
@@ -349,6 +351,26 @@ abstract class SgNode
         return _onMouseMove;
     }
     /// ditto
+    final @property void onMouseEnter(Slot!MouseEvent slot)
+    {
+        _onMouseEnter.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseEnter()
+    {
+        return _onMouseEnter;
+    }
+    /// ditto
+    final @property void onMouseLeave(Slot!MouseEvent slot)
+    {
+        _onMouseLeave.set(slot);
+    }
+    /// ditto
+    final protected @property Handler!MouseEvent onMouseLeave()
+    {
+        return _onMouseLeave;
+    }
+    /// ditto
     final @property void onMouseClick(Slot!MouseEvent slot)
     {
         _onMouseClick.set(slot);
@@ -418,6 +440,12 @@ abstract class SgNode
                 break;
             case EventType.mouseMove:
                 onMouseMove.fire(mev);
+                break;
+            case EventType.mouseEnter:
+                onMouseEnter.fire(mev);
+                break;
+            case EventType.mouseLeave:
+                onMouseLeave.fire(mev);
                 break;
             case EventType.mouseClick:
                 onMouseClick.fire(mev);
@@ -581,6 +609,8 @@ abstract class SgNode
     private Handler!MouseEvent _onMouseUp;
     private Handler!MouseEvent _onMouseMove;
     private Handler!MouseEvent _onMouseDrag;
+    private Handler!MouseEvent _onMouseEnter;
+    private Handler!MouseEvent _onMouseLeave;
     private Handler!MouseEvent _onMouseClick;
     private Handler!MouseEvent _onMouseDblClick;
 

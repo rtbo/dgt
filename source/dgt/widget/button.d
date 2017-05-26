@@ -37,6 +37,12 @@ class Button : Label
                 remPseudoState(PseudoState.active);
             }
         };
+        onMouseEnter = (MouseEvent /+ev+/) {
+            addPseudoState(PseudoState.hover);
+        };
+        onMouseLeave = (MouseEvent /+ev+/) {
+            remPseudoState(PseudoState.hover);
+        };
     }
 
     override @property string cssType()

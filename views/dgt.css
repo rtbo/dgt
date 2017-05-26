@@ -9,3 +9,7 @@ button {
 button:active {
     background-color: #999;
 }
+
+button:hover {
+    background-color: #ccc;
+}
