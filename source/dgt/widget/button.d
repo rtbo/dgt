@@ -23,6 +23,20 @@ class Button : Label
         onMouseClick = (MouseEvent /+ev+/) {
             _onClick.fire();
         };
+        onMouseDown = (MouseEvent /+ev+/) {
+            addPseudoState(PseudoState.active);
+        };
+        onMouseUp = (MouseEvent /+ev+/) {
+            remPseudoState(PseudoState.active);
+        };
+        onMouseDrag = (MouseEvent ev) {
+            if (FRect(0, 0, bounds.size).contains(ev.pos)) {
+                addPseudoState(PseudoState.active);
+            }
+            else {
+                remPseudoState(PseudoState.active);
+            }
+        };
     }
 
     override @property string cssType()
