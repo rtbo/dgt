@@ -338,6 +338,18 @@ class Window
         _dirtyReg = new Region(IRect(0, 0, size));
     }
 
+    /// request a layout pass
+    void requestLayout()
+    {
+        _dirtyLayout = true;
+    }
+
+    /// request a style pass
+    void requestStylePass()
+    {
+        _dirtyStyle = true;
+    }
+
     void handleEvent(WindowEvent wEv)
     {
         assert(wEv.window is this);
@@ -483,11 +495,12 @@ class Window
         immutable(RenderFrame) collectFrame()
         {
             scope(exit) _dirtyReg = new Region;
-            if (_root) {
-                import dgt.css.cascade;
+            if (_root && _dirtyStyle) {
+                import dgt.css.cascade : cssCascade;
                 cssCascade(_root);
+                _dirtyStyle = false;
             }
-            if (_widget) {
+            if (_widget && _dirtyLayout) {
                 import dgt.widget.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
                 _widget.measure(
@@ -495,6 +508,7 @@ class Window
                     MeasureSpec.makeAtMost(fs.height)
                 );
                 _widget.layout(FRect(0, 0, fs));
+                _dirtyLayout = false;
             }
             return new immutable RenderFrame (
                 nativeHandle, IRect(0, 0, size),
@@ -662,6 +676,8 @@ class Window
         WindowEvent[] _events;
 
         Rebindable!Region _dirtyReg = new Region;
+        bool _dirtyStyle    = true;
+        bool _dirtyLayout   = true;
 
         FireableSignal!string    _onTitleChange = new FireableSignal!string;
         Handler!ShowEvent        _onShow        = new Handler!ShowEvent;

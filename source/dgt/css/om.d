@@ -15,16 +15,6 @@ class Stylesheet
 {
     Origin origin;
     Rule[] rules;
-
-    void setSpecificity()
-    {
-        foreach(r; rules) {
-            immutable s = r.selector.specificity;
-            foreach (d; r.decls) {
-                d.specificity = s;
-            }
-        }
-    }
 }
 
 class Rule
@@ -39,6 +29,7 @@ class Decl
     Token[] valueTokens;
     bool important;
 
+    Selector selector;
     int specificity;
     CSSValueBase value;
 }

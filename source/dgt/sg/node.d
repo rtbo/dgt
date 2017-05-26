@@ -14,6 +14,22 @@ import std.exception;
 import std.experimental.logger;
 import std.typecons;
 
+/// Bit flags that describe what in a node needs update
+enum DirtyFlags
+{
+    /// nothing is dirty
+    clean       = 0,
+    /// A style pass is needed
+    styleMask   = 0x1000,
+    /// Dynamic pseudo class has to be enabled/disabled.
+    dynStyle    = 0x0100 | styleMask,
+    /// A css string has been updated/set/reset.
+    css         = 0x0200 | styleMask,
+
+    /// All bits set
+    all         = 0xffff_ffff,
+}
+
 
 /// A node for a 2D scene-graph
 abstract class SgNode
@@ -70,9 +86,29 @@ abstract class SgNode
     }
 
     /// Invalidate the node content. This triggers rendering.
-    void invalidate()
+    final void invalidate()
     {
-        window.invalidate(cast(IRect)sceneBounds);
+        if (window) window.invalidate(cast(IRect)sceneBounds);
+    }
+
+    /// The dirtyState of this node;
+    final @property DirtyFlags dirtyState()
+    {
+        return _dirtyState;
+    }
+    /// Set the passed flag dirty
+    final void dirty(in DirtyFlags flags)
+    {
+        _dirtyState |= flags;
+        if (flags & DirtyFlags.styleMask) {
+            if (window) window.requestStylePass();
+            invalidate();
+        }
+    }
+    /// Reset some dirty flags
+    final void clean(in DirtyFlags flags = DirtyFlags.all)
+    {
+        _dirtyState &= ~flags;
     }
 
     /// The position of the node relative to its parent.
@@ -189,7 +225,10 @@ abstract class SgNode
         if (!css.canFind("{")) {
             css = "*{"~css~"}";
         }
-        _cssStyle = css;
+        if (css != _cssStyle) {
+            _cssStyle = css;
+            dirty(DirtyFlags.css);
+        }
     }
 
     /// The type used in css type selector.
@@ -201,13 +240,46 @@ abstract class SgNode
     /// Used in CSS '#' selector, and for debug printing if name is not set.
     final @property string id() { return _id; }
     /// ditto
-    final @property void id(in string id) { _id = id; }
+    final @property void id(in string id)
+    {
+        if (id != _id) {
+            _id = id;
+            dirty(DirtyFlags.css);
+        }
+    }
 
     /// The CSS class of this node.
     /// Used in CSS '.' selector.
     final @property string cssClass() { return _cssClass; }
     /// ditto
-    final @property void cssClass(in string cssClass) { _cssClass = cssClass; }
+    final @property void cssClass(in string cssClass)
+    {
+        if (cssClass != _cssClass) {
+            _cssClass = cssClass;
+            dirty(DirtyFlags.css);
+        }
+    }
+
+    /// A pseudo state of the node.
+    final @property PseudoState pseudoState() { return _pseudoState; }
+    /// ditto
+    final @property void pseudoState(in PseudoState state)
+    {
+        if (state != _pseudoState) {
+            _pseudoState = state;
+            dirty(DirtyFlags.dynStyle);
+        }
+    }
+    /// ditto
+    final void addPseudoState(in PseudoState flags)
+    {
+        pseudoState = _pseudoState | flags;
+    }
+    /// ditto
+    final void remPseudoState(in PseudoState flags)
+    {
+        pseudoState = _pseudoState & (~flags);
+    }
 
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
@@ -484,6 +556,9 @@ abstract class SgNode
     package SgNode _prevSibling;
     package SgNode _nextSibling;
 
+    // dirty state
+    private DirtyFlags _dirtyState;
+
     // bounds
     private FPoint      _pos;
     private Lazy!FRect  _bounds;
@@ -498,6 +573,7 @@ abstract class SgNode
     private string _cssStyle;
     private string _id;
     private string _cssClass;
+    private PseudoState _pseudoState;
 
     // events
     private MaskedFilter[] _evFilters;

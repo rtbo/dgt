@@ -13,6 +13,28 @@ enum FontStyle
     oblique,
 }
 
+/// Bit flags that describe the pseudo state of a node.
+/// Several states can be active at the same time (e.g. disabled and checked).
+/// Pseudo state style can be specified by using corresponding
+/// css pseudo-class selectors.
+enum PseudoState
+{
+    // default state
+    def             = 0,
+
+    // UI state
+    uiMask          = 0x0f,
+    checked         = 0x01,
+    disabled        = 0x02,
+    indeterminate   = 0x04,
+
+    // dynamic state
+    dynMask         = 0xf0,
+    active          = 0x10,
+    hover           = 0x20,
+    focus           = 0x40,
+}
+
 /// The style class groups all properties affecting visual appearance of nodes.
 /// It is populated during the CSS pass.
 class Style

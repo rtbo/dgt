@@ -171,6 +171,11 @@ struct CSSParser(TokenInput)
                 auto r = new Rule;
                 r.selector = sel;
                 r.decls = decls;
+                immutable spec = sel.specificity;
+                foreach (d; decls) {
+                    d.specificity = spec;
+                    d.selector = sel;
+                }
                 return r;
             case Tok.whitespace:
                 break;

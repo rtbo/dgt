@@ -9,6 +9,7 @@ import dgt.sg.node;
 import dgt.sg.parent;
 import dgt.sg.style;
 
+import std.experimental.logger;
 import std.range;
 
 /// Entry point of the Style pass before rendering
@@ -19,6 +20,7 @@ in {
     assert(root.isRoot);
 }
 body {
+    log("starting style pass");
     auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;
     ctx.cascade(root, [dgtCSS]);

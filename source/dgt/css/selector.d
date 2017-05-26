@@ -3,8 +3,10 @@ module dgt.css.selector;
 
 import dgt.css.token;
 import dgt.sg.node;
+import dgt.sg.style;
 
 import std.exception;
+import std.experimental.logger;
 import std.range;
 
 interface Selector
@@ -26,7 +28,53 @@ if (isInputRange!Tokens && is(ElementType!Tokens == Token))
     return parseSelectorGroup(tokens);
 }
 
-package:
+
+class PseudoClassTranslator
+{
+    PseudoState translate(string pseudoClass)
+    {
+        switch (pseudoClass)
+        {
+        case "checked":
+            return PseudoState.checked;
+        case "disabled":
+            return PseudoState.disabled;
+        case "indeterminate":
+            return PseudoState.indeterminate;
+        case "active":
+            return PseudoState.active;
+        case "focus":
+            return PseudoState.focus;
+        case "hover":
+            return PseudoState.hover;
+        default:
+            return PseudoState.def;
+        }
+    }
+}
+
+@property PseudoClassTranslator pseudoClassTranslator()
+{
+    return _pseudoClassTranslator;
+}
+
+@property void pseudoClassTranslator(PseudoClassTranslator translator)
+in {
+    assert(translator !is null);
+}
+body {
+    _pseudoClassTranslator = translator;
+}
+
+PseudoState translatePseudoClass(string pseudoClass)
+{
+    return _pseudoClassTranslator.translate(pseudoClass);
+}
+
+
+private:
+
+__gshared PseudoClassTranslator _pseudoClassTranslator = new PseudoClassTranslator;
 
 abstract class AbstractSelector : Selector
 {
@@ -64,6 +112,13 @@ class SimpleSelectorSeq : AbstractSelector
         import std.algorithm : map, sum;
         return seq.map!(s => s.specificity).sum();
     }
+
+    override string toString()
+    {
+        import std.algorithm : map;
+        import std.format : format;
+        return format("%-(%s%)", seq.map!(s => s.toString()));
+    }
 }
 
 class SimpleSelector : AbstractSelector
@@ -79,6 +134,7 @@ class SimpleSelector : AbstractSelector
 
     SSType ssType;
     string val;
+    private PseudoState _ps;
 
     override @property Type type()
     {
@@ -97,12 +153,20 @@ class SimpleSelector : AbstractSelector
         case SSType.id:
             return node.id == val;
         case SSType.pseudo:
-            if (val == "root") {
+            if (_ps != PseudoState.def) {
+                return (node.pseudoState & _ps) != PseudoState.def;
+            }
+            else if (val == "root") {
                 return node.isRoot;
             }
             else {
-                throw new Exception("Unsupported pseudo selector: "~val);
+                _ps = translatePseudoClass(val);
+                if ((node.pseudoState & _ps) != PseudoState.def) {
+                    return true;
+                }
             }
+            warningf("unrecognized CSS pseudo-class: "~val);
+            return false;
         case SSType.attr:
             assert(false, "unimplemented");
         }
@@ -121,6 +185,24 @@ class SimpleSelector : AbstractSelector
             return 100;
         case SSType.universal:
             return 0;
+        }
+    }
+
+    override string toString()
+    {
+        final switch(ssType) {
+        case SSType.type:
+            return val;
+        case SSType.universal:
+            return "*";
+        case SSType.class_:
+            return "." ~ val;
+        case SSType.id:
+            return "#" ~ val;
+        case SSType.pseudo:
+            return ":" ~ val;
+        case SSType.attr:
+            assert(false, "unimplemented");
         }
     }
 }
@@ -144,6 +226,13 @@ class Group : AbstractSelector
     {
         import std.algorithm : map, sum;
         return selectors.map!(s => s.specificity).sum();
+    }
+
+    override string toString()
+    {
+        import std.algorithm : map;
+        import std.format : format;
+        return format("%-(%s, %)", selectors.map!(s => s.toString()));
     }
 }
 
@@ -190,6 +279,23 @@ class Combinator : AbstractSelector
     @property int specificity()
     {
         return lhs.specificity + rhs.specificity;
+    }
+
+    override string toString()
+    {
+        import std.format : format;
+        switch(_type) {
+        case Type.descendant:
+            return format("%s %s", lhs.toString(), rhs.toString());
+        case Type.child:
+            return format("%s > %s", lhs.toString(), rhs.toString());
+        case Type.adjSibl:
+            return format("%s + %s", lhs.toString(), rhs.toString());
+        case Type.genSibl:
+            return format("%s ~ %s", lhs.toString(), rhs.toString());
+        default:
+            assert(false);
+        }
     }
 }
 
