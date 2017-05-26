@@ -69,6 +69,12 @@ abstract class SgNode
         return _nextSibling;
     }
 
+    /// Invalidate the node content. This triggers rendering.
+    void invalidate()
+    {
+        window.invalidate(cast(IRect)sceneBounds);
+    }
+
     /// The position of the node relative to its parent.
     @property FPoint pos() const
     {
