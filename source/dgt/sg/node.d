@@ -129,6 +129,24 @@ abstract class SgNode
         if (_parent) _parent.dirtyBounds();
     }
 
+    /// Position of this node in scene coordinates
+    @property FPoint scenePos()
+    {
+        auto point = pos;
+        auto p = parent;
+        while (p) {
+            point += p.pos;
+            p = p.parent;
+        }
+        return point;
+    }
+
+    /// Bounds of this node in scene coordinates
+    @property FRect sceneBounds()
+    {
+        return FRect(scenePos, bounds.size);
+    }
+
     /// The transform affecting this node and its children.
     /// The transform does not affect the layout, but affects rendering.
     /// It should be used for animation mainly.
