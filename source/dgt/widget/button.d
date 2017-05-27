@@ -20,23 +20,6 @@ class Button : Label
     {
         padding = FPadding(6);
         _onClick = new FireableSignal!();
-        onMouseClick = (MouseEvent /+ev+/) {
-            _onClick.fire();
-        };
-        onMouseDown = (MouseEvent /+ev+/) {
-            addPseudoState(PseudoState.active);
-        };
-        onMouseUp = (MouseEvent /+ev+/) {
-            remPseudoState(PseudoState.active);
-        };
-        onMouseDrag = (MouseEvent ev) {
-            if (localRect.contains(ev.pos)) {
-                addPseudoState(PseudoState.active);
-            }
-            else {
-                remPseudoState(PseudoState.active);
-            }
-        };
         hoverSensitive = true;
     }
 
@@ -50,6 +33,30 @@ class Button : Label
         return _onClick;
     }
 
+    override protected void mouseClickEvent(MouseEvent /+ev+/)
+    {
+        _onClick.fire();
+    }
+
+    override protected void mouseDownEvent(MouseEvent /+ev+/)
+    {
+        addPseudoState(PseudoState.active);
+    }
+
+    override protected void mouseUpEvent(MouseEvent /+ev+/)
+    {
+        remPseudoState(PseudoState.active);
+    }
+
+    override protected void mouseDragEvent(MouseEvent ev)
+    {
+        if (localRect.contains(ev.pos)) {
+            addPseudoState(PseudoState.active);
+        }
+        else {
+            remPseudoState(PseudoState.active);
+        }
+    }
 
     private FireableSignal!() _onClick;
 }

@@ -20,14 +20,6 @@ class SgNode
     /// builds a new node
     this()
     {
-        _onMouseDown        = new Handler!MouseEvent;
-        _onMouseUp          = new Handler!MouseEvent;
-        _onMouseDrag        = new Handler!MouseEvent;
-        _onMouseMove        = new Handler!MouseEvent;
-        _onMouseEnter       = new Handler!MouseEvent;
-        _onMouseLeave       = new Handler!MouseEvent;
-        _onMouseClick       = new Handler!MouseEvent;
-        _onMouseDblClick    = new Handler!MouseEvent;
         _style = new Style(this);
     }
 
@@ -574,86 +566,32 @@ class SgNode
         _evFilters = _evFilters.remove!(f => (f.mask & cast(uint)mask) != 0);
     }
 
-    /// Activated when user clicks on this node
-    final @property void onMouseDown(Slot!MouseEvent slot)
+    /// Called when mouse interacts with this node.
+    protected void mouseDownEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseUpEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseDragEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseEnterEvent(MouseEvent ev)
     {
-        _onMouseDown.set(slot);
+        if (_hoverSensitive) {
+            addPseudoState(PseudoState.hover);
+        }
     }
     /// ditto
-    final protected @property Handler!MouseEvent onMouseDown()
+    protected void mouseLeaveEvent(MouseEvent ev)
     {
-        return _onMouseDown;
+        if (_hoverSensitive) {
+            remPseudoState(PseudoState.hover);
+        }
     }
     /// ditto
-    final @property void onMouseUp(Slot!MouseEvent slot)
-    {
-        _onMouseUp.set(slot);
-    }
+    protected void mouseMoveEvent(MouseEvent ev) {}
     /// ditto
-    final protected @property Handler!MouseEvent onMouseUp()
-    {
-        return _onMouseUp;
-    }
+    protected void mouseClickEvent(MouseEvent ev) {}
     /// ditto
-    final @property void onMouseDrag(Slot!MouseEvent slot)
-    {
-        _onMouseDrag.set(slot);
-    }
-    /// ditto
-    final protected @property Handler!MouseEvent onMouseDrag()
-    {
-        return _onMouseDrag;
-    }
-    /// ditto
-    final @property void onMouseMove(Slot!MouseEvent slot)
-    {
-        _onMouseMove.set(slot);
-    }
-    /// ditto
-    final protected @property Handler!MouseEvent onMouseMove()
-    {
-        return _onMouseMove;
-    }
-    /// ditto
-    final @property void onMouseEnter(Slot!MouseEvent slot)
-    {
-        _onMouseEnter.set(slot);
-    }
-    /// ditto
-    final protected @property Handler!MouseEvent onMouseEnter()
-    {
-        return _onMouseEnter;
-    }
-    /// ditto
-    final @property void onMouseLeave(Slot!MouseEvent slot)
-    {
-        _onMouseLeave.set(slot);
-    }
-    /// ditto
-    final protected @property Handler!MouseEvent onMouseLeave()
-    {
-        return _onMouseLeave;
-    }
-    /// ditto
-    final @property void onMouseClick(Slot!MouseEvent slot)
-    {
-        _onMouseClick.set(slot);
-    }
-    /// ditto
-    final protected @property Handler!MouseEvent onMouseClick()
-    {
-        return _onMouseClick;
-    }
-    /// ditto
-    final @property void onMouseDblClick(Slot!MouseEvent slot)
-    {
-        _onMouseDblClick.set(slot);
-    }
-    /// ditto
-    final protected @property Handler!MouseEvent onMouseDblClick()
-    {
-        return _onMouseDblClick;
-    }
+    protected void mouseDblClickEvent(MouseEvent ev) {}
 
     /// Chain an event until its final target, giving each parent in the chain
     /// the opportunity to filter it, or to handle it after its children if
@@ -694,34 +632,28 @@ class SgNode
             auto mev = cast(MouseEvent)event;
             switch (et) {
             case EventType.mouseDown:
-                onMouseDown.fire(mev);
+                mouseDownEvent(mev);
                 break;
             case EventType.mouseUp:
-                onMouseUp.fire(mev);
+                mouseUpEvent(mev);
                 break;
             case EventType.mouseDrag:
-                onMouseDrag.fire(mev);
+                mouseDragEvent(mev);
                 break;
             case EventType.mouseMove:
-                onMouseMove.fire(mev);
+                mouseMoveEvent(mev);
                 break;
             case EventType.mouseEnter:
-                if (_hoverSensitive) {
-                    addPseudoState(PseudoState.hover);
-                }
-                onMouseEnter.fire(mev);
+                mouseEnterEvent(mev);
                 break;
             case EventType.mouseLeave:
-                onMouseLeave.fire(mev);
-                if (_hoverSensitive) {
-                    remPseudoState(PseudoState.hover);
-                }
+                mouseLeaveEvent(mev);
                 break;
             case EventType.mouseClick:
-                onMouseClick.fire(mev);
+                mouseClickEvent(mev);
                 break;
             case EventType.mouseDblClick:
-                onMouseDblClick.fire(mev);
+                mouseDblClickEvent(mev);
                 break;
             default:
                 break;
@@ -903,14 +835,6 @@ class SgNode
 
     // events
     private MaskedFilter[] _evFilters;
-    private Handler!MouseEvent _onMouseDown;
-    private Handler!MouseEvent _onMouseUp;
-    private Handler!MouseEvent _onMouseMove;
-    private Handler!MouseEvent _onMouseDrag;
-    private Handler!MouseEvent _onMouseEnter;
-    private Handler!MouseEvent _onMouseLeave;
-    private Handler!MouseEvent _onMouseClick;
-    private Handler!MouseEvent _onMouseDblClick;
 
     // cache policy
     private bool _dynamic=false;
