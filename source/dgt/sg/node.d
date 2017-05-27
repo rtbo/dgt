@@ -223,25 +223,25 @@ abstract class SgNode
     /// Map a point from scene coordinates to this node coordinates
     final FPoint mapFromScene(in FPoint pos)
     {
-        return fvec(pos, 0).transform(sceneTransform).xy;
+        return fvec(pos, 0).transform(sceneTransformInv).xy;
     }
 
     /// Map a point from this node coordinates to scene coordinates
     final FPoint mapToScene(in FPoint pos)
     {
-        return fvec(pos, 0).transform(sceneTransformInv).xy;
+        return fvec(pos, 0).transform(sceneTransform).xy;
     }
 
     /// Map a point from parent coordinates to this node coordinates
     final FPoint mapFromParent(in FPoint pos)
     {
-        return fvec(pos, 0).transform(parentTransform).xy;
+        return fvec(pos, 0).transform(parentTransformInv).xy;
     }
 
     /// Map a point from this node coordinates to parent coordinates
     final FPoint mapToParent(in FPoint pos)
     {
-        return fvec(pos, 0).transform(parentTransformInv).xy;
+        return fvec(pos, 0).transform(parentTransform).xy;
     }
 
     /// Map a point from the other node coordinates to this node coordinates
@@ -709,6 +709,47 @@ enum DirtyFlags
 
     /// All bits set
     all                 = 0xffff_ffff,
+}
+
+
+/// Testing coordinates transforms
+unittest {
+    import dgt.math.approx : approxUlp, approxUlpAndAbs;
+    import dgt.widget.group : Group;
+
+    auto root = new Group;
+    auto child1 = new Group;
+    auto subchild = new Group;
+    auto child2 = new Group;
+
+    root.rect = FRect(0, 0, 100, 100);
+    child1.rect = FRect(20, 20, 60, 40);
+    subchild.rect = FRect(5, 5, 40, 25);
+    child2.rect = FRect(10, 80, 90, 10);
+
+    root.appendChild(child1);
+    root.appendChild(child2);
+    child1.appendChild(subchild);
+
+    immutable p = fvec(10, 10);
+
+    assert(approxUlp(child1.mapFromParent(p),   fvec(-10, -10)));
+    assert(approxUlp(child1.mapFromScene(p),    fvec(-10, -10)));
+    assert(approxUlp(child1.mapToParent(p),     fvec( 30,  30)));
+    assert(approxUlp(child1.mapToScene(p),      fvec( 30,  30)));
+
+    assert(approxUlp(child2.mapFromParent(p),   fvec(  0, -70)));
+    assert(approxUlp(child2.mapFromScene(p),    fvec(  0, -70)));
+    assert(approxUlp(child2.mapToParent(p),     fvec( 20,  90)));
+    assert(approxUlp(child2.mapToScene(p),      fvec( 20,  90)));
+
+    assert(approxUlp(subchild.mapFromParent(p), fvec(  5,   5)));
+    assert(approxUlp(subchild.mapFromScene(p),  fvec(-15, -15)));
+    assert(approxUlp(subchild.mapToParent(p),   fvec( 15,  15)));
+    assert(approxUlp(subchild.mapToScene(p),    fvec( 35,  35)));
+
+    assert(approxUlp(subchild.mapToNode(child2, p),     fvec( 25,  -45)));
+    assert(approxUlp(subchild.mapFromNode(child2, p),   fvec( -5,  65)));
 }
 
 struct RenderCacheCookie

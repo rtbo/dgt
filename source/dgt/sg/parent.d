@@ -247,6 +247,34 @@ class SgParent : SgNode
     private SgNode _lastChild;
 }
 
+
+/// Testing scene graph relationship
+unittest
+{
+    import dgt.widget.group : Group;
+    import std.algorithm : equal;
+
+    auto root = new Group;
+    auto c1 = new Group;
+    auto c2 = new Group;
+    root.name = "root";
+    c1.name = "c1";
+    c2.name = "c2";
+    root.appendChild(c1);
+    root.appendChild(c2);
+
+    assert(c1.parent is root);
+    assert(c2.parent is root);
+    assert(root.firstChild is c1);
+    assert(root.lastChild is c2);
+
+    string[] names;
+    foreach(c; root.children) {
+        names ~= c.name;
+    }
+    assert(equal(names, ["c1", "c2"]));
+}
+
 private:
 
 /// Bidirectional range that traverses a sibling node list
@@ -292,30 +320,3 @@ struct SgSiblingNodeRange(NodeT)
 
 static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
 static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
-
-
-unittest
-{
-    import dgt.widget.group : Group;
-    import std.algorithm : equal;
-
-    auto root = new Group;
-    auto c1 = new Group;
-    auto c2 = new Group;
-    root.name = "root";
-    c1.name = "c1";
-    c2.name = "c2";
-    root.appendChild(c1);
-    root.appendChild(c2);
-
-    assert(c1.parent is root);
-    assert(c2.parent is root);
-    assert(root.firstChild is c1);
-    assert(root.lastChild is c2);
-
-    string[] names;
-    foreach(c; root.children) {
-        names ~= c.name;
-    }
-    assert(equal(names, ["c1", "c2"]));
-}
