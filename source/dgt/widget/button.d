@@ -30,7 +30,7 @@ class Button : Label
             remPseudoState(PseudoState.active);
         };
         onMouseDrag = (MouseEvent ev) {
-            if (localBounds.contains(ev.pos)) {
+            if (localRect.contains(ev.pos)) {
                 addPseudoState(PseudoState.active);
             }
             else {

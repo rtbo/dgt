@@ -5,13 +5,12 @@ import dgt.geometry;
 import dgt.math;
 import dgt.render.node;
 import dgt.sg.node;
-import dgt.sg.parent;
 import dgt.widget.layout;
 
 import std.experimental.logger;
 
 /// The widget class is a node that is subjected to layout
-class Widget : SgParent
+class Widget : SgNode
 {
     /// Builds a new widget
     this() {}

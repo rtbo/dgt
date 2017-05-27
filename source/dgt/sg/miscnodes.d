@@ -59,11 +59,6 @@ class SgImage : SgNode
         return "image";
     }
 
-    override @property FRect localBounds()
-    {
-        return FRect(0, 0, cast(FSize)_image.size);
-    }
-
     override protected immutable(RenderNode) collectRenderNode()
     {
         if (_image && !_immutImg) _immutImg = _image.idup;
@@ -108,14 +103,6 @@ class SgText : SgNode
     {
         ensureLayout();
         return _metrics;
-    }
-
-    override @property FRect localBounds()
-    {
-        ensureLayout();
-        immutable topLeft = -cast(FVec2)_metrics.bearing;
-        immutable size = cast(FVec2)_metrics.size;
-        return FRect(topLeft, FSize(size));
     }
 
     override @property string cssType()

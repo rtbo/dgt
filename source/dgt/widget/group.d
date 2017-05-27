@@ -2,7 +2,6 @@ module dgt.widget.group;
 
 import dgt.geometry;
 import dgt.sg.node;
-import dgt.sg.parent;
 import dgt.widget.layout;
 import dgt.widget.widget;
 
@@ -33,6 +32,6 @@ class Group : Widget
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        measurement = boundsFromParent.size;
+        measurement = parentRect.size;
     }
 }

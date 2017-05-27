@@ -14,7 +14,6 @@ import dgt.render;
 import dgt.render.frame;
 import dgt.screen;
 import dgt.sg.node;
-import dgt.sg.parent;
 import dgt.util;
 import dgt.widget.widget;
 
@@ -203,7 +202,6 @@ class Window
     void close()
     {
         enforce(_platformWindow.created, "attempt to close a non-created window");
-        if (_root) _root.disposeResources();
         if (!dummy) Application.instance.unregisterWindow(this);
         _platformWindow.close();
         _onClosed.fire(this);
@@ -282,12 +280,11 @@ class Window
     }
 
     /// The scene graph root attached to this window
-    @property inout(SgParent) root() inout { return _root; }
+    @property inout(SgNode) root() inout { return _root; }
     /// ditto
-    @property void root(SgParent root)
+    @property void root(SgNode root)
     {
         if (_root) {
-            _root.disposeResources();
             _root._window = null;
         }
         _root = root;
@@ -742,7 +739,7 @@ class Window
         ISize _size;
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
-        SgParent _root;
+        SgNode _root;
         Widget _widget;
         // Widget[] _widgetRoots;
         SgNode[] _dragChain;
@@ -774,7 +771,7 @@ class Window
 }
 
 
-private void collectWidgetRoots(SgParent parent, ref Widget[] roots)
+private void collectWidgetRoots(SgNode parent, ref Widget[] roots)
 {
     auto w = cast(Widget)parent;
     if (w && !cast(Widget)w.parent) {
@@ -782,7 +779,7 @@ private void collectWidgetRoots(SgParent parent, ref Widget[] roots)
     }
     import std.algorithm : each, filter, map;
     parent.children
-        .map!(n => cast(SgParent)n)
+        .map!(n => cast(SgNode)n)
         .filter!(p => p !is null)
         .each!(p => collectWidgetRoots(p, roots));
 }
