@@ -951,12 +951,11 @@ enum DirtyFlags
 /// Testing scene graph relationship
 unittest
 {
-    import dgt.widget.group : Group;
     import std.algorithm : equal;
 
-    auto root = new Group;
-    auto c1 = new Group;
-    auto c2 = new Group;
+    auto root = new SgNode;
+    auto c1 = new SgNode;
+    auto c2 = new SgNode;
     root.name = "root";
     c1.name = "c1";
     c2.name = "c2";
@@ -978,12 +977,11 @@ unittest
 /// Testing coordinates transforms
 unittest {
     import dgt.math.approx : approxUlp, approxUlpAndAbs;
-    import dgt.widget.group : Group;
 
-    auto root = new Group;
-    auto child1 = new Group;
-    auto subchild = new Group;
-    auto child2 = new Group;
+    auto root = new SgNode;
+    auto child1 = new SgNode;
+    auto subchild = new SgNode;
+    auto child2 = new SgNode;
 
     root.rect = FRect(0, 0, 100, 100);
     child1.rect = FRect(20, 20, 60, 40);
