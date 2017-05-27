@@ -6,33 +6,16 @@ import dgt.geometry;
 import dgt.math;
 import dgt.render;
 import dgt.render.node;
-import dgt.sg.parent;
 import dgt.sg.style;
 import dgt.window;
 
 import std.exception;
 import std.experimental.logger;
+import std.range;
 import std.typecons;
 
-/// Bit flags that describe what in a node needs update
-enum DirtyFlags
-{
-    /// nothing is dirty
-    clean       = 0,
-    /// A style pass is needed
-    styleMask   = 0x1000,
-    /// Dynamic pseudo class has to be enabled/disabled.
-    dynStyle    = 0x0100 | styleMask,
-    /// A css string has been updated/set/reset.
-    css         = 0x0200 | styleMask,
-
-    /// All bits set
-    all         = 0xffff_ffff,
-}
-
-
 /// A node for a 2D scene-graph
-abstract class SgNode
+class SgNode
 {
     /// builds a new node
     this()
@@ -55,10 +38,10 @@ abstract class SgNode
     }
 
     /// The root of this scene graph
-    @property SgParent root()
+    @property SgNode root()
     {
-        if (!_parent) return cast(SgParent)this;
-        SgParent p = _parent;
+        if (!_parent) return cast(SgNode)this;
+        SgNode p = _parent;
         while (p._parent) p = p._parent;
         return p;
     }
@@ -70,7 +53,7 @@ abstract class SgNode
     }
 
     /// This node's parent.
-    @property inout(SgParent) parent() inout
+    @property inout(SgNode) parent() inout
     {
         return _parent;
     }
@@ -87,10 +70,130 @@ abstract class SgNode
         return _nextSibling;
     }
 
+    /// Whether this node has children.
+    @property bool hasChildren() const
+    {
+        return _firstChild !is null;
+    }
+
+    /// The number of children this node has.
+    @property size_t childCount() const
+    {
+        return _childCount;
+    }
+
+    /// This node's first child.
+    @property inout(SgNode) firstChild() inout
+    {
+        return _firstChild;
+    }
+
+    /// This node's last child.
+    @property inout(SgNode) lastChild() inout
+    {
+        return _lastChild;
+    }
+
+    /// A bidirectional range of this node's children
+    @property auto children()
+    {
+        return SgSiblingNodeRange!SgNode(_firstChild, _lastChild);
+    }
+
+    /// ditto
+    @property auto children() const
+    {
+        return SgSiblingNodeRange!(const(SgNode))(_firstChild, _lastChild);
+    }
+
+    /// Appends the given node to this node children list.
+    protected void appendChild(SgNode node)
+    {
+        enforce(node && !node._parent);
+        node._parent = this;
+
+        if (!hasChildren) {
+            _firstChild = node;
+            _lastChild = node;
+        }
+        else {
+            _lastChild._nextSibling = node;
+            node._prevSibling = _lastChild;
+            _lastChild = node;
+        }
+        ++_childCount;
+    }
+
+    /// Prepend the given node to this node children list.
+    protected void prependChild(SgNode node)
+    {
+        enforce(node && !node._parent);
+        node._parent = this;
+
+        if (!hasChildren) {
+            _firstChild = node;
+            _lastChild = node;
+        }
+        else {
+            _firstChild._prevSibling = node;
+            node._nextSibling = _firstChild;
+            _firstChild = node;
+        }
+        ++_childCount;
+    }
+
+    /// Insert the given node in this node children list, just before the given
+    /// child.
+    protected void insertChildBefore(SgNode node, SgNode child)
+    {
+        enforce(node && !node._parent && child._parent is this);
+        node._parent = this;
+
+        if (child is _firstChild) {
+            _firstChild = node;
+        }
+        else {
+            auto prev = child._prevSibling;
+            prev._nextSibling = node;
+            node._prevSibling = prev;
+        }
+        child._prevSibling = node;
+        node._nextSibling = child;
+        ++_childCount;
+    }
+
+    /// Removes the given node from this node children list.
+    protected void removeChild(SgNode child)
+    {
+        enforce(child && child._parent is this);
+
+        child._parent = null;
+
+        if (_childCount == 1) {
+            _firstChild = null;
+            _lastChild = null;
+        }
+        else if (child is _firstChild) {
+            _firstChild = child._nextSibling;
+            _firstChild._prevSibling = null;
+        }
+        else if (child is _lastChild) {
+            _lastChild = child._prevSibling;
+            _lastChild._nextSibling = null;
+        }
+        else {
+            auto prev = child._prevSibling;
+            auto next = child._nextSibling;
+            prev._nextSibling = next;
+            next._prevSibling = prev;
+        }
+        --_childCount;
+    }
+
     /// Invalidate the node content. This triggers rendering.
     final void invalidate()
     {
-        if (window) window.invalidate(cast(IRect)sceneBounds);
+        if (window) window.invalidate(cast(IRect)sceneRect);
     }
 
     /// The dirtyState of this node;
@@ -112,23 +215,239 @@ abstract class SgNode
     {
         _dirtyState &= ~flags;
     }
+    /// Checks whether one of the passed flags is dirty
+    final bool isDirty(in DirtyFlags flags)
+    {
+        return (_dirtyState & flags) != DirtyFlags.clean;
+    }
+    /// Checks whether all of the passed flag are dirty
+    final bool areDirty(in DirtyFlags flags)
+    {
+        return (_dirtyState & flags) == flags;
+    }
 
     /// The position of the node relative to its parent.
-    @property FPoint pos() const
+    final @property FPoint pos() const
     {
-        return _pos;
+        return _rect.point;
     }
     /// ditto
-    @property void pos(in FPoint pos)
+    final @property void pos(in FPoint pos)
     {
-        _pos = pos;
-        dirtyBounds();
+        if (pos != _rect.point) {
+            _rect.point = pos;
+            // _rect.point is included in parent and scene transforms
+            dirty(DirtyFlags.transformMask);
+        }
+    }
+    /// The size of the node
+    final @property FSize size()
+    {
+        return _rect.size;
+    }
+    /// ditto
+    final @property void size(in FSize size)
+    {
+        _rect.size = size;
+    }
+    /// The 'logical' rect of the node.
+    /// This is expressed in parent coordinates, and do not take into account
+    /// the transform applied to this node.
+    /// Actual bounds may differ due to use of borders, shadows or transform.
+    /// This rect is the one used in layout calculations.
+    final @property FRect rect()
+    {
+        return _rect;
+    }
+    /// ditto
+    final @property void rect(in FRect rect)
+    {
+        if (rect != _rect) {
+            _rect = rect;
+            // _rect.point is included in parent and scene transforms
+            dirty(DirtyFlags.transformMask);
+        }
+    }
+
+    /// Rect in local coordinates
+    final @property FRect localRect()
+    {
+        return FRect(0, 0, size);
+    }
+
+    /// Position of this node as seen by parent, considering also
+    /// the transform of this node.
+    final @property FPoint parentPos()
+    {
+        return mapToParent(fvec(0, 0));
+    }
+
+    /// The rect of this node, as seen by parent, taking into account
+    /// transform. A rect is always axis aligned, so in case of rotation,
+    /// the bounding rect is returned.
+    final @property FRect parentRect()
+    {
+        return mapToParent(localRect);
+    }
+
+    /// Position of this node as seen by scene, considering
+    /// the whole transform chain.
+    final @property FPoint scenePos()
+    {
+        return mapToScene(fvec(0, 0));
+    }
+
+    /// The rect of this node, as seen by scene, taking into account
+    /// the whole transform chain. A rect is always axis aligned, so in case of rotation,
+    /// the bounding rect is returned.
+    final @property FRect sceneRect()
+    {
+        return mapToScene(localRect);
+    }
+
+    /// Whether this node has a transform set. (Other than identity)
+    final @property bool hasTransform() const { return _hasTransform; }
+
+    /// The transform affecting this node and its children.
+    /// The transform does not affect the layout, but affects rendering.
+    /// It should be used for animation mainly.
+    final @property FMat4 transform() const { return _transform; }
+
+    /// ditto
+    final @property void transform(in FMat4 transform)
+    {
+        _transform = transform;
+        _hasTransform = transform != FMat4.identity;
+        dirty(DirtyFlags.transformMask);
+    }
+
+    final @property FMat4 parentTransform()
+    {
+        if (isDirty(DirtyFlags.transformParent)) {
+            _parentTransform = _hasTransform ?
+                    transform.translate(fvec(pos, 0)) :
+                    translation!float(fvec(pos, 0));
+            clean(DirtyFlags.transformParent);
+        }
+        return _parentTransform;
+    }
+
+    final @property FMat4 parentTransformInv()
+    {
+        if (isDirty(DirtyFlags.transformParentInv)) {
+            _parentTransformInv = inverse(parentTransform);
+            clean(DirtyFlags.transformParentInv);
+        }
+        return _parentTransformInv;
+    }
+
+    final @property FMat4 sceneTransform()
+    {
+        if (isDirty(DirtyFlags.transformScene)) {
+            _sceneTransform = parent ?
+                    parent.sceneTransform * parentTransform :
+                    parentTransform;
+            clean(DirtyFlags.transformScene);
+        }
+        return _sceneTransform;
+    }
+
+    final @property FMat4 sceneTransformInv()
+    {
+        if (isDirty(DirtyFlags.transformSceneInv)) {
+            _sceneTransformInv = inverse(sceneTransform);
+            clean(DirtyFlags.transformSceneInv);
+        }
+        return _sceneTransformInv;
+    }
+
+    /// Map a point from scene coordinates to this node coordinates
+    final FPoint mapFromScene(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(sceneTransformInv).xy;
+    }
+
+    /// Map a point from this node coordinates to scene coordinates
+    final FPoint mapToScene(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(sceneTransform).xy;
+    }
+
+    /// Map a point from parent coordinates to this node coordinates
+    final FPoint mapFromParent(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(parentTransformInv).xy;
+    }
+
+    /// Map a point from this node coordinates to parent coordinates
+    final FPoint mapToParent(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(parentTransform).xy;
+    }
+
+    /// Map a point from the other node coordinates to this node coordinates
+    final FPoint mapFromNode(SgNode node, in FPoint pos)
+    {
+        immutable sp = node.mapToScene(pos);
+        return mapFromScene(sp);
+    }
+
+    /// Map a point from this node coordinates to the other node coordinates
+    final FPoint mapToNode(SgNode node, in FPoint pos)
+    {
+        immutable sp = mapToScene(pos);
+        return node.mapFromScene(sp);
+    }
+
+    /// Map a point from scene coordinates to this node coordinates
+    final FRect mapFromScene(in FRect rect)
+    {
+        return rect.transformBounds(sceneTransformInv);
+    }
+
+    /// Map a point from this node coordinates to scene coordinates
+    final FRect mapToScene(in FRect rect)
+    {
+        return rect.transformBounds(sceneTransform);
+    }
+
+    /// Map a point from parent coordinates to this node coordinates
+    final FRect mapFromParent(in FRect rect)
+    {
+        return rect.transformBounds(parentTransformInv);
+    }
+
+    /// Map a point from this node coordinates to parent coordinates
+    final FRect mapToParent(in FRect rect)
+    {
+        return rect.transformBounds(parentTransform);
+    }
+
+    /// Map a point from the other node coordinates to this node coordinates
+    final FRect mapFromNode(SgNode node, in FRect rect)
+    {
+        return rect.transformBounds(
+            node.sceneTransform * sceneTransformInv
+        );
+    }
+
+    /// Map a point from this node coordinates to the other node coordinates
+    final FRect mapToNode(SgNode node, in FRect rect)
+    {
+        return rect.transformBounds(
+            sceneTransform * node.sceneTransformInv
+        );
     }
 
     /// Get a node at position given by pos.
     SgNode nodeAtPos(in FVec2 pos)
     {
-        if (FRect(0f, 0f, bounds.size).contains(pos)) {
+        if (localRect.contains(pos)) {
+            foreach (c; children) {
+                immutable cp = c.mapFromParent(pos);
+                auto res = c.nodeAtPos(cp);
+                if (res) return res;
+            }
             return this;
         }
         else {
@@ -139,74 +458,14 @@ abstract class SgNode
     /// Recursively append nodes that are located at pos from root to end target.
     void nodesAtPos(in FVec2 pos, ref SgNode[] nodes)
     {
-        if (FRect(0f, 0f, bounds.size).contains(pos)) {
+        if (localRect.contains(pos)) {
             nodes ~= this;
+            foreach (c; children) {
+                immutable cp = c.mapFromParent(pos);
+                c.nodesAtPos(cp, nodes);
+            }
         }
     }
-
-    /// The bounds of this nodes in parent node coordinates.
-    @property FRect bounds()
-    {
-        if (_bounds.dirty) _bounds = computeBounds();
-        return _bounds;
-    }
-
-    /// The transformedBounds of this nodes after its transformation is applied.
-    @property FRect transformedBounds()
-    {
-        if (_transformedBounds.dirty) _transformedBounds = computeTransformedBounds();
-        return _transformedBounds;
-    }
-
-    abstract protected FRect computeBounds();
-    protected FRect computeTransformedBounds()
-    {
-        immutable b = bounds;
-        return _hasTransform ? transformBounds(b, _transform) : b;
-    }
-
-    /// Marks transformedBounds as dirty, meaning they need to be re-computed.
-    void dirtyBounds()
-    {
-        _bounds.dirty = true;
-        _transformedBounds.dirty = true;
-        if (_parent) _parent.dirtyBounds();
-    }
-
-    /// Position of this node in scene coordinates
-    @property FPoint scenePos()
-    {
-        auto point = pos;
-        auto p = parent;
-        while (p) {
-            point += p.pos;
-            p = p.parent;
-        }
-        return point;
-    }
-
-    /// Bounds of this node in scene coordinates
-    @property FRect sceneBounds()
-    {
-        return FRect(scenePos, bounds.size);
-    }
-
-    /// The transform affecting this node and its children.
-    /// The transform does not affect the layout, but affects rendering.
-    /// It should be used for animation mainly.
-    @property FMat4 transform() const { return _transform; }
-
-    /// ditto
-    @property void transform(in FMat4 transform)
-    {
-        _transform = transform;
-        _hasTransform = transform != FMat4.identity;
-        _transformedBounds.dirty = true;
-        if (_parent) _parent.dirtyBounds();
-    }
-
-    /// Whether this node has a transform set. (Other than identity)
-    @property bool hasTransform() const { return _hasTransform; }
 
     /// The Style object attached to this node
     @property Style style()
@@ -485,67 +744,53 @@ abstract class SgNode
         _dynamic = dynamic;
     }
 
-    /// Collect transformed render node for this node
-    immutable(RenderNode) collectTransformedRenderNode()
-    {
-        immutable toBeTransformed = collectRenderNode();
-        if (!toBeTransformed) return null;
-
-        FMat4 tr = translation!float(fvec(pos, 0));
-        if (hasTransform) {
-            tr = tr * transform;
-        }
-
-        immutable transformedNode = new immutable(TransformRenderNode)(
-            tr, toBeTransformed
-        );
-
-        immutable bg = backgroundRenderNode();
-
-        debug(nodeFrame) {
-            immutable fn = new immutable RectStrokeRenderNode(
-                fvec(0, 0, 0, 1), bounds
-            );
-            immutable nodes = bg ? [
-                bg, transformedNode, fn
-            ] : [
-                transformedNode, fn
-            ];
-            return new immutable(GroupRenderNode) (
-                bounds, nodes
-            );
-        }
-        else {
-            return bg ?
-                new immutable GroupRenderNode(bounds, [bg, transformedNode]) :
-                transformedNode;
-        }
-    }
-
+    /// background render node in local coordinates
     immutable(RenderNode) backgroundRenderNode()
     {
-        auto col = style.backgroundColor;
+        immutable col = style.backgroundColor;
         if (col.argb & 0xff000000) {
-            return new immutable RectFillRenderNode(col.asVec, bounds);
+            return new immutable RectFillRenderNode(col.asVec, localRect);
         }
         else {
             return null;
         }
     }
 
-    /// Collect the local render node for this node.
-    /// Local means unaltered by the transform.
-    abstract immutable(RenderNode) collectRenderNode();
+    /// Collect the render node for this node, in local coordinates.
+    /// It is responsibility of the parent to transform this render node into the
+    /// parent coordinates.
+    /// Returns: A render for this node, expressed in local coordinates.
+    immutable(RenderNode) collectRenderNode()
+    {
+        import std.algorithm : map;
+        import std.array : array;
+        import std.typecons : rebindable;
 
-    /// Requires node to dispose any resource that it would keep.
-    /// This is called at termination, or when a node is removed from the graph.
-    /// Allows to have resource collection that is determined and indenpendent from GC.
-    /// It does not need to be called by application.
-    void disposeResources() {}
+        if (hasChildren) {
+            immutable nodes = children .map!((SgNode c) {
+                immutable bg = c.backgroundRenderNode();
+                immutable cn = c.collectRenderNode();
+
+                immutable RenderNode rn = bg ?
+                    new immutable GroupRenderNode(bg.bounds, [bg, cn]) :
+                    cn;
+
+                return new immutable TransformRenderNode(
+                    c.parentTransform, rn
+                );
+            }).array();
+            return new immutable GroupRenderNode(
+                localRect, nodes
+            );
+        }
+        else {
+            return null;
+        }
+    }
 
     @property uint level() const
     {
-        Rebindable!(const(SgParent)) p = parent;
+        Rebindable!(const(SgNode)) p = parent;
         uint lev=0;
         while (p !is null) {
             ++lev;
@@ -570,7 +815,7 @@ abstract class SgNode
         if (name.length) {
             props ~= ["name", format("'%s'", name)];
         }
-        props ~= ["transformedBounds", format("%s", transformedBounds)];
+        props ~= ["rect", format("%s", rect)];
         return props;
     }
 
@@ -580,7 +825,21 @@ abstract class SgNode
         import std.format : format;
         import std.range : repeat;
         auto indent = repeat(' ', level*4).array;
-        return format("%s%s { %(%-(%s:%), %) }", indent, this.className, properties);
+        string res = format("%s%s { %(%-(%s:%), %) ", indent, this.className, properties);
+        if (hasChildren) {
+            res ~= format("[\n");
+            size_t ind=0;
+            foreach(c; children) {
+                res ~= c.toString();
+                if (ind != _childCount-1) {
+                    res ~= ",\n";
+                }
+                ++ind;
+            }
+            res ~= format("\n%s]", indent);
+        }
+        res ~= "}";
+        return res;
     }
 
     private static struct MaskedFilter
@@ -589,22 +848,49 @@ abstract class SgNode
         uint mask;
     }
 
-    // graph
-    package SgParent _parent;
 
-    package SgNode _prevSibling;
-    package SgNode _nextSibling;
+    invariant()
+    {
+        assert(!_firstChild || _firstChild.parent is this);
+        assert(!_lastChild || _lastChild.parent is this);
+        assert(!_firstChild || _firstChild._prevSibling is null);
+        assert(!_lastChild || _lastChild._nextSibling is null);
+
+        assert(_childCount != 0 || (_firstChild is null && _lastChild is null));
+        assert(_childCount == 0 || (_firstChild !is null && _lastChild !is null));
+        assert(_childCount != 1 || (_firstChild is _lastChild));
+        assert((_firstChild is null) == (_lastChild is null));
+
+        assert(!_prevSibling || _prevSibling._nextSibling is this);
+        assert(!_nextSibling || _nextSibling._prevSibling is this);
+
+        assert(!(_parent && _window)); // only root can hold the window ref
+    }
+
+    // graph
+    package(dgt) Window _window;
+
+    private SgNode _parent;
+
+    private SgNode _prevSibling;
+    private SgNode _nextSibling;
+
+    private size_t _childCount;
+    private SgNode _firstChild;
+    private SgNode _lastChild;
 
     // dirty state
     private DirtyFlags _dirtyState;
 
     // bounds
-    private FPoint      _pos;
-    private Lazy!FRect  _bounds;
-    private Lazy!FRect  _transformedBounds;
+    private FRect  _rect;
 
     // transform
-    private FMat4 _transform = FMat4.identity;
+    private FMat4 _transform            = FMat4.identity;
+    private FMat4 _parentTransform      = FMat4.identity;
+    private FMat4 _parentTransformInv   = FMat4.identity;
+    private FMat4 _sceneTransform       = FMat4.identity;
+    private FMat4 _sceneTransformInv    = FMat4.identity;
     private bool _hasTransform;
 
     // style
@@ -633,20 +919,99 @@ abstract class SgNode
     private string _name; // id will be used if name is empty
 }
 
-struct Lazy(T)
+
+/// Bit flags that describe what in a node needs update
+enum DirtyFlags
 {
-    T val;
-    bool dirty = true;
+    /// nothing is dirty
+    clean       = 0,
 
-    void opAssign(T val)
-    {
-        this.val = val;
-        dirty = false;
-    }
+    /// transform were changed
+    transformMask       = 0x000f,
+    /// ditto
+    transformParent     = 0x0001,
+    /// ditto
+    transformParentInv  = 0x0002,
+    /// ditto
+    transformScene      = 0x0004,
+    /// ditto
+    transformSceneInv   = 0x0008,
 
-    alias val this;
+    /// A style pass is needed
+    styleMask           = 0x0300,
+    /// Dynamic pseudo class has to be enabled/disabled.
+    dynStyle            = 0x0100,
+    /// A css string has been updated/set/reset.
+    css                 = 0x0200,
+
+    /// All bits set
+    all                 = 0xffff_ffff,
 }
 
+/// Testing scene graph relationship
+unittest
+{
+    import std.algorithm : equal;
+
+    auto root = new SgNode;
+    auto c1 = new SgNode;
+    auto c2 = new SgNode;
+    root.name = "root";
+    c1.name = "c1";
+    c2.name = "c2";
+    root.appendChild(c1);
+    root.appendChild(c2);
+
+    assert(c1.parent is root);
+    assert(c2.parent is root);
+    assert(root.firstChild is c1);
+    assert(root.lastChild is c2);
+
+    string[] names;
+    foreach(c; root.children) {
+        names ~= c.name;
+    }
+    assert(equal(names, ["c1", "c2"]));
+}
+
+/// Testing coordinates transforms
+unittest {
+    import dgt.math.approx : approxUlp, approxUlpAndAbs;
+
+    auto root = new SgNode;
+    auto child1 = new SgNode;
+    auto subchild = new SgNode;
+    auto child2 = new SgNode;
+
+    root.rect = FRect(0, 0, 100, 100);
+    child1.rect = FRect(20, 20, 60, 40);
+    subchild.rect = FRect(5, 5, 40, 25);
+    child2.rect = FRect(10, 80, 90, 10);
+
+    root.appendChild(child1);
+    root.appendChild(child2);
+    child1.appendChild(subchild);
+
+    immutable p = fvec(10, 10);
+
+    assert(approxUlp(child1.mapFromParent(p),   fvec(-10, -10)));
+    assert(approxUlp(child1.mapFromScene(p),    fvec(-10, -10)));
+    assert(approxUlp(child1.mapToParent(p),     fvec( 30,  30)));
+    assert(approxUlp(child1.mapToScene(p),      fvec( 30,  30)));
+
+    assert(approxUlp(child2.mapFromParent(p),   fvec(  0, -70)));
+    assert(approxUlp(child2.mapFromScene(p),    fvec(  0, -70)));
+    assert(approxUlp(child2.mapToParent(p),     fvec( 20,  90)));
+    assert(approxUlp(child2.mapToScene(p),      fvec( 20,  90)));
+
+    assert(approxUlp(subchild.mapFromParent(p), fvec(  5,   5)));
+    assert(approxUlp(subchild.mapFromScene(p),  fvec(-15, -15)));
+    assert(approxUlp(subchild.mapToParent(p),   fvec( 15,  15)));
+    assert(approxUlp(subchild.mapToScene(p),    fvec( 35,  35)));
+
+    assert(approxUlp(subchild.mapToNode(child2, p),     fvec( 25,  -45)));
+    assert(approxUlp(subchild.mapFromNode(child2, p),   fvec( -5,  65)));
+}
 
 struct RenderCacheCookie
 {
@@ -678,3 +1043,49 @@ struct RenderCacheCookie
     import std.algorithm : splitter;
     return typeid(obj).toString().splitter('.').back;
 }
+
+private:
+
+/// Bidirectional range that traverses a sibling node list
+struct SgSiblingNodeRange(NodeT)
+{
+    Rebindable!NodeT _first;
+    Rebindable!NodeT _last;
+
+    this (NodeT first, NodeT last)
+    {
+        _first = first;
+        _last = last;
+    }
+
+    @property bool empty() { return _first is null; }
+    @property NodeT front() { return _first; }
+    void popFront() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _first = _first._nextSibling;
+        }
+    }
+
+    @property auto save()
+    {
+        return SgSiblingNodeRange(_first, _last);
+    }
+
+    @property NodeT back() { return _last; }
+    void popBack() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _last = _last._prevSibling;
+        }
+    }
+}
+
+static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
+static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));

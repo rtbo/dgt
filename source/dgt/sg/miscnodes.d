@@ -22,18 +22,6 @@ class SgColorRect : SgNode
         _color = color;
     }
 
-    @property FRect rect() const { return FRect(pos, _size); }
-    @property void rect(in FRect rect)
-    {
-        _size = rect.size;
-        pos = rect.point;
-    }
-
-    override protected FRect computeBounds()
-    {
-        return rect;
-    }
-
     override @property string cssType()
     {
         return "rect";
@@ -45,7 +33,6 @@ class SgColorRect : SgNode
     }
 
     private FVec4 _color;
-    private FSize _size;
 }
 
 
@@ -53,25 +40,18 @@ class SgImage : SgNode
 {
     this() {}
 
-    @property inout(Image) image() inout { return _image; }
-    @property void image(Image image)
+    final @property inout(Image) image() inout { return _image; }
+    final @property void image(Image image)
     {
         _image = image;
         _immutImg = null;
-        _size = cast(FSize)image.size;
-        dirtyBounds();
+        size = cast(FSize)image.size;
     }
-    @property void image(immutable(Image) image)
+    final @property void image(immutable(Image) image)
     {
         _image = null;
         _immutImg = image;
-        _size = cast(FSize)image.size;
-        dirtyBounds();
-    }
-
-    protected override FRect computeBounds()
-    {
-        return FRect(pos, _size);
+        size = cast(FSize)image.size;
     }
 
     override @property string cssType()
@@ -94,7 +74,6 @@ class SgImage : SgNode
     }
 
 
-    private FSize _size;
     private Image _image;
     private Rebindable!(immutable(Image)) _immutImg;
     private RenderCacheCookie _rcc;
@@ -111,7 +90,6 @@ class SgText : SgNode
         _text = text;
         _renderNode = null;
         _layout = null;
-        dirtyBounds();
     }
 
     @property FVec4 color() const { return _color; }
@@ -125,14 +103,6 @@ class SgText : SgNode
     {
         ensureLayout();
         return _metrics;
-    }
-
-    override protected FRect computeBounds()
-    {
-        ensureLayout();
-        immutable topLeft = pos - cast(FVec2)_metrics.bearing;
-        immutable size = cast(FVec2)_metrics.size;
-        return FRect(topLeft, FSize(size));
     }
 
     override @property string cssType()

@@ -8,7 +8,6 @@ import dgt.image;
 import dgt.math;
 import dgt.sg.miscnodes;
 import dgt.sg.node;
-import dgt.sg.parent;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
@@ -36,7 +35,6 @@ int main()
     auto hello = new Label;
     hello.name = "hello";
     hello.text = "Hello";
-    int count;
     hello.alignment = Alignment.center;
     hello.cssStyle = "font-family: serif; font-style: italic; font-size: 1in;";
 

@@ -2,6 +2,7 @@
 module dgt.geometry;
 
 import dgt.math.mat;
+import dgt.math.transform;
 public import dgt.math.vec;
 
 import std.algorithm : max, min;
@@ -623,24 +624,29 @@ if (isInputRange!R)
     return r;
 }
 
-
 /// Compute screen-aligned bounds of a rect transformation
-FRect transformBounds(in FRect bounds, FMat4 mat)
+R transformBounds(R, M)(in R bounds, in M mat)
+if (isRect!R && isMat!M &&  (is(typeof(transform(bounds.topLeft, mat))) ||
+                             is(typeof(transform(fvec(bounds.topLeft, 0), mat)))) &&
+    is(R.Scalar == M.Component))
 {
-    return transformBoundsPriv!float(bounds, mat);
-}
-
-private Rect!T transformBoundsPriv(T)(in Rect!T bounds, in Mat4!T mat)
-{
-    immutable tl = (mat * vec(bounds.topLeft, 0, 1)).xy;
-    immutable tr = (mat * vec(bounds.topRight, 0, 1)).xy;
-    immutable bl = (mat * vec(bounds.bottomLeft, 0, 1)).xy;
-    immutable br = (mat * vec(bounds.bottomRight, 0, 1)).xy;
+    static if (is(typeof(transform(bounds.topLeft, mat)))) {
+        immutable tl = transform(bounds.topLeft, mat).xy;
+        immutable tr = transform(bounds.topRight, mat).xy;
+        immutable bl = transform(bounds.bottomLeft, mat).xy;
+        immutable br = transform(bounds.bottomRight, mat).xy;
+    }
+    else {
+        immutable tl = transform(fvec(bounds.topLeft, 0), mat).xy;
+        immutable tr = transform(fvec(bounds.topRight, 0), mat).xy;
+        immutable bl = transform(fvec(bounds.bottomLeft, 0), mat).xy;
+        immutable br = transform(fvec(bounds.bottomRight, 0), mat).xy;
+    }
 
     immutable minX = min(tl.x, tr.x, bl.x, br.x);
     immutable maxX = max(tl.x, tr.x, bl.x, br.x);
     immutable minY = min(tl.y, tr.y, bl.y, br.y);
     immutable maxY = max(tl.y, tr.y, bl.y, br.y);
 
-    return Rect!T(minX, minY, maxX-minX, maxY-minY);
+    return R(minX, minY, maxX-minX, maxY-minY);
 }

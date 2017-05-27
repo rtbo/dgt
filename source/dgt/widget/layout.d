@@ -5,7 +5,6 @@ import dgt.enums;
 import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
-import dgt.sg.parent;
 import dgt.widget.widget;
 
 import gfx.foundation.typecons;
