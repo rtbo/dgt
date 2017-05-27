@@ -33,15 +33,6 @@ class Group : Widget
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        measurement = transformedBounds.size;
-    }
-
-    override protected FRect computeBounds()
-    {
-        import std.algorithm : map;
-        immutable cr = computeRectsExtents(
-            children.map!(c => c.transformedBounds)
-        );
-        return FRect(pos + cr.point, cr.size);
+        measurement = boundsFromParent.size;
     }
 }

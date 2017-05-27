@@ -139,55 +139,41 @@ class SgParent : SgNode
 
     override SgNode nodeAtPos(in FVec2 pos)
     {
-        foreach (c; children) {
-            if (c.bounds.contains(pos)) {
-                return c.nodeAtPos(pos - c.pos);
+        if (localRect.contains(pos)) {
+            foreach (c; children) {
+                immutable cp = c.mapFromParent(pos);
+                auto res = c.nodeAtPos(cp);
+                if (res) return res;
             }
+            return this;
         }
-        return super.nodeAtPos(pos);
+        else {
+            return null;
+        }
     }
 
     override void nodesAtPos(in FVec2 pos, ref SgNode[] nodes)
     {
-        if (rect(0, 0, bounds.size).contains(pos)) {
+        if (localRect.contains(pos)) {
             nodes ~= this;
-        }
-        foreach (c; children) {
-            if (c.bounds.contains(pos)) {
-                c.nodesAtPos(pos - c.pos, nodes);
+            foreach (c; children) {
+                immutable cp = c.mapFromParent(pos);
+                c.nodesAtPos(cp, nodes);
             }
         }
     }
 
-    override protected FRect computeBounds()
+    override FRect localBounds()
     {
         import std.algorithm : map;
         return computeRectsExtents(
-            children.map!(c => c.transformedBounds)
-        );
-    }
-
-    override protected FRect computeTransformedBounds()
-    {
-        import std.algorithm : map;
-        if (!hasTransform) return computeBounds();
-        immutable tr = transform;
-        return computeRectsExtents(
-            children.map!(c => transformBounds(c.transformedBounds, tr))
+            children.map!(c => c.boundsFromParent)
         );
     }
 
     override immutable(RenderNode) collectRenderNode()
     {
-        import std.algorithm : filter, map;
-        import std.array : array;
-        if (!_childCount) return null;
-        else return new immutable(GroupRenderNode)(
-            bounds,
-            children.map!(c => c.collectTransformedRenderNode())
-                    .filter!(rn => rn !is null)
-                    .array()
-        );
+        return null;
     }
 
     override void disposeResources()

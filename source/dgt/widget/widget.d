@@ -13,7 +13,6 @@ import std.experimental.logger;
 /// The widget class is a node that is subjected to layout
 class Widget : SgParent
 {
-
     /// Builds a new widget
     this() {}
 
@@ -64,33 +63,6 @@ class Widget : SgParent
     void layout(in FRect rect)
     {
         this.rect = rect;
-    }
-
-    final @property FSize size() const
-    {
-        return _size;
-    }
-
-    final protected @property void size(in FSize size)
-    {
-        _size = size;
-    }
-
-    /// Rect set by the node during layout phase.
-    final @property FRect rect() const
-    {
-        return FRect(pos, _size);
-    }
-
-    final protected @property rect(in FRect rect)
-    {
-        _size = rect.size;
-        pos = rect.point;
-    }
-
-    override protected FRect computeBounds()
-    {
-        return rect;
     }
 
     // layout

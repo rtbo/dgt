@@ -14,23 +14,6 @@ import std.exception;
 import std.experimental.logger;
 import std.typecons;
 
-/// Bit flags that describe what in a node needs update
-enum DirtyFlags
-{
-    /// nothing is dirty
-    clean       = 0,
-    /// A style pass is needed
-    styleMask   = 0x1000,
-    /// Dynamic pseudo class has to be enabled/disabled.
-    dynStyle    = 0x0100 | styleMask,
-    /// A css string has been updated/set/reset.
-    css         = 0x0200 | styleMask,
-
-    /// All bits set
-    all         = 0xffff_ffff,
-}
-
-
 /// A node for a 2D scene-graph
 abstract class SgNode
 {
@@ -112,23 +95,182 @@ abstract class SgNode
     {
         _dirtyState &= ~flags;
     }
+    /// Checks whether one of the passed flags is dirty
+    final bool isDirty(in DirtyFlags flags)
+    {
+        return (_dirtyState & flags) != DirtyFlags.clean;
+    }
+    /// Checks whether all of the passed flag are dirty
+    final bool areDirty(in DirtyFlags flags)
+    {
+        return (_dirtyState & flags) == flags;
+    }
 
     /// The position of the node relative to its parent.
-    @property FPoint pos() const
+    final @property FPoint pos() const
     {
-        return _pos;
+        return _rect.point;
     }
     /// ditto
-    @property void pos(in FPoint pos)
+    final @property void pos(in FPoint pos)
     {
-        _pos = pos;
-        dirtyBounds();
+        if (pos != _rect.point) {
+            _rect.point = pos;
+            dirty(DirtyFlags.transformMask);
+        }
+    }
+    /// The size of the node
+    final @property FSize size()
+    {
+        return _rect.size;
+    }
+    /// ditto
+    final @property void size(in FSize size)
+    {
+        _rect.size = size;
+    }
+    /// The 'logical' rect of the node.
+    /// Actual bounds may differ if e.g. has a border width, or shadow.
+    /// This rect is the one used in layout calculations.
+    final @property FRect rect()
+    {
+        return _rect;
+    }
+    /// ditto
+    final @property void rect(in FRect rect)
+    {
+        _rect = rect;
+    }
+
+    /// Rect in local coordinates
+    final @property FRect localRect()
+    {
+        return FRect(0, 0, size);
+    }
+
+    /// Visual bounds
+    @property FRect localBounds()
+    {
+        return localRect;
+    }
+
+    /// Bounds in parents coordinates
+    final @property FRect boundsFromParent()
+    {
+        immutable lb = localBounds;
+        return transformBounds(lb, parentTransform);
+    }
+
+    /// Whether this node has a transform set. (Other than identity)
+    final @property bool hasTransform() const { return _hasTransform; }
+
+    /// The transform affecting this node and its children.
+    /// The transform does not affect the layout, but affects rendering.
+    /// It should be used for animation mainly.
+    final @property FMat4 transform() const { return _transform; }
+
+    /// ditto
+    final @property void transform(in FMat4 transform)
+    {
+        _transform = transform;
+        _hasTransform = transform != FMat4.identity;
+        dirty(DirtyFlags.transformMask);
+    }
+
+    final @property FMat4 parentTransform()
+    {
+        if (isDirty(DirtyFlags.transformParent)) {
+            _parentTransform = _hasTransform ?
+                    transform.translate(fvec(pos, 0)) :
+                    translation!float(fvec(pos, 0));
+            clean(DirtyFlags.transformParent);
+        }
+        return _parentTransform;
+    }
+
+    final @property FMat4 parentTransformInv()
+    {
+        if (isDirty(DirtyFlags.transformParentInv)) {
+            _parentTransformInv = inverse(parentTransform);
+            clean(DirtyFlags.transformParentInv);
+        }
+        return _parentTransformInv;
+    }
+
+    final @property FMat4 sceneTransform()
+    {
+        if (isDirty(DirtyFlags.transformScene)) {
+            _sceneTransform = parent ?
+                    parent.sceneTransform * parentTransform :
+                    parentTransform;
+            clean(DirtyFlags.transformScene);
+        }
+        return _sceneTransform;
+    }
+
+    final @property FMat4 sceneTransformInv()
+    {
+        if (isDirty(DirtyFlags.transformSceneInv)) {
+            _sceneTransformInv = inverse(sceneTransform);
+            clean(DirtyFlags.transformSceneInv);
+        }
+        return _sceneTransformInv;
+    }
+
+    /// Map a point from scene coordinates to this node coordinates
+    final FPoint mapFromScene(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(sceneTransform).xy;
+    }
+
+    /// Map a point from this node coordinates to scene coordinates
+    final FPoint mapToScene(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(sceneTransformInv).xy;
+    }
+
+    /// Map a point from parent coordinates to this node coordinates
+    final FPoint mapFromParent(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(parentTransform).xy;
+    }
+
+    /// Map a point from this node coordinates to parent coordinates
+    final FPoint mapToParent(in FPoint pos)
+    {
+        return fvec(pos, 0).transform(parentTransformInv).xy;
+    }
+
+    /// Map a point from the other node coordinates to this node coordinates
+    final FPoint mapFromNode(SgNode node, in FPoint pos)
+    {
+        immutable sp = node.mapToScene(pos);
+        return mapFromScene(sp);
+    }
+
+    /// Map a point from this node coordinates to the other node coordinates
+    final FPoint mapToNode(SgNode node, in FPoint pos)
+    {
+        immutable sp = mapToScene(pos);
+        return node.mapFromScene(sp);
+    }
+
+    /// Position of this node in scene coordinates
+    final @property FPoint scenePos()
+    {
+        return fvec(0, 0, 0).transform(sceneTransformInv).xy;
+    }
+
+    /// Bounds of this node in scene coordinates
+    final @property FRect sceneBounds()
+    {
+        return transformBounds(localBounds, sceneTransformInv);
     }
 
     /// Get a node at position given by pos.
     SgNode nodeAtPos(in FVec2 pos)
     {
-        if (FRect(0f, 0f, bounds.size).contains(pos)) {
+        if (localRect.contains(pos)) {
             return this;
         }
         else {
@@ -139,74 +281,10 @@ abstract class SgNode
     /// Recursively append nodes that are located at pos from root to end target.
     void nodesAtPos(in FVec2 pos, ref SgNode[] nodes)
     {
-        if (FRect(0f, 0f, bounds.size).contains(pos)) {
+        if (localRect.contains(pos)) {
             nodes ~= this;
         }
     }
-
-    /// The bounds of this nodes in parent node coordinates.
-    @property FRect bounds()
-    {
-        if (_bounds.dirty) _bounds = computeBounds();
-        return _bounds;
-    }
-
-    /// The transformedBounds of this nodes after its transformation is applied.
-    @property FRect transformedBounds()
-    {
-        if (_transformedBounds.dirty) _transformedBounds = computeTransformedBounds();
-        return _transformedBounds;
-    }
-
-    abstract protected FRect computeBounds();
-    protected FRect computeTransformedBounds()
-    {
-        immutable b = bounds;
-        return _hasTransform ? transformBounds(b, _transform) : b;
-    }
-
-    /// Marks transformedBounds as dirty, meaning they need to be re-computed.
-    void dirtyBounds()
-    {
-        _bounds.dirty = true;
-        _transformedBounds.dirty = true;
-        if (_parent) _parent.dirtyBounds();
-    }
-
-    /// Position of this node in scene coordinates
-    @property FPoint scenePos()
-    {
-        auto point = pos;
-        auto p = parent;
-        while (p) {
-            point += p.pos;
-            p = p.parent;
-        }
-        return point;
-    }
-
-    /// Bounds of this node in scene coordinates
-    @property FRect sceneBounds()
-    {
-        return FRect(scenePos, bounds.size);
-    }
-
-    /// The transform affecting this node and its children.
-    /// The transform does not affect the layout, but affects rendering.
-    /// It should be used for animation mainly.
-    @property FMat4 transform() const { return _transform; }
-
-    /// ditto
-    @property void transform(in FMat4 transform)
-    {
-        _transform = transform;
-        _hasTransform = transform != FMat4.identity;
-        _transformedBounds.dirty = true;
-        if (_parent) _parent.dirtyBounds();
-    }
-
-    /// Whether this node has a transform set. (Other than identity)
-    @property bool hasTransform() const { return _hasTransform; }
 
     /// The Style object attached to this node
     @property Style style()
@@ -488,45 +566,14 @@ abstract class SgNode
     /// Collect transformed render node for this node
     immutable(RenderNode) collectTransformedRenderNode()
     {
-        immutable toBeTransformed = collectRenderNode();
-        if (!toBeTransformed) return null;
-
-        FMat4 tr = translation!float(fvec(pos, 0));
-        if (hasTransform) {
-            tr = tr * transform;
-        }
-
-        immutable transformedNode = new immutable(TransformRenderNode)(
-            tr, toBeTransformed
-        );
-
-        immutable bg = backgroundRenderNode();
-
-        debug(nodeFrame) {
-            immutable fn = new immutable RectStrokeRenderNode(
-                fvec(0, 0, 0, 1), bounds
-            );
-            immutable nodes = bg ? [
-                bg, transformedNode, fn
-            ] : [
-                transformedNode, fn
-            ];
-            return new immutable(GroupRenderNode) (
-                bounds, nodes
-            );
-        }
-        else {
-            return bg ?
-                new immutable GroupRenderNode(bounds, [bg, transformedNode]) :
-                transformedNode;
-        }
+        return null;
     }
 
     immutable(RenderNode) backgroundRenderNode()
     {
         auto col = style.backgroundColor;
         if (col.argb & 0xff000000) {
-            return new immutable RectFillRenderNode(col.asVec, bounds);
+            return null;
         }
         else {
             return null;
@@ -570,7 +617,7 @@ abstract class SgNode
         if (name.length) {
             props ~= ["name", format("'%s'", name)];
         }
-        props ~= ["transformedBounds", format("%s", transformedBounds)];
+        props ~= ["rect", format("%s", rect)];
         return props;
     }
 
@@ -599,12 +646,14 @@ abstract class SgNode
     private DirtyFlags _dirtyState;
 
     // bounds
-    private FPoint      _pos;
-    private Lazy!FRect  _bounds;
-    private Lazy!FRect  _transformedBounds;
+    private FRect  _rect;
 
     // transform
-    private FMat4 _transform = FMat4.identity;
+    private FMat4 _transform            = FMat4.identity;
+    private FMat4 _parentTransform      = FMat4.identity;
+    private FMat4 _parentTransformInv   = FMat4.identity;
+    private FMat4 _sceneTransform       = FMat4.identity;
+    private FMat4 _sceneTransformInv    = FMat4.identity;
     private bool _hasTransform;
 
     // style
@@ -633,20 +682,34 @@ abstract class SgNode
     private string _name; // id will be used if name is empty
 }
 
-struct Lazy(T)
+
+/// Bit flags that describe what in a node needs update
+enum DirtyFlags
 {
-    T val;
-    bool dirty = true;
+    /// nothing is dirty
+    clean       = 0,
 
-    void opAssign(T val)
-    {
-        this.val = val;
-        dirty = false;
-    }
+    /// transform were changed
+    transformMask       = 0x000f,
+    /// ditto
+    transformParent     = 0x0001,
+    /// ditto
+    transformParentInv  = 0x0002,
+    /// ditto
+    transformScene      = 0x0004,
+    /// ditto
+    transformSceneInv   = 0x0008,
 
-    alias val this;
+    /// A style pass is needed
+    styleMask           = 0x0300,
+    /// Dynamic pseudo class has to be enabled/disabled.
+    dynStyle            = 0x0100,
+    /// A css string has been updated/set/reset.
+    css                 = 0x0200,
+
+    /// All bits set
+    all                 = 0xffff_ffff,
 }
-
 
 struct RenderCacheCookie
 {
