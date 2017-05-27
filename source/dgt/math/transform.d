@@ -687,3 +687,15 @@ unittest
     m = m.scale(2, 2);
     assert ( approxUlp(transform(v, m), dvec(4, 8)) );
 }
+
+///
+unittest
+{
+    auto st = scale!float(2, 2).translate(3, 1);
+    assert( approxUlp(transform(fvec(0, 0), st), fvec(3, 1)) );
+    assert( approxUlp(transform(fvec(1, 1), st), fvec(5, 3)) );
+
+    auto ts = translation!float(3, 1).scale(2, 2);
+    assert( approxUlp(transform(fvec(0, 0), ts), fvec(6, 2)) );
+    assert( approxUlp(transform(fvec(1, 1), ts), fvec(8, 4)) );
+}
