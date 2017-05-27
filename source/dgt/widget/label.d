@@ -23,6 +23,11 @@ class Label : Widget
     this()
     {
         padding = FPadding(6);
+        _iconNode = new SgImage;
+        _textNode = new SgText;
+
+        appendChild(_iconNode);
+        appendChild(_textNode);
     }
 
     override @property string cssType()
@@ -45,27 +50,27 @@ class Label : Widget
     }
 
     /// Optional text
-    @property string text() const
+    @property string text()
     {
-        return _text;
+        return _textNode.text;
     }
 
     /// ditto
     @property void text(in string text)
     {
-        _text = text;
+        _textNode.text = text;
     }
 
     /// Optional icon
-    @property immutable(Image) icon() const
+    @property immutable(Image) icon()
     {
-        return _icon;
+        return _iconNode.image;
     }
 
     /// ditto
     @property void icon(immutable(Image) icon)
     {
-        _icon = icon;
+        _iconNode.image = icon;
     }
 
     /// Space between text and icon
@@ -75,34 +80,32 @@ class Label : Widget
     {
         float width = 0;
         float height = 0;
-        if (_text.length) {
-            ensureLayout();
-            width += _metrics.size.x;
-            height += _metrics.size.y;
+        if (text.length) {
+            width += _textNode.metrics.size.x;
+            height += _textNode.metrics.size.y;
         }
-        if (_icon) {
+        if (icon) {
             import std.algorithm : max;
-            width += _icon.width;
-            height = max(_icon.height, height);
-            if (_text.length) {
+            width += icon.width;
+            height = max(icon.height, height);
+            if (text.length) {
                 width += spacing;
             }
         }
         measurement = FSize(width+padding.horizontal, height+padding.vertical);
     }
 
-    override immutable(RenderNode) collectRenderNode()
+    override void layout(in FRect rect)
     {
-        immutable r = rect;
         immutable mes = measurement;
 
         // mes includes padding
         float left;
         if (alignment & Alignment.centerH) {
-            left = padding.left + (r.width - mes.width) / 2f;
+            left = padding.left + (rect.width - mes.width) / 2f;
         }
         else if (alignment & Alignment.right) {
-            left = padding.left + (r.width - mes.width);
+            left = padding.left + (rect.width - mes.width);
         }
         else {
             left = padding.left;
@@ -112,10 +115,10 @@ class Label : Widget
             // height does not include padding
             float top;
             if (alignment & Alignment.centerV) {
-                top = (r.height - height + padding.top - padding.bottom) / 2f;
+                top = (rect.height - height + padding.top - padding.bottom) / 2f;
             }
             else if (alignment & Alignment.bottom) {
-                top = r.height - height - padding.bottom;
+                top = rect.height - height - padding.bottom;
             }
             else {
                 top = padding.top;
@@ -123,55 +126,20 @@ class Label : Widget
             return top;
         }
 
-        Rebindable!(immutable(RenderNode)) iconNode;
-        Rebindable!(immutable(RenderNode)) textNode;
-
-        if (_icon) {
-            auto top = topAlignment(_icon.height);
-            iconNode = new immutable(ImageRenderNode)(
-                FVec2(left, top), _icon
-            );
-            left += _icon.width + spacing;
+        if (icon) {
+            immutable top = topAlignment(icon.height);
+            _iconNode.rect = FRect(left, top, cast(FSize)icon.size);
+            left += icon.width + spacing;
         }
-        if (_text.length) {
-            ensureLayout();
-            auto top = topAlignment(_metrics.size.y);
-            textNode = new immutable(TextRenderNode)(
-                _layout.render(), fvec(left, top)+_metrics.bearing, fvec(0, 0, 0, 1)  // FIXME: CSS
-            );
+        if (text.length) {
+            immutable ms = _textNode.metrics.size;
+            immutable top = topAlignment(ms.y);
+            _textNode.rect = FRect(left, top, ms.x, ms.y);
         }
-
-        if (iconNode && textNode) {
-            return new immutable(GroupRenderNode)(
-                rect, [iconNode, textNode]
-            );
-        }
-        else if (textNode) {
-            return textNode;
-        }
-        else if (iconNode) {
-            return iconNode;
-        }
-        else {
-            return null;
-        }
-    }
-
-    private void ensureLayout()
-    {
-        assert(_text.length);
-        if (!_layout) {
-            _layout = new TextLayout(_text, TextFormat.plain, style);
-            _layout.layout();
-            _layout.prepareGlyphRuns();
-            _metrics = _layout.metrics;
-        }
+        this.rect = rect;
     }
 
     private Alignment _alignment = Alignment.top | Alignment.left;
-    private string _text;
-    private Rebindable!(immutable(Image)) _icon;
-
-    private TextLayout _layout;
-    private TextMetrics _metrics;
+    private SgImage _iconNode;
+    private SgText _textNode;
 }

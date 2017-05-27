@@ -694,26 +694,29 @@ class SgNode
     /// Returns: A render for this node, expressed in local coordinates.
     immutable(RenderNode) collectRenderNode()
     {
-        import std.algorithm : map;
+        import std.algorithm : filter, map;
         import std.array : array;
         import std.typecons : rebindable;
 
         if (hasChildren) {
-            immutable nodes = children .map!((SgNode c) {
-                immutable bg = c.backgroundRenderNode();
-                immutable cn = c.collectRenderNode();
+            immutable nodes = children
+                .map!((SgNode c) {
+                    immutable bg = c.backgroundRenderNode();
+                    immutable cn = c.collectRenderNode();
 
-                immutable RenderNode rn = bg ?
-                    new immutable GroupRenderNode(bg.bounds, [bg, cn]) :
-                    cn;
+                    immutable RenderNode rn = bg && cn ?
+                        new immutable GroupRenderNode(bg.bounds, [bg, cn]) :
+                        (bg ? bg : (cn ? cn : null));
 
-                return new immutable TransformRenderNode(
-                    c.parentTransform, rn
-                );
-            }).array();
-            return new immutable GroupRenderNode(
+                    return rn ?  new immutable TransformRenderNode(
+                        c.parentTransform, rn
+                    ) : null;
+                })
+                .filter!(n => n !is null)
+                .array();
+            return nodes.length ? new immutable GroupRenderNode(
                 localRect, nodes
-            );
+            ) : null;
         }
         else {
             return null;

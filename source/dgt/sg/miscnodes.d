@@ -40,32 +40,26 @@ class SgImage : SgNode
 {
     this() {}
 
-    final @property inout(Image) image() inout { return _image; }
-    final @property void image(Image image)
+    final @property immutable(Image) image()
     {
-        _image = image;
-        _immutImg = null;
-        size = cast(FSize)image.size;
+        return _img;
     }
+
     final @property void image(immutable(Image) image)
     {
-        _image = null;
-        _immutImg = image;
-        size = cast(FSize)image.size;
+        _img = image;
     }
 
     override @property string cssType()
     {
-        return "image";
+        return "img";
     }
 
     override protected immutable(RenderNode) collectRenderNode()
     {
-        if (_image && !_immutImg) _immutImg = _image.idup;
-
-        if (_immutImg) {
+        if (_img) {
             return new immutable ImageRenderNode (
-                pos, _immutImg, _rcc.collectCookie(dynamic)
+                pos, _img, _rcc.collectCookie(dynamic)
             );
         }
         else {
@@ -74,15 +68,17 @@ class SgImage : SgNode
     }
 
 
-    private Image _image;
-    private Rebindable!(immutable(Image)) _immutImg;
+    private Rebindable!(immutable(Image)) _img;
     private RenderCacheCookie _rcc;
 }
 
 
 class SgText : SgNode
 {
-    this() {}
+    this()
+    {
+        _color = fvec(0, 0, 0 ,1);
+    }
 
     @property string text () const { return _text; }
     @property void text (string text)
@@ -115,7 +111,7 @@ class SgText : SgNode
         if (!_renderNode) {
             ensureLayout();
             _renderNode = new immutable(TextRenderNode)(
-                _layout.render(), pos, _color
+                _layout.render(), cast(FVec2)_metrics.bearing, _color
             );
         }
         return _renderNode;
