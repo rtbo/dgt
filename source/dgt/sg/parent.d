@@ -173,7 +173,25 @@ class SgParent : SgNode
 
     override immutable(RenderNode) collectRenderNode()
     {
-        return null;
+        import std.algorithm : map;
+        import std.array : array;
+        import std.typecons : rebindable;
+
+        immutable nodes = children .map!((SgNode c) {
+            immutable bg = c.backgroundRenderNode();
+            immutable cn = c.collectRenderNode();
+
+            immutable RenderNode rn = bg ?
+                new immutable GroupRenderNode(bg.bounds, [bg, cn]) :
+                cn;
+
+            return new immutable TransformRenderNode(
+                c.parentTransform, rn
+            );
+        }).array();
+        return new immutable GroupRenderNode(
+            localRect, nodes
+        );
     }
 
     override void disposeResources()

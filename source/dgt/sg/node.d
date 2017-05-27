@@ -139,7 +139,10 @@ abstract class SgNode
     /// ditto
     final @property void rect(in FRect rect)
     {
-        _rect = rect;
+        if (rect != _rect) {
+            _rect = rect;
+            dirty(DirtyFlags.transformMask);
+        }
     }
 
     /// Rect in local coordinates
@@ -563,25 +566,22 @@ abstract class SgNode
         _dynamic = dynamic;
     }
 
-    /// Collect transformed render node for this node
-    immutable(RenderNode) collectTransformedRenderNode()
-    {
-        return null;
-    }
-
+    /// background render node in local coordinates
     immutable(RenderNode) backgroundRenderNode()
     {
-        auto col = style.backgroundColor;
+        immutable col = style.backgroundColor;
         if (col.argb & 0xff000000) {
-            return null;
+            return new immutable RectFillRenderNode(col.asVec, localRect);
         }
         else {
             return null;
         }
     }
 
-    /// Collect the local render node for this node.
-    /// Local means unaltered by the transform.
+    /// Collect the render node for this node, in local coordinates.
+    /// It is responsibility of the parent to transform this render node into the
+    /// parent coordinates.
+    /// Returns: A render for this node, expressed in local coordinates.
     abstract immutable(RenderNode) collectRenderNode();
 
     /// Requires node to dispose any resource that it would keep.

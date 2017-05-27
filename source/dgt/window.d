@@ -516,10 +516,22 @@ class Window
                 _widget.layout(FRect(0, 0, fs));
                 _dirtyLayout = false;
             }
-            return new immutable RenderFrame (
-                nativeHandle, IRect(0, 0, size),
-                _root ? _root.collectTransformedRenderNode() : null
-            );
+            if (_root) {
+                import dgt.render.node : GroupRenderNode;
+                immutable rn = _root.collectRenderNode();
+                immutable bg = _root.backgroundRenderNode();
+                immutable fn = bg ?
+                    new immutable GroupRenderNode(_root.localRect, [bg, rn]) :
+                    rn;
+                return new immutable RenderFrame (
+                    nativeHandle, IRect(0, 0, size), fn
+                );
+            }
+            else {
+                return new immutable RenderFrame (
+                    nativeHandle, IRect(0, 0, size)
+                );
+            }
         }
     }
 
