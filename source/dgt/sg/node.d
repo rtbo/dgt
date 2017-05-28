@@ -313,68 +313,72 @@ class SgNode
         dirty(DirtyFlags.transformMask);
     }
 
-    final @property FMat4 parentTransform()
+    /// Transform that maps node coordinates to parent coordinates
+    final @property FMat4 transformToParent()
     {
-        if (isDirty(DirtyFlags.transformParent)) {
-            _parentTransform = _hasTransform ?
+        if (isDirty(DirtyFlags.transformToParent)) {
+            _transformToParent = _hasTransform ?
                     transform.translate(fvec(pos, 0)) :
                     translation!float(fvec(pos, 0));
-            clean(DirtyFlags.transformParent);
+            clean(DirtyFlags.transformToParent);
         }
-        return _parentTransform;
+        return _transformToParent;
     }
 
-    final @property FMat4 parentTransformInv()
+    /// Transform that maps parent coordinates to node coordinates
+    final @property FMat4 transformFromParent()
     {
-        if (isDirty(DirtyFlags.transformParentInv)) {
-            _parentTransformInv = inverse(parentTransform);
-            clean(DirtyFlags.transformParentInv);
+        if (isDirty(DirtyFlags.transformFromParent)) {
+            _transformFromParent = inverse(transformToParent);
+            clean(DirtyFlags.transformFromParent);
         }
-        return _parentTransformInv;
+        return _transformFromParent;
     }
 
-    final @property FMat4 sceneTransform()
+    /// Transform that maps node coordinates to scene coordinates
+    final @property FMat4 transformToScene()
     {
-        if (isDirty(DirtyFlags.transformScene)) {
-            _sceneTransform = parent ?
-                    parent.sceneTransform * parentTransform :
-                    parentTransform;
-            clean(DirtyFlags.transformScene);
+        if (isDirty(DirtyFlags.transformToScene)) {
+            _transformToScene = parent ?
+                    parent.transformToScene * transformToParent :
+                    transformToParent;
+            clean(DirtyFlags.transformToScene);
         }
-        return _sceneTransform;
+        return _transformToScene;
     }
 
-    final @property FMat4 sceneTransformInv()
+    /// Transform that maps scene coordinates to node coordinates
+    final @property FMat4 transformFromScene()
     {
-        if (isDirty(DirtyFlags.transformSceneInv)) {
-            _sceneTransformInv = inverse(sceneTransform);
-            clean(DirtyFlags.transformSceneInv);
+        if (isDirty(DirtyFlags.transformFromScene)) {
+            _transformFromScene = inverse(transformToScene);
+            clean(DirtyFlags.transformFromScene);
         }
-        return _sceneTransformInv;
+        return _transformFromScene;
     }
 
     /// Map a point from scene coordinates to this node coordinates
     final FPoint mapFromScene(in FPoint pos)
     {
-        return fvec(pos, 0).transform(sceneTransformInv).xy;
+        return fvec(pos, 0).transform(transformFromScene).xy;
     }
 
     /// Map a point from this node coordinates to scene coordinates
     final FPoint mapToScene(in FPoint pos)
     {
-        return fvec(pos, 0).transform(sceneTransform).xy;
+        return fvec(pos, 0).transform(transformToScene).xy;
     }
 
     /// Map a point from parent coordinates to this node coordinates
     final FPoint mapFromParent(in FPoint pos)
     {
-        return fvec(pos, 0).transform(parentTransformInv).xy;
+        return fvec(pos, 0).transform(transformFromParent).xy;
     }
 
     /// Map a point from this node coordinates to parent coordinates
     final FPoint mapToParent(in FPoint pos)
     {
-        return fvec(pos, 0).transform(parentTransform).xy;
+        return fvec(pos, 0).transform(transformToParent).xy;
     }
 
     /// Map a point from the other node coordinates to this node coordinates
@@ -394,32 +398,32 @@ class SgNode
     /// Map a point from scene coordinates to this node coordinates
     final FRect mapFromScene(in FRect rect)
     {
-        return rect.transformBounds(sceneTransformInv);
+        return rect.transformBounds(transformFromScene);
     }
 
     /// Map a point from this node coordinates to scene coordinates
     final FRect mapToScene(in FRect rect)
     {
-        return rect.transformBounds(sceneTransform);
+        return rect.transformBounds(transformToScene);
     }
 
     /// Map a point from parent coordinates to this node coordinates
     final FRect mapFromParent(in FRect rect)
     {
-        return rect.transformBounds(parentTransformInv);
+        return rect.transformBounds(transformFromParent);
     }
 
     /// Map a point from this node coordinates to parent coordinates
     final FRect mapToParent(in FRect rect)
     {
-        return rect.transformBounds(parentTransform);
+        return rect.transformBounds(transformToParent);
     }
 
     /// Map a point from the other node coordinates to this node coordinates
     final FRect mapFromNode(SgNode node, in FRect rect)
     {
         return rect.transformBounds(
-            node.sceneTransform * sceneTransformInv
+            node.transformToScene * transformFromScene
         );
     }
 
@@ -427,7 +431,7 @@ class SgNode
     final FRect mapToNode(SgNode node, in FRect rect)
     {
         return rect.transformBounds(
-            sceneTransform * node.sceneTransformInv
+            transformToScene * node.transformFromScene
         );
     }
 
@@ -709,7 +713,7 @@ class SgNode
                         (bg ? bg : (cn ? cn : null));
 
                     return rn ?  new immutable TransformRenderNode(
-                        c.parentTransform, rn
+                        c.transformToParent, rn
                     ) : null;
                 })
                 .filter!(n => n !is null)
@@ -822,10 +826,10 @@ class SgNode
 
     // transform
     private FMat4 _transform            = FMat4.identity;
-    private FMat4 _parentTransform      = FMat4.identity;
-    private FMat4 _parentTransformInv   = FMat4.identity;
-    private FMat4 _sceneTransform       = FMat4.identity;
-    private FMat4 _sceneTransformInv    = FMat4.identity;
+    private FMat4 _transformToParent      = FMat4.identity;
+    private FMat4 _transformFromParent   = FMat4.identity;
+    private FMat4 _transformToScene       = FMat4.identity;
+    private FMat4 _transformFromScene    = FMat4.identity;
     private bool _hasTransform;
 
     // style
@@ -856,13 +860,13 @@ enum DirtyFlags
     /// transform were changed
     transformMask       = 0x000f,
     /// ditto
-    transformParent     = 0x0001,
+    transformToParent     = 0x0001,
     /// ditto
-    transformParentInv  = 0x0002,
+    transformFromParent  = 0x0002,
     /// ditto
-    transformScene      = 0x0004,
+    transformToScene      = 0x0004,
     /// ditto
-    transformSceneInv   = 0x0008,
+    transformFromScene   = 0x0008,
 
     /// A style pass is needed
     styleMask           = 0x0300,
