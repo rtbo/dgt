@@ -2,8 +2,8 @@
 module dgt.css.selector;
 
 import dgt.css.token;
-import dgt.sg.node;
-import dgt.sg.style;
+import dgt.view.style;
+import dgt.view.view;
 
 import std.exception;
 import std.experimental.logger;
@@ -11,7 +11,7 @@ import std.range;
 
 interface Selector
 {
-    bool matches(SgNode node);
+    bool matches(View node);
     @property int specificity();
 }
 
@@ -105,7 +105,7 @@ class SimpleSelectorSeq : AbstractSelector
         return Type.simpleSeq;
     }
 
-    bool matches(SgNode node)
+    bool matches(View node)
     {
         import std.algorithm : all;
         return seq.all!(s => s.matches(node));
@@ -145,7 +145,7 @@ class SimpleSelector : AbstractSelector
         return Type.simple;
     }
 
-    bool matches(SgNode node)
+    bool matches(View node)
     {
         final switch(ssType) {
         case SSType.type:
@@ -219,7 +219,7 @@ class Group : AbstractSelector
         return Type.group;
     }
 
-    bool matches(SgNode node)
+    bool matches(View node)
     {
         import std.algorithm : any;
         return selectors.any!(s => s.matches(node));
@@ -250,7 +250,7 @@ class Combinator : AbstractSelector
         return _type;
     }
 
-    bool matches(SgNode node)
+    bool matches(View node)
     {
         if (!rhs.matches(node)) return false;
         switch(_type) {

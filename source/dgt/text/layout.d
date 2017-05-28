@@ -6,10 +6,10 @@ import dgt.image;
 import dgt.math.mat;
 import dgt.math.transform;
 import dgt.math.vec;
-import dgt.sg.style;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.vg.context;
+import dgt.view.style;
 
 import std.exception;
 import std.experimental.logger;

@@ -4,7 +4,7 @@ module dgt.event.event;
 import dgt.enums;
 import dgt.geometry : FPoint;
 import dgt.keys;
-import dgt.sg.node;
+import dgt.view.view;
 
 /// Type of event. 3 categories: app, input and user.
 /// Category can be tested using Maskwise AND.
@@ -39,7 +39,7 @@ enum EventType : uint
 
 abstract class Event
 {
-    this(in EventType type, SgNode[] nodeChain)
+    this(in EventType type, View[] nodeChain)
     {
         _nodeChain = nodeChain;
         _type = type;
@@ -65,7 +65,7 @@ abstract class Event
         _consumed = true;
     }
 
-    final @property SgNode[] nodeChain()
+    final @property View[] nodeChain()
     {
         return _nodeChain;
     }
@@ -78,7 +78,7 @@ abstract class Event
     /// decrement the size of nodeChain.
     /// (It will be decremented in the next node chainEvent method)
     /// Returns: the node that has consumed the event, or null if not consumed.
-    SgNode chainToNext()
+    View chainToNext()
     in {
         assert(_nodeChain.length);
     }
@@ -95,14 +95,14 @@ abstract class Event
         return "Event [ type:" ~ _type.to!string ~ " ]";
     }
 
-    private SgNode[] _nodeChain;
+    private View[] _nodeChain;
     private EventType _type;
     private bool _consumed;
 }
 
 abstract class AppEvent : Event
 {
-    this(in EventType type, SgNode[] nodeChain)
+    this(in EventType type, View[] nodeChain)
     in {
         assert(type & EventType.appMask);
     }
@@ -113,7 +113,7 @@ abstract class AppEvent : Event
 
 class UserEvent : Event
 {
-    this(in int eventType, SgNode[] nodeChain)
+    this(in int eventType, View[] nodeChain)
     in {
         assert(eventType & EventType.userMask);
     }
@@ -124,7 +124,7 @@ class UserEvent : Event
 
 class FocusEvent : Event
 {
-    this(in EventType type, SgNode[] nodeChain, in FocusMethod method)
+    this(in EventType type, View[] nodeChain, in FocusMethod method)
     in {
         assert(type & EventType.focusMask);
     }
@@ -143,7 +143,7 @@ class FocusEvent : Event
 
 class MouseEvent : Event
 {
-    this(in EventType type, SgNode[] nodeChain, in FPoint pos,
+    this(in EventType type, View[] nodeChain, in FPoint pos,
             in FPoint scenePos, in MouseButton button, in MouseState state,
             in KeyMods modifiers)
     in {
@@ -183,7 +183,7 @@ class MouseEvent : Event
         return _modifiers;
     }
 
-    override SgNode chainToNext()
+    override View chainToNext()
     {
         import std.typecons : scoped;
         auto next = _nodeChain[0];
@@ -206,7 +206,7 @@ class MouseEvent : Event
 
 class KeyEvent : Event
 {
-    this(in EventType type, SgNode[] nodeChain, in KeySym sym, in KeyCode code,
+    this(in EventType type, View[] nodeChain, in KeySym sym, in KeyCode code,
             in KeyMods modifiers, string text, in uint nativeCode, in uint nativeSymbol,
             in bool repeat = false, in int repeatCount = 1)
     in {

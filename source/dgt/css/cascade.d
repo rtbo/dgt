@@ -5,8 +5,8 @@ import dgt.css.parse;
 import dgt.css.selector;
 import dgt.css.token;
 import dgt.css.value;
-import dgt.sg.node;
-import dgt.sg.style;
+import dgt.view.style;
+import dgt.view.view;
 
 import std.experimental.logger;
 import std.range;
@@ -14,7 +14,7 @@ import std.range;
 /// Entry point of the Style pass before rendering
 /// This function interates over the whole tree and assign each style property
 /// of each node
-void cssCascade(SgNode root)
+void cssCascade(View root)
 in {
     assert(root.isRoot);
 }
@@ -134,7 +134,7 @@ __gshared CSSProperty[] supportedProperties;
 
 final class CascadeContext
 {
-    void cascade(SgNode node, Stylesheet[] css)
+    void cascade(View node, Stylesheet[] css)
     {
         if (node.cssStyle.length) {
             css ~= parseCSS(node.cssStyle, null, Origin.app);
@@ -145,7 +145,7 @@ final class CascadeContext
         node.children.each!(c => cascade(c, css));
     }
 
-    void doNode(SgNode node, Stylesheet[] css)
+    void doNode(View node, Stylesheet[] css)
     {
         import std.algorithm : filter;
 

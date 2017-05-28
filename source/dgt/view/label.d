@@ -1,23 +1,23 @@
 /// label module
-module dgt.widget.label;
+module dgt.view.label;
 
 import dgt.enums;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.render.node;
-import dgt.sg.miscnodes;
-import dgt.sg.node;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
-import dgt.widget.layout;
+import dgt.view.layout;
+import dgt.view.miscnodes;
+import dgt.view.view;
 
 import std.experimental.logger;
 import std.typecons : Rebindable;
 
 /// Label is a widget to display a line of text and/or an icon
-class Label : SgNode
+class Label : View
 {
     /// build a new label
     this()

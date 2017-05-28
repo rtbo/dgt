@@ -5,10 +5,10 @@ import dgt.bindings.harfbuzz;
 import dgt.geometry;
 import dgt.image;
 import dgt.math.vec;
-import dgt.sg.style;
 import dgt.text.fontcache;
 import dgt.util;
 import dgt.vg;
+import dgt.view.style;
 
 import gfx.foundation.rc;
 

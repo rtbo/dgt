@@ -1,18 +1,18 @@
 /// A few misc nodes
-module dgt.sg.miscnodes;
+module dgt.view.miscnodes;
 
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.render.node;
-import dgt.sg.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
+import dgt.view.view;
 
-import std.typecons;
 import std.experimental.logger;
+import std.typecons;
 
-class SgColorRect : SgNode
+class SgColorRect : View
 {
     this() {}
 
@@ -36,7 +36,7 @@ class SgColorRect : SgNode
 }
 
 
-class SgImage : SgNode
+class SgImage : View
 {
     this() {}
 
@@ -73,7 +73,7 @@ class SgImage : SgNode
 }
 
 
-class SgText : SgNode
+class SgText : View
 {
     this()
     {

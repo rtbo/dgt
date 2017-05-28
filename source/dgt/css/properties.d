@@ -8,7 +8,7 @@ import dgt.css.color;
 import dgt.css.token;
 import dgt.css.value;
 import dgt.geometry;
-import dgt.sg.style;
+import dgt.view.style;
 
 import std.experimental.logger;
 import std.range;

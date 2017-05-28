@@ -1,13 +1,13 @@
-/// Scene graph module
-module dgt.sg.node;
+/// View root class module
+module dgt.view.view;
 
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
 import dgt.render;
 import dgt.render.node;
-import dgt.sg.style;
-import dgt.widget.layout;
+import dgt.view.layout;
+import dgt.view.style;
 import dgt.window;
 
 import std.exception;
@@ -15,8 +15,8 @@ import std.experimental.logger;
 import std.range;
 import std.typecons;
 
-/// A node for a 2D scene-graph
-class SgNode
+/// View hierarchy root class
+class View
 {
     /// builds a new node
     this()
@@ -31,10 +31,10 @@ class SgNode
     }
 
     /// The root of this scene graph
-    @property SgNode root()
+    @property View root()
     {
-        if (!_parent) return cast(SgNode)this;
-        SgNode p = _parent;
+        if (!_parent) return cast(View)this;
+        View p = _parent;
         while (p._parent) p = p._parent;
         return p;
     }
@@ -46,19 +46,19 @@ class SgNode
     }
 
     /// This node's parent.
-    @property inout(SgNode) parent() inout
+    @property inout(View) parent() inout
     {
         return _parent;
     }
 
     /// This node's previous sibling.
-    @property inout(SgNode) prevSibling() inout
+    @property inout(View) prevSibling() inout
     {
         return _prevSibling;
     }
 
     /// This node's next sibling.
-    @property inout(SgNode) nextSibling() inout
+    @property inout(View) nextSibling() inout
     {
         return _nextSibling;
     }
@@ -76,13 +76,13 @@ class SgNode
     }
 
     /// This node's first child.
-    @property inout(SgNode) firstChild() inout
+    @property inout(View) firstChild() inout
     {
         return _firstChild;
     }
 
     /// This node's last child.
-    @property inout(SgNode) lastChild() inout
+    @property inout(View) lastChild() inout
     {
         return _lastChild;
     }
@@ -90,17 +90,17 @@ class SgNode
     /// A bidirectional range of this node's children
     @property auto children()
     {
-        return SgSiblingNodeRange!SgNode(_firstChild, _lastChild);
+        return SgSiblingNodeRange!View(_firstChild, _lastChild);
     }
 
     /// ditto
     @property auto children() const
     {
-        return SgSiblingNodeRange!(const(SgNode))(_firstChild, _lastChild);
+        return SgSiblingNodeRange!(const(View))(_firstChild, _lastChild);
     }
 
     /// Appends the given node to this node children list.
-    protected void appendChild(SgNode node)
+    protected void appendChild(View node)
     {
         enforce(node && !node._parent);
         node._parent = this;
@@ -118,7 +118,7 @@ class SgNode
     }
 
     /// Prepend the given node to this node children list.
-    protected void prependChild(SgNode node)
+    protected void prependChild(View node)
     {
         enforce(node && !node._parent);
         node._parent = this;
@@ -137,7 +137,7 @@ class SgNode
 
     /// Insert the given node in this node children list, just before the given
     /// child.
-    protected void insertChildBefore(SgNode node, SgNode child)
+    protected void insertChildBefore(View node, View child)
     {
         enforce(node && !node._parent && child._parent is this);
         node._parent = this;
@@ -156,7 +156,7 @@ class SgNode
     }
 
     /// Removes the given node from this node children list.
-    protected void removeChild(SgNode child)
+    protected void removeChild(View child)
     {
         enforce(child && child._parent is this);
 
@@ -450,14 +450,14 @@ class SgNode
     }
 
     /// Map a point from the other node coordinates to this node coordinates
-    final FPoint mapFromNode(SgNode node, in FPoint pos)
+    final FPoint mapFromNode(View node, in FPoint pos)
     {
         immutable sp = node.mapToScene(pos);
         return mapFromScene(sp);
     }
 
     /// Map a point from this node coordinates to the other node coordinates
-    final FPoint mapToNode(SgNode node, in FPoint pos)
+    final FPoint mapToNode(View node, in FPoint pos)
     {
         immutable sp = mapToScene(pos);
         return node.mapFromScene(sp);
@@ -488,7 +488,7 @@ class SgNode
     }
 
     /// Map a point from the other node coordinates to this node coordinates
-    final FRect mapFromNode(SgNode node, in FRect rect)
+    final FRect mapFromNode(View node, in FRect rect)
     {
         return rect.transformBounds(
             node.transformToScene * transformFromScene
@@ -496,7 +496,7 @@ class SgNode
     }
 
     /// Map a point from this node coordinates to the other node coordinates
-    final FRect mapToNode(SgNode node, in FRect rect)
+    final FRect mapToNode(View node, in FRect rect)
     {
         return rect.transformBounds(
             transformToScene * node.transformFromScene
@@ -504,7 +504,7 @@ class SgNode
     }
 
     /// Get a node at position given by pos.
-    SgNode nodeAtPos(in FVec2 pos)
+    View nodeAtPos(in FVec2 pos)
     {
         if (localRect.contains(pos)) {
             foreach (c; children) {
@@ -520,7 +520,7 @@ class SgNode
     }
 
     /// Recursively append nodes that are located at pos from root to end target.
-    void nodesAtPos(in FVec2 pos, ref SgNode[] nodes)
+    void nodesAtPos(in FVec2 pos, ref View[] nodes)
     {
         if (localRect.contains(pos)) {
             nodes ~= this;
@@ -669,7 +669,7 @@ class SgNode
     /// the opportunity to filter it, or to handle it after its children if
     /// the event hasn't been consumed by any of them.
     /// Returns: the node that has consumed the event, or null.
-    final SgNode chainEvent(Event event)
+    final View chainEvent(Event event)
     {
         // fiter phase
         if (filterEvent(event)) return this;
@@ -772,7 +772,7 @@ class SgNode
 
         if (hasChildren) {
             immutable nodes = children
-                .map!((SgNode c) {
+                .map!((View c) {
                     immutable bg = c.backgroundRenderNode();
                     immutable cn = c.collectRenderNode();
 
@@ -797,7 +797,7 @@ class SgNode
 
     @property uint level() const
     {
-        Rebindable!(const(SgNode)) p = parent;
+        Rebindable!(const(View)) p = parent;
         uint lev=0;
         while (p !is null) {
             ++lev;
@@ -877,14 +877,14 @@ class SgNode
     // graph
     package(dgt) Window _window;
 
-    private SgNode _parent;
+    private View _parent;
 
-    private SgNode _prevSibling;
-    private SgNode _nextSibling;
+    private View _prevSibling;
+    private View _nextSibling;
 
     private size_t _childCount;
-    private SgNode _firstChild;
-    private SgNode _lastChild;
+    private View _firstChild;
+    private View _lastChild;
 
     // layout
     private FPadding        _padding;
@@ -957,9 +957,9 @@ unittest
 {
     import std.algorithm : equal;
 
-    auto root = new SgNode;
-    auto c1 = new SgNode;
-    auto c2 = new SgNode;
+    auto root = new View;
+    auto c1 = new View;
+    auto c2 = new View;
     root.name = "root";
     c1.name = "c1";
     c2.name = "c2";
@@ -982,10 +982,10 @@ unittest
 unittest {
     import dgt.math.approx : approxUlp, approxUlpAndAbs;
 
-    auto root = new SgNode;
-    auto child1 = new SgNode;
-    auto subchild = new SgNode;
-    auto child2 = new SgNode;
+    auto root = new View;
+    auto child1 = new View;
+    auto subchild = new View;
+    auto child2 = new View;
 
     root.rect = FRect(0, 0, 100, 100);
     child1.rect = FRect(20, 20, 60, 40);
@@ -1091,5 +1091,5 @@ struct SgSiblingNodeRange(NodeT)
     }
 }
 
-static assert (isBidirectionalRange!(SgSiblingNodeRange!SgNode));
-static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(SgNode))));
+static assert (isBidirectionalRange!(SgSiblingNodeRange!View));
+static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(View))));

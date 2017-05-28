@@ -1,10 +1,10 @@
 /// layout module
-module dgt.widget.layout;
+module dgt.view.layout;
 
 import dgt.enums;
 import dgt.geometry;
 import dgt.math;
-import dgt.sg.node;
+import dgt.view.view;
 
 import gfx.foundation.typecons;
 
@@ -144,7 +144,7 @@ enum float wrapContent = -1f;
 enum float matchParent = -2f;
 
 /// general layout class
-class Layout : SgNode
+class Layout : View
 {
     /// Params attached to each node for use with their parent
     static class Params {
@@ -157,32 +157,32 @@ class Layout : SgNode
     /// Build a new layout
     this() {}
 
-    public override void appendChild(SgNode node)
+    public override void appendChild(View node)
     {
         ensureLayout(node);
         super.appendChild(node);
     }
 
-    public override void prependChild(SgNode node)
+    public override void prependChild(View node)
     {
         ensureLayout(node);
         super.prependChild(node);
     }
 
-    public override void insertChildBefore(SgNode node, SgNode child)
+    public override void insertChildBefore(View node, View child)
     {
         ensureLayout(node);
         super.insertChildBefore(node, child);
     }
 
-    public override void removeChild(SgNode node)
+    public override void removeChild(View node)
     {
         super.removeChild(node);
     }
 
     /// Ensure that this child has layout params and that they are compatible
     /// with this layout. If not, default params are assigned.
-    protected void ensureLayout(SgNode child)
+    protected void ensureLayout(View child)
     {
         if (!child.layoutParams) {
             child.layoutParams = new Layout.Params;
@@ -192,7 +192,7 @@ class Layout : SgNode
     /// Ask a child to measure itself taking into account the measureSpecs
     /// given to this layout, the padding and the size that have been consumed
     /// by other children.
-    protected void measureChild(SgNode child, in MeasureSpec parentWidthSpec,
+    protected void measureChild(View child, in MeasureSpec parentWidthSpec,
                                 in MeasureSpec parentHeightSpec,
                                 in float usedWidth=0f, in float usedHeight=0f)
     {
@@ -235,7 +235,7 @@ class LinearLayout : Layout
     /// Build a new linear layout
     this() {}
 
-    override protected void ensureLayout(SgNode node) {
+    override protected void ensureLayout(View node) {
         auto llp = cast(Params)node.layoutParams;
         if (!llp) {
             auto lp = cast(Layout.Params)node.layoutParams;
@@ -617,7 +617,7 @@ private float[2] get(in FMargins m, in Orientation orientation) pure
     return orientation.isHorizontal ? [m.left, m.right] : [m.top, m.bottom];
 }
 
-// private void measureNode(SgNode n, in Orientation orientation,
+// private void measureNode(View n, in Orientation orientation,
 //                         in float main, in float other,
 //                         in int mainSpec, in int otherSpec)
 // {

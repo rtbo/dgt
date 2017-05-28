@@ -1,8 +1,8 @@
 /// Node style module
-module dgt.sg.style;
+module dgt.view.style;
 
 import dgt.css.color;
-import dgt.sg.node;
+import dgt.view.view;
 
 
 /// Font style as defined by the CSS specification
@@ -39,13 +39,13 @@ enum PseudoState
 /// It is populated during the CSS pass.
 class Style
 {
-    this(SgNode node)
+    this(View node)
     {
         _node = node;
     }
 
     /// The node associated with this style.
-    @property SgNode node()
+    @property View node()
     {
         return _node;
     }
@@ -118,7 +118,7 @@ class Style
     }
 
 private:
-    SgNode _node;
+    View _node;
     Color _backgroundColor;
     string[] _fontFamily;
     int _fontWeight;

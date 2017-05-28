@@ -1,10 +1,10 @@
 /// Button widget module
-module dgt.widget.button;
+module dgt.view.button;
 
 import dgt.event;
 import dgt.geometry;
-import dgt.sg.style;
-import dgt.widget.label;
+import dgt.view.label;
+import dgt.view.style;
 
 // A Button is a label, with a specific default style and reacting to
 // :active and :hover pseudo classes

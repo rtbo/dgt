@@ -13,8 +13,8 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.screen;
-import dgt.sg.node;
 import dgt.util;
+import dgt.view.view;
 
 import gfx.foundation.rc;
 
@@ -279,9 +279,9 @@ class Window
     }
 
     /// The scene graph root attached to this window
-    @property inout(SgNode) root() inout { return _root; }
+    @property inout(View) root() inout { return _root; }
     /// ditto
-    @property void root(SgNode root)
+    @property void root(View root)
     {
         if (_root) {
             _root._window = null;
@@ -509,7 +509,7 @@ class Window
             }
 
             if (_dirtyLayout) {
-                import dgt.widget.layout : MeasureSpec;
+                import dgt.view.layout : MeasureSpec;
                 immutable fs = cast(FSize)size;
                 _root.measure(
                     MeasureSpec.makeAtMost(fs.width),
@@ -685,7 +685,7 @@ class Window
             }
         }
 
-        static void emitEnterLeave(SgNode node, EventType type, PlMouseEvent src)
+        static void emitEnterLeave(View node, EventType type, PlMouseEvent src)
         {
             import std.typecons : scoped;
             immutable scPos = cast(FPoint)src.point;
@@ -695,7 +695,7 @@ class Window
             ev.chainToNext();
         }
 
-        static checkEnterLeave(SgNode[] was, SgNode[] now, PlMouseEvent src)
+        static checkEnterLeave(View[] was, View[] now, PlMouseEvent src)
         {
             import std.algorithm : min;
             immutable common = min(was.length, now.length);
@@ -738,10 +738,10 @@ class Window
         ISize _size;
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
-        SgNode _root;
-        SgNode[] _dragChain;
-        SgNode[] _mouseNodes;
-        SgNode[] _tempNodes;
+        View _root;
+        View[] _dragChain;
+        View[] _mouseNodes;
+        View[] _tempNodes;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;

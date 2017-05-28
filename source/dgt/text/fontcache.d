@@ -1,8 +1,8 @@
 module dgt.text.fontcache;
 
 import dgt.bindings.fontconfig;
-import dgt.sg.style;
 import dgt.text.font;
+import dgt.view.style;
 
 import gfx.foundation.rc;
 
