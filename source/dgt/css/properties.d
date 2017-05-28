@@ -7,7 +7,9 @@ import dgt.css.cascade;
 import dgt.css.color;
 import dgt.css.token;
 import dgt.css.value;
+import dgt.enums;
 import dgt.geometry;
+import dgt.view.layout;
 import dgt.view.style;
 
 import std.experimental.logger;
@@ -463,6 +465,65 @@ final class FontSizeProperty : CSSProperty
                 break;
             }
             break;
+        }
+    }
+}
+
+/// layout-width / layout-height
+/// Value:      number | match-parent | wrap-content
+/// Inherited:  no
+/// Initial:    wrap-content
+class LayoutSizeProperty(Orientation orientation) : CSSProperty
+{
+    this()
+    {
+        auto name = orientation.isHorizontal ? "layout-width" : "layout-height";
+        super(name, false, new CSSValue!float(wrapContent));
+    }
+
+    override bool appliesTo(Style style)
+    {
+        return style.layoutParams !is null;
+    }
+
+    override CSSValue!float parseValueImpl(Token[] tokens)
+    {
+        popSpaces(tokens);
+        if (tokens.front.tok == Tok.number) {
+            return new CSSValue!float(tokens.front.num);
+        }
+        else if (tokens.front.tok == Tok.ident) {
+            switch (tokens.front.str) {
+            case "match-parent": return new CSSValue!float(matchParent);
+            case "wrap-content": return new CSSValue!float(wrapContent);
+            default:
+                break;
+            }
+        }
+        return null;
+    }
+
+    override void applyFromParent(Style target)
+    {
+        assert(target.layoutParams && target.parent.layoutParams);
+        static if (orientation.isHorizontal) {
+            target.layoutParams.width = target.parent.layoutParams.width;
+        }
+        else {
+            target.layoutParams.height = target.parent.layoutParams.height;
+        }
+    }
+
+    override void applyFromValue(Style target, CSSValueBase value)
+    {
+        auto val = cast(CSSValue!float)value;
+        assert(val);
+        assert(target.layoutParams);
+        static if (orientation.isHorizontal) {
+            target.layoutParams.width = val.value;
+        }
+        else {
+            target.layoutParams.height = val.value;
         }
     }
 }

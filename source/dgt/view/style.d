@@ -2,6 +2,7 @@
 module dgt.view.style;
 
 import dgt.css.color;
+import dgt.view.layout;
 import dgt.view.view;
 
 
@@ -112,17 +113,25 @@ class Style
         _fontSize = l;
     }
 
-    @property Color textColor()
+    @property Layout.Params layoutParams()
     {
-        return _textColor;
+        return _layoutParams;
+    }
+
+    @property void layoutParams(Layout.Params params)
+    {
+        _layoutParams = params;
     }
 
 private:
     View _node;
+
     Color _backgroundColor;
+
     string[] _fontFamily;
     int _fontWeight;
     FontStyle _fontStyle;
     int _fontSize;
-    Color _textColor;
+
+    Layout.Params _layoutParams;
 }

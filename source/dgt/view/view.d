@@ -183,18 +183,6 @@ class View
         --_childCount;
     }
 
-    /// The layout parameters of this node
-    @property inout(Layout.Params) layoutParams() inout
-    {
-        return _layoutParams;
-    }
-
-    /// ditto
-    @property void layoutParams(Layout.Params params)
-    {
-        _layoutParams = params;
-    }
-
     /// The padding of the node, that is, how much empty space is required
     /// around the content.
     /// Padding is always within the node's rect.
@@ -888,7 +876,6 @@ class View
 
     // layout
     private FPadding        _padding;
-    private Layout.Params   _layoutParams;
     private FSize           _measurement;
 
     // dirty state

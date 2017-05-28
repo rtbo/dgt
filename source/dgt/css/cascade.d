@@ -56,6 +56,11 @@ abstract class CSSProperty
         return _initial;
     }
 
+    /// Check whether the property applies to a view
+    bool appliesTo(Style style) {
+        return true;
+    }
+
     /// Parse the value from the tokens read in the style sheet.
     /// Starts by checking whether the values is "inherit", "initial" or "unset",
     /// and calls parseValueImpl if it is none of the three.
@@ -81,10 +86,10 @@ abstract class CSSProperty
 
     final void applyCascade(Style target, CSSValueBase cascaded)
     {
-        const parent = target.parent;
+        auto parent = target.parent;
 
         if (!cascaded || cascaded.unset) {
-            if (inherited && parent) {
+            if (inherited && parent && appliesTo(parent)) {
                 applyFromParent(target);
             }
             else {
@@ -92,7 +97,7 @@ abstract class CSSProperty
             }
         }
         else {
-            if (cascaded.inherit && parent) {
+            if (cascaded.inherit && parent && appliesTo(parent)) {
                 applyFromParent(target);
             }
             else if (cascaded.inherit && !parent) {
@@ -118,6 +123,7 @@ abstract class CSSProperty
 package(dgt)
 void initializeCSSCascade() {
     import dgt.css.properties;
+    import dgt.enums : Orientation;
 
     supportedProperties = [
         new BackgroundColorProperty,
@@ -125,6 +131,9 @@ void initializeCSSCascade() {
         new FontWeightProperty,
         new FontStyleProperty,
         new FontSizeProperty,
+
+        new LayoutSizeProperty!(Orientation.horizontal),
+        new LayoutSizeProperty!(Orientation.vertical),
     ];
 }
 
@@ -134,18 +143,18 @@ __gshared CSSProperty[] supportedProperties;
 
 final class CascadeContext
 {
-    void cascade(View node, Stylesheet[] css)
+    void cascade(View view, Stylesheet[] css)
     {
-        if (node.cssStyle.length) {
-            css ~= parseCSS(node.cssStyle, null, Origin.app);
+        if (view.cssStyle.length) {
+            css ~= parseCSS(view.cssStyle, null, Origin.app);
         }
-        doNode(node, css);
+        doView(view, css);
 
         import std.algorithm : each;
-        node.children.each!(c => cascade(c, css));
+        view.children.each!(c => cascade(c, css));
     }
 
-    void doNode(View node, Stylesheet[] css)
+    void doView(View view, Stylesheet[] css)
     {
         import std.algorithm : filter;
 
@@ -154,7 +163,7 @@ final class CascadeContext
         Decl[][numOrigImp] origImpDecls;
         foreach(s; css) {
             immutable origin = cast(int)s.origin;
-            foreach(r; s.rules.filter!(r => r.selector.matches(node))) {
+            foreach(r; s.rules.filter!(r => r.selector.matches(view))) {
                 foreach(d; r.decls) {
                     immutable ind = d.important ? numOrigImp-origin-1 : origin;
                     origImpDecls[ind] ~= d;
@@ -173,6 +182,8 @@ final class CascadeContext
 
         // the rest is handled property by property
         foreach (p; supportedProperties) {
+            auto style = view.style;
+            if (!p.appliesTo(style)) continue;
             // selecting the highest priority origin and importance
             Decl cascaded;
             foreach(origImp; origImpDecls) {
@@ -191,7 +202,7 @@ final class CascadeContext
                 cascadedVal = cascaded.value;
             }
 
-            p.applyCascade(node.style, cascadedVal);
+            p.applyCascade(style, cascadedVal);
         }
     }
 }

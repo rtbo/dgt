@@ -184,8 +184,8 @@ class Layout : View
     /// with this layout. If not, default params are assigned.
     protected void ensureLayout(View child)
     {
-        if (!child.layoutParams) {
-            child.layoutParams = new Layout.Params;
+        if (!child.style.layoutParams) {
+            child.style.layoutParams = new Layout.Params;
         }
     }
 
@@ -196,7 +196,7 @@ class Layout : View
                                 in MeasureSpec parentHeightSpec,
                                 in float usedWidth=0f, in float usedHeight=0f)
     {
-        auto lp = cast(Layout.Params)child.layoutParams;
+        auto lp = cast(Layout.Params)child.style.layoutParams;
 
         immutable ws = childMeasureSpec(parentWidthSpec,
                     padding.left+padding.right+usedWidth, lp.width);
@@ -236,11 +236,11 @@ class LinearLayout : Layout
     this() {}
 
     override protected void ensureLayout(View node) {
-        auto llp = cast(Params)node.layoutParams;
+        auto llp = cast(Params)node.style.layoutParams;
         if (!llp) {
-            auto lp = cast(Layout.Params)node.layoutParams;
-            if (lp) node.layoutParams = new Params(lp);
-            else node.layoutParams = new Params;
+            auto lp = cast(Layout.Params)node.style.layoutParams;
+            if (lp) node.style.layoutParams = new Params(lp);
+            else node.style.layoutParams = new Params;
         }
     }
 
@@ -328,7 +328,7 @@ class LinearLayout : Layout
             totalHeight += c.measurement.height;
             largestWidth = max(largestWidth, c.measurement.width);
 
-            auto lp = cast(Params)layoutParams;
+            auto lp = cast(Params)style.layoutParams;
             if (lp) totalWeight += lp.weight;
         }
         totalHeight += padding.top + padding.bottom;
@@ -341,7 +341,7 @@ class LinearLayout : Layout
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalHeight = 0f;
             foreach(c; children) {
-                auto lp = cast(LinearLayout.Params)layoutParams;
+                auto lp = cast(LinearLayout.Params)style.layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
                     immutable share = remainExcess * weight / totalWeight;
@@ -388,7 +388,7 @@ class LinearLayout : Layout
             totalWidth += c.measurement.width;
             largestHeight = max(largestHeight, c.measurement.height);
 
-            auto lp = cast(LinearLayout.Params)layoutParams;
+            auto lp = cast(LinearLayout.Params)style.layoutParams;
             if (lp) totalWeight += lp.weight;
         }
         totalWidth += padding.left + padding.right;
@@ -401,7 +401,7 @@ class LinearLayout : Layout
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalWidth = 0f;
             foreach(c; children) {
-                auto lp = cast(Params)layoutParams;
+                auto lp = cast(Params)style.layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
                     immutable share = remainExcess * weight / totalWeight;
@@ -460,7 +460,7 @@ class LinearLayout : Layout
 
         foreach(i, c; enumerate(children)) {
 
-            auto lp = cast(Params)c.layoutParams;
+            auto lp = cast(Params)c.style.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
                     lp.gravity : _gravity;
 
@@ -508,7 +508,7 @@ class LinearLayout : Layout
 
         foreach(i, c; enumerate(children)) {
 
-            auto lp = cast(Params)c.layoutParams;
+            auto lp = cast(Params)c.style.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
                     lp.gravity : _gravity;
 

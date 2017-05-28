@@ -1,13 +1,13 @@
 /// Vector graphics context module
 module dgt.vg.context;
 
-import gfx.foundation.rc;
-import dgt.vg;
 import dgt.image;
 import dgt.math.mat;
+import dgt.vg;
+import gfx.foundation.rc;
 
-import std.typecons : BitFlags, Flag, No;
 import std.traits : isCallable;
+import std.typecons : BitFlags, Flag, No;
 
 
 enum PaintMode
