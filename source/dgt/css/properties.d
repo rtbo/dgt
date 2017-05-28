@@ -528,15 +528,6 @@ class LayoutSizeProperty(Orientation orientation) : CSSProperty
     }
 }
 
-abstract class AbstractGravityProperty : CSSProperty
-{
-    this(string name, in Gravity initial)
-    {
-        super(name, false, new CSSValue!Gravity(initial));
-    }
-
-}
-
 /// layout-gravity
 /// Value:      <gravity> [ '|' <gravity> ]
 /// Inherited:  no
@@ -545,7 +536,7 @@ abstract class AbstractGravityProperty : CSSProperty
 ///             fill | fill-h | fill-v | clip | clip-h | clip-v | none
 ///
 /// Gravity applied to layout params that implement HasGravity
-class LayoutGravityProperty : AbstractGravityProperty
+class LayoutGravityProperty : CSSProperty
 {
     this()
     {

@@ -535,16 +535,16 @@ class View
     /// In the latter case, a single * selector is implied
     /// (if '{' is not found in the passed string, it is assumed to be only declarations).
     /// The rules attached here are scoped to this node and its children.
-    @property string cssStyle() { return _cssStyle; }
+    @property string css() { return _css; }
     /// ditto
-    @property void cssStyle(string css)
+    @property void css(string css)
     {
         import std.algorithm : canFind;
         if (!css.canFind("{")) {
             css = "*{"~css~"}";
         }
-        if (css != _cssStyle) {
-            _cssStyle = css;
+        if (css != _css) {
+            _css = css;
             dirty(DirtyFlags.css);
         }
     }
@@ -899,7 +899,7 @@ class View
 
     // style
     private Style _style;
-    private string _cssStyle;
+    private string _css;
     private string _id;
     private string _cssClass;
     private PseudoState _pseudoState;

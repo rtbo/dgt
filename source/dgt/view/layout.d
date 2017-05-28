@@ -213,20 +213,6 @@ class Layout : View
     }
 }
 
-class LLStyle : Style, HasGravity
-{
-    /// The gravity to be applied to the children
-    override @property Gravity gravity()
-    {
-        return _gravity;
-    }
-    override @property void gravity(in Gravity gravity)
-    {
-        _gravity = gravity;
-    }
-
-    private Gravity _gravity = Gravity.none;
-}
 
 /// layout its children in a linear way
 class LinearLayout : Layout
@@ -264,11 +250,7 @@ class LinearLayout : Layout
     }
 
     /// Build a new linear layout
-    this()
-    {
-        style = new LLStyle;
-        super();
-    }
+    this() {}
 
     override protected void ensureLayout(View node) {
         auto llp = cast(Params)node.style.layoutParams;

@@ -36,7 +36,7 @@ int main()
     hello.name = "hello";
     hello.text = "Hello";
     hello.alignment = Alignment.center;
-    hello.cssStyle = "font-family: serif; font-style: italic; font-size: 1in;";
+    hello.css = "font-family: serif; font-style: italic; font-size: 1in;";
 
     auto icon = new Label;
     icon.name = "icon";
@@ -65,7 +65,7 @@ int main()
     root.appendChild(exit);
     root.spacing = 6;
     root.gravity = Gravity.center;
-    root.cssStyle = `
+    root.css = `
         :root { background-color: lavenderblush; }
     `;
 

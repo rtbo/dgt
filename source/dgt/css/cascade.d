@@ -146,8 +146,8 @@ final class CascadeContext
 {
     void cascade(View view, Stylesheet[] css)
     {
-        if (view.cssStyle.length) {
-            css ~= parseCSS(view.cssStyle, null, Origin.app);
+        if (view.css.length) {
+            css ~= parseCSS(view.css, null, Origin.app);
         }
         doView(view, css);
 
