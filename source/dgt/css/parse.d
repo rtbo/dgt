@@ -177,8 +177,6 @@ struct CSSParser(TokenInput)
                     d.selector = sel;
                 }
                 return r;
-            case Tok.whitespace:
-                break;
             default:
                 selectorToks ~= tok;
                 break;

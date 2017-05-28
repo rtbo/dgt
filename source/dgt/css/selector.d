@@ -315,7 +315,7 @@ enum SelOp
     group = ',',
 }
 
-AbstractSelector parseSelectorGroup(Tokens)(Tokens tokens)
+AbstractSelector parseSelectorGroup(Tokens)(ref Tokens tokens)
 {
     import std.algorithm : until;
 
@@ -352,7 +352,7 @@ AbstractSelector parseSelectorGroup(Tokens)(Tokens tokens)
     }
 }
 
-AbstractSelector parseSelectorCombinator(Tokens)(Tokens tokens)
+AbstractSelector parseSelectorCombinator(Tokens)(ref Tokens tokens)
 {
     import std.algorithm : until;
 
@@ -364,6 +364,7 @@ AbstractSelector parseSelectorCombinator(Tokens)(Tokens tokens)
     AbstractSelector s = parseSimpleSelectorSeq(tokens);
 
     while (!tokens.empty) {
+
         auto op = parseSelOp(tokens);
         AbstractSelector.Type type;
         switch (op) {
@@ -387,11 +388,14 @@ AbstractSelector parseSelectorCombinator(Tokens)(Tokens tokens)
 
         auto lhs = s;
         auto rhs = parseSelectorCombinator(tokens);
-        auto c = new Combinator;
-        c.lhs = lhs;
-        c.rhs = rhs;
-        c._type = type;
-        s = c;
+
+        if (rhs) {
+            auto c = new Combinator;
+            c.lhs = lhs;
+            c.rhs = rhs;
+            c._type = type;
+            s = c;
+        }
     }
 
     return s;
@@ -408,12 +412,16 @@ SelOp parseSelOp(Tokens)(ref Tokens tokens)
         else if (tok.tok == Tok.delim) {
             switch (tok.delimCP) {
             case '~':
+                tokens.popFront();
                 return SelOp.genSibl;
             case '+':
+                tokens.popFront();
                 return SelOp.adjSibl;
             case '>':
+                tokens.popFront();
                 return SelOp.child;
             case ',':
+                tokens.popFront();
                 return SelOp.group;
             default:
                 break;
@@ -503,7 +511,10 @@ AbstractSelector parseSimpleSelectorSeq(Tokens)(ref Tokens tokens)
             seq ~= s;
         }
         else {
-            throw new Exception("unexpected selector token");
+            import std.format : format;
+            throw new Exception(
+                format("unexpected selector token: %s", tok)
+            );
         }
 
         if (exit) break;
