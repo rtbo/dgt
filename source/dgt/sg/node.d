@@ -317,9 +317,15 @@ class SgNode
     final @property FMat4 transformToParent()
     {
         if (isDirty(DirtyFlags.transformToParent)) {
-            _transformToParent = _hasTransform ?
-                    transform.translate(fvec(pos, 0)) :
-                    translation!float(fvec(pos, 0));
+            if (_hasTransform) {
+                _transformToParent = transform.translate(fvec(pos, 0));
+            }
+            else {
+                _transformToParent = translation!float(fvec(pos, 0));
+                // this is cheap, let's do it now.
+                _transformFromParent = translation!float(fvec(-pos, 0));
+                clean(DirtyFlags.transformFromParent);
+            }
             clean(DirtyFlags.transformToParent);
         }
         return _transformToParent;
@@ -329,7 +335,15 @@ class SgNode
     final @property FMat4 transformFromParent()
     {
         if (isDirty(DirtyFlags.transformFromParent)) {
-            _transformFromParent = inverse(transformToParent);
+            if (_hasTransform) {
+                _transformFromParent = inverse(transformToParent);
+            }
+            else {
+                _transformFromParent = translation!float(fvec(-pos, 0));
+                // this is cheap, let's do it now.
+                _transformToParent = translation!float(fvec(pos, 0));
+                clean(DirtyFlags.transformToParent);
+            }
             clean(DirtyFlags.transformFromParent);
         }
         return _transformFromParent;
