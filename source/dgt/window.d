@@ -15,7 +15,6 @@ import dgt.render.frame;
 import dgt.screen;
 import dgt.sg.node;
 import dgt.util;
-import dgt.widget.widget;
 
 import gfx.foundation.rc;
 
@@ -288,10 +287,8 @@ class Window
             _root._window = null;
         }
         _root = root;
-        _widget = cast(Widget)_root;
         if (_root) {
             _root._window = this;
-            //collectWidgetRoots(_root, _widgetRoots);
         }
     }
 
@@ -498,37 +495,39 @@ class Window
         immutable(RenderFrame) collectFrame()
         {
             scope(exit) _dirtyReg = new Region;
-            if (_root && _dirtyStyle) {
-                import dgt.css.cascade : cssCascade;
-                cssCascade(_root);
-                _dirtyStyle = false;
-            }
-            if (_widget && _dirtyLayout) {
-                import dgt.widget.layout : MeasureSpec;
-                immutable fs = cast(FSize)size;
-                _widget.measure(
-                    MeasureSpec.makeAtMost(fs.width),
-                    MeasureSpec.makeAtMost(fs.height)
-                );
-                _widget.layout(FRect(0, 0, fs));
-                _dirtyLayout = false;
-            }
-            if (_root) {
-                import dgt.render.node : GroupRenderNode;
-                immutable rn = _root.collectRenderNode();
-                immutable bg = _root.backgroundRenderNode();
-                immutable fn = bg ?
-                    new immutable GroupRenderNode(_root.localRect, [bg, rn]) :
-                    rn;
-                return new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size), fn
-                );
-            }
-            else {
+
+            if (!_root) {
                 return new immutable RenderFrame (
                     nativeHandle, IRect(0, 0, size)
                 );
             }
+
+            if (_dirtyStyle) {
+                import dgt.css.cascade : cssCascade;
+                cssCascade(_root);
+                _dirtyStyle = false;
+            }
+
+            if (_dirtyLayout) {
+                import dgt.widget.layout : MeasureSpec;
+                immutable fs = cast(FSize)size;
+                _root.measure(
+                    MeasureSpec.makeAtMost(fs.width),
+                    MeasureSpec.makeAtMost(fs.height)
+                );
+                _root.layout(FRect(0, 0, fs));
+                _dirtyLayout = false;
+            }
+
+            import dgt.render.node : GroupRenderNode;
+            immutable rn = _root.collectRenderNode();
+            immutable bg = _root.backgroundRenderNode();
+            immutable fn = bg ?
+                new immutable GroupRenderNode(_root.localRect, [bg, rn]) :
+                rn;
+            return new immutable RenderFrame (
+                nativeHandle, IRect(0, 0, size), fn
+            );
         }
     }
 
@@ -740,8 +739,6 @@ class Window
         GlAttribs _attribs;
         PlatformWindow _platformWindow;
         SgNode _root;
-        Widget _widget;
-        // Widget[] _widgetRoots;
         SgNode[] _dragChain;
         SgNode[] _mouseNodes;
         SgNode[] _tempNodes;
@@ -768,18 +765,4 @@ class Window
         Handler!CloseEvent       _onClose       = new Handler!CloseEvent;
         FireableSignal!Window    _onClosed      = new FireableSignal!Window;
     }
-}
-
-
-private void collectWidgetRoots(SgNode parent, ref Widget[] roots)
-{
-    auto w = cast(Widget)parent;
-    if (w && !cast(Widget)w.parent) {
-        roots ~= w;
-    }
-    import std.algorithm : each, filter, map;
-    parent.children
-        .map!(n => cast(SgNode)n)
-        .filter!(p => p !is null)
-        .each!(p => collectWidgetRoots(p, roots));
 }

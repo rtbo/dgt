@@ -46,8 +46,8 @@ int main()
     auto layout = new LinearLayout;
     layout.name = "layout";
     layout.orientation = Orientation.horizontal;
-    layout.appendWidget(hello);
-    layout.appendWidget(icon);
+    layout.appendChild(hello);
+    layout.appendChild(icon);
     layout.spacing = 6;
     layout.gravity = Gravity.center;
 
@@ -61,8 +61,8 @@ int main()
     auto root = new LinearLayout;
     root.name = "root";
     root.setVertical();
-    root.appendWidget(layout);
-    root.appendWidget(exit);
+    root.appendChild(layout);
+    root.appendChild(exit);
     root.spacing = 6;
     root.gravity = Gravity.center;
     root.cssStyle = `

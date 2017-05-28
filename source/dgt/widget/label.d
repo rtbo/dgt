@@ -7,17 +7,17 @@ import dgt.image;
 import dgt.math;
 import dgt.render.node;
 import dgt.sg.miscnodes;
+import dgt.sg.node;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.widget.layout;
-import dgt.widget.widget;
 
 import std.experimental.logger;
 import std.typecons : Rebindable;
 
 /// Label is a widget to display a line of text and/or an icon
-class Label : Widget
+class Label : SgNode
 {
     /// build a new label
     this()

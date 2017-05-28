@@ -5,7 +5,6 @@ import dgt.enums;
 import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
-import dgt.widget.widget;
 
 import gfx.foundation.typecons;
 
@@ -145,7 +144,7 @@ enum float wrapContent = -1f;
 enum float matchParent = -2f;
 
 /// general layout class
-class Layout : Widget
+class Layout : SgNode
 {
     /// Params attached to each node for use with their parent
     static class Params {
@@ -158,46 +157,32 @@ class Layout : Widget
     /// Build a new layout
     this() {}
 
-    /// Return a bidirectional range of the widget children
-    @property auto widgets() const
+    public override void appendChild(SgNode node)
     {
-        import std.algorithm : map;
-        return children.map!(c => cast(const(Widget))c);
+        ensureLayout(node);
+        super.appendChild(node);
     }
 
-    /// ditto
-    @property auto widgets()
+    public override void prependChild(SgNode node)
     {
-        import std.algorithm : map;
-        return children.map!(c => cast(Widget)c);
+        ensureLayout(node);
+        super.prependChild(node);
     }
 
-    void appendWidget(Widget widget)
+    public override void insertChildBefore(SgNode node, SgNode child)
     {
-        ensureLayout(widget);
-        appendChild(widget);
+        ensureLayout(node);
+        super.insertChildBefore(node, child);
     }
 
-    public void prependWidget(Widget widget)
+    public override void removeChild(SgNode node)
     {
-        ensureLayout(widget);
-        prependChild(widget);
-    }
-
-    public void insertWidgetBefore(Widget widget, Widget child)
-    {
-        ensureLayout(widget);
-        insertChildBefore(widget, child);
-    }
-
-    public void removeWidget(Widget child)
-    {
-        removeChild(child);
+        super.removeChild(node);
     }
 
     /// Ensure that this child has layout params and that they are compatible
     /// with this layout. If not, default params are assigned.
-    protected void ensureLayout(Widget child)
+    protected void ensureLayout(SgNode child)
     {
         if (!child.layoutParams) {
             child.layoutParams = new Layout.Params;
@@ -207,7 +192,7 @@ class Layout : Widget
     /// Ask a child to measure itself taking into account the measureSpecs
     /// given to this layout, the padding and the size that have been consumed
     /// by other children.
-    protected void measureChild(Widget child, in MeasureSpec parentWidthSpec,
+    protected void measureChild(SgNode child, in MeasureSpec parentWidthSpec,
                                 in MeasureSpec parentHeightSpec,
                                 in float usedWidth=0f, in float usedHeight=0f)
     {
@@ -250,7 +235,7 @@ class LinearLayout : Layout
     /// Build a new linear layout
     this() {}
 
-    override protected void ensureLayout(Widget node) {
+    override protected void ensureLayout(SgNode node) {
         auto llp = cast(Params)node.layoutParams;
         if (!llp) {
             auto lp = cast(Layout.Params)node.layoutParams;
@@ -336,7 +321,7 @@ class LinearLayout : Layout
         float totalWeight = 0;
 
         // compute vertical space that all children want to have
-        foreach(i, c; enumerate(widgets)) {
+        foreach(i, c; enumerate(children)) {
             if (i != 0) totalHeight += spacing;
 
             measureChild(c, widthSpec, heightSpec, 0f, totalHeight);
@@ -355,7 +340,7 @@ class LinearLayout : Layout
         // share remain excess (positive or negative) between all weighted children
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalHeight = 0f;
-            foreach(c; widgets) {
+            foreach(c; children) {
                 auto lp = cast(LinearLayout.Params)layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
@@ -396,7 +381,7 @@ class LinearLayout : Layout
         float totalWeight = 0;
 
         // compute horizontal space that all children want to have
-        foreach(i, c; enumerate(widgets)) {
+        foreach(i, c; enumerate(children)) {
             if (i != 0) totalWidth += spacing;
 
             measureChild(c, widthSpec, heightSpec, totalWidth, 0f);
@@ -415,7 +400,7 @@ class LinearLayout : Layout
         // share remain excess (positive or negative) between all weighted children
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalWidth = 0f;
-            foreach(c; widgets) {
+            foreach(c; children) {
                 auto lp = cast(Params)layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
@@ -473,7 +458,7 @@ class LinearLayout : Layout
             break;
         }
 
-        foreach(i, c; enumerate(widgets)) {
+        foreach(i, c; enumerate(children)) {
 
             auto lp = cast(Params)c.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
@@ -521,7 +506,7 @@ class LinearLayout : Layout
             break;
         }
 
-        foreach(i, c; enumerate(widgets)) {
+        foreach(i, c; enumerate(children)) {
 
             auto lp = cast(Params)c.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
