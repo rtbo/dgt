@@ -21,7 +21,7 @@ class View
     /// builds a new node
     this()
     {
-        _style = new Style(this);
+        if (!_style) _style = new Style(this);
     }
 
     /// The window this node is attached to.
@@ -520,9 +520,14 @@ class View
     }
 
     /// The Style object attached to this node
-    @property Style style()
+    final @property Style style()
     {
         return _style;
+    }
+    /// ditto
+    final protected @property void style(Style style)
+    {
+        _style = style;
     }
 
     /// A CSS formatted style attached to this node.

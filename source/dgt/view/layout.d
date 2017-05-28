@@ -137,6 +137,12 @@ AxisGravity extract(in Gravity gravity, in Orientation orientation) pure
     return orientation.isHorizontal ? gravity.horizontal : gravity.vertical;
 }
 
+/// Implemented by layout params that have a gravity field.
+interface HasGravity
+{
+    @property Gravity gravity();
+    @property void gravity(in Gravity gravity);
+}
 
 /// Special value for Layout.Params.width and height.
 enum float wrapContent = -1f;
@@ -205,13 +211,28 @@ class Layout : View
 
         child.measure(ws, hs);
     }
+}
 
+class LLStyle : Style, HasGravity
+{
+    /// The gravity to be applied to the children
+    override @property Gravity gravity()
+    {
+        return _gravity;
+    }
+    override @property void gravity(in Gravity gravity)
+    {
+        _gravity = gravity;
+    }
+
+    private Gravity _gravity = Gravity.none;
 }
 
 /// layout its children in a linear way
 class LinearLayout : Layout
 {
-    static class Params : Layout.Params
+    /// Params for linear layout
+    final static class Params : Layout.Params, HasGravity
     {
         /// Specify how much of the layout extra space will be allocated
         /// to a child
@@ -219,7 +240,15 @@ class LinearLayout : Layout
 
         /// Specify a possible per-child override for where to attach the child
         /// the orthogonal direction of this layout
-        Gravity gravity = Gravity.none;
+        override @property Gravity gravity()
+        {
+            return _gravity;
+        }
+        /// ditto
+        override @property void gravity(in Gravity gravity)
+        {
+            _gravity = gravity;
+        }
 
         /// Build a default value
         this() {}
@@ -230,10 +259,16 @@ class LinearLayout : Layout
             this.width = params.width;
             this.height = params.height;
         }
+
+        private Gravity _gravity = Gravity.none;
     }
 
     /// Build a new linear layout
-    this() {}
+    this()
+    {
+        style = new LLStyle;
+        super();
+    }
 
     override protected void ensureLayout(View node) {
         auto llp = cast(Params)node.style.layoutParams;
@@ -280,7 +315,6 @@ class LinearLayout : Layout
         _orientation = Orientation.vertical;
     }
 
-    /// The gravity to be applied to the children
     @property Gravity gravity() const
     {
         return _gravity;

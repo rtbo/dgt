@@ -527,3 +527,93 @@ class LayoutSizeProperty(Orientation orientation) : CSSProperty
         }
     }
 }
+
+abstract class AbstractGravityProperty : CSSProperty
+{
+    this(string name, in Gravity initial)
+    {
+        super(name, false, new CSSValue!Gravity(initial));
+    }
+
+}
+
+/// layout-gravity
+/// Value:      <gravity> [ '|' <gravity> ]
+/// Inherited:  no
+/// Initial:    none
+/// <gravity>:  left | right | bottom | top | center | center-h | center-v
+///             fill | fill-h | fill-v | clip | clip-h | clip-v | none
+///
+/// Gravity applied to layout params that implement HasGravity
+class LayoutGravityProperty : AbstractGravityProperty
+{
+    this()
+    {
+        super("layout-gravity", false, new CSSValue!Gravity(Gravity.none));
+    }
+
+    override bool appliesTo(Style style)
+    {
+        return (cast(HasGravity)style.layoutParams) !is null;
+    }
+
+    override CSSValue!Gravity parseValueImpl(Token[] tokens)
+    {
+        popSpaces(tokens);
+        immutable g1 = parseGravity(tokens);
+        popSpaces(tokens);
+        if (!tokens.empty &&
+                tokens.front.tok == Tok.delim &&
+                tokens.front.delimCP == '|') {
+            tokens.popFront();
+            popSpaces(tokens);
+            immutable g2 = tokens.empty ? Gravity.none : parseGravity(tokens);
+            return new CSSValue!Gravity(g1 | g2);
+        }
+        else {
+            return new CSSValue!Gravity(g1);
+        }
+    }
+
+    private Gravity parseGravity(ref Token[] tokens)
+    {
+        assert(!tokens.empty);
+        auto tok = tokens.front;
+        if (tok.tok == Tok.ident) {
+            tokens.popFront();
+            switch(tok.str) {
+            case "left":        return Gravity.left;
+            case "right":       return Gravity.right;
+            case "top":         return Gravity.top;
+            case "bottom":      return Gravity.bottom;
+            case "center":      return Gravity.center;
+            case "center-h":    return Gravity.centerHor;
+            case "center-v":    return Gravity.centerVer;
+            case "fill":        return Gravity.fill;
+            case "fill-h":      return Gravity.fillHor;
+            case "fill-v":      return Gravity.fillVer;
+            case "clip":        return Gravity.clip;
+            case "clip-h":      return Gravity.clipHor;
+            case "clip-v":      return Gravity.clipVer;
+            default: break;
+            }
+        }
+        return Gravity.none;
+    }
+
+    override void applyFromParent(Style target)
+    {
+        auto tlp = cast(HasGravity)target.layoutParams;
+        auto plp = cast(HasGravity)target.parent.layoutParams;
+
+        tlp.gravity = plp.gravity;
+    }
+
+    override void applyFromValue(Style target, CSSValueBase value)
+    {
+        auto val = cast(CSSValue!Gravity)value;
+        assert(val);
+        auto tlp = cast(HasGravity)target.layoutParams;
+        tlp.gravity = val.value;
+    }
+}

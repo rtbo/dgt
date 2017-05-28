@@ -134,6 +134,7 @@ void initializeCSSCascade() {
 
         new LayoutSizeProperty!(Orientation.horizontal),
         new LayoutSizeProperty!(Orientation.vertical),
+        new LayoutGravityProperty,
     ];
 }
 
