@@ -153,6 +153,52 @@ struct Token
         this.integer = integer;
         this.unit = unit;
     }
+
+    string toString()
+    {
+        import std.format : format;
+        final switch(tok) {
+        case Tok.none:
+        case Tok.eoi:
+        case Tok.badStr:
+        case Tok.badUrl:
+        case Tok.inclMatch:
+        case Tok.dashMatch:
+        case Tok.prefixMatch:
+        case Tok.suffixMatch:
+        case Tok.substrMatch:
+        case Tok.column:
+        case Tok.whitespace:
+        case Tok.cdOp:
+        case Tok.cdCl:
+        case Tok.colon:
+        case Tok.semicolon:
+        case Tok.comma:
+        case Tok.brackOp:
+        case Tok.brackCl:
+        case Tok.parenOp:
+        case Tok.parenCl:
+        case Tok.braceOp:
+        case Tok.braceCl:
+            return format("Token(%s)", tok);
+        case Tok.ident:
+        case Tok.func:
+        case Tok.atKwd:
+        case Tok.hash:
+        case Tok.str:
+        case Tok.url:
+            return format("Token(%s: %s)", tok, str);
+        case Tok.delim:
+            return format("Token(%s: %s)", tok, delimCP);
+        case Tok.number:
+        case Tok.percentage:
+            return format("Token(%s: %s)", tok, numStr);
+        case Tok.dimension:
+            return format("Token(%s: %s [unit:%s])", tok, numStr, unit);
+        case Tok.uniRange:
+            return format("Token(%s: [%s : %s])", tok, startCP, endCP);
+        }
+    }
 }
 
 enum Tok
