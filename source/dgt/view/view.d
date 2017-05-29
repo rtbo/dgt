@@ -6,6 +6,7 @@ import dgt.geometry;
 import dgt.math;
 import dgt.render;
 import dgt.render.node;
+import dgt.sg.node;
 import dgt.view.layout;
 import dgt.view.style;
 import dgt.window;
@@ -741,11 +742,17 @@ class View
         _dynamic = dynamic;
     }
 
+    /// Whether this view has background other than transparent
+    @property bool hasBackground()
+    {
+        return (style.backgroundColor.argb & 0xff00_0000) != 0;
+    }
+
     /// background render view in local coordinates
     immutable(RenderNode) backgroundRenderNode()
     {
         immutable col = style.backgroundColor;
-        if (col.argb & 0xff000000) {
+        if (col.argb & 0xff00_0000) {
             return new immutable RectFillRenderNode(col.asVec, localRect);
         }
         else {
@@ -786,6 +793,25 @@ class View
         else {
             return null;
         }
+    }
+
+    @property bool hasContent()
+    {
+        return _hasContent;
+    }
+
+    @property void hasContent(bool has)
+    {
+        _hasContent = has;
+    }
+
+    /// function called by the renderer, that may reside in a different thread
+    /// This is called while the GUI thread is blocked, so fields can be accessed
+    /// safely, but no reference to the node should be kept or used outside this
+    /// function.
+    SGNode updateSGContent(SGNode previous)
+    {
+        return null;
     }
 
     @property uint level() const
@@ -913,6 +939,33 @@ class View
 
     // debug info
     private string _name; // id will be used if name is empty
+
+
+    // following fields are reserved to the scenegraph
+
+package(dgt):
+
+    @property SGTransformNode node()
+    {
+        if (!_node) _node = new SGTransformNode;
+        return _node;
+    }
+
+    @property SGNode contentNode()
+    {
+        return _contentNode;
+    }
+
+    @property void contentNode(SGNode node)
+    {
+        _contentNode = node;
+    }
+
+private:
+
+    SGTransformNode _node;
+    SGNode _contentNode;
+    bool _hasContent;
 }
 
 

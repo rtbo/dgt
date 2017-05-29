@@ -5,6 +5,7 @@ import dgt.context;
 import dgt.eventloop;
 import dgt.platform;
 import dgt.render;
+import dgt.sg.renderloop;
 import dgt.window;
 import gfx.foundation.rc;
 
@@ -80,6 +81,7 @@ class Application : EventLoop, Disposable
             FontEngine.initialize();
             FontCache.initialize();
             RenderThread.initialize();
+            SGRenderLoop.initialize();
         }
         log("ending initialization");
     }
