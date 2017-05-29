@@ -204,12 +204,12 @@ class Renderer
         void updateWithSize(in ISize sz)
         {
             if (!bufTex || size != sz) {
-                TexUsageFlags usage = TextureUsage.ShaderResource | TextureUsage.RenderTarget;
+                TexUsageFlags usage = TextureUsage.shaderResource | TextureUsage.renderTarget;
                 bufTex = new Texture2D!Rgba8(usage, 1, cast(ushort)sz.width, cast(ushort)sz.height, []);
                 bufRtv = bufTex.viewAsRenderTarget(0, none!ubyte);
                 bufSrv = bufTex.viewAsShaderResource(0, 0, newSwizzle());
                 bufSampler = new Sampler(
-                    bufSrv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+                    bufSrv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
                 );
             }
             if (size != sz) {
@@ -268,24 +268,22 @@ class Renderer
         _solidPipeline = new SolidPipeline(cmdBuf.obj, none!Blend);
         _solidBlendPipeline = new SolidPipeline(
             cmdBuf.obj, some(Blend(
-                Equation.Add,
-                Factor.makeZeroPlus(BlendValue.SourceAlpha),
-                Factor.makeOneMinus(BlendValue.SourceAlpha)
+                Equation.add,
+                Factor.zeroPlusSrcAlpha,
+                Factor.oneMinusSrcAlpha
             ))
         );
         _texPipeline = new TexPipeline(cmdBuf.obj, none!Blend);
         _texBlendArgbPipeline = new TexPipeline(
             cmdBuf.obj, some(Blend(
-                Equation.Add,
-                Factor.makeZeroPlus(BlendValue.SourceAlpha),
-                Factor.makeOneMinus(BlendValue.SourceAlpha)
+                Equation.add,
+                Factor.zeroPlusSrcAlpha,
+                Factor.oneMinusSrcAlpha
             ))
         );
         _texBlendArgbPremultPipeline = new TexPipeline(
             cmdBuf.obj, some(Blend(
-                Equation.Add,
-                Factor.makeOne(),
-                Factor.makeOneMinus(BlendValue.SourceAlpha)
+                Equation.add, Factor.one, Factor.oneMinusSrcAlpha
             ))
         );
         _textPipeline = new TextPipeline(cmdBuf.obj);
@@ -550,13 +548,13 @@ class Renderer
             }
 
             auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
-            TexUsageFlags usage = TextureUsage.ShaderResource;
+            TexUsageFlags usage = TextureUsage.shaderResource;
             auto tex = makeRc!(Texture2D!Rgba8)(
                 usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
             );
             srv = tex.viewAsShaderResource(0, 0, newSwizzle());
             sampler = new Sampler(
-                srv, SamplerInfo(FilterMethod.Anisotropic, WrapMode.init)
+                srv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
             );
             if (cookie) {
                 _objectCache[cookie] = new TextureObjectCache(srv.obj, sampler.obj);
@@ -610,15 +608,15 @@ class Renderer
                     return;
                 }
                 immutable pixels = runImg.data;
-                TexUsageFlags usage = TextureUsage.ShaderResource;
+                TexUsageFlags usage = TextureUsage.shaderResource;
                 auto tex = new Texture2D!Alpha8(
                     usage, 1, cast(ushort)runImg.width, cast(ushort)runImg.height, [pixels]
                 ).rc();
                 srv = tex.viewAsShaderResource(0, 0, newSwizzle());
-                // FilterMethod.Scale maps to GL_NEAREST
+                // FilterMethod.scale maps to GL_NEAREST
                 // no need to filter what is already filtered
                 sampler = new Sampler(
-                    srv, SamplerInfo(FilterMethod.Scale, WrapMode.init)
+                    srv, SamplerInfo(FilterMethod.scale, WrapMode.init)
                 );
                 if (cookie) {
                     _objectCache[cookie] = new GlyphRunObjectCache(

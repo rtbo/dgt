@@ -28,7 +28,7 @@ class TextPipeline : Disposable
         ));
 
         _pso = new StateObject(
-            prog.obj, Primitive.Triangles,
+            prog.obj, Primitive.triangles,
             Rasterizer.fill.withSamples()
         );
         _pso.retain();
@@ -99,11 +99,7 @@ struct TextMeta
     ResourceSampler             sampler;
 
     @GfxName("o_Color")
-    @GfxBlend(Blend(
-        Equation.Add,
-        Factor.makeOne(),
-        Factor.makeOneMinus(BlendValue.SourceAlpha)
-    ))
+    @GfxBlend(Blend( Equation.add, Factor.one, Factor.oneMinusSrcAlpha ))
     BlendOutput!Rgba8           outColor;
 }
 

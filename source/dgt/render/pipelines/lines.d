@@ -28,10 +28,10 @@ class LinesPipeline : Disposable
         ));
 
         _pso = new StateObject(
-            prog.obj, Primitive.Lines,
+            prog.obj, Primitive.lines,
             Rasterizer(
-                FrontFace.CounterClockWise,
-                CullFace.None,
+                FrontFace.ccw,
+                CullFace.none,
                 RasterMethod.makeLine(1f),
                 none!Offset,
                 false

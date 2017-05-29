@@ -28,7 +28,7 @@ class SolidPipeline : Disposable
         ));
 
         _pso = new StateObject(
-            prog.obj, Primitive.Triangles,
+            prog.obj, Primitive.triangles,
             Rasterizer.fill.withSamples()
         );
         _pso.retain();
