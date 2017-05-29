@@ -11,7 +11,7 @@ import std.range;
 
 interface Selector
 {
-    bool matches(View node);
+    bool matches(View view);
     @property int specificity();
 }
 
@@ -105,10 +105,10 @@ class SimpleSelectorSeq : AbstractSelector
         return Type.simpleSeq;
     }
 
-    bool matches(View node)
+    bool matches(View view)
     {
         import std.algorithm : all;
-        return seq.all!(s => s.matches(node));
+        return seq.all!(s => s.matches(view));
     }
 
     @property int specificity()
@@ -145,27 +145,27 @@ class SimpleSelector : AbstractSelector
         return Type.simple;
     }
 
-    bool matches(View node)
+    bool matches(View view)
     {
         final switch(ssType) {
         case SSType.type:
-            return node.cssType == val;
+            return view.cssType == val;
         case SSType.universal:
             return true;
         case SSType.class_:
-            return node.cssClass == val;
+            return view.cssClass == val;
         case SSType.id:
-            return node.id == val;
+            return view.id == val;
         case SSType.pseudo:
             if (_ps != PseudoState.def) {
-                return (node.pseudoState & _ps) != PseudoState.def;
+                return (view.pseudoState & _ps) != PseudoState.def;
             }
             else if (val == "root") {
-                return node.isRoot;
+                return view.isRoot;
             }
             else {
                 _ps = translatePseudoClass(val);
-                if ((node.pseudoState & _ps) != PseudoState.def) {
+                if ((view.pseudoState & _ps) != PseudoState.def) {
                     return true;
                 }
             }
@@ -219,10 +219,10 @@ class Group : AbstractSelector
         return Type.group;
     }
 
-    bool matches(View node)
+    bool matches(View view)
     {
         import std.algorithm : any;
-        return selectors.any!(s => s.matches(node));
+        return selectors.any!(s => s.matches(view));
     }
 
     @property int specificity()
@@ -250,25 +250,25 @@ class Combinator : AbstractSelector
         return _type;
     }
 
-    bool matches(View node)
+    bool matches(View view)
     {
-        if (!rhs.matches(node)) return false;
+        if (!rhs.matches(view)) return false;
         switch(_type) {
         case Type.descendant:
-            auto p = node.parent;
+            auto p = view.parent;
             while (p) {
                 if (lhs.matches(p)) return true;
                 else p = p.parent;
             }
             return false;
         case Type.child:
-            auto p = node.parent;
+            auto p = view.parent;
             return p ? lhs.matches(p) : false;
         case Type.adjSibl:
-            auto s = node.prevSibling;
+            auto s = view.prevSibling;
             return s ? lhs.matches(s) : false;
         case Type.genSibl:
-            auto s = node.prevSibling;
+            auto s = view.prevSibling;
             while (s) {
                 if (lhs.matches(s)) return true;
                 else s = s.prevSibling;

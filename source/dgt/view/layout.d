@@ -152,7 +152,7 @@ enum float matchParent = -2f;
 /// general layout class
 class Layout : View
 {
-    /// Params attached to each node for use with their parent
+    /// Params attached to each view for use with their parent
     static class Params {
         /// Either an actual dimension in pixels, or special values wrapContent or matchParent
         float width     = wrapContent;
@@ -163,27 +163,27 @@ class Layout : View
     /// Build a new layout
     this() {}
 
-    public override void appendChild(View node)
+    public override void appendChild(View view)
     {
-        ensureLayout(node);
-        super.appendChild(node);
+        ensureLayout(view);
+        super.appendChild(view);
     }
 
-    public override void prependChild(View node)
+    public override void prependChild(View view)
     {
-        ensureLayout(node);
-        super.prependChild(node);
+        ensureLayout(view);
+        super.prependChild(view);
     }
 
-    public override void insertChildBefore(View node, View child)
+    public override void insertChildBefore(View view, View child)
     {
-        ensureLayout(node);
-        super.insertChildBefore(node, child);
+        ensureLayout(view);
+        super.insertChildBefore(view, child);
     }
 
-    public override void removeChild(View node)
+    public override void removeChild(View view)
     {
-        super.removeChild(node);
+        super.removeChild(view);
     }
 
     /// Ensure that this child has layout params and that they are compatible
@@ -252,12 +252,12 @@ class LinearLayout : Layout
     /// Build a new linear layout
     this() {}
 
-    override protected void ensureLayout(View node) {
-        auto llp = cast(Params)node.style.layoutParams;
+    override protected void ensureLayout(View view) {
+        auto llp = cast(Params)view.style.layoutParams;
         if (!llp) {
-            auto lp = cast(Layout.Params)node.style.layoutParams;
-            if (lp) node.style.layoutParams = new Params(lp);
-            else node.style.layoutParams = new Params;
+            auto lp = cast(Layout.Params)view.style.layoutParams;
+            if (lp) view.style.layoutParams = new Params(lp);
+            else view.style.layoutParams = new Params;
         }
     }
 

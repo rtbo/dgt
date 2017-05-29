@@ -403,60 +403,60 @@ final class FontSizeProperty : CSSProperty
                 target.fontSize = cast(int)round(0.5 * lenVal * pfs);
                 break;
             case Length.Unit.rem:
-                immutable rfs = target.node.isRoot ?
+                immutable rfs = target.view.isRoot ?
                             cast(int)AbsoluteKwd.medium :
                             target.root.fontSize;
                 target.fontSize = cast(int)round(lenVal * rfs);
                 break;
             case Length.Unit.vw:
-                const win = target.node.window;
+                const win = target.view.window;
                 immutable width = win.geometry.width;
                 target.fontSize = cast(int)round(lenVal * width * 0.01f);
                 break;
             case Length.Unit.vh:
-                const win = target.node.window;
+                const win = target.view.window;
                 immutable height = win.geometry.height;
                 target.fontSize = cast(int)round(lenVal * height * 0.01f);
                 break;
             case Length.Unit.vmin:
                 import std.algorithm : min;
-                const win = target.node.window;
+                const win = target.view.window;
                 immutable rect = win.geometry;
                 target.fontSize = cast(int)round(lenVal * min(rect.width, rect.height) * 0.01f);
                 break;
             case Length.Unit.vmax:
                 import std.algorithm : max;
-                const win = target.node.window;
+                const win = target.view.window;
                 immutable rect = win.geometry;
                 target.fontSize = cast(int)round(lenVal * max(rect.width, rect.height) * 0.01f);
                 break;
             case Length.Unit.cm:
-                const scr = target.node.window.screen;
+                const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 2.54f;
                 target.fontSize = cast(int)round(dens * lenVal);
                 break;
             case Length.Unit.mm:
-                const scr = target.node.window.screen;
+                const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 25.4f;
                 target.fontSize = cast(int)round(dens * lenVal);
                 break;
             case Length.Unit.q:
-                const scr = target.node.window.screen;
+                const scr = target.view.window.screen;
                 immutable dens = scr.dpi / (4*25.4f);
                 target.fontSize = cast(int)round(dens * lenVal);
                 break;
             case Length.Unit.inch:
-                const scr = target.node.window.screen;
+                const scr = target.view.window.screen;
                 immutable dens = scr.dpi;
                 target.fontSize = cast(int)round(dens * lenVal);
                 break;
             case Length.Unit.pc:
-                const scr = target.node.window.screen;
+                const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 6f;
                 target.fontSize = cast(int)round(dens * lenVal);
                 break;
             case Length.Unit.pt:
-                const scr = target.node.window.screen;
+                const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 72f;
                 target.fontSize = cast(int)round(dens * lenVal);
                 break;

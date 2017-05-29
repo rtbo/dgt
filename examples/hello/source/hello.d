@@ -12,15 +12,15 @@ import dgt.text.layout;
 import dgt.view.button;
 import dgt.view.label;
 import dgt.view.layout;
-import dgt.view.miscnodes;
+import dgt.view.miscviews;
 import dgt.view.view;
 import dgt.window;
 
 import gfx.foundation.rc;
 
-import std.typecons : scoped;
-import std.stdio;
 import std.math : PI;
+import std.stdio;
+import std.typecons : scoped;
 
 int main()
 {

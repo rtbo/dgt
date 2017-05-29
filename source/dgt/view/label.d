@@ -10,7 +10,7 @@ import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.view.layout;
-import dgt.view.miscnodes;
+import dgt.view.miscviews;
 import dgt.view.view;
 
 import std.experimental.logger;
@@ -23,8 +23,8 @@ class Label : View
     this()
     {
         padding = FPadding(6);
-        _iconNode = new SgImage;
-        _textNode = new SgText;
+        _iconNode = new ImageView;
+        _textNode = new TextView;
 
         appendChild(_iconNode);
         appendChild(_textNode);
@@ -140,6 +140,6 @@ class Label : View
     }
 
     private Alignment _alignment = Alignment.top | Alignment.left;
-    private SgImage _iconNode;
-    private SgText _textNode;
+    private ImageView _iconNode;
+    private TextView _textNode;
 }

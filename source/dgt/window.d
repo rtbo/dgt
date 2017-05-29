@@ -566,7 +566,7 @@ class Window
                 );
                 auto consumer = sceneEv.chainToNext();
                 if (consumer) {
-                    // if a node has explicitely consumed the event, we trim
+                    // if a view has explicitely consumed the event, we trim
                     // the chain after it, such as its children won't receive
                     // the drag event.
                     import std.algorithm : countUntil;
@@ -631,7 +631,7 @@ class Window
                     if (_mouseNodes.length >= _dragChain.length &&
                         _dragChain[$-1] is _mouseNodes[_dragChain.length-1])
                     {
-                        // still on same node => trigger click
+                        // still on same view => trigger click
                         auto clickEv = scoped!MouseEvent(
                             EventType.mouseClick, _dragChain, pos, pos,
                             ev.button, ev.state, ev.modifiers
@@ -685,12 +685,12 @@ class Window
             }
         }
 
-        static void emitEnterLeave(View node, EventType type, PlMouseEvent src)
+        static void emitEnterLeave(View view, EventType type, PlMouseEvent src)
         {
             import std.typecons : scoped;
             immutable scPos = cast(FPoint)src.point;
             auto ev = scoped!MouseEvent(
-                type, [node], scPos - node.scenePos, scPos, src.button, src.state, src.modifiers
+                type, [view], scPos - view.scenePos, scPos, src.button, src.state, src.modifiers
             );
             ev.chainToNext();
         }

@@ -13,13 +13,13 @@ import std.range;
 
 /// Entry point of the Style pass before rendering
 /// This function interates over the whole tree and assign each style property
-/// of each node
+/// of each view
 void cssCascade(View root)
 in {
     assert(root.isRoot);
 }
 body {
-    // TODO: provide mechanism to allow lo-cost styling when only one node need update
+    // TODO: provide mechanism to allow lo-cost styling when only one view need update
     log("starting style pass");
     auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;

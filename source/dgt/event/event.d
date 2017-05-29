@@ -70,14 +70,14 @@ abstract class Event
         return _nodeChain;
     }
 
-    /// Chain the event to the next node in the nodeChain.
-    /// Some event types can override this to send an adapted event to the next node.
-    /// E.g. mouse events will translate positions in the next node coordinates.
-    /// The default implementation only forwards itself to the next node.
+    /// Chain the event to the next view in the nodeChain.
+    /// Some event types can override this to send an adapted event to the next view.
+    /// E.g. mouse events will translate positions in the next view coordinates.
+    /// The default implementation only forwards itself to the next view.
     /// Depending on this behavior, a call to this method might or might not
     /// decrement the size of nodeChain.
-    /// (It will be decremented in the next node chainEvent method)
-    /// Returns: the node that has consumed the event, or null if not consumed.
+    /// (It will be decremented in the next view chainEvent method)
+    /// Returns: the view that has consumed the event, or null if not consumed.
     View chainToNext()
     in {
         assert(_nodeChain.length);

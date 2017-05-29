@@ -14,7 +14,7 @@ enum FontStyle
     oblique,
 }
 
-/// Bit flags that describe the pseudo state of a node.
+/// Bit flags that describe the pseudo state of a view.
 /// Several states can be active at the same time (e.g. disabled and checked).
 /// Pseudo state style can be specified by using corresponding
 /// css pseudo-class selectors.
@@ -40,23 +40,23 @@ enum PseudoState
 /// It is populated during the CSS pass.
 class Style
 {
-    this(View node)
+    this(View view)
     {
-        _node = node;
+        _node = view;
     }
 
-    /// The node associated with this style.
-    @property View node()
+    /// The view associated with this style.
+    @property View view()
     {
         return _node;
     }
-    /// The style of the parent `node`.
+    /// The style of the parent `view`.
     @property Style parent()
     {
         auto p = _node.parent;
         return p ? p.style : null;
     }
-    /// The style of the root of `node`.
+    /// The style of the root of `view`.
     @property Style root()
     {
         return _node.root.style;

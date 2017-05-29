@@ -1,5 +1,5 @@
 /// A few misc nodes
-module dgt.view.miscnodes;
+module dgt.view.miscviews;
 
 import dgt.geometry;
 import dgt.image;
@@ -12,7 +12,7 @@ import dgt.view.view;
 import std.experimental.logger;
 import std.typecons;
 
-class SgColorRect : View
+class ColorRect : View
 {
     this() {}
 
@@ -36,7 +36,7 @@ class SgColorRect : View
 }
 
 
-class SgImage : View
+class ImageView : View
 {
     this() {}
 
@@ -73,7 +73,7 @@ class SgImage : View
 }
 
 
-class SgText : View
+class TextView : View
 {
     this()
     {

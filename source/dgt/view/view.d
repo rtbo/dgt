@@ -18,13 +18,13 @@ import std.typecons;
 /// View hierarchy root class
 class View
 {
-    /// builds a new node
+    /// builds a new view
     this()
     {
         if (!_style) _style = new Style(this);
     }
 
-    /// The window this node is attached to.
+    /// The window this view is attached to.
     @property Window window()
     {
         return root._window;
@@ -39,55 +39,55 @@ class View
         return p;
     }
 
-    /// Whether this node is root
+    /// Whether this view is root
     @property bool isRoot() const
     {
         return _parent is null;
     }
 
-    /// This node's parent.
+    /// This view's parent.
     @property inout(View) parent() inout
     {
         return _parent;
     }
 
-    /// This node's previous sibling.
+    /// This view's previous sibling.
     @property inout(View) prevSibling() inout
     {
         return _prevSibling;
     }
 
-    /// This node's next sibling.
+    /// This view's next sibling.
     @property inout(View) nextSibling() inout
     {
         return _nextSibling;
     }
 
-    /// Whether this node has children.
+    /// Whether this view has children.
     @property bool hasChildren() const
     {
         return _firstChild !is null;
     }
 
-    /// The number of children this node has.
+    /// The number of children this view has.
     @property size_t childCount() const
     {
         return _childCount;
     }
 
-    /// This node's first child.
+    /// This view's first child.
     @property inout(View) firstChild() inout
     {
         return _firstChild;
     }
 
-    /// This node's last child.
+    /// This view's last child.
     @property inout(View) lastChild() inout
     {
         return _lastChild;
     }
 
-    /// A bidirectional range of this node's children
+    /// A bidirectional range of this view's children
     @property auto children()
     {
         return SgSiblingNodeRange!View(_firstChild, _lastChild);
@@ -99,63 +99,63 @@ class View
         return SgSiblingNodeRange!(const(View))(_firstChild, _lastChild);
     }
 
-    /// Appends the given node to this node children list.
-    protected void appendChild(View node)
+    /// Appends the given view to this view children list.
+    protected void appendChild(View view)
     {
-        enforce(node && !node._parent);
-        node._parent = this;
+        enforce(view && !view._parent);
+        view._parent = this;
 
         if (!hasChildren) {
-            _firstChild = node;
-            _lastChild = node;
+            _firstChild = view;
+            _lastChild = view;
         }
         else {
-            _lastChild._nextSibling = node;
-            node._prevSibling = _lastChild;
-            _lastChild = node;
+            _lastChild._nextSibling = view;
+            view._prevSibling = _lastChild;
+            _lastChild = view;
         }
         ++_childCount;
     }
 
-    /// Prepend the given node to this node children list.
-    protected void prependChild(View node)
+    /// Prepend the given view to this view children list.
+    protected void prependChild(View view)
     {
-        enforce(node && !node._parent);
-        node._parent = this;
+        enforce(view && !view._parent);
+        view._parent = this;
 
         if (!hasChildren) {
-            _firstChild = node;
-            _lastChild = node;
+            _firstChild = view;
+            _lastChild = view;
         }
         else {
-            _firstChild._prevSibling = node;
-            node._nextSibling = _firstChild;
-            _firstChild = node;
+            _firstChild._prevSibling = view;
+            view._nextSibling = _firstChild;
+            _firstChild = view;
         }
         ++_childCount;
     }
 
-    /// Insert the given node in this node children list, just before the given
+    /// Insert the given view in this view children list, just before the given
     /// child.
-    protected void insertChildBefore(View node, View child)
+    protected void insertChildBefore(View view, View child)
     {
-        enforce(node && !node._parent && child._parent is this);
-        node._parent = this;
+        enforce(view && !view._parent && child._parent is this);
+        view._parent = this;
 
         if (child is _firstChild) {
-            _firstChild = node;
+            _firstChild = view;
         }
         else {
             auto prev = child._prevSibling;
-            prev._nextSibling = node;
-            node._prevSibling = prev;
+            prev._nextSibling = view;
+            view._prevSibling = prev;
         }
-        child._prevSibling = node;
-        node._nextSibling = child;
+        child._prevSibling = view;
+        view._nextSibling = child;
         ++_childCount;
     }
 
-    /// Removes the given node from this node children list.
+    /// Removes the given view from this view children list.
     protected void removeChild(View child)
     {
         enforce(child && child._parent is this);
@@ -183,9 +183,9 @@ class View
         --_childCount;
     }
 
-    /// The padding of the node, that is, how much empty space is required
+    /// The padding of the view, that is, how much empty space is required
     /// around the content.
-    /// Padding is always within the node's rect.
+    /// Padding is always within the view's rect.
     @property FPadding padding() const
     {
         return _padding;
@@ -197,13 +197,13 @@ class View
         _padding = padding;
     }
 
-    /// Ask this node to measure itself by assigning the measurement property.
+    /// Ask this view to measure itself by assigning the measurement property.
     void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
         measurement = FSize(widthSpec.size, heightSpec.size);
     }
 
-    /// Size set by the node during measure phase
+    /// Size set by the view during measure phase
     final @property FSize measurement() const
     {
         return _measurement;
@@ -215,20 +215,20 @@ class View
         _measurement = sz;
     }
 
-    /// Ask the node to layout itself in the given rect
+    /// Ask the view to layout itself in the given rect
     /// The default implementation assign the rect property.
     void layout(in FRect rect)
     {
         this.rect = rect;
     }
 
-    /// Invalidate the node content. This triggers rendering.
+    /// Invalidate the view content. This triggers rendering.
     final void invalidate()
     {
         if (window) window.invalidate(cast(IRect)sceneRect);
     }
 
-    /// The dirtyState of this node;
+    /// The dirtyState of this view;
     final @property DirtyFlags dirtyState()
     {
         return _dirtyState;
@@ -258,8 +258,8 @@ class View
         return (_dirtyState & flags) == flags;
     }
 
-    /// The position of the node relative to its parent.
-    /// Does not account transforms on this node.
+    /// The position of the view relative to its parent.
+    /// Does not account transforms on this view.
     /// This pos is the one of the rect property and is used in layout calculations.
     final @property FPoint pos() const
     {
@@ -274,7 +274,7 @@ class View
             dirty(DirtyFlags.transformMask);
         }
     }
-    /// The size of the node
+    /// The size of the view
     final @property FSize size()
     {
         return _rect.size;
@@ -284,9 +284,9 @@ class View
     {
         _rect.size = size;
     }
-    /// The 'logical' rect of the node.
+    /// The 'logical' rect of the view.
     /// This is expressed in parent coordinates, and do not take into account
-    /// the transform applied to this node.
+    /// the transform applied to this view.
     /// Actual bounds may differ due to use of borders, shadows or transform.
     /// This rect is the one used in layout calculations.
     final @property FRect rect()
@@ -309,14 +309,14 @@ class View
         return FRect(0, 0, size);
     }
 
-    /// Position of this node as seen by parent, considering also
-    /// the transform of this node.
+    /// Position of this view as seen by parent, considering also
+    /// the transform of this view.
     final @property FPoint parentPos()
     {
         return mapToParent(fvec(0, 0));
     }
 
-    /// The rect of this node, as seen by parent, taking into account
+    /// The rect of this view, as seen by parent, taking into account
     /// transform. A rect is always axis aligned, so in case of rotation,
     /// the bounding rect is returned.
     final @property FRect parentRect()
@@ -324,14 +324,14 @@ class View
         return mapToParent(localRect);
     }
 
-    /// Position of this node as seen by scene, considering
+    /// Position of this view as seen by scene, considering
     /// the whole transform chain.
     final @property FPoint scenePos()
     {
         return mapToScene(fvec(0, 0));
     }
 
-    /// The rect of this node, as seen by scene, taking into account
+    /// The rect of this view, as seen by scene, taking into account
     /// the whole transform chain. A rect is always axis aligned, so in case of rotation,
     /// the bounding rect is returned.
     final @property FRect sceneRect()
@@ -339,10 +339,10 @@ class View
         return mapToScene(localRect);
     }
 
-    /// Whether this node has a transform set. (Other than identity)
+    /// Whether this view has a transform set. (Other than identity)
     final @property bool hasTransform() const { return _hasTransform; }
 
-    /// The transform affecting this node and its children.
+    /// The transform affecting this view and its children.
     /// The transform does not affect the layout, but affects rendering.
     /// It should be used for animation mainly.
     final @property FMat4 transform() const { return _transform; }
@@ -355,7 +355,7 @@ class View
         dirty(DirtyFlags.transformMask);
     }
 
-    /// Transform that maps node coordinates to parent coordinates
+    /// Transform that maps view coordinates to parent coordinates
     final @property FMat4 transformToParent()
     {
         if (isDirty(DirtyFlags.transformToParent)) {
@@ -373,7 +373,7 @@ class View
         return _transformToParent;
     }
 
-    /// Transform that maps parent coordinates to node coordinates
+    /// Transform that maps parent coordinates to view coordinates
     final @property FMat4 transformFromParent()
     {
         if (isDirty(DirtyFlags.transformFromParent)) {
@@ -391,7 +391,7 @@ class View
         return _transformFromParent;
     }
 
-    /// Transform that maps node coordinates to scene coordinates
+    /// Transform that maps view coordinates to scene coordinates
     final @property FMat4 transformToScene()
     {
         if (isDirty(DirtyFlags.transformToScene)) {
@@ -403,7 +403,7 @@ class View
         return _transformToScene;
     }
 
-    /// Transform that maps scene coordinates to node coordinates
+    /// Transform that maps scene coordinates to view coordinates
     final @property FMat4 transformFromScene()
     {
         if (isDirty(DirtyFlags.transformFromScene)) {
@@ -413,85 +413,85 @@ class View
         return _transformFromScene;
     }
 
-    /// Map a point from scene coordinates to this node coordinates
+    /// Map a point from scene coordinates to this view coordinates
     final FPoint mapFromScene(in FPoint pos)
     {
         return fvec(pos, 0).transform(transformFromScene).xy;
     }
 
-    /// Map a point from this node coordinates to scene coordinates
+    /// Map a point from this view coordinates to scene coordinates
     final FPoint mapToScene(in FPoint pos)
     {
         return fvec(pos, 0).transform(transformToScene).xy;
     }
 
-    /// Map a point from parent coordinates to this node coordinates
+    /// Map a point from parent coordinates to this view coordinates
     final FPoint mapFromParent(in FPoint pos)
     {
         return fvec(pos, 0).transform(transformFromParent).xy;
     }
 
-    /// Map a point from this node coordinates to parent coordinates
+    /// Map a point from this view coordinates to parent coordinates
     final FPoint mapToParent(in FPoint pos)
     {
         return fvec(pos, 0).transform(transformToParent).xy;
     }
 
-    /// Map a point from the other node coordinates to this node coordinates
-    final FPoint mapFromNode(View node, in FPoint pos)
+    /// Map a point from the other view coordinates to this view coordinates
+    final FPoint mapFromNode(View view, in FPoint pos)
     {
-        immutable sp = node.mapToScene(pos);
+        immutable sp = view.mapToScene(pos);
         return mapFromScene(sp);
     }
 
-    /// Map a point from this node coordinates to the other node coordinates
-    final FPoint mapToNode(View node, in FPoint pos)
+    /// Map a point from this view coordinates to the other view coordinates
+    final FPoint mapToNode(View view, in FPoint pos)
     {
         immutable sp = mapToScene(pos);
-        return node.mapFromScene(sp);
+        return view.mapFromScene(sp);
     }
 
-    /// Map a point from scene coordinates to this node coordinates
+    /// Map a point from scene coordinates to this view coordinates
     final FRect mapFromScene(in FRect rect)
     {
         return rect.transformBounds(transformFromScene);
     }
 
-    /// Map a point from this node coordinates to scene coordinates
+    /// Map a point from this view coordinates to scene coordinates
     final FRect mapToScene(in FRect rect)
     {
         return rect.transformBounds(transformToScene);
     }
 
-    /// Map a point from parent coordinates to this node coordinates
+    /// Map a point from parent coordinates to this view coordinates
     final FRect mapFromParent(in FRect rect)
     {
         return rect.transformBounds(transformFromParent);
     }
 
-    /// Map a point from this node coordinates to parent coordinates
+    /// Map a point from this view coordinates to parent coordinates
     final FRect mapToParent(in FRect rect)
     {
         return rect.transformBounds(transformToParent);
     }
 
-    /// Map a point from the other node coordinates to this node coordinates
-    final FRect mapFromNode(View node, in FRect rect)
+    /// Map a point from the other view coordinates to this view coordinates
+    final FRect mapFromNode(View view, in FRect rect)
     {
         return rect.transformBounds(
-            node.transformToScene * transformFromScene
+            view.transformToScene * transformFromScene
         );
     }
 
-    /// Map a point from this node coordinates to the other node coordinates
-    final FRect mapToNode(View node, in FRect rect)
+    /// Map a point from this view coordinates to the other view coordinates
+    final FRect mapToNode(View view, in FRect rect)
     {
         return rect.transformBounds(
-            transformToScene * node.transformFromScene
+            transformToScene * view.transformFromScene
         );
     }
 
-    /// Get a node at position given by pos.
+    /// Get a view at position given by pos.
     View nodeAtPos(in FVec2 pos)
     {
         if (localRect.contains(pos)) {
@@ -519,7 +519,7 @@ class View
         }
     }
 
-    /// The Style object attached to this node
+    /// The Style object attached to this view
     final @property Style style()
     {
         return _style;
@@ -530,11 +530,11 @@ class View
         _style = style;
     }
 
-    /// A CSS formatted style attached to this node.
+    /// A CSS formatted style attached to this view.
     /// It can be either rules with a selector, or only declarations.
     /// In the latter case, a single * selector is implied
     /// (if '{' is not found in the passed string, it is assumed to be only declarations).
-    /// The rules attached here are scoped to this node and its children.
+    /// The rules attached here are scoped to this view and its children.
     @property string css() { return _css; }
     /// ditto
     @property void css(string css)
@@ -554,7 +554,7 @@ class View
     /// `label { font-family: serif; }`
     @property string cssType() { return null; }
 
-    /// The id of this node.
+    /// The id of this view.
     /// Used in CSS '#' selector, and for debug printing if name is not set.
     final @property string id() { return _id; }
     /// ditto
@@ -566,7 +566,7 @@ class View
         }
     }
 
-    /// The CSS class of this node.
+    /// The CSS class of this view.
     /// Used in CSS '.' selector.
     final @property string cssClass() { return _cssClass; }
     /// ditto
@@ -578,7 +578,7 @@ class View
         }
     }
 
-    /// A pseudo state of the node.
+    /// A pseudo state of the view.
     final @property PseudoState pseudoState() { return _pseudoState; }
     /// ditto
     final @property void pseudoState(in PseudoState state)
@@ -599,7 +599,7 @@ class View
         pseudoState = _pseudoState & (~flags);
     }
 
-    /// Flag that causes PseudoState.hover to be set when the cursor hovers the node
+    /// Flag that causes PseudoState.hover to be set when the cursor hovers the view
     final bool hoverSensitive() { return _hoverSensitive; }
     /// ditto
     final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
@@ -631,7 +631,7 @@ class View
         _evFilters = _evFilters.remove!(f => (f.mask & cast(uint)mask) != 0);
     }
 
-    /// Called when mouse interacts with this node.
+    /// Called when mouse interacts with this view.
     protected void mouseDownEvent(MouseEvent ev) {}
     /// ditto
     protected void mouseUpEvent(MouseEvent ev) {}
@@ -661,7 +661,7 @@ class View
     /// Chain an event until its final target, giving each parent in the chain
     /// the opportunity to filter it, or to handle it after its children if
     /// the event hasn't been consumed by any of them.
-    /// Returns: the node that has consumed the event, or null.
+    /// Returns: the view that has consumed the event, or null.
     final View chainEvent(Event event)
     {
         // fiter phase
@@ -728,7 +728,7 @@ class View
     }
 
 
-    /// Whether this node is dynamic.
+    /// Whether this view is dynamic.
     /// Dynamic basically means that the rendering data can vary
     /// about every frame. Whether the transform changes at every frame
     /// or not should not influence this flag.
@@ -741,7 +741,7 @@ class View
         _dynamic = dynamic;
     }
 
-    /// background render node in local coordinates
+    /// background render view in local coordinates
     immutable(RenderNode) backgroundRenderNode()
     {
         immutable col = style.backgroundColor;
@@ -753,10 +753,10 @@ class View
         }
     }
 
-    /// Collect the render node for this node, in local coordinates.
-    /// It is responsibility of the parent to transform this render node into the
+    /// Collect the render view for this view, in local coordinates.
+    /// It is responsibility of the parent to transform this render view into the
     /// parent coordinates.
-    /// Returns: A render for this node, expressed in local coordinates.
+    /// Returns: A render for this view, expressed in local coordinates.
     immutable(RenderNode) collectRenderNode()
     {
         import std.algorithm : filter, map;
@@ -916,7 +916,7 @@ class View
 }
 
 
-/// Bit flags that describe what in a node needs update
+/// Bit flags that describe what in a view needs update
 enum DirtyFlags
 {
     /// nothing is dirty
@@ -1042,7 +1042,7 @@ struct RenderCacheCookie
 
 private:
 
-/// Bidirectional range that traverses a sibling node list
+/// Bidirectional range that traverses a sibling view list
 struct SgSiblingNodeRange(NodeT)
 {
     Rebindable!NodeT _first;
