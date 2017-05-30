@@ -1019,6 +1019,8 @@ enum DirtyFlags
     /// ditto
     transformFromScene   = 0x0080,
 
+    /// Some visual content has changed
+    contentMask         = 0x0f00,
     /// A style pass is needed
     styleMask           = 0x0300,
     /// Dynamic pseudo class has to be enabled/disabled.

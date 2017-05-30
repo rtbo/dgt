@@ -13,7 +13,6 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.screen;
-import dgt.sg.node;
 import dgt.util;
 import dgt.view.view;
 
@@ -160,6 +159,24 @@ class Window
     body
     {
         _flags = flags;
+    }
+
+    @property FVec4 clearColor()
+    {
+        return _clearColor;
+    }
+    @property void clearColor(in FVec4 color)
+    {
+        _clearColor = color;
+        _hasClearColor = true;
+    }
+    @property bool hasClearColor()
+    {
+        return _hasClearColor;
+    }
+    @property void hasClearColor(bool has)
+    {
+        _hasClearColor = has;
     }
 
     void showMaximized()
@@ -734,11 +751,14 @@ class Window
         }
 
         WindowFlags _flags;
+        PlatformWindow _platformWindow;
         string _title;
         IPoint _position = IPoint(-1, -1);
         ISize _size;
         GlAttribs _attribs;
-        PlatformWindow _platformWindow;
+        FVec4 _clearColor;
+        bool _hasClearColor;
+
         View _root;
         View[] _dragChain;
         View[] _mouseNodes;
@@ -770,43 +790,6 @@ class Window
     // scene graph reserved fields and methods
 package(dgt):
 
-    void sgUpdate()
-    {
-        if (!_root) return;
-        _sgRoot = sgUpdateView(_root);
-    }
+    Object sgData;
 
-    SGNode sgUpdateView(View view)
-    {
-        view.sgNode.transform = view.transformToParent;
-        if (view.sgBackgroundNode) {
-            view.sgNode.appendChild(view.sgBackgroundNode);
-        }
-        if (view.sgHasContent && view.isDirty(DirtyFlags.contentMask)) {
-            auto old = view.sgContentNode;
-            view.sgContentNode = view.sgUpdateContent(old);
-            if (old) {
-                old.parent.removeChild(old);
-            }
-            if (view.sgContentNode) {
-                view.sgChildrenNode.appendChild(view.sgContentNode);
-            }
-            view.clean(DirtyFlags.contentMask);
-        }
-        if (view.isDirty(DirtyFlags.childrenMask)) {
-            // TODO: appropriate sync
-            foreach (c; view.children) {
-                if (c.sgNode) {
-                    c.sgNode.parent.removeChild(c.sgNode);
-                }
-                view.sgChildrenNode.appendChild(sgUpdateView(c));
-            }
-            view.clean(DirtyFlags.childrenMask);
-        }
-        return view.sgNode;
-    }
-
-
-private:
-    SGNode _rootNode;
 }
