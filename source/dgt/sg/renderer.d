@@ -2,6 +2,7 @@ module dgt.sg.renderer;
 
 import dgt.context;
 import dgt.geometry;
+import dgt.image;
 import dgt.math;
 import dgt.sg.defs;
 import dgt.sg.node;
@@ -13,6 +14,7 @@ import gfx.device;
 import gfx.device.gl3;
 import gfx.foundation.rc;
 import gfx.foundation.typecons;
+import gfx.foundation.util;
 import gfx.pipeline;
 
 import std.exception;
@@ -28,7 +30,10 @@ abstract class SGRenderer
 
     // GUI thread interface
 
-    void start() {}
+    void start(GlContext context)
+    {
+        _context = context;
+    }
 
     void stop() {}
 
@@ -96,6 +101,8 @@ abstract class SGRenderer
         }
         scope(exit) _context.doneCurrent();
 
+        if (!_device) initialize();
+
         pruneCache();
         _context.swapInterval = 1;
 
@@ -121,6 +128,16 @@ private:
         {
             _prevSize = _size;
             _size = sz;
+        }
+
+        @property ISize size()
+        {
+            return _size;
+        }
+
+        @property Rect!ushort viewport()
+        {
+            return Rect!ushort(0, 0, cast(Size!ushort)_size);
         }
 
         void update()
@@ -326,7 +343,213 @@ private:
 
     void doFrame(PerWindow pw)
     {
+        immutable vp = pw.viewport;
+        _encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
 
+        if (pw.hasClearColor) {
+            auto col = pw.clearColor;
+            _encoder.clear!Rgba8(pw.bufRtv, [col.r, col.g, col.b, col.a]);
+        }
+
+        if (pw.root) {
+            renderNode(pw.root, pw, FMat4.identity);
+        }
+
+        // blit from texture to screen
+        immutable size = pw.size;
+        immutable vpTr =
+                        translation!float(0f, size.height, 0f) *
+                        scale!float(size.width, -size.height, 1f);
+        _blitPipeline.updateUniforms(transpose(pw.viewProj * vpTr));
+        _blitPipeline.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), pw.bufSrv.obj, pw.bufSampler.obj, pw.rtv);
+
+        _encoder.flush(_device);
+    }
+
+    void renderNode(SGNode node, PerWindow pw, FMat4 model)
+    {
+        switch(node.type)
+        {
+        case SGNode.Type.transform:
+            auto trNode = cast(SGTransformNode)node;
+            model = model * trNode.transform;
+            break;
+        case SGNode.Type.rectFill:
+            renderRectFillNode(cast(SGRectFillNode)node, pw, model);
+            break;
+        case SGNode.Type.rectStroke:
+            renderRectStrokeNode(cast(SGRectStrokeNode)node, pw, model);
+            break;
+        case SGNode.Type.image:
+            renderImageNode(cast(SGImageNode)node, pw, model);
+            break;
+        case SGNode.Type.text:
+            renderTextNode(cast(SGTextNode)node, pw, model);
+            break;
+        default:
+            break;
+        }
+
+        foreach (c; node.children) {
+            renderNode(c, pw, model);
+        }
+    }
+
+    void renderRectFillNode(SGRectFillNode node, PerWindow pw, in FMat4 model)
+    {
+        immutable color = node.color;
+        immutable rect = node.rect;
+        immutable rectTr = translate(
+            scale!float(rect.width, rect.height, 1f),
+            fvec(rect.topLeft, 0f)
+        );
+        immutable mvp = transpose(pw.viewProj * model * rectTr);
+
+        SolidPipeline pl = color.a == 1f ?
+            _solidPipeline : _solidBlendPipeline;
+
+        pl.updateUniforms(mvp, color);
+        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), pw.bufRtv);
+    }
+
+    void renderRectStrokeNode(SGRectStrokeNode node, PerWindow pw, in FMat4 model)
+    {
+        immutable color = node.color;
+        immutable rect = node.rect;
+        immutable rectTr = translate(
+            scale!float(rect.width, rect.height, 1f),
+            fvec(rect.topLeft, 0f)
+        );
+        immutable mvp = transpose(pw.viewProj * model * rectTr);
+
+        _linesPipeline.updateUniforms(mvp, color);
+        _linesPipeline.draw(_frameVBuf, VertexBufferSlice(frameVBufCount), pw.bufRtv);
+    }
+
+    void renderImageNode(SGImageNode node, PerWindow pw, in FMat4 model)
+    {
+        immutable img = node.image;
+        Rc!(ShaderResourceView!Rgba8) srv;
+        Rc!Sampler sampler;
+        TextureObjectCache cache;
+        immutable cookie = 0; // node.cacheCookie;
+
+        if (cookie) {
+            cache = retrieveCache!TextureObjectCache(cookie);
+        }
+        if (cache) {
+            srv = cache.srv;
+            sampler = cache.sampler;
+        }
+        else {
+            if (img.format != ImageFormat.argb &&
+                    img.format != ImageFormat.argbPremult) {
+                errorf("improper texture image format: %s", img.format);
+                return;
+            }
+
+            auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
+            TexUsageFlags usage = TextureUsage.shaderResource;
+            auto tex = makeRc!(Texture2D!Rgba8)(
+                usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
+            );
+            srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+            sampler = new Sampler(
+                srv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
+            );
+            if (cookie) {
+                _objectCache[cookie] = new TextureObjectCache(srv.obj, sampler.obj);
+            }
+        }
+
+        TexPipeline pl;
+        switch (img.format) {
+        case ImageFormat.xrgb:
+            pl = _texPipeline;
+            break;
+        case ImageFormat.argb:
+            pl = _texBlendArgbPipeline;
+            break;
+        case ImageFormat.argbPremult:
+            pl = _texBlendArgbPremultPipeline;
+            break;
+        default:
+            assert(false, "unimplemented");
+        }
+
+        immutable rect = FRect(node.topLeft, cast(FSize)img.size);
+        immutable rectTr = translate(
+            scale!float(rect.width, rect.height, 1f),
+            fvec(rect.topLeft, 0f)
+        );
+        pl.updateUniforms(transpose(pw.viewProj * model * rectTr));
+        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
+    }
+
+    void renderTextNode(SGTextNode node, PerWindow pw, in FMat4 model)
+    {
+        _textPipeline.updateColor(node.color);
+        immutable pos = node.pos;
+        foreach(gl; node.glyphs) {
+            Rc!(ShaderResourceView!Alpha8) srv;
+            Rc!Sampler sampler;
+            immutable cookie = gl.glyph.cacheCookie;
+            auto runImg = gl.glyph.runImg;
+            GlyphRunObjectCache cache;
+            if (cookie) {
+                cache = retrieveCache!GlyphRunObjectCache(cookie);
+            }
+            if (cache) {
+                srv = cache.srv;
+                sampler = cache.sampler;
+            }
+            else {
+                if (runImg.format != ImageFormat.a8) {
+                    errorf("improper text texture image format: %s", runImg.format);
+                    return;
+                }
+                immutable pixels = runImg.data;
+                TexUsageFlags usage = TextureUsage.shaderResource;
+                auto tex = new Texture2D!Alpha8(
+                    usage, 1, cast(ushort)runImg.width, cast(ushort)runImg.height, [pixels]
+                ).rc();
+                srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+                // FilterMethod.scale maps to GL_NEAREST
+                // no need to filter what is already filtered
+                sampler = new Sampler(
+                    srv, SamplerInfo(FilterMethod.scale, WrapMode.init)
+                );
+                if (cookie) {
+                    _objectCache[cookie] = new GlyphRunObjectCache(
+                        srv.obj, sampler.obj
+                    );
+                }
+            }
+
+            // texel space rect
+            immutable txRect = cast(FRect)gl.glyph.rect;
+            FVec2 fSize = fvec(runImg.width, runImg.height);
+            // normalized rect
+            immutable normRect = FRect(
+                txRect.topLeft / fSize,
+                FSize(txRect.width / fSize.x, txRect.height / fSize.y)
+            );
+            immutable vertRect = roundRect(
+                transformBounds(FRect(
+                    gl.layoutPos, txRect.size
+                ), model)
+            );
+            auto quadVerts = [
+                P2T2Vertex([vertRect.left+pos.x, vertRect.top+pos.y], [normRect.left, normRect.top]),
+                P2T2Vertex([vertRect.left+pos.x, vertRect.bottom+pos.y], [normRect.left, normRect.bottom]),
+                P2T2Vertex([vertRect.right+pos.x, vertRect.bottom+pos.y], [normRect.right, normRect.bottom]),
+                P2T2Vertex([vertRect.right+pos.x, vertRect.top+pos.y], [normRect.right, normRect.top]),
+            ];
+            auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
+
+            _textPipeline.updateMVP(transpose(pw.viewProj));
+            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
+        }
     }
 }
 

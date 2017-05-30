@@ -36,6 +36,12 @@ class SGNode : Disposable
         children.each!(c => c.dispose());
     }
 
+    /// The type of this node
+    @property Type type()
+    {
+        return _type;
+    }
+
     /// The root of this scene graph
     @property SGNode root()
     {
