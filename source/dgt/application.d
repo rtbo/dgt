@@ -103,12 +103,14 @@ class Application : EventLoop, Disposable
     {
         assert(window.created && !window.dummy);
         RenderThread.instance.start(createGlContext(window));
+        SGRenderLoop.instance.start();
     }
 
     private void finalizeGfx(Window window)
     {
         assert(window.created && !window.dummy);
         RenderThread.instance.stop(window.nativeHandle);
+        SGRenderLoop.instance.stop();
     }
 
     private Platform _platform;

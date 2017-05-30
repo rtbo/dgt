@@ -100,7 +100,7 @@ class SGNode : Disposable
     }
 
     /// Appends the given node to this node children list.
-    protected void appendChild(SGNode node)
+    void appendChild(SGNode node)
     {
         enforce(node && !node._parent);
         node._parent = this;
@@ -118,7 +118,7 @@ class SGNode : Disposable
     }
 
     /// Prepend the given node to this node children list.
-    protected void prependChild(SGNode node)
+    void prependChild(SGNode node)
     {
         enforce(node && !node._parent);
         node._parent = this;
@@ -137,7 +137,7 @@ class SGNode : Disposable
 
     /// Insert the given node in this node children list, just before the given
     /// child.
-    protected void insertChildBefore(SGNode node, SGNode child)
+    void insertChildBefore(SGNode node, SGNode child)
     {
         enforce(node && !node._parent && child._parent is this);
         node._parent = this;
@@ -156,7 +156,7 @@ class SGNode : Disposable
     }
 
     /// Removes the given node from this node children list.
-    protected void removeChild(SGNode child)
+    void removeChild(SGNode child)
     {
         enforce(child && child._parent is this);
 

@@ -10,17 +10,13 @@ class SGRenderLoop
         return g_instance;
     }
 
-    void start(GlContext glCtx)
-    {
-        _glCtx = glCtx;
-    }
+    void start() {}
 
-    void stop()
-    {
-    }
+    void stop() {}
 
     void update(Window w)
     {
+
     }
 
     package(dgt) static void initialize()

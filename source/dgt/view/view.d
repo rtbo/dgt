@@ -116,6 +116,7 @@ class View
             _lastChild = view;
         }
         ++_childCount;
+        dirty(DirtyFlags.childAdded);
     }
 
     /// Prepend the given view to this view children list.
@@ -134,6 +135,7 @@ class View
             _firstChild = view;
         }
         ++_childCount;
+        dirty(DirtyFlags.childAdded);
     }
 
     /// Insert the given view in this view children list, just before the given
@@ -154,6 +156,7 @@ class View
         child._prevSibling = view;
         view._nextSibling = child;
         ++_childCount;
+        dirty(DirtyFlags.childAdded);
     }
 
     /// Removes the given view from this view children list.
@@ -182,6 +185,7 @@ class View
             next._prevSibling = prev;
         }
         --_childCount;
+        dirty(DirtyFlags.childRemoved);
     }
 
     /// The padding of the view, that is, how much empty space is required
@@ -227,6 +231,7 @@ class View
     final void invalidate()
     {
         if (window) window.invalidate(cast(IRect)sceneRect);
+        dirty(DirtyFlags.content);
     }
 
     /// The dirtyState of this view;
@@ -493,12 +498,12 @@ class View
     }
 
     /// Get a view at position given by pos.
-    View nodeAtPos(in FVec2 pos)
+    View viewAtPos(in FVec2 pos)
     {
         if (localRect.contains(pos)) {
             foreach (c; children) {
                 immutable cp = c.mapFromParent(pos);
-                auto res = c.nodeAtPos(cp);
+                auto res = c.viewAtPos(cp);
                 if (res) return res;
             }
             return this;
@@ -508,14 +513,14 @@ class View
         }
     }
 
-    /// Recursively append nodes that are located at pos from root to end target.
-    void nodesAtPos(in FVec2 pos, ref View[] nodes)
+    /// Recursively append views that are located at pos from root to end target.
+    void viewsAtPos(in FVec2 pos, ref View[] nodes)
     {
         if (localRect.contains(pos)) {
             nodes ~= this;
             foreach (c; children) {
                 immutable cp = c.mapFromParent(pos);
-                c.nodesAtPos(cp, nodes);
+                c.viewsAtPos(cp, nodes);
             }
         }
     }
@@ -795,21 +800,21 @@ class View
         }
     }
 
-    @property bool hasContent()
+    @property bool sgHasContent()
     {
-        return _hasContent;
+        return _sgHasContent;
     }
 
-    @property void hasContent(bool has)
+    @property void sgHasContent(bool has)
     {
-        _hasContent = has;
+        _sgHasContent = has;
     }
 
     /// function called by the renderer, that may reside in a different thread
     /// This is called while the GUI thread is blocked, so fields can be accessed
     /// safely, but no reference to the node should be kept or used outside this
     /// function.
-    SGNode updateSGContent(SGNode previous)
+    SGNode sgUpdateContent(SGNode previous)
     {
         return null;
     }
@@ -945,27 +950,48 @@ class View
 
 package(dgt):
 
-    @property SGTransformNode node()
+    @property SGTransformNode sgNode()
     {
-        if (!_node) _node = new SGTransformNode;
-        return _node;
+        if (!_sgNode) _sgNode = new SGTransformNode;
+        return _sgNode;
     }
 
-    @property SGNode contentNode()
+    @property SGNode sgBackgroundNode()
     {
-        return _contentNode;
+        immutable col = style.backgroundColor;
+        if (col.argb & 0xff00_0000) {
+            if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectFillNode;
+            _sgBackgroundNode.rect = localRect;
+            _sgBackgroundNode.color = col.asVec;
+        }
+        else {
+            _sgBackgroundNode = null;
+        }
+        return _sgBackgroundNode;
     }
 
-    @property void contentNode(SGNode node)
+    @property SGNode sgContentNode()
     {
-        _contentNode = node;
+        return _sgContentNode;
+    }
+
+    @property void sgContentNode(SGNode node)
+    {
+        _sgContentNode = node;
+    }
+
+    @property SGNode sgChildrenNode()
+    {
+        if (sgBackgroundNode) return sgBackgroundNode;
+        else return sgNode;
     }
 
 private:
 
-    SGTransformNode _node;
-    SGNode _contentNode;
-    bool _hasContent;
+    SGTransformNode _sgNode;
+    SGRectFillNode _sgBackgroundNode;
+    SGNode _sgContentNode;
+    bool _sgHasContent;
 }
 
 
@@ -975,16 +1001,23 @@ enum DirtyFlags
     /// nothing is dirty
     clean       = 0,
 
+    /// Children were added/removed
+    childrenMask    = 0x000f,
+    /// Child was added
+    childAdded      = 0x0001,
+    /// Child was removed
+    childRemoved    = 0x0002,
+
     /// transform were changed
-    transformMask       = 0x000f,
+    transformMask       = 0x00f0,
     /// ditto
-    transformToParent     = 0x0001,
+    transformToParent     = 0x0010,
     /// ditto
-    transformFromParent  = 0x0002,
+    transformFromParent  = 0x0020,
     /// ditto
-    transformToScene      = 0x0004,
+    transformToScene      = 0x0040,
     /// ditto
-    transformFromScene   = 0x0008,
+    transformFromScene   = 0x0080,
 
     /// A style pass is needed
     styleMask           = 0x0300,
@@ -992,6 +1025,9 @@ enum DirtyFlags
     dynStyle            = 0x0100,
     /// A css string has been updated/set/reset.
     css                 = 0x0200,
+
+    /// Content is dirty
+    content             = 0x0400,
 
     /// All bits set
     all                 = 0xffff_ffff,

@@ -13,6 +13,7 @@ import dgt.region;
 import dgt.render;
 import dgt.render.frame;
 import dgt.screen;
+import dgt.sg.node;
 import dgt.util;
 import dgt.view.view;
 
@@ -557,7 +558,7 @@ class Window
 
                 if (!_mouseNodes.length) {
                     errorf("mouse down without prior move");
-                    _root.nodesAtPos(pos, _mouseNodes);
+                    _root.viewsAtPos(pos, _mouseNodes);
                 }
                 _dragChain = _mouseNodes;
 
@@ -588,7 +589,7 @@ class Window
                 immutable pos = cast(FPoint)ev.point;
 
                 assert(!_tempNodes.length);
-                _root.nodesAtPos(pos, _tempNodes);
+                _root.viewsAtPos(pos, _tempNodes);
                 checkEnterLeave(_mouseNodes, _tempNodes, ev);
 
                 swap(_mouseNodes, _tempNodes);
@@ -666,7 +667,7 @@ class Window
                     _mouseNodes.length = 0;
                 }
                 assert(!_tempNodes.length);
-                _root.nodesAtPos(pos, _mouseNodes);
+                _root.viewsAtPos(pos, _mouseNodes);
                 checkEnterLeave(_tempNodes, _mouseNodes, ev);
             }
         }
@@ -765,4 +766,39 @@ class Window
         Handler!CloseEvent       _onClose       = new Handler!CloseEvent;
         FireableSignal!Window    _onClosed      = new FireableSignal!Window;
     }
+
+    // scene graph reserved fields and methods
+package(dgt):
+
+    SGNode sgUpdateView(View view)
+    {
+        view.sgNode.transform = view.transformToParent;
+        if (view.sgBackgroundNode) {
+            view.sgNode.appendChild(view.sgBackgroundNode);
+        }
+        if (view.sgHasContent) {
+            auto old = view.sgContentNode;
+            view.sgContentNode = view.sgUpdateContent(old);
+            if (old) {
+                old.parent.removeChild(old);
+            }
+            if (view.sgContentNode) {
+                view.sgChildrenNode.appendChild(view.sgContentNode);
+            }
+        }
+        if (view.dirtyState & DirtyFlags.childrenMask) {
+            // TODO: appropriate sync
+            foreach (c; view.children) {
+                if (c.sgNode) {
+                    c.sgNode.parent.removeChild(c.sgNode);
+                }
+                view.sgChildrenNode.appendChild(sgUpdateView(c));
+            }
+        }
+        return view.sgNode;
+    }
+
+
+private:
+    SGNode _rootNode;
 }
