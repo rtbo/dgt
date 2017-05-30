@@ -5,6 +5,7 @@ import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.render.node;
+import dgt.sg.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.view.view;
@@ -14,7 +15,10 @@ import std.typecons;
 
 class ColorRect : View
 {
-    this() {}
+    this()
+    {
+        sgHasContent = true;
+    }
 
     @property FVec4 color() const { return _color; }
     @property void color(in FVec4 color)
@@ -30,6 +34,15 @@ class ColorRect : View
     override protected immutable(RenderNode) collectRenderNode()
     {
         return new immutable RectFillRenderNode(_color, rect);
+    }
+
+    override SGNode sgUpdateContent(SGNode previous)
+    {
+        auto rfn = cast(SGRectFillNode)previous;
+        if (!rfn) rfn = new SGRectFillNode;
+        rfn.rect = localRect;
+        rfn.color = color;
+        return rfn;
     }
 
     private FVec4 _color;
@@ -48,6 +61,7 @@ class ImageView : View
     final @property void image(immutable(Image) image)
     {
         _img = image;
+        sgHasContent = _img !is null;
     }
 
     override @property string cssType()
@@ -61,6 +75,21 @@ class ImageView : View
             return new immutable ImageRenderNode (
                 pos, _img, _rcc.collectCookie(dynamic)
             );
+        }
+        else {
+            return null;
+        }
+    }
+
+
+    override SGNode sgUpdateContent(SGNode previous)
+    {
+        if (_img) {
+            auto imgN = cast(SGImageNode)previous;
+            if (!imgN) imgN = new SGImageNode;
+            imgN.topLeft = fvec(0, 0);
+            imgN.image = _img;
+            return imgN;
         }
         else {
             return null;
@@ -115,6 +144,22 @@ class TextView : View
             );
         }
         return _renderNode;
+    }
+
+    override SGNode sgUpdateContent(SGNode previous)
+    {
+        if (text.length) {
+            ensureLayout();
+            auto tn = cast(SGTextNode)previous;
+            if (!tn) tn = new SGTextNode;
+            tn.glyphs = _layout.render();
+            tn.pos = cast(FVec2)_metrics.bearing;
+            tn.color = _color;
+            return tn;
+        }
+        else {
+            return null;
+        }
     }
 
     private void ensureLayout()

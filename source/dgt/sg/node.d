@@ -303,11 +303,11 @@ class SGImageNode : SGNode
         super(Type.image);
     }
 
-    @property FVec4 topLeft()
+    @property FVec2 topLeft()
     {
         return _topLeft;
     }
-    @property void topLeft(in FVec4 topLeft)
+    @property void topLeft(in FVec2 topLeft)
     {
         _topLeft = topLeft;
     }
@@ -322,7 +322,7 @@ class SGImageNode : SGNode
     }
 
     Rebindable!(immutable(Image)) _image;
-    FVec4 _topLeft;
+    FVec2 _topLeft;
 }
 
 class SGTextNode : SGNode

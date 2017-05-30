@@ -770,13 +770,19 @@ class Window
     // scene graph reserved fields and methods
 package(dgt):
 
+    void sgUpdate()
+    {
+        if (!_root) return;
+        _sgRoot = sgUpdateView(_root);
+    }
+
     SGNode sgUpdateView(View view)
     {
         view.sgNode.transform = view.transformToParent;
         if (view.sgBackgroundNode) {
             view.sgNode.appendChild(view.sgBackgroundNode);
         }
-        if (view.sgHasContent) {
+        if (view.sgHasContent && view.isDirty(DirtyFlags.contentMask)) {
             auto old = view.sgContentNode;
             view.sgContentNode = view.sgUpdateContent(old);
             if (old) {
@@ -785,8 +791,9 @@ package(dgt):
             if (view.sgContentNode) {
                 view.sgChildrenNode.appendChild(view.sgContentNode);
             }
+            view.clean(DirtyFlags.contentMask);
         }
-        if (view.dirtyState & DirtyFlags.childrenMask) {
+        if (view.isDirty(DirtyFlags.childrenMask)) {
             // TODO: appropriate sync
             foreach (c; view.children) {
                 if (c.sgNode) {
@@ -794,6 +801,7 @@ package(dgt):
                 }
                 view.sgChildrenNode.appendChild(sgUpdateView(c));
             }
+            view.clean(DirtyFlags.childrenMask);
         }
         return view.sgNode;
     }
