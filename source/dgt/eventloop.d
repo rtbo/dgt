@@ -4,6 +4,7 @@ import dgt.application;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.render;
+import dgt.sg.renderer;
 import dgt.window;
 
 import std.experimental.logger;
@@ -15,33 +16,25 @@ class EventLoop
     int loop()
     {
         while (!_exitFlag) {
-            // for each frame
-            //  - collect and process input events
-            //  - if requested:
-            //      - update
-            //      - layout
-            //      - collect rendering
-            //  - if need rendering or need animation tick:
-            //      - rendering (possibly only to swap buffers)
-            //  - wait (for input, animation tick, or timer)
 
+            import std.algorithm : each, filter;
+            import std.array : array;
+
+            _windows.each!(w => w.styleAndLayout());
+
+            auto dirtyWindows = _windows
+                    .filter!(w => !w.dirtyRegion.empty)
+                    .array();
+            if (dirtyWindows.length) {
+                SGRenderer.instance.syncAndRender(dirtyWindows);
+                dirtyWindows.each!(w => w.cleanRegion());
+            }
+
+            Application.platform.waitFor(Wait.input);
             Application.platform.collectEvents(&compressEvent);
             deliverEvents();
-            if (_exitFlag) break;
-
-            if (RenderThread.hadVSync) {
-                import std.algorithm : filter, map;
-                import std.array : array;
-                immutable frames = _windows
-                            .filter!(w => !w.dirtyRegion.empty)
-                            .map!(w => w.collectFrame)
-                            .array();
-                if (frames.length) {
-                    RenderThread.instance.frame(frames);
-                }
-            }
-            Application.platform.waitFor(Wait.all);
         }
+
         // Window.close removes itself from _windows, so we need to dup.
         auto ws = _windows.dup;
         foreach(w; ws) {

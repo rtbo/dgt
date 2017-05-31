@@ -338,6 +338,15 @@ class Window
         return _dirtyReg;
     }
 
+    /// Reset the invalidate region to empty
+    void cleanRegion()
+    out {
+        assert(_dirtyReg.empty);
+    }
+    body {
+        _dirtyReg = new Region;
+    }
+
     /// Invalidate a rect
     void invalidate(in IRect rect)
     {
@@ -510,15 +519,9 @@ class Window
             _evCompress = EvCompress.none;
         }
 
-        immutable(RenderFrame) collectFrame()
+        void styleAndLayout()
         {
-            scope(exit) _dirtyReg = new Region;
-
-            if (!_root) {
-                return new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size)
-                );
-            }
+            if (!_root) return;
 
             if (_dirtyStyle) {
                 import dgt.css.cascade : cssCascade;
@@ -536,6 +539,19 @@ class Window
                 _root.layout(FRect(0, 0, fs));
                 _dirtyLayout = false;
             }
+        }
+
+        immutable(RenderFrame) collectFrame()
+        {
+            scope(exit) _dirtyReg = new Region;
+
+            if (!_root) {
+                return new immutable RenderFrame (
+                    nativeHandle, IRect(0, 0, size)
+                );
+            }
+
+            styleAndLayout();
 
             import dgt.render.node : GroupRenderNode;
             immutable rn = _root.collectRenderNode();

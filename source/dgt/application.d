@@ -5,6 +5,7 @@ import dgt.context;
 import dgt.eventloop;
 import dgt.platform;
 import dgt.render;
+import dgt.sg.renderer;
 import dgt.window;
 import gfx.foundation.rc;
 
@@ -100,13 +101,15 @@ class Application : EventLoop, Disposable
     private void initializeGfx(Window window)
     {
         assert(window.created && !window.dummy);
-        RenderThread.instance.start(createGlContext(window));
+        //RenderThread.instance.start(createGlContext(window));
+        SGRenderer.instance.start(createGlContext(window));
     }
 
     private void finalizeGfx(Window window)
     {
         assert(window.created && !window.dummy);
-        RenderThread.instance.stop(window.nativeHandle);
+        //RenderThread.instance.stop(window.nativeHandle);
+        SGRenderer.instance.stop(window.nativeHandle);
     }
 
     private Platform _platform;

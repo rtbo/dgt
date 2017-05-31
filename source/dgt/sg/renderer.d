@@ -35,11 +35,11 @@ abstract class SGRenderer
         _context = context;
     }
 
-    void stop() {}
+    void stop(size_t nativeHandle) {}
 
-    /// Responsible to call sync and render and swap in the render thread and to
-    /// block the GUI thread during sync
-    abstract protected void syncAndRenderImpl(Window w);
+    /// Call sync, render and swap in the render thread and
+    /// blocks the GUI thread during sync.
+    abstract void syncAndRender(Window[] windows);
 
     // Render thread interface
 
@@ -58,17 +58,27 @@ abstract class SGRenderer
         else sgData.root = null;
 
         sgData.nativeHandle = w.nativeHandle;
+        sgData.size = w.size;
         sgData.clearColor = w.clearColor;
         sgData.hasClearColor = w.hasClearColor;
     }
 
     private SGNode syncView(View view)
     {
+        import std.format : format;
+
+        view.sgNode.name = view.name;
         view.sgNode.transform = view.transformToParent;
+
+        if (view.sgBackgroundNode) {
+            view.sgBackgroundNode.name = format("%s.bckgnd", view.name);
+        }
+
         if (view.sgBackgroundNode && view.sgBackgroundNode.parent !is view.sgNode) {
             view.sgNode.appendChild(view.sgBackgroundNode);
         }
-        if (view.sgHasContent && view.isDirty(DirtyFlags.contentMask)) {
+
+        if (view.sgHasContent/+ && view.isDirty(DirtyFlags.contentMask)+/) {
             auto old = view.sgContentNode;
             view.sgContentNode = view.sgUpdateContent(old);
             if (old && old.parent) {
@@ -76,13 +86,14 @@ abstract class SGRenderer
             }
             if (view.sgContentNode) {
                 view.sgChildrenNode.appendChild(view.sgContentNode);
+                view.sgContentNode.name = format("%s.content", view.name);
             }
             view.clean(DirtyFlags.contentMask);
         }
         if (view.isDirty(DirtyFlags.childrenMask)) {
             // TODO: appropriate sync
             foreach (c; view.children) {
-                if (c.sgNode) {
+                if (c.sgNode && c.sgNode.parent) {
                     c.sgNode.parent.removeChild(c.sgNode);
                 }
                 view.sgChildrenNode.appendChild(syncView(c));
@@ -102,6 +113,7 @@ abstract class SGRenderer
         scope(exit) _context.doneCurrent();
 
         if (!_device) initialize();
+        pw.update();
 
         pruneCache();
         _context.swapInterval = 1;
@@ -109,11 +121,10 @@ abstract class SGRenderer
         doFrame(pw);
     }
 
-    final protected void swap(Window[] windows)
+    final protected void swap(Window w)
     {
-        foreach (w; windows) {
-            _context.swapBuffers(w.nativeHandle);
-        }
+        auto pw = cast(PerWindow)w.sgData;
+        _context.swapBuffers(pw.nativeHandle);
     }
 
 private:
@@ -560,10 +571,12 @@ __gshared SGRenderer g_instance;
 /// Renderer that runs in the GUI thread
 class SGDirectRenderer : SGRenderer
 {
-    protected override void syncAndRenderImpl(Window w)
+    protected override void syncAndRender(Window[] windows)
     {
-        sync(w);
-        render(w);
+        import std.algorithm : each;
+        windows.each!(w => sync(w));
+        windows.each!(w => render(w));
+        windows.each!(w => swap(w));
     }
 }
 

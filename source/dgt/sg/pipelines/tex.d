@@ -89,16 +89,16 @@ struct TexMeta
 enum texVShader = `
     #version 330
     in vec2 a_Pos;
-    in vec2 a_TexCoord;
+    in vec2 a_Tex;
 
     uniform MVP {
         mat4 u_mvpMat;
     };
 
-    out vec2 v_TexCoord;
+    out vec2 v_Tex;
 
     void main() {
-        v_TexCoord = a_TexCoord;
+        v_Tex = a_Tex;
         gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
     }
 `;
@@ -109,12 +109,12 @@ version(LittleEndian)
     enum texFShader = `
         #version 330
 
-        in vec2 v_TexCoord;
+        in vec2 v_Tex;
         out vec4 o_Color;
         uniform sampler2D t_Sampler;
 
         void main() {
-            vec4 sample = texture(t_Sampler, v_TexCoord);
+            vec4 sample = texture(t_Sampler, v_Tex);
             o_Color = sample.bgra;
         }
     `;
@@ -126,12 +126,12 @@ version(BigEndian)
     enum texFShader = `
         #version 330
 
-        in vec2 v_TexCoord;
+        in vec2 v_Tex;
         out vec4 o_Color;
         uniform sampler2D t_Sampler;
 
         void main() {
-            vec4 sample = texture(t_Sampler, v_TexCoord);
+            vec4 sample = texture(t_Sampler, v_Tex);
             o_Color = sample.gbar;
         }
     `;

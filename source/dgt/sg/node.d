@@ -189,6 +189,52 @@ class SGNode : Disposable
         --_childCount;
     }
 
+    @property uint level()
+    {
+        auto p = parent;
+        uint lev=0;
+        while (p !is null) {
+            ++lev;
+            p = p.parent;
+        }
+        return lev;
+    }
+
+    @property string name()
+    {
+        return _name;
+    }
+    @property void name(string name)
+    {
+        _name = name;
+    }
+
+    override string toString()
+    {
+        import std.array : array;
+        import std.conv : to;
+        import std.format : format;
+        import std.range : repeat;
+        auto indent = repeat(' ', level*4).array;
+        string res = format("%s{ %s:%s ", indent, name, type.to!string);
+        if (hasChildren) {
+            res ~= format("[\n");
+            size_t ind=0;
+            foreach(c; children) {
+                res ~= c.toString();
+                if (ind != _childCount-1) {
+                    res ~= ",\n";
+                }
+                ++ind;
+            }
+            res ~= format("\n%s]", indent);
+        }
+        res ~= "}";
+        return res;
+    }
+
+    private Type _type;
+
     private SGNode _parent;
 
     private SGNode _prevSibling;
@@ -198,7 +244,7 @@ class SGNode : Disposable
     private SGNode _firstChild;
     private SGNode _lastChild;
 
-    private Type _type;
+    private string _name;
 }
 
 
@@ -207,11 +253,6 @@ class SGTransformNode : SGNode
     this()
     {
         super(Type.transform);
-    }
-    this(in FMat4 transform)
-    {
-        this();
-        _transform = transform;
     }
 
     @property FMat4 transform()
@@ -232,12 +273,6 @@ class SGRectFillNode : SGNode
     this()
     {
         super(Type.rectFill);
-    }
-    this(in FRect rect, in FVec4 color)
-    {
-        this();
-        _rect = rect;
-        _color = color;
     }
 
     @property FRect rect()

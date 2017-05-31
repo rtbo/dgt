@@ -115,6 +115,7 @@ class TextView : View
         _text = text;
         _renderNode = null;
         _layout = null;
+        sgHasContent = _text.length != 0;
     }
 
     @property FVec4 color() const { return _color; }
