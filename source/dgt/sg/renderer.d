@@ -78,7 +78,7 @@ abstract class SGRenderer
             view.sgNode.appendChild(view.sgBackgroundNode);
         }
 
-        if (view.sgHasContent/+ && view.isDirty(DirtyFlags.contentMask)+/) {
+        if (view.sgHasContent && view.isDirty(DirtyFlags.content)) {
             auto old = view.sgContentNode;
             view.sgContentNode = view.sgUpdateContent(old);
             if (old && old.parent) {
@@ -88,18 +88,25 @@ abstract class SGRenderer
                 view.sgChildrenNode.appendChild(view.sgContentNode);
                 view.sgContentNode.name = format("%s.content", view.name);
             }
-            view.clean(DirtyFlags.contentMask);
+            view.clean(DirtyFlags.content);
         }
-        if (view.isDirty(DirtyFlags.childrenMask)) {
-            // TODO: appropriate sync
-            foreach (c; view.children) {
-                if (c.sgNode && c.sgNode.parent) {
-                    c.sgNode.parent.removeChild(c.sgNode);
-                }
-                view.sgChildrenNode.appendChild(syncView(c));
-            }
-            view.clean(DirtyFlags.childrenMask);
+        else if (view.sgContentNode && !view.sgHasContent)
+        {
+            if (view.sgContentNode.parent) view.sgContentNode.parent.removeChild(view.sgContentNode);
+            view.sgContentNode = null;
         }
+
+        enum childrenSyncMask = DirtyFlags.content | DirtyFlags.childrenContent |
+                                DirtyFlags.allChildrenMask;
+
+        if (view.isDirty(DirtyFlags.childrenContent | DirtyFlags.childrenFamily)) {
+            import std.algorithm : each, filter;
+            view.children
+                .filter!(c => c.isDirty(childrenSyncMask))
+                .each!(c => reparent(syncView(c), view.sgChildrenNode));
+            view.clean(DirtyFlags.childMask);
+        }
+
         return view.sgNode;
     }
 

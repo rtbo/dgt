@@ -2,6 +2,7 @@
 module dgt.view.style;
 
 import dgt.css.color;
+import dgt.event.handler;
 import dgt.view.layout;
 import dgt.view.view;
 
@@ -40,6 +41,8 @@ enum PseudoState
 /// It is populated during the CSS pass.
 class Style
 {
+    alias ChangeSignal = Signal!(string);
+
     this(View view)
     {
         _node = view;
@@ -68,6 +71,10 @@ class Style
     }
     @property void backgroundColor(in Color color)
     {
+        if (_backgroundColor != color) {
+            _backgroundColor = color;
+            changed("background-color");
+        }
         _backgroundColor = color;
     }
 
@@ -77,7 +84,10 @@ class Style
     }
     @property void fontFamily(string[] family)
     {
-        _fontFamily = family;
+        if (family != _fontFamily) {
+            _fontFamily = family;
+            changed("font-family");
+        }
     }
 
     /// Font weight as described by the CSS specification
@@ -90,7 +100,10 @@ class Style
     /// ditto
     @property void fontWeight(in int val)
     {
-        _fontWeight = val;
+        if (_fontWeight != val) {
+            _fontWeight = val;
+            changed("font-weight");
+        }
     }
 
     @property FontStyle fontStyle()
@@ -99,7 +112,10 @@ class Style
     }
     @property void fontStyle(in FontStyle val)
     {
-        _fontStyle = val;
+        if (_fontStyle != val) {
+            _fontStyle = val;
+            changed("font-style");
+        }
     }
 
     /// Size of the EM box in pixels
@@ -110,7 +126,10 @@ class Style
     /// ditto
     @property void fontSize(int l)
     {
-        _fontSize = l;
+        if (_fontSize != l) {
+            _fontSize = l;
+            changed("font-size");
+        }
     }
 
     @property Layout.Params layoutParams()
@@ -123,8 +142,20 @@ class Style
         _layoutParams = params;
     }
 
+    /// emitted when a property change
+    @property ChangeSignal onChange()
+    {
+        return _onChange;
+    }
+
+    protected void changed(string property)
+    {
+        _onChange.fire(property);
+    }
+
 private:
     View _node;
+    FireableSignal!(string) _onChange = new FireableSignal!(string);
 
     Color _backgroundColor;
 

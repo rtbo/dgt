@@ -332,6 +332,18 @@ class Window
         return ind != size_t.max ? screens[ind] : screens[0];
     }
 
+    /// Whether the window need to be rendered
+    @property bool dirtyContent()
+    {
+        return _dirtyContent;
+    }
+
+    /// notify that rendering occured
+    package(dgt) void cleanContent()
+    {
+        _dirtyContent = false;
+    }
+
     /// The region that needs update
     @property Region dirtyRegion() const
     {
@@ -347,16 +359,17 @@ class Window
         _dirtyReg = new Region;
     }
 
-    /// Invalidate a rect
     void invalidate(in IRect rect)
     {
         _dirtyReg = unite(_dirtyReg, new Region(rect));
+        _dirtyContent = true;
     }
 
     /// Invalidate the whole window
     void invalidate()
     {
         _dirtyReg = new Region(IRect(0, 0, size));
+        _dirtyContent = true;
     }
 
     /// request a layout pass
@@ -786,6 +799,7 @@ class Window
         Rebindable!Region _dirtyReg = new Region;
         bool _dirtyStyle    = true;
         bool _dirtyLayout   = true;
+        bool _dirtyContent  = true;
 
         FireableSignal!string    _onTitleChange = new FireableSignal!string;
         Handler!ShowEvent        _onShow        = new Handler!ShowEvent;

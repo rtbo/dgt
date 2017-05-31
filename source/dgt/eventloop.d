@@ -23,11 +23,11 @@ class EventLoop
             _windows.each!(w => w.styleAndLayout());
 
             auto dirtyWindows = _windows
-                    .filter!(w => !w.dirtyRegion.empty)
+                    .filter!(w => w.dirtyContent)
                     .array();
             if (dirtyWindows.length) {
                 SGRenderer.instance.syncAndRender(dirtyWindows);
-                dirtyWindows.each!(w => w.cleanRegion());
+                dirtyWindows.each!(w => w.cleanContent());
             }
 
             Application.platform.waitFor(Wait.input);

@@ -105,6 +105,7 @@ class View
     {
         enforce(view && !view._parent);
         view._parent = this;
+        view.dirty(DirtyFlags.parented);
 
         if (!hasChildren) {
             _firstChild = view;
@@ -124,6 +125,7 @@ class View
     {
         enforce(view && !view._parent);
         view._parent = this;
+        view.dirty(DirtyFlags.parented);
 
         if (!hasChildren) {
             _firstChild = view;
@@ -144,6 +146,7 @@ class View
     {
         enforce(view && !view._parent && child._parent is this);
         view._parent = this;
+        view.dirty(DirtyFlags.parented);
 
         if (child is _firstChild) {
             _firstChild = view;
@@ -165,6 +168,7 @@ class View
         enforce(child && child._parent is this);
 
         child._parent = null;
+        child.dirty(DirtyFlags.parented);
 
         if (_childCount == 1) {
             _firstChild = null;
@@ -230,11 +234,10 @@ class View
     /// Invalidate the view content. This triggers rendering.
     final void invalidate()
     {
-        if (window) window.invalidate(cast(IRect)sceneRect);
         dirty(DirtyFlags.content);
     }
 
-    /// The dirtyState of this view;
+    /// The dirtyState of this view.
     final @property DirtyFlags dirtyState()
     {
         return _dirtyState;
@@ -243,15 +246,35 @@ class View
     final void dirty(in DirtyFlags flags)
     {
         _dirtyState |= flags;
+
+        if (flags & DirtyFlags.familyMask) {
+            if (parent) parent.dirty(DirtyFlags.childrenFamily);
+        }
         if (flags & DirtyFlags.styleMask) {
             if (window) window.requestStylePass();
-            invalidate();
+        }
+        if (flags & DirtyFlags.contentMask)
+        {
+            if (window) window.invalidate();
+            if (parent) parent.dirty(DirtyFlags.childrenContent);
         }
     }
     /// Reset some dirty flags
-    final void clean(in DirtyFlags flags = DirtyFlags.all)
+    final void clean(in DirtyFlags flags)
     {
         _dirtyState &= ~flags;
+
+        if (!parent) return;
+
+        if ((flags & DirtyFlags.closeFamilyMask && !isDirty(DirtyFlags.childrenFamily)) ||
+                (flags & DirtyFlags.childrenFamily && !isDirty(DirtyFlags.closeFamilyMask))) {
+            parent.clean(DirtyFlags.childrenFamily);
+        }
+
+        if ((flags & DirtyFlags.content && !isDirty(DirtyFlags.childrenContent)) ||
+                (flags & DirtyFlags.childrenContent && !isDirty(DirtyFlags.content))) {
+            parent.clean(DirtyFlags.childrenContent);
+        }
     }
     /// Checks whether one of the passed flags is dirty
     final bool isDirty(in DirtyFlags flags)
@@ -999,37 +1022,50 @@ private:
 enum DirtyFlags
 {
     /// nothing is dirty
-    clean       = 0,
+    clean               = 0,
 
-    /// Children were added/removed
-    childrenMask    = 0x000f,
+    /// Children were added/removed in this node or descendant or parent changed
+    familyMask          = 0x000f,
+    /// Children were added/removed, or parent changed in this node
+    closeFamilyMask     = 0x0007,
+    /// Children were added/removed in this node or descendant
+    allChildrenMask     = 0x000b,
+    /// Child was added/removed
+    childMask           = 0x0003,
     /// Child was added
-    childAdded      = 0x0001,
+    childAdded          = 0x0001,
     /// Child was removed
-    childRemoved    = 0x0002,
-
-    /// transform were changed
-    transformMask       = 0x00f0,
-    /// ditto
-    transformToParent     = 0x0010,
-    /// ditto
-    transformFromParent  = 0x0020,
-    /// ditto
-    transformToScene      = 0x0040,
-    /// ditto
-    transformFromScene   = 0x0080,
+    childRemoved        = 0x0002,
+    /// Was given to/removed from a parent
+    parented            = 0x0004,
+    /// One or more descendants have a family change
+    childrenFamily      = 0x0008,
 
     /// Some visual content has changed
-    contentMask         = 0x0f00,
+    contentMask         = 0x00f0,
+
     /// A style pass is needed
-    styleMask           = 0x0300,
+    styleMask           = 0x0030,
     /// Dynamic pseudo class has to be enabled/disabled.
-    dynStyle            = 0x0100,
+    dynStyle            = 0x0010,
     /// A css string has been updated/set/reset.
-    css                 = 0x0200,
+    css                 = 0x0020,
 
     /// Content is dirty
-    content             = 0x0400,
+    content             = 0x0040,
+    /// One or more descendant have dirty content
+    childrenContent     = 0x0080,
+
+    /// transform was changed
+    transformMask       = 0x0f00,
+    /// ditto
+    transformToParent   = 0x0100,
+    /// ditto
+    transformFromParent = 0x0200,
+    /// ditto
+    transformToScene    = 0x0400,
+    /// ditto
+    transformFromScene  = 0x0800,
 
     /// All bits set
     all                 = 0xffff_ffff,

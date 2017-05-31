@@ -12,6 +12,29 @@ import gfx.foundation.rc;
 import std.exception : enforce;
 import std.typecons : Rebindable;
 
+/// Removes a node from its parent if it has one
+void orphean(SGNode node)
+{
+    if (node.parent) node.parent.removeChild(node);
+}
+
+/// Change parent from a node. Has no effect if newParent is already the parent
+/// of node
+void reparent(SGNode node, SGNode newParent, SGNode beforeChild=null)
+in {
+    assert(!beforeChild || beforeChild.parent is newParent);
+}
+body {
+    if (newParent is node.parent) return;
+    if (node.parent) node.parent.removeChild(node);
+    if (beforeChild) {
+        newParent.insertChildBefore(node, beforeChild);
+    }
+    else {
+        newParent.appendChild(node);
+    }
+}
+
 class SGNode : Disposable
 {
     enum Type {

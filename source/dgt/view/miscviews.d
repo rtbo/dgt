@@ -8,6 +8,7 @@ import dgt.render.node;
 import dgt.sg.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
+import dgt.view.style;
 import dgt.view.view;
 
 import std.experimental.logger;
@@ -62,6 +63,7 @@ class ImageView : View
     {
         _img = image;
         sgHasContent = _img !is null;
+        invalidate();
     }
 
     override @property string cssType()
@@ -106,7 +108,9 @@ class TextView : View
 {
     this()
     {
+        super();
         _color = fvec(0, 0, 0 ,1);
+        style.onChange += &resetStyle;
     }
 
     @property string text () const { return _text; }
@@ -129,6 +133,13 @@ class TextView : View
     {
         ensureLayout();
         return _metrics;
+    }
+
+    private void resetStyle(string)
+    {
+        _renderNode = null;
+        _layout = null;
+        invalidate();
     }
 
     override @property string cssType()
