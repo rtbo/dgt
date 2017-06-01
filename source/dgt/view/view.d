@@ -105,7 +105,7 @@ class View
     {
         enforce(view && !view._parent);
         view._parent = this;
-        view.dirty(DirtyFlags.parented);
+        view.dirty(Dirty.parented);
 
         if (!hasChildren) {
             _firstChild = view;
@@ -117,7 +117,7 @@ class View
             _lastChild = view;
         }
         ++_childCount;
-        dirty(DirtyFlags.childAdded);
+        dirty(Dirty.childAdded);
     }
 
     /// Prepend the given view to this view children list.
@@ -125,7 +125,7 @@ class View
     {
         enforce(view && !view._parent);
         view._parent = this;
-        view.dirty(DirtyFlags.parented);
+        view.dirty(Dirty.parented);
 
         if (!hasChildren) {
             _firstChild = view;
@@ -137,7 +137,7 @@ class View
             _firstChild = view;
         }
         ++_childCount;
-        dirty(DirtyFlags.childAdded);
+        dirty(Dirty.childAdded);
     }
 
     /// Insert the given view in this view children list, just before the given
@@ -146,7 +146,7 @@ class View
     {
         enforce(view && !view._parent && child._parent is this);
         view._parent = this;
-        view.dirty(DirtyFlags.parented);
+        view.dirty(Dirty.parented);
 
         if (child is _firstChild) {
             _firstChild = view;
@@ -159,7 +159,7 @@ class View
         child._prevSibling = view;
         view._nextSibling = child;
         ++_childCount;
-        dirty(DirtyFlags.childAdded);
+        dirty(Dirty.childAdded);
     }
 
     /// Removes the given view from this view children list.
@@ -168,7 +168,7 @@ class View
         enforce(child && child._parent is this);
 
         child._parent = null;
-        child.dirty(DirtyFlags.parented);
+        child.dirty(Dirty.parented);
 
         if (_childCount == 1) {
             _firstChild = null;
@@ -189,7 +189,7 @@ class View
             next._prevSibling = prev;
         }
         --_childCount;
-        dirty(DirtyFlags.childRemoved);
+        dirty(Dirty.childRemoved);
     }
 
     /// The padding of the view, that is, how much empty space is required
@@ -234,55 +234,55 @@ class View
     /// Invalidate the view content. This triggers rendering.
     final void invalidate()
     {
-        dirty(DirtyFlags.content);
+        dirty(Dirty.content);
     }
 
     /// The dirtyState of this view.
-    final @property DirtyFlags dirtyState()
+    final @property Dirty dirtyState()
     {
         return _dirtyState;
     }
     /// Set the passed flag dirty
-    final void dirty(in DirtyFlags flags)
+    final void dirty(in Dirty flags)
     {
         _dirtyState |= flags;
 
-        if (flags & DirtyFlags.familyMask) {
-            if (parent) parent.dirty(DirtyFlags.childrenFamily);
+        if (flags & Dirty.familyMask) {
+            if (parent) parent.dirty(Dirty.childrenFamily);
         }
-        if (flags & DirtyFlags.styleMask) {
+        if (flags & Dirty.styleMask) {
             if (window) window.requestStylePass();
         }
-        if (flags & DirtyFlags.contentMask)
+        if (flags & Dirty.contentMask)
         {
             if (window) window.invalidate();
-            if (parent) parent.dirty(DirtyFlags.childrenContent);
+            if (parent) parent.dirty(Dirty.childrenContent);
         }
     }
     /// Reset some dirty flags
-    final void clean(in DirtyFlags flags)
+    final void clean(in Dirty flags)
     {
         _dirtyState &= ~flags;
 
         if (!parent) return;
 
-        if ((flags & DirtyFlags.closeFamilyMask && !isDirty(DirtyFlags.childrenFamily)) ||
-                (flags & DirtyFlags.childrenFamily && !isDirty(DirtyFlags.closeFamilyMask))) {
-            parent.clean(DirtyFlags.childrenFamily);
+        if ((flags & Dirty.closeFamilyMask && !isDirty(Dirty.childrenFamily)) ||
+                (flags & Dirty.childrenFamily && !isDirty(Dirty.closeFamilyMask))) {
+            parent.clean(Dirty.childrenFamily);
         }
 
-        if ((flags & DirtyFlags.content && !isDirty(DirtyFlags.childrenContent)) ||
-                (flags & DirtyFlags.childrenContent && !isDirty(DirtyFlags.content))) {
-            parent.clean(DirtyFlags.childrenContent);
+        if ((flags & Dirty.content && !isDirty(Dirty.childrenContent)) ||
+                (flags & Dirty.childrenContent && !isDirty(Dirty.content))) {
+            parent.clean(Dirty.childrenContent);
         }
     }
     /// Checks whether one of the passed flags is dirty
-    final bool isDirty(in DirtyFlags flags)
+    final bool isDirty(in Dirty flags)
     {
-        return (_dirtyState & flags) != DirtyFlags.clean;
+        return (_dirtyState & flags) != Dirty.clean;
     }
     /// Checks whether all of the passed flag are dirty
-    final bool areDirty(in DirtyFlags flags)
+    final bool areDirty(in Dirty flags)
     {
         return (_dirtyState & flags) == flags;
     }
@@ -300,7 +300,7 @@ class View
         if (pos != _rect.point) {
             _rect.point = pos;
             // _rect.point is included in parent and scene transforms
-            dirty(DirtyFlags.transformMask);
+            dirty(Dirty.transformMask);
         }
     }
     /// The size of the view
@@ -328,7 +328,7 @@ class View
         if (rect != _rect) {
             _rect = rect;
             // _rect.point is included in parent and scene transforms
-            dirty(DirtyFlags.transformMask);
+            dirty(Dirty.transformMask);
         }
     }
 
@@ -381,13 +381,13 @@ class View
     {
         _transform = transform;
         _hasTransform = transform != FMat4.identity;
-        dirty(DirtyFlags.transformMask);
+        dirty(Dirty.transformMask);
     }
 
     /// Transform that maps view coordinates to parent coordinates
     final @property FMat4 transformToParent()
     {
-        if (isDirty(DirtyFlags.transformToParent)) {
+        if (isDirty(Dirty.transformToParent)) {
             if (_hasTransform) {
                 _transformToParent = transform.translate(fvec(pos, 0));
             }
@@ -395,9 +395,9 @@ class View
                 _transformToParent = translation!float(fvec(pos, 0));
                 // this is cheap, let's do it now.
                 _transformFromParent = translation!float(fvec(-pos, 0));
-                clean(DirtyFlags.transformFromParent);
+                clean(Dirty.transformFromParent);
             }
-            clean(DirtyFlags.transformToParent);
+            clean(Dirty.transformToParent);
         }
         return _transformToParent;
     }
@@ -405,7 +405,7 @@ class View
     /// Transform that maps parent coordinates to view coordinates
     final @property FMat4 transformFromParent()
     {
-        if (isDirty(DirtyFlags.transformFromParent)) {
+        if (isDirty(Dirty.transformFromParent)) {
             if (_hasTransform) {
                 _transformFromParent = inverse(transformToParent);
             }
@@ -413,9 +413,9 @@ class View
                 _transformFromParent = translation!float(fvec(-pos, 0));
                 // this is cheap, let's do it now.
                 _transformToParent = translation!float(fvec(pos, 0));
-                clean(DirtyFlags.transformToParent);
+                clean(Dirty.transformToParent);
             }
-            clean(DirtyFlags.transformFromParent);
+            clean(Dirty.transformFromParent);
         }
         return _transformFromParent;
     }
@@ -423,11 +423,11 @@ class View
     /// Transform that maps view coordinates to scene coordinates
     final @property FMat4 transformToScene()
     {
-        if (isDirty(DirtyFlags.transformToScene)) {
+        if (isDirty(Dirty.transformToScene)) {
             _transformToScene = parent ?
                     parent.transformToScene * transformToParent :
                     transformToParent;
-            clean(DirtyFlags.transformToScene);
+            clean(Dirty.transformToScene);
         }
         return _transformToScene;
     }
@@ -435,9 +435,9 @@ class View
     /// Transform that maps scene coordinates to view coordinates
     final @property FMat4 transformFromScene()
     {
-        if (isDirty(DirtyFlags.transformFromScene)) {
+        if (isDirty(Dirty.transformFromScene)) {
             _transformFromScene = inverse(transformToScene);
-            clean(DirtyFlags.transformFromScene);
+            clean(Dirty.transformFromScene);
         }
         return _transformFromScene;
     }
@@ -574,7 +574,7 @@ class View
         }
         if (css != _css) {
             _css = css;
-            dirty(DirtyFlags.css);
+            dirty(Dirty.css);
         }
     }
 
@@ -591,7 +591,7 @@ class View
     {
         if (id != _id) {
             _id = id;
-            dirty(DirtyFlags.css);
+            dirty(Dirty.css);
         }
     }
 
@@ -603,7 +603,7 @@ class View
     {
         if (cssClass != _cssClass) {
             _cssClass = cssClass;
-            dirty(DirtyFlags.css);
+            dirty(Dirty.css);
         }
     }
 
@@ -614,7 +614,7 @@ class View
     {
         if (state != _pseudoState) {
             _pseudoState = state;
-            dirty(DirtyFlags.dynStyle);
+            dirty(Dirty.dynStyle);
         }
     }
     /// ditto
@@ -938,7 +938,7 @@ class View
     private FSize           _measurement;
 
     // dirty state
-    private DirtyFlags _dirtyState;
+    private Dirty _dirtyState;
 
     // bounds
     private FRect  _rect;
@@ -1019,7 +1019,7 @@ private:
 
 
 /// Bit flags that describe what in a view needs update
-enum DirtyFlags
+enum Dirty
 {
     /// nothing is dirty
     clean               = 0,

@@ -78,17 +78,15 @@ abstract class SGRenderer
             view.sgNode.appendChild(view.sgBackgroundNode);
         }
 
-        if (view.sgHasContent && view.isDirty(DirtyFlags.content)) {
+        if (view.sgHasContent && view.isDirty(Dirty.content)) {
             auto old = view.sgContentNode;
             view.sgContentNode = view.sgUpdateContent(old);
-            if (old && old.parent) {
-                old.parent.removeChild(old);
-            }
+            reparent(view.sgContentNode, view.sgChildrenNode);
+
             if (view.sgContentNode) {
-                view.sgChildrenNode.appendChild(view.sgContentNode);
                 view.sgContentNode.name = format("%s.content", view.name);
             }
-            view.clean(DirtyFlags.content);
+            view.clean(Dirty.content);
         }
         else if (view.sgContentNode && !view.sgHasContent)
         {
@@ -96,15 +94,15 @@ abstract class SGRenderer
             view.sgContentNode = null;
         }
 
-        enum childrenSyncMask = DirtyFlags.content | DirtyFlags.childrenContent |
-                                DirtyFlags.allChildrenMask;
+        enum childrenSyncMask = Dirty.content | Dirty.childrenContent |
+                                Dirty.allChildrenMask;
 
-        if (view.isDirty(DirtyFlags.childrenContent | DirtyFlags.childrenFamily)) {
+        if (view.isDirty(Dirty.childrenContent | Dirty.childrenFamily)) {
             import std.algorithm : each, filter;
             view.children
                 .filter!(c => c.isDirty(childrenSyncMask))
                 .each!(c => reparent(syncView(c), view.sgChildrenNode));
-            view.clean(DirtyFlags.childMask);
+            view.clean(Dirty.childMask);
         }
 
         return view.sgNode;
