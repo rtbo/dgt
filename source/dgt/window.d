@@ -10,8 +10,6 @@ import dgt.math;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.region;
-import dgt.render;
-import dgt.render.frame;
 import dgt.screen;
 import dgt.util;
 import dgt.view.view;
@@ -552,29 +550,6 @@ class Window
                 _root.layout(FRect(0, 0, fs));
                 _dirtyLayout = false;
             }
-        }
-
-        immutable(RenderFrame) collectFrame()
-        {
-            scope(exit) _dirtyReg = new Region;
-
-            if (!_root) {
-                return new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size)
-                );
-            }
-
-            styleAndLayout();
-
-            import dgt.render.node : GroupRenderNode;
-            immutable rn = _root.collectRenderNode();
-            immutable bg = _root.backgroundRenderNode();
-            immutable fn = bg ?
-                new immutable GroupRenderNode(_root.localRect, [bg, rn]) :
-                rn;
-            return new immutable RenderFrame (
-                nativeHandle, IRect(0, 0, size), fn
-            );
         }
     }
 

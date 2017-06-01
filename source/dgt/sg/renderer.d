@@ -120,7 +120,6 @@ abstract class SGRenderer
         if (!_device) initialize();
         pw.update();
 
-        pruneCache();
         _context.swapInterval = 1;
 
         doFrame(pw);
@@ -229,9 +228,6 @@ private:
     VertexBuffer!P2Vertex   _frameVBuf;
     enum frameVBufCount = 8;
 
-    Disposable[ulong]   _objectCache;
-    ulong[]             _cachePruneQueue;
-
     void initialize() {
         _device = enforce(createGlDevice());
         _device.retain();
@@ -303,9 +299,6 @@ private:
     {
         _context.makeCurrent(nativeHandle);
 
-        foreach(oc; _objectCache) {
-            oc.dispose();
-        }
         _encoder = Encoder.init;
         _texQuadVBuf.release();
         _solidQuadVBuf.release();
@@ -324,37 +317,6 @@ private:
 
         _context.doneCurrent();
         _context.dispose();
-    }
-
-    T retrieveCache(T)(ulong cookie)
-    {
-        Disposable* d = (cookie in _objectCache);
-        if (!d) return null;
-        T cachedObj = cast(T)*d;
-        if (!cachedObj) {
-            error("invalid cache cookie: ", cookie);
-        }
-        return cachedObj;
-    }
-
-    void markForPrune(ulong cookie)
-    {
-        _cachePruneQueue ~= cookie;
-    }
-
-    void pruneCache()
-    {
-        foreach(cookie; _cachePruneQueue) {
-            auto d = cookie in _objectCache;
-            if (d) {
-                (*d).dispose();
-                _objectCache.remove(cookie);
-            }
-            else {
-                warning("invalid cookie given for cache prune");
-            }
-        }
-        _cachePruneQueue.length = 0;
     }
 
     void doFrame(PerWindow pw)
@@ -448,11 +410,7 @@ private:
         Rc!(ShaderResourceView!Rgba8) srv;
         Rc!Sampler sampler;
         TextureObjectCache cache;
-        immutable cookie = 0; // node.cacheCookie;
-
-        if (cookie) {
-            cache = retrieveCache!TextureObjectCache(cookie);
-        }
+        // retrieve cache
         if (cache) {
             srv = cache.srv;
             sampler = cache.sampler;
@@ -473,9 +431,8 @@ private:
             sampler = new Sampler(
                 srv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
             );
-            if (cookie) {
-                _objectCache[cookie] = new TextureObjectCache(srv.obj, sampler.obj);
-            }
+
+            // store cache
         }
 
         TexPipeline pl;
@@ -509,12 +466,9 @@ private:
         foreach(gl; node.glyphs) {
             Rc!(ShaderResourceView!Alpha8) srv;
             Rc!Sampler sampler;
-            immutable cookie = gl.glyph.cacheCookie;
             auto runImg = gl.glyph.runImg;
             GlyphRunObjectCache cache;
-            if (cookie) {
-                cache = retrieveCache!GlyphRunObjectCache(cookie);
-            }
+            // retrieve cache
             if (cache) {
                 srv = cache.srv;
                 sampler = cache.sampler;
@@ -535,11 +489,8 @@ private:
                 sampler = new Sampler(
                     srv, SamplerInfo(FilterMethod.scale, WrapMode.init)
                 );
-                if (cookie) {
-                    _objectCache[cookie] = new GlyphRunObjectCache(
-                        srv.obj, sampler.obj
-                    );
-                }
+
+                // store cache
             }
 
             // texel space rect

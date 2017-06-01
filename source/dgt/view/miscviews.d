@@ -4,7 +4,6 @@ module dgt.view.miscviews;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
-import dgt.render.node;
 import dgt.sg.node;
 import dgt.text.fontcache;
 import dgt.text.layout;
@@ -30,11 +29,6 @@ class ColorRect : View
     override @property string cssType()
     {
         return "rect";
-    }
-
-    override protected immutable(RenderNode) collectRenderNode()
-    {
-        return new immutable RectFillRenderNode(_color, rect);
     }
 
     override SGNode sgUpdateContent(SGNode previous)
@@ -71,19 +65,6 @@ class ImageView : View
         return "img";
     }
 
-    override protected immutable(RenderNode) collectRenderNode()
-    {
-        if (_img) {
-            return new immutable ImageRenderNode (
-                pos, _img, _rcc.collectCookie(dynamic)
-            );
-        }
-        else {
-            return null;
-        }
-    }
-
-
     override SGNode sgUpdateContent(SGNode previous)
     {
         if (_img) {
@@ -100,7 +81,6 @@ class ImageView : View
 
 
     private Rebindable!(immutable(Image)) _img;
-    private RenderCacheCookie _rcc;
 }
 
 
@@ -117,7 +97,6 @@ class TextView : View
     @property void text (string text)
     {
         _text = text;
-        _renderNode = null;
         _layout = null;
         sgHasContent = _text.length != 0;
     }
@@ -126,7 +105,6 @@ class TextView : View
     @property void color(in FVec4 color)
     {
         _color = color;
-        _renderNode = null;
     }
 
     @property TextMetrics metrics()
@@ -137,7 +115,6 @@ class TextView : View
 
     private void resetStyle(string)
     {
-        _renderNode = null;
         _layout = null;
         invalidate();
     }
@@ -145,17 +122,6 @@ class TextView : View
     override @property string cssType()
     {
         return "text";
-    }
-
-    override protected immutable(RenderNode) collectRenderNode()
-    {
-        if (!_renderNode) {
-            ensureLayout();
-            _renderNode = new immutable(TextRenderNode)(
-                _layout.render(), cast(FVec2)_metrics.bearing, _color
-            );
-        }
-        return _renderNode;
     }
 
     override SGNode sgUpdateContent(SGNode previous)
@@ -188,5 +154,4 @@ class TextView : View
     private FVec4 _color;
     private TextLayout _layout;
     private TextMetrics _metrics;
-    private Rebindable!(immutable(TextRenderNode)) _renderNode;
 }

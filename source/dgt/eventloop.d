@@ -3,7 +3,6 @@ module dgt.eventloop;
 import dgt.application;
 import dgt.platform;
 import dgt.platform.event;
-import dgt.render;
 import dgt.sg.renderer;
 import dgt.window;
 

@@ -4,8 +4,6 @@ module dgt.view.view;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
-import dgt.render;
-import dgt.render.node;
 import dgt.sg.node;
 import dgt.view.layout;
 import dgt.view.style;
@@ -776,53 +774,6 @@ class View
         return (style.backgroundColor.argb & 0xff00_0000) != 0;
     }
 
-    /// background render view in local coordinates
-    immutable(RenderNode) backgroundRenderNode()
-    {
-        immutable col = style.backgroundColor;
-        if (col.argb & 0xff00_0000) {
-            return new immutable RectFillRenderNode(col.asVec, localRect);
-        }
-        else {
-            return null;
-        }
-    }
-
-    /// Collect the render view for this view, in local coordinates.
-    /// It is responsibility of the parent to transform this render view into the
-    /// parent coordinates.
-    /// Returns: A render for this view, expressed in local coordinates.
-    immutable(RenderNode) collectRenderNode()
-    {
-        import std.algorithm : filter, map;
-        import std.array : array;
-        import std.typecons : rebindable;
-
-        if (hasChildren) {
-            immutable nodes = children
-                .map!((View c) {
-                    immutable bg = c.backgroundRenderNode();
-                    immutable cn = c.collectRenderNode();
-
-                    immutable RenderNode rn = bg && cn ?
-                        new immutable GroupRenderNode(bg.bounds, [bg, cn]) :
-                        (bg ? bg : (cn ? cn : null));
-
-                    return rn ?  new immutable TransformRenderNode(
-                        c.transformToParent, rn
-                    ) : null;
-                })
-                .filter!(n => n !is null)
-                .array();
-            return nodes.length ? new immutable GroupRenderNode(
-                localRect, nodes
-            ) : null;
-        }
-        else {
-            return null;
-        }
-    }
-
     @property bool sgHasContent()
     {
         return _sgHasContent;
@@ -1134,30 +1085,6 @@ unittest {
 
     assert(approxUlp(subchild.mapToNode(child2, p),     fvec( 25,  -45)));
     assert(approxUlp(subchild.mapFromNode(child2, p),   fvec( -5,  65)));
-}
-
-struct RenderCacheCookie
-{
-    ulong cookie;
-
-    ulong collectCookie(in bool dynamic)
-    {
-        if (!dynamic && !cookie) {
-            cookie = RenderThread.instance.nextCacheCookie();
-        }
-        else if (dynamic && cookie) {
-            RenderThread.instance.deleteCache(cookie);
-            cookie = 0;
-        }
-        return cookie;
-    }
-    void dirty(in bool dynamic)
-    {
-        if (cookie) {
-            RenderThread.instance.deleteCache(cookie);
-            cookie = 0;
-        }
-    }
 }
 
 /// The runtime class name of obj.
