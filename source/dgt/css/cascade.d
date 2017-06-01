@@ -20,7 +20,6 @@ in {
 }
 body {
     // TODO: provide mechanism to allow lo-cost styling when only one view need update
-    log("starting style pass");
     auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;
     ctx.cascade(root, [dgtCSS]);
