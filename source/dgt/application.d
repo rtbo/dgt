@@ -109,7 +109,7 @@ class Application : EventLoop, Disposable
     {
         assert(window.created && !window.dummy);
         //RenderThread.instance.stop(window.nativeHandle);
-        SGRenderer.instance.stop(window.nativeHandle);
+        SGRenderer.instance.stop(window);
     }
 
     private Platform _platform;

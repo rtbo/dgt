@@ -24,7 +24,7 @@ abstract class SGRenderer
 {
     static SGRenderer instance()
     {
-        if (!g_instance) g_instance = new SGDirectRenderer;
+        if (!g_instance) g_instance = new SGThreadedRenderer;
         return g_instance;
     }
 
@@ -35,7 +35,7 @@ abstract class SGRenderer
         _context = context;
     }
 
-    void stop(size_t nativeHandle) {}
+    abstract void stop(Window w);
 
     /// Call sync, render and swap in the render thread and
     /// blocks the GUI thread during sync.
@@ -576,13 +576,114 @@ __gshared SGRenderer g_instance;
 /// Renderer that runs in the GUI thread
 class SGDirectRenderer : SGRenderer
 {
-    protected override void syncAndRender(Window[] windows)
+    override void stop(Window w)
+    {
+        finalize(w.nativeHandle);
+    }
+    override void syncAndRender(Window[] windows)
     {
         import std.algorithm : each;
         windows.each!(w => sync(w));
         windows.each!(w => render(w));
         windows.each!(w => swap(w));
     }
+}
+
+/// Render that runs in a dedicated thread
+class SGThreadedRenderer : SGRenderer
+{
+    import core.sync.condition;
+    import core.sync.mutex;
+    import core.thread;
+    import dgt.container : ThreadSafeQueue;
+
+    this()
+    {
+        _mutex = new Mutex;
+        _syncDoneCond = new Condition(_mutex);
+        _reqQueue = new ThreadSafeQueue!Request;
+    }
+
+    override void start(GlContext context)
+    {
+        assert(!_thread);
+        super.start(context);
+        _thread = new Thread(&renderLoop).start();
+    }
+
+    override void stop(Window window)
+    {
+        assert(_thread);
+
+        auto stopReq = new Request;
+        stopReq.type = Request.Type.stop;
+        stopReq.windows = [window];
+        _reqQueue.insertBack(stopReq);
+
+        _thread.join();
+        _thread = null;
+    }
+
+    override void syncAndRender(Window[] windows)
+    {
+        assert(_thread);
+
+        auto renderReq = new Request;
+        renderReq.type = Request.Type.render;
+        renderReq.windows = windows;
+        _reqQueue.insertBack(renderReq);
+
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+
+        _syncDoneCond.wait();
+    }
+
+    private void renderLoop()
+    {
+        import core.atomic : atomicLoad;
+        import std.algorithm : each;
+
+        logf("starting rendering thread");
+        scope(success) logf("exiting rendering thread");
+
+        while(true)
+        {
+            Request req = _reqQueue.waitAndPop();
+            assert(req);
+            if (req.type == Request.Type.stop) {
+                finalize(req.windows[0].nativeHandle);
+                return;
+            }
+            else if (req.type == Request.Type.render) {
+                {
+                    _mutex.lock();
+                    scope(exit) _mutex.unlock();
+
+                    req.windows.each!(w => sync(w));
+                }
+                _syncDoneCond.notify();
+                req.windows.each!(w => render(w));
+                req.windows.each!(w => swap(w));
+            }
+        }
+    }
+
+    private static class Request
+    {
+        enum Type {
+            render, stop
+        }
+        Type type;
+        Window[] windows;
+    }
+
+
+    private Thread                  _thread;
+    private ThreadSafeQueue!Request _reqQueue;
+
+    private Mutex       _mutex;
+    private Condition   _syncDoneCond;
 }
 
 
