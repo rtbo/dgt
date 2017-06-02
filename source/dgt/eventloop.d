@@ -97,11 +97,14 @@ class EventLoop
         if (wEv) {
             assert(hasWindow(wEv.window));
             version(Windows) {
-                // windows has modal resize and move envents
+                // windows has modal resize and move events
                 if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
                     wEv.window.handleEvent(wEv);
-                    if (RenderThread.hadVSync)
-                        RenderThread.instance.frame(wEv.window.collectFrame());
+                    wEv.window.styleAndLayout();
+                    if (wEv.window.dirtyContent) {
+                        SGRenderer.instance.syncAndRender([wEv.window]);
+                        wEv.window.cleanContent();
+                    }
                 }
                 else {
                     wEv.window.compressEvent(wEv);
