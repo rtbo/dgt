@@ -560,11 +560,13 @@ class Window
             immutable newSize = ev.size;
             _size = newSize;
             _onResize.fire(ev);
+            requestLayout();
             invalidate();
         }
 
         void handleExpose(ExposeEvent ev)
         {
+            invalidate();
         }
 
         void handleMouseDown(PlMouseEvent ev)
@@ -577,11 +579,16 @@ class Window
 
                 immutable pos = cast(FVec2)ev.point;
 
-                if (!_mouseNodes.length) {
+                if (!_mouseViews.length) {
                     errorf("mouse down without prior move");
-                    _root.viewsAtPos(pos, _mouseNodes);
+                    _root.viewsAtPos(pos, _mouseViews);
                 }
-                _dragChain = _mouseNodes;
+                _dragChain = _mouseViews;
+
+                if (!_mouseViews.length) {
+                    error("No View under mouse?");
+                    return;
+                }
 
                 auto sceneEv = scoped!MouseEvent(
                     EventType.mouseDown, _dragChain, pos, pos, ev.button, ev.state, ev.modifiers
@@ -609,12 +616,17 @@ class Window
 
                 immutable pos = cast(FPoint)ev.point;
 
-                assert(!_tempNodes.length);
-                _root.viewsAtPos(pos, _tempNodes);
-                checkEnterLeave(_mouseNodes, _tempNodes, ev);
+                assert(!_tempViews.length);
+                _root.viewsAtPos(pos, _tempViews);
+                checkEnterLeave(_mouseViews, _tempViews, ev);
 
-                swap(_mouseNodes, _tempNodes);
-                _tempNodes.length = 0;
+                swap(_mouseViews, _tempViews);
+                _tempViews.length = 0;
+
+                if (!_mouseViews.length) {
+                    error("No View under mouse?");
+                    return;
+                }
 
                 if (_dragChain.length) {
                     auto dragEv = scoped!MouseEvent(
@@ -625,7 +637,7 @@ class Window
                 }
                 else {
                     auto moveEv = scoped!MouseEvent(
-                        EventType.mouseMove, _mouseNodes, pos, pos,
+                        EventType.mouseMove, _mouseViews, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
                     moveEv.chainToNext();
@@ -650,8 +662,8 @@ class Window
                     );
                     upEv.chainToNext();
 
-                    if (_mouseNodes.length >= _dragChain.length &&
-                        _dragChain[$-1] is _mouseNodes[_dragChain.length-1])
+                    if (_mouseViews.length >= _dragChain.length &&
+                        _dragChain[$-1] is _mouseViews[_dragChain.length-1])
                     {
                         // still on same view => trigger click
                         auto clickEv = scoped!MouseEvent(
@@ -666,14 +678,18 @@ class Window
                 else {
                     // should not happen
                     warning("mouse up without drag?");
+                    if (!_mouseViews.length) {
+                        error("No View under mouse?");
+                        return;
+                    }
                     auto upEv = scoped!MouseEvent(
-                        EventType.mouseUp, _mouseNodes, pos, pos,
+                        EventType.mouseUp, _mouseViews, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
                     upEv.chainToNext();
                 }
 
-                _mouseNodes.length = 0;
+                _mouseViews.length = 0;
             }
         }
 
@@ -683,13 +699,13 @@ class Window
                 import std.algorithm : swap;
                 immutable pos = cast(FPoint)ev.point;
 
-                if (_mouseNodes.length) {
+                if (_mouseViews.length) {
                     errorf("Enter window while having already nodes under mouse??");
-                    _mouseNodes.length = 0;
+                    _mouseViews.length = 0;
                 }
-                assert(!_tempNodes.length);
-                _root.viewsAtPos(pos, _mouseNodes);
-                checkEnterLeave(_tempNodes, _mouseNodes, ev);
+                assert(!_tempViews.length);
+                _root.viewsAtPos(pos, _mouseViews);
+                checkEnterLeave(_tempViews, _mouseViews, ev);
             }
         }
 
@@ -699,11 +715,11 @@ class Window
                 import std.algorithm : swap;
                 immutable pos = cast(FPoint)ev.point;
 
-                assert(!_tempNodes.length);
-                checkEnterLeave(_mouseNodes, _tempNodes, ev);
+                assert(!_tempViews.length);
+                checkEnterLeave(_mouseViews, _tempViews, ev);
 
-                swap(_mouseNodes, _tempNodes);
-                _tempNodes.length = 0;
+                swap(_mouseViews, _tempViews);
+                _tempViews.length = 0;
             }
         }
 
@@ -765,8 +781,8 @@ class Window
 
         View _root;
         View[] _dragChain;
-        View[] _mouseNodes;
-        View[] _tempNodes;
+        View[] _mouseViews;
+        View[] _tempViews;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;
