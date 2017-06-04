@@ -60,20 +60,18 @@ int main()
         app.exit(0);
     };
 
-    auto circ = new ColorRect;
-    circ.name = "circ";
-    circ.size = FSize(80, 60);
-    circ.fillColor = FVec4(1, 0.3, 0.3, 1);
-    circ.strokeColor = FVec4(0.3, 0.2, 0.2, 1);
-    circ.strokeWidth = 1;
-    circ.radius = 30;
+    auto circLayout = new LinearLayout;
+    circLayout.name = "circLayout";
+    circLayout.setHorizontal();
+    circLayout.spacing = 10;
+    circLayout.gravity = Gravity.center;
 
     auto root = new LinearLayout;
     root.name = "root";
     root.setVertical();
     root.appendChild(layout);
     root.appendChild(exit);
-    root.appendChild(circ);
+    root.appendChild(circLayout);
     root.spacing = 6;
     root.gravity = Gravity.center;
     root.css = `

@@ -249,7 +249,7 @@ class SGRectNode : SGDrawNode
     private float _radius = 0f;
     private FVec4 _fillColor;
     private FVec4 _strokeColor;
-    private float _strokeWidth;
+    private float _strokeWidth = 0f;
 
     private Rc!(VertexBuffer!RectVertex) _vbuf;
     private Rc!(IndexBuffer!ushort)    _ibuf;

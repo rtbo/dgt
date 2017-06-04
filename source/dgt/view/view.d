@@ -938,9 +938,6 @@ package(dgt):
             if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
             _sgBackgroundNode.rect = localRect;
             _sgBackgroundNode.fillColor = col.asVec;
-            _sgBackgroundNode.strokeColor = fvec(0, 0, 0.5, 1);
-            _sgBackgroundNode.strokeWidth = 4;
-            _sgBackgroundNode.radius = 0;
         }
         else {
             _sgBackgroundNode = null;

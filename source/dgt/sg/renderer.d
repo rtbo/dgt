@@ -58,9 +58,6 @@ abstract class SGRenderer
         if (w.root) sgData.root = syncView(w.root);
         else sgData.root = null;
 
-        import std.stdio;
-        writeln(sgData.root);
-
         sgData.nativeHandle = w.nativeHandle;
         sgData.size = w.size;
         sgData.clearColor = w.clearColor;
@@ -337,7 +334,12 @@ private:
         }
 
         if (pw.root) {
-            renderNode(pw.root, pw, FMat4.identity);
+            auto ctx = new SGContext;
+            scope(exit) ctx.dispose();
+
+            ctx.viewProj = pw.viewProj;
+            ctx.renderTarget = pw.bufRtv;
+            renderNode(pw.root, ctx, FMat4.identity);
         }
 
         // blit from texture to screen
@@ -351,7 +353,7 @@ private:
         _encoder.flush(_device);
     }
 
-    void renderNode(SGNode node, PerWindow pw, FMat4 model)
+    void renderNode(SGNode node, SGContext ctx, FMat4 model)
     {
         switch(node.type)
         {
@@ -360,35 +362,31 @@ private:
             model = model * trNode.transform;
             break;
         case SGNode.Type.rectFill:
-            renderRectFillNode(cast(SGRectFillNode)node, pw, model);
+            renderRectFillNode(cast(SGRectFillNode)node, ctx, model);
             break;
         case SGNode.Type.rectStroke:
-            renderRectStrokeNode(cast(SGRectStrokeNode)node, pw, model);
+            renderRectStrokeNode(cast(SGRectStrokeNode)node, ctx, model);
             break;
         case SGNode.Type.image:
-            renderImageNode(cast(SGImageNode)node, pw, model);
+            renderImageNode(cast(SGImageNode)node, ctx, model);
             break;
         case SGNode.Type.text:
-            renderTextNode(cast(SGTextNode)node, pw, model);
+            renderTextNode(cast(SGTextNode)node, ctx, model);
             break;
         case SGNode.Type.draw:
             auto drNode = cast(SGDrawNode)node;
-            auto ctx = new SGContext;
-            ctx.viewProj = pw.viewProj;
-            ctx.renderTarget = pw.bufRtv;
             drNode.draw(_cmdBuf, ctx, model);
-            ctx.dispose();
             break;
         default:
             break;
         }
 
         foreach (c; node.children) {
-            renderNode(c, pw, model);
+            renderNode(c, ctx, model);
         }
     }
 
-    void renderRectFillNode(SGRectFillNode node, PerWindow pw, in FMat4 model)
+    void renderRectFillNode(SGRectFillNode node, SGContext ctx, in FMat4 model)
     {
         immutable color = node.color;
         immutable rect = node.rect;
@@ -396,16 +394,16 @@ private:
             scale!float(rect.width, rect.height, 1f),
             fvec(rect.topLeft, 0f)
         );
-        immutable mvp = transpose(pw.viewProj * model * rectTr);
+        immutable mvp = transpose(ctx.viewProj * model * rectTr);
 
         SolidPipeline pl = color.a == 1f ?
             _solidPipeline : _solidBlendPipeline;
 
         pl.updateUniforms(mvp, color);
-        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), pw.bufRtv);
+        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), ctx.renderTarget);
     }
 
-    void renderRectStrokeNode(SGRectStrokeNode node, PerWindow pw, in FMat4 model)
+    void renderRectStrokeNode(SGRectStrokeNode node, SGContext ctx, in FMat4 model)
     {
         immutable color = node.color;
         immutable rect = node.rect;
@@ -413,13 +411,13 @@ private:
             scale!float(rect.width, rect.height, 1f),
             fvec(rect.topLeft, 0f)
         );
-        immutable mvp = transpose(pw.viewProj * model * rectTr);
+        immutable mvp = transpose(ctx.viewProj * model * rectTr);
 
         _linesPipeline.updateUniforms(mvp, color);
-        _linesPipeline.draw(_frameVBuf, VertexBufferSlice(frameVBufCount), pw.bufRtv);
+        _linesPipeline.draw(_frameVBuf, VertexBufferSlice(frameVBufCount), ctx.renderTarget);
     }
 
-    void renderImageNode(SGImageNode node, PerWindow pw, in FMat4 model)
+    void renderImageNode(SGImageNode node, SGContext ctx, in FMat4 model)
     {
         immutable img = node.image;
         Rc!(ShaderResourceView!Rgba8) srv;
@@ -470,11 +468,11 @@ private:
             scale!float(rect.width, rect.height, 1f),
             fvec(rect.topLeft, 0f)
         );
-        pl.updateUniforms(transpose(pw.viewProj * model * rectTr));
-        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
+        pl.updateUniforms(transpose(ctx.viewProj * model * rectTr));
+        pl.draw(_texQuadVBuf, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, ctx.renderTarget);
     }
 
-    void renderTextNode(SGTextNode node, PerWindow pw, in FMat4 model)
+    void renderTextNode(SGTextNode node, SGContext ctx, in FMat4 model)
     {
         _textPipeline.updateColor(node.color);
         immutable pos = node.pos;
@@ -529,8 +527,8 @@ private:
             ];
             auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 
-            _textPipeline.updateMVP(transpose(pw.viewProj));
-            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, pw.bufRtv);
+            _textPipeline.updateMVP(transpose(ctx.viewProj));
+            _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, ctx.renderTarget);
         }
     }
 }
