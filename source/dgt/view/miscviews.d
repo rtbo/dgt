@@ -31,6 +31,11 @@ class ColorRect : View
         return "rect";
     }
 
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        measurement = size;
+    }
+
     override SGNode sgUpdateContent(SGNode previous)
     {
         auto rfn = cast(SGRectFillNode)previous;
@@ -63,6 +68,16 @@ class ImageView : View
     override @property string cssType()
     {
         return "img";
+    }
+
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        if (_img) {
+            measurement = cast(FSize)_img.size;
+        }
+        else {
+            super.measure(widthSpec, heightSpec);
+        }
     }
 
     override SGNode sgUpdateContent(SGNode previous)
@@ -124,6 +139,17 @@ class TextView : View
         return "text";
     }
 
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        ensureLayout();
+        if (_layout) {
+            measurement = FSize(cast(FVec2)metrics.size);
+        }
+        else {
+            super.measure(widthSpec, heightSpec);
+        }
+    }
+
     override SGNode sgUpdateContent(SGNode previous)
     {
         if (text.length) {
@@ -142,11 +168,14 @@ class TextView : View
 
     private void ensureLayout()
     {
-        if (!_layout) {
+        if (!_layout && _text.length) {
             _layout = new TextLayout(_text, TextFormat.plain, style);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;
+        }
+        else if (!_text.length) {
+            _layout = null;
         }
     }
 
