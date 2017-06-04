@@ -54,15 +54,26 @@ int main()
     auto exit = new Button;
     exit.name = "exit";
     exit.text = "Exit";
+    exit.css = "font-size: 40px";
+    exit.padding = FPadding(16);
     exit.onClick += {
         app.exit(0);
     };
+
+    auto circ = new ColorRect;
+    circ.name = "circ";
+    circ.size = FSize(80, 60);
+    circ.fillColor = FVec4(1, 0.3, 0.3, 1);
+    circ.strokeColor = FVec4(0.3, 0.2, 0.2, 1);
+    circ.strokeWidth = 1;
+    circ.radius = 30;
 
     auto root = new LinearLayout;
     root.name = "root";
     root.setVertical();
     root.appendChild(layout);
     root.appendChild(exit);
+    root.appendChild(circ);
     root.spacing = 6;
     root.gravity = Gravity.center;
     root.css = `

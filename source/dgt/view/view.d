@@ -5,6 +5,7 @@ import dgt.event;
 import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
+import dgt.sg.rect;
 import dgt.view.layout;
 import dgt.view.style;
 import dgt.window;
@@ -934,9 +935,12 @@ package(dgt):
     {
         immutable col = style.backgroundColor;
         if (col.argb & 0xff00_0000) {
-            if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectFillNode;
+            if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
             _sgBackgroundNode.rect = localRect;
-            _sgBackgroundNode.color = col.asVec;
+            _sgBackgroundNode.fillColor = col.asVec;
+            _sgBackgroundNode.strokeColor = fvec(0, 0, 0.5, 1);
+            _sgBackgroundNode.strokeWidth = 4;
+            _sgBackgroundNode.radius = 0;
         }
         else {
             _sgBackgroundNode = null;
@@ -963,7 +967,7 @@ package(dgt):
 private:
 
     SGTransformNode _sgNode;
-    SGRectFillNode _sgBackgroundNode;
+    SGRectNode _sgBackgroundNode;
     SGNode _sgContentNode;
     bool _sgHasContent;
 }

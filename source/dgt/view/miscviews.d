@@ -5,8 +5,10 @@ import dgt.geometry;
 import dgt.image;
 import dgt.math;
 import dgt.sg.node;
+import dgt.sg.rect;
 import dgt.text.fontcache;
 import dgt.text.layout;
+import dgt.view.layout;
 import dgt.view.style;
 import dgt.view.view;
 
@@ -20,10 +22,44 @@ class ColorRect : View
         sgHasContent = true;
     }
 
-    @property FVec4 color() const { return _color; }
-    @property void color(in FVec4 color)
+    @property float radius()
     {
-        _color = color;
+        return _radius;
+    }
+    @property void radius(in float radius)
+    {
+        _radius = radius;
+        invalidate();
+    }
+
+    @property FVec4 fillColor()
+    {
+        return _fillColor;
+    }
+    @property void fillColor(in FVec4 fillCol)
+    {
+        _fillColor = fillCol;
+        invalidate();
+    }
+
+    @property FVec4 strokeColor()
+    {
+        return _strokeColor;
+    }
+    @property void strokeColor(in FVec4 strokeCol)
+    {
+        _strokeColor = strokeCol;
+        invalidate();
+    }
+
+    @property float strokeWidth()
+    {
+        return _strokeWidth;
+    }
+    @property void strokeWidth(in float width)
+    {
+        _strokeWidth = width;
+        invalidate();
     }
 
     override @property string cssType()
@@ -38,14 +74,20 @@ class ColorRect : View
 
     override SGNode sgUpdateContent(SGNode previous)
     {
-        auto rfn = cast(SGRectFillNode)previous;
-        if (!rfn) rfn = new SGRectFillNode;
-        rfn.rect = localRect;
-        rfn.color = color;
-        return rfn;
+        auto rn = cast(SGRectNode)previous;
+        if (!rn) rn = new SGRectNode;
+        rn.rect = localRect;
+        rn.fillColor = fillColor;
+        rn.strokeColor = strokeColor;
+        rn.strokeWidth = strokeWidth;
+        rn.radius = radius;
+        return rn;
     }
 
-    private FVec4 _color;
+    private float _radius = 0f;
+    private FVec4 _fillColor;
+    private FVec4 _strokeColor;
+    private float _strokeWidth;
 }
 
 
