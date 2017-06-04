@@ -240,6 +240,13 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
         return _rep[];
     }
 
+    /// All components in a static array
+    @property T[length] array() const
+    {
+        return _rep;
+    }
+
+
     // compile time addressing
 
     /// Index a vector component at compile time
@@ -497,6 +504,12 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     }
 
     /// ditto
+    inout(T)[] opIndex() inout
+    {
+        return _rep[];
+    }
+
+    /// ditto
     void opIndexAssign(U)(in U val, in size_t[2] slice)
     {
         assert(correctSlice(slice));
@@ -508,6 +521,13 @@ struct Vec(T, size_t N) if (N > 0 && isNumeric!T)
     {
         assert(val.length == slice[1]-slice[0] && correctSlice(slice));
         _rep[slice[0] .. slice[1]] = val;
+    }
+
+    /// ditto
+    void opIndexAssign(U)(in U[] val)
+    {
+        assert(val.length == length);
+        _rep[] = val;
     }
 
     /// ditto
