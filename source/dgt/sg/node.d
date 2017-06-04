@@ -4,10 +4,13 @@ module dgt.sg.node;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
+import dgt.sg.context;
 import dgt.sg.geometry;
+import dgt.sg.paint;
 import dgt.text.layout;
 
 import gfx.foundation.rc;
+import gfx.pipeline.draw;
 
 import std.exception : enforce;
 import std.typecons : Rebindable;
@@ -38,7 +41,7 @@ body {
 class SGNode : Disposable
 {
     enum Type {
-        simple, geometry, transform, clip, opacity,
+        simple, geometry, transform, clip, opacity, draw,
         // as a transition step towards new system, the following are supported
         rectFill, rectStroke, image, text,
     }
@@ -428,6 +431,16 @@ class SGTextNode : SGNode
     private FVec4 _color;
 }
 
+/// General node that issue drawing calls into a command buffer
+abstract class SGDrawNode : SGNode
+{
+    this()
+    {
+        super(Type.draw);
+    }
+    abstract void draw (CommandBuffer cmdBuf, SGContext context, in FMat4 modelMat);
+}
+
 //FIXME: actual support for the following nodes
 
 class SGGeometryNode : SGNode
@@ -436,16 +449,12 @@ class SGGeometryNode : SGNode
     {
         super(Type.geometry);
     }
-    this(SGGeometryBase geom)
-    {
-        this();
-        _geometry = geometry;
-    }
 
     override void dispose()
     {
         super.dispose();
         _geometry.unload();
+        _paint.unload();
     }
 
     @property SGGeometryBase geometry()
@@ -458,7 +467,18 @@ class SGGeometryNode : SGNode
         _geometry = geometry;
     }
 
+    @property SGPaintEffect paint()
+    {
+        return _paint;
+    }
+
+    @property void paint(SGPaintEffect paint)
+    {
+        _paint = paint;
+    }
+
     private Rc!SGGeometryBase _geometry;
+    private Rc!SGPaintEffect _paint;
 }
 
 

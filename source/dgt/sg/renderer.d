@@ -4,6 +4,7 @@ import dgt.context;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
+import dgt.sg.context;
 import dgt.sg.defs;
 import dgt.sg.node;
 import dgt.sg.pipelines;
@@ -56,6 +57,9 @@ abstract class SGRenderer
 
         if (w.root) sgData.root = syncView(w.root);
         else sgData.root = null;
+
+        import std.stdio;
+        writeln(sgData.root);
 
         sgData.nativeHandle = w.nativeHandle;
         sgData.size = w.size;
@@ -211,6 +215,7 @@ private:
     GlContext       _context;
     Device          _device;
     Encoder         _encoder;
+    CommandBuffer   _cmdBuf;
     PerWindow[]     _windowCache;
 
     SolidPipeline   _solidPipeline;
@@ -293,6 +298,8 @@ private:
         _frameVBuf.retain();
 
         _encoder = Encoder(cmdBuf.obj);
+        _cmdBuf = cmdBuf;
+        _cmdBuf.retain();
     }
 
     void finalize(size_t nativeHandle)
@@ -363,6 +370,14 @@ private:
             break;
         case SGNode.Type.text:
             renderTextNode(cast(SGTextNode)node, pw, model);
+            break;
+        case SGNode.Type.draw:
+            auto drNode = cast(SGDrawNode)node;
+            auto ctx = new SGContext;
+            ctx.viewProj = pw.viewProj;
+            ctx.renderTarget = pw.bufRtv;
+            drNode.draw(_cmdBuf, ctx, model);
+            ctx.dispose();
             break;
         default:
             break;
@@ -559,12 +574,23 @@ class SGThreadedRenderer : SGRenderer
     {
         assert(!_thread);
         super.start(context);
-        _thread = new Thread(&renderLoop).start();
+        _thread = new Thread({
+            try {
+                renderLoop();
+            }
+            catch(Exception ex) {
+                errorf("exited render thread with exception: %s", ex.msg);
+            }
+            catch(Throwable th) {
+                errorf("exited render thread with error: %s", th.msg);
+            }
+        }).start();
     }
 
     override void stop(Window window)
     {
         assert(_thread);
+        enforce(_thread.isRunning);
 
         auto stopReq = new Request;
         stopReq.type = Request.Type.stop;
@@ -578,6 +604,7 @@ class SGThreadedRenderer : SGRenderer
     override void syncAndRender(Window[] windows)
     {
         assert(_thread);
+        enforce(_thread.isRunning);
 
         auto renderReq = new Request;
         renderReq.type = Request.Type.render;
