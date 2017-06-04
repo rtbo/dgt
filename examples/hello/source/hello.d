@@ -60,18 +60,11 @@ int main()
         app.exit(0);
     };
 
-    auto circLayout = new LinearLayout;
-    circLayout.name = "circLayout";
-    circLayout.setHorizontal();
-    circLayout.spacing = 10;
-    circLayout.gravity = Gravity.center;
-
     auto root = new LinearLayout;
     root.name = "root";
     root.setVertical();
     root.appendChild(layout);
     root.appendChild(exit);
-    root.appendChild(circLayout);
     root.spacing = 6;
     root.gravity = Gravity.center;
     root.css = `
