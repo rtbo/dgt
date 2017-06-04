@@ -409,44 +409,84 @@ struct Rect(T) if (isNumeric!T)
         bottom = p.y;
     }
 
-    ref Rect!T opOpAssign(string op)(FMargins rhs) if (op == "+")
+    @property Point!T center() const
     {
-        left -= rhs.left;
-        top -= rhs.top;
-        right += rhs.right;
-        bottom += rhs.bottom;
+        return Point!T(centerX, centerY);
+    }
+
+    @property T centerX() const
+    {
+        return cast(T)(_x + _w/2);
+    }
+
+    @property T centerY() const
+    {
+        return cast(T)(_y + _h/2);
+    }
+
+    ref Rect!T opOpAssign(string op)(in FMargins rhs) if (op == "+")
+    {
+        _x -= rhs.left;
+        _y -= rhs.top;
+        _w += rhs.horizontal;
+        _h += rhs.vertical;
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(FMargins rhs) if (op == "-")
+    ref Rect!T opOpAssign(string op)(in FMargins rhs) if (op == "-")
     {
-        left += rhs.left;
-        top += rhs.top;
-        right -= rhs.right;
-        bottom -= rhs.bottom;
+        _x += rhs.left;
+        _y += rhs.top;
+        _w -= rhs.horizontal;
+        _h -= rhs.vertical;
         return this;
     }
 
-    ref Rect!T opOpAssign(string op : "+")(Point!T rhs)
+    ref Rect!T opOpAssign(string op)(in FPadding rhs) if (op == "+")
+    {
+        _x -= rhs.left;
+        _y -= rhs.top;
+        _w += rhs.horizontal;
+        _h += rhs.vertical;
+        return this;
+    }
+
+    ref Rect!T opOpAssign(string op)(in FPadding rhs) if (op == "-")
+    {
+        _x += rhs.left;
+        _y += rhs.top;
+        _w -= rhs.horizontal;
+        _h -= rhs.vertical;
+        return this;
+    }
+
+    ref Rect!T opOpAssign(string op : "+")(in Point!T rhs)
     {
         point = point + rhs;
         return this;
     }
 
-    ref Rect!T opOpAssign(string op : "-")(Point!T rhs)
+    ref Rect!T opOpAssign(string op : "-")(in Point!T rhs)
     {
         point = point - rhs;
         return this;
     }
 
-    Rect!T opBinary(string op)(Margins!T rhs) if (op == "+" || op == "-")
+    Rect!T opBinary(string op)(in Margins!T rhs) const if (op == "+" || op == "-")
     {
         Rect!T ret = this;
         mixin("ret " ~ op ~ "= rhs;");
         return ret;
     }
 
-    Rect!T opBinary(string op)(Point!T rhs) if (op == "+" || op == "-")
+    Rect!T opBinary(string op)(in Padding!T rhs) const if (op == "+" || op == "-")
+    {
+        Rect!T ret = this;
+        mixin("ret " ~ op ~ "= rhs;");
+        return ret;
+    }
+
+    Rect!T opBinary(string op)(in Point!T rhs) const if (op == "+" || op == "-")
     {
         Rect!T ret = this;
         mixin("ret " ~ op ~ "= rhs;");
