@@ -5,7 +5,6 @@ import dgt.enums;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
-import dgt.render.node;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;

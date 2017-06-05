@@ -1,12 +1,12 @@
-module dgt.render.pipelines.solid;
+module dgt.sg.pipelines.solid;
 
-import dgt.render.pipelines.defs;
 import dgt.math;
+import dgt.sg.defs;
 
-import gfx.pipeline;
 import gfx.device;
 import gfx.foundation.rc;
 import gfx.foundation.typecons;
+import gfx.pipeline;
 
 class SolidPipeline : Disposable
 {

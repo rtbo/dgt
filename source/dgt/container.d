@@ -171,3 +171,105 @@ unittest
     assert(q.empty);
 
 }
+
+/// Queue container that can be used in a producer/consumer pattern.
+/// It can work with multiple producers and/or multiple consumers.
+class ThreadSafeQueue(T)
+{
+    import core.sync.condition : Condition;
+    import core.sync.mutex : Mutex;
+    import std.container.dlist : DList;
+
+    this()
+    {
+        _mutex = new Mutex;
+        _cond = new Condition(_mutex);
+    }
+
+    this(Stuff)(Stuff stuff)
+    {
+        this();
+        insertBack(stuff);
+    }
+
+    @property bool empty()
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        return _items.empty;
+    }
+
+    @property T front()
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        return _items.front;
+    }
+
+    void popFront()
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        _items.removeFront();
+    }
+
+    size_t insertBack(Stuff)(Stuff stuff)
+    if (is(typeof(_items.insertBack(stuff))))
+    {
+        enum Notify {
+            none, one, all
+        }
+        Notify notify = void;
+        size_t res = void;
+        {
+            _mutex.lock();
+            scope(exit) _mutex.unlock();
+            immutable wasEmpty = _items.empty;
+            res = _items.insertBack(stuff);
+            if (!wasEmpty)
+                notify = Notify.none;
+            else if (res == 1)
+                notify = Notify.one;
+            else
+                notify = Notify.all;
+        }
+        if (notify == Notify.one) _cond.notify();
+        else if (notify == Notify.all) _cond.notifyAll();
+        return res;
+    }
+
+    void waitForData()
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        while(_items.empty) {
+            _cond.wait();
+        }
+    }
+
+    T waitAndPop()
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        while(_items.empty) {
+            _cond.wait();
+        }
+        auto res = _items.front();
+        _items.removeFront();
+        return res;
+    }
+
+    bool tryPop(out T value)
+    {
+        _mutex.lock();
+        scope(exit) _mutex.unlock();
+        if (_items.empty) return false;
+        value = _items.front();
+        _items.removeFront();
+        return true;
+    }
+
+    private DList!T _items;
+    private Mutex _mutex;
+    private Condition _cond;
+}

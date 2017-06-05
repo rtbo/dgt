@@ -1,13 +1,12 @@
+module dgt.sg.pipelines.text;
 
-module dgt.render.pipelines.text;
-
-import dgt.render.pipelines.defs;
 import dgt.math;
+import dgt.sg.defs;
 
-import gfx.pipeline;
 import gfx.device;
 import gfx.foundation.rc;
 import gfx.foundation.typecons;
+import gfx.pipeline;
 
 class TextPipeline : Disposable
 {
@@ -106,16 +105,16 @@ struct TextMeta
 enum textVShader = `
     #version 330
     in vec2 a_Pos;
-    in vec2 a_TexCoord;
+    in vec2 a_Tex;
 
     uniform MVP {
         mat4 u_mvpMat;
     };
 
-    out vec2 v_TexCoord;
+    out vec2 v_Tex;
 
     void main() {
-        v_TexCoord = a_TexCoord;
+        v_Tex = a_Tex;
         gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
     }
 `;
@@ -124,7 +123,7 @@ enum textVShader = `
 enum textFShader = `
     #version 330
 
-    in vec2 v_TexCoord;
+    in vec2 v_Tex;
 
     uniform sampler2D t_Sampler;
     uniform Color {
@@ -134,7 +133,7 @@ enum textFShader = `
     out vec4 o_Color;
 
     void main() {
-        vec4 sample = texture(t_Sampler, v_TexCoord);
+        vec4 sample = texture(t_Sampler, v_Tex);
         o_Color = sample.r * u_Color;
     }
 `;

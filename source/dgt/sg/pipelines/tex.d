@@ -1,28 +1,28 @@
-module dgt.render.pipelines.blit;
+module dgt.sg.pipelines.tex;
 
-import dgt.render.pipelines.defs;
 import dgt.math;
+import dgt.sg.defs;
 
-import gfx.pipeline;
 import gfx.device;
 import gfx.foundation.rc;
 import gfx.foundation.typecons;
+import gfx.pipeline;
 
-class BlitPipeline : Disposable
+class TexPipeline : Disposable
 {
     private StateObject _pso;
     private ConstBuffer!MVP _mvpBlk;
     private Encoder _encoder;
 
     alias Vertex = P2T2Vertex;
-    alias Meta = BlitMeta;
-    alias StateObject = PipelineState!Meta;
+    alias Meta = TexMeta;
+    alias StateObject = PipelineState!TexMeta;
     alias Data = StateObject.Data;
 
-    this(CommandBuffer cmdBuf)
+    this(CommandBuffer cmdBuf, Option!Blend blend)
     {
         auto prog = makeRc!Program(ShaderSet.vertexPixel(
-            blitVShader, blitFShader
+            texVShader, texFShader
         ));
 
         _pso = new StateObject(
@@ -30,6 +30,7 @@ class BlitPipeline : Disposable
             Rasterizer.fill.withSamples()
         );
         _pso.retain();
+        _pso.outColor.info.blend = blend;
 
         _mvpBlk = new ConstBuffer!MVP(1);
         _mvpBlk.retain();
@@ -55,7 +56,7 @@ class BlitPipeline : Disposable
                 Sampler sampler,
                 RenderTargetView!Rgba8 rtv)
     {
-        _encoder.draw!Meta(slice, _pso, Data(
+        _encoder.draw!TexMeta(slice, _pso, Data(
             rc(vbuf), rc(_mvpBlk), rc(srv), rc(sampler), rc(rtv)
         ));
     }
@@ -68,7 +69,7 @@ struct MVP {
     FMat4 mvp;
 }
 
-struct BlitMeta
+struct TexMeta
 {
     VertexInput!P2T2Vertex   input;
 
@@ -85,30 +86,53 @@ struct BlitMeta
     ColorOutput!Rgba8           outColor;
 }
 
-enum blitVShader = `
+enum texVShader = `
     #version 330
     in vec2 a_Pos;
-    in vec2 a_TexCoord;
+    in vec2 a_Tex;
 
     uniform MVP {
         mat4 u_mvpMat;
     };
 
-    out vec2 v_TexCoord;
+    out vec2 v_Tex;
 
     void main() {
-        v_TexCoord = a_TexCoord;
+        v_Tex = a_Tex;
         gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
     }
 `;
-enum blitFShader = `
-    #version 330
+version(LittleEndian)
+{
+    // ImageFormat order is argb, in native order (that is actually bgra)
+    // the framebuffer order is rgba, so some swizzling is needed
+    enum texFShader = `
+        #version 330
 
-    in vec2 v_TexCoord;
-    out vec4 o_Color;
-    uniform sampler2D t_Sampler;
+        in vec2 v_Tex;
+        out vec4 o_Color;
+        uniform sampler2D t_Sampler;
 
-    void main() {
-        o_Color = texture(t_Sampler, v_TexCoord);
-    }
-`;
+        void main() {
+            vec4 sample = texture(t_Sampler, v_Tex);
+            o_Color = sample.bgra;
+        }
+    `;
+}
+version(BigEndian)
+{
+    // ImageFormat order is argb, in native order
+    // the framebuffer order is rgba, so a left shift is needed
+    enum texFShader = `
+        #version 330
+
+        in vec2 v_Tex;
+        out vec4 o_Color;
+        uniform sampler2D t_Sampler;
+
+        void main() {
+            vec4 sample = texture(t_Sampler, v_Tex);
+            o_Color = sample.gbar;
+        }
+    `;
+}

@@ -54,6 +54,8 @@ int main()
     auto exit = new Button;
     exit.name = "exit";
     exit.text = "Exit";
+    exit.css = "font-size: 40px";
+    exit.padding = FPadding(16);
     exit.onClick += {
         app.exit(0);
     };

@@ -4,8 +4,8 @@ module dgt.view.view;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
-import dgt.render;
-import dgt.render.node;
+import dgt.sg.node;
+import dgt.sg.rect;
 import dgt.view.layout;
 import dgt.view.style;
 import dgt.window;
@@ -104,6 +104,7 @@ class View
     {
         enforce(view && !view._parent);
         view._parent = this;
+        view.dirty(Dirty.parented);
 
         if (!hasChildren) {
             _firstChild = view;
@@ -115,6 +116,7 @@ class View
             _lastChild = view;
         }
         ++_childCount;
+        dirty(Dirty.childAdded);
     }
 
     /// Prepend the given view to this view children list.
@@ -122,6 +124,7 @@ class View
     {
         enforce(view && !view._parent);
         view._parent = this;
+        view.dirty(Dirty.parented);
 
         if (!hasChildren) {
             _firstChild = view;
@@ -133,6 +136,7 @@ class View
             _firstChild = view;
         }
         ++_childCount;
+        dirty(Dirty.childAdded);
     }
 
     /// Insert the given view in this view children list, just before the given
@@ -141,6 +145,7 @@ class View
     {
         enforce(view && !view._parent && child._parent is this);
         view._parent = this;
+        view.dirty(Dirty.parented);
 
         if (child is _firstChild) {
             _firstChild = view;
@@ -153,6 +158,7 @@ class View
         child._prevSibling = view;
         view._nextSibling = child;
         ++_childCount;
+        dirty(Dirty.childAdded);
     }
 
     /// Removes the given view from this view children list.
@@ -161,6 +167,7 @@ class View
         enforce(child && child._parent is this);
 
         child._parent = null;
+        child.dirty(Dirty.parented);
 
         if (_childCount == 1) {
             _firstChild = null;
@@ -181,6 +188,7 @@ class View
             next._prevSibling = prev;
         }
         --_childCount;
+        dirty(Dirty.childRemoved);
     }
 
     /// The padding of the view, that is, how much empty space is required
@@ -225,35 +233,55 @@ class View
     /// Invalidate the view content. This triggers rendering.
     final void invalidate()
     {
-        if (window) window.invalidate(cast(IRect)sceneRect);
+        dirty(Dirty.content);
     }
 
-    /// The dirtyState of this view;
-    final @property DirtyFlags dirtyState()
+    /// The dirtyState of this view.
+    final @property Dirty dirtyState()
     {
         return _dirtyState;
     }
     /// Set the passed flag dirty
-    final void dirty(in DirtyFlags flags)
+    final void dirty(in Dirty flags)
     {
         _dirtyState |= flags;
-        if (flags & DirtyFlags.styleMask) {
+
+        if (flags & Dirty.familyMask) {
+            if (parent) parent.dirty(Dirty.childrenFamily);
+        }
+        if (flags & Dirty.styleMask) {
             if (window) window.requestStylePass();
-            invalidate();
+        }
+        if (flags & Dirty.contentMask)
+        {
+            if (window) window.invalidate();
+            if (parent) parent.dirty(Dirty.childrenContent);
         }
     }
     /// Reset some dirty flags
-    final void clean(in DirtyFlags flags = DirtyFlags.all)
+    final void clean(in Dirty flags)
     {
         _dirtyState &= ~flags;
+
+        if (!parent) return;
+
+        if ((flags & Dirty.closeFamilyMask && !isDirty(Dirty.childrenFamily)) ||
+                (flags & Dirty.childrenFamily && !isDirty(Dirty.closeFamilyMask))) {
+            parent.clean(Dirty.childrenFamily);
+        }
+
+        if ((flags & Dirty.content && !isDirty(Dirty.childrenContent)) ||
+                (flags & Dirty.childrenContent && !isDirty(Dirty.content))) {
+            parent.clean(Dirty.childrenContent);
+        }
     }
     /// Checks whether one of the passed flags is dirty
-    final bool isDirty(in DirtyFlags flags)
+    final bool isDirty(in Dirty flags)
     {
-        return (_dirtyState & flags) != DirtyFlags.clean;
+        return (_dirtyState & flags) != Dirty.clean;
     }
     /// Checks whether all of the passed flag are dirty
-    final bool areDirty(in DirtyFlags flags)
+    final bool areDirty(in Dirty flags)
     {
         return (_dirtyState & flags) == flags;
     }
@@ -271,7 +299,7 @@ class View
         if (pos != _rect.point) {
             _rect.point = pos;
             // _rect.point is included in parent and scene transforms
-            dirty(DirtyFlags.transformMask);
+            dirty(Dirty.transformMask);
         }
     }
     /// The size of the view
@@ -299,7 +327,7 @@ class View
         if (rect != _rect) {
             _rect = rect;
             // _rect.point is included in parent and scene transforms
-            dirty(DirtyFlags.transformMask);
+            dirty(Dirty.transformMask);
         }
     }
 
@@ -352,13 +380,13 @@ class View
     {
         _transform = transform;
         _hasTransform = transform != FMat4.identity;
-        dirty(DirtyFlags.transformMask);
+        dirty(Dirty.transformMask);
     }
 
     /// Transform that maps view coordinates to parent coordinates
     final @property FMat4 transformToParent()
     {
-        if (isDirty(DirtyFlags.transformToParent)) {
+        if (isDirty(Dirty.transformToParent)) {
             if (_hasTransform) {
                 _transformToParent = transform.translate(fvec(pos, 0));
             }
@@ -366,9 +394,9 @@ class View
                 _transformToParent = translation!float(fvec(pos, 0));
                 // this is cheap, let's do it now.
                 _transformFromParent = translation!float(fvec(-pos, 0));
-                clean(DirtyFlags.transformFromParent);
+                clean(Dirty.transformFromParent);
             }
-            clean(DirtyFlags.transformToParent);
+            clean(Dirty.transformToParent);
         }
         return _transformToParent;
     }
@@ -376,7 +404,7 @@ class View
     /// Transform that maps parent coordinates to view coordinates
     final @property FMat4 transformFromParent()
     {
-        if (isDirty(DirtyFlags.transformFromParent)) {
+        if (isDirty(Dirty.transformFromParent)) {
             if (_hasTransform) {
                 _transformFromParent = inverse(transformToParent);
             }
@@ -384,9 +412,9 @@ class View
                 _transformFromParent = translation!float(fvec(-pos, 0));
                 // this is cheap, let's do it now.
                 _transformToParent = translation!float(fvec(pos, 0));
-                clean(DirtyFlags.transformToParent);
+                clean(Dirty.transformToParent);
             }
-            clean(DirtyFlags.transformFromParent);
+            clean(Dirty.transformFromParent);
         }
         return _transformFromParent;
     }
@@ -394,11 +422,11 @@ class View
     /// Transform that maps view coordinates to scene coordinates
     final @property FMat4 transformToScene()
     {
-        if (isDirty(DirtyFlags.transformToScene)) {
+        if (isDirty(Dirty.transformToScene)) {
             _transformToScene = parent ?
                     parent.transformToScene * transformToParent :
                     transformToParent;
-            clean(DirtyFlags.transformToScene);
+            clean(Dirty.transformToScene);
         }
         return _transformToScene;
     }
@@ -406,9 +434,9 @@ class View
     /// Transform that maps scene coordinates to view coordinates
     final @property FMat4 transformFromScene()
     {
-        if (isDirty(DirtyFlags.transformFromScene)) {
+        if (isDirty(Dirty.transformFromScene)) {
             _transformFromScene = inverse(transformToScene);
-            clean(DirtyFlags.transformFromScene);
+            clean(Dirty.transformFromScene);
         }
         return _transformFromScene;
     }
@@ -492,12 +520,12 @@ class View
     }
 
     /// Get a view at position given by pos.
-    View nodeAtPos(in FVec2 pos)
+    View viewAtPos(in FVec2 pos)
     {
         if (localRect.contains(pos)) {
             foreach (c; children) {
                 immutable cp = c.mapFromParent(pos);
-                auto res = c.nodeAtPos(cp);
+                auto res = c.viewAtPos(cp);
                 if (res) return res;
             }
             return this;
@@ -507,14 +535,14 @@ class View
         }
     }
 
-    /// Recursively append nodes that are located at pos from root to end target.
-    void nodesAtPos(in FVec2 pos, ref View[] nodes)
+    /// Recursively append views that are located at pos from root to end target.
+    void viewsAtPos(in FVec2 pos, ref View[] nodes)
     {
         if (localRect.contains(pos)) {
             nodes ~= this;
             foreach (c; children) {
                 immutable cp = c.mapFromParent(pos);
-                c.nodesAtPos(cp, nodes);
+                c.viewsAtPos(cp, nodes);
             }
         }
     }
@@ -545,7 +573,7 @@ class View
         }
         if (css != _css) {
             _css = css;
-            dirty(DirtyFlags.css);
+            dirty(Dirty.css);
         }
     }
 
@@ -562,7 +590,7 @@ class View
     {
         if (id != _id) {
             _id = id;
-            dirty(DirtyFlags.css);
+            dirty(Dirty.css);
         }
     }
 
@@ -574,7 +602,7 @@ class View
     {
         if (cssClass != _cssClass) {
             _cssClass = cssClass;
-            dirty(DirtyFlags.css);
+            dirty(Dirty.css);
         }
     }
 
@@ -585,7 +613,7 @@ class View
     {
         if (state != _pseudoState) {
             _pseudoState = state;
-            dirty(DirtyFlags.dynStyle);
+            dirty(Dirty.dynStyle);
         }
     }
     /// ditto
@@ -741,51 +769,29 @@ class View
         _dynamic = dynamic;
     }
 
-    /// background render view in local coordinates
-    immutable(RenderNode) backgroundRenderNode()
+    /// Whether this view has background other than transparent
+    @property bool hasBackground()
     {
-        immutable col = style.backgroundColor;
-        if (col.argb & 0xff000000) {
-            return new immutable RectFillRenderNode(col.asVec, localRect);
-        }
-        else {
-            return null;
-        }
+        return (style.backgroundColor.argb & 0xff00_0000) != 0;
     }
 
-    /// Collect the render view for this view, in local coordinates.
-    /// It is responsibility of the parent to transform this render view into the
-    /// parent coordinates.
-    /// Returns: A render for this view, expressed in local coordinates.
-    immutable(RenderNode) collectRenderNode()
+    @property bool sgHasContent()
     {
-        import std.algorithm : filter, map;
-        import std.array : array;
-        import std.typecons : rebindable;
+        return _sgHasContent;
+    }
 
-        if (hasChildren) {
-            immutable nodes = children
-                .map!((View c) {
-                    immutable bg = c.backgroundRenderNode();
-                    immutable cn = c.collectRenderNode();
+    @property void sgHasContent(bool has)
+    {
+        _sgHasContent = has;
+    }
 
-                    immutable RenderNode rn = bg && cn ?
-                        new immutable GroupRenderNode(bg.bounds, [bg, cn]) :
-                        (bg ? bg : (cn ? cn : null));
-
-                    return rn ?  new immutable TransformRenderNode(
-                        c.transformToParent, rn
-                    ) : null;
-                })
-                .filter!(n => n !is null)
-                .array();
-            return nodes.length ? new immutable GroupRenderNode(
-                localRect, nodes
-            ) : null;
-        }
-        else {
-            return null;
-        }
+    /// function called by the renderer, that may reside in a different thread
+    /// This is called while the GUI thread is blocked, so fields can be accessed
+    /// safely, but no reference to the node should be kept or used outside this
+    /// function.
+    SGNode sgUpdateContent(SGNode previous)
+    {
+        return null;
     }
 
     @property uint level() const
@@ -884,7 +890,7 @@ class View
     private FSize           _measurement;
 
     // dirty state
-    private DirtyFlags _dirtyState;
+    private Dirty _dirtyState;
 
     // bounds
     private FRect  _rect;
@@ -913,32 +919,105 @@ class View
 
     // debug info
     private string _name; // id will be used if name is empty
+
+
+    // following fields are reserved to the scenegraph
+
+package(dgt):
+
+    @property SGTransformNode sgNode()
+    {
+        if (!_sgNode) _sgNode = new SGTransformNode;
+        return _sgNode;
+    }
+
+    @property SGNode sgBackgroundNode()
+    {
+        immutable col = style.backgroundColor;
+        if (col.argb & 0xff00_0000) {
+            if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
+            _sgBackgroundNode.rect = localRect;
+            _sgBackgroundNode.fillColor = col.asVec;
+        }
+        else {
+            _sgBackgroundNode = null;
+        }
+        return _sgBackgroundNode;
+    }
+
+    @property SGNode sgContentNode()
+    {
+        return _sgContentNode;
+    }
+
+    @property void sgContentNode(SGNode node)
+    {
+        _sgContentNode = node;
+    }
+
+    @property SGNode sgChildrenNode()
+    {
+        if (sgBackgroundNode) return sgBackgroundNode;
+        else return sgNode;
+    }
+
+private:
+
+    SGTransformNode _sgNode;
+    SGRectNode _sgBackgroundNode;
+    SGNode _sgContentNode;
+    bool _sgHasContent;
 }
 
 
 /// Bit flags that describe what in a view needs update
-enum DirtyFlags
+enum Dirty
 {
     /// nothing is dirty
-    clean       = 0,
+    clean               = 0,
 
-    /// transform were changed
-    transformMask       = 0x000f,
-    /// ditto
-    transformToParent     = 0x0001,
-    /// ditto
-    transformFromParent  = 0x0002,
-    /// ditto
-    transformToScene      = 0x0004,
-    /// ditto
-    transformFromScene   = 0x0008,
+    /// Children were added/removed in this node or descendant or parent changed
+    familyMask          = 0x000f,
+    /// Children were added/removed, or parent changed in this node
+    closeFamilyMask     = 0x0007,
+    /// Children were added/removed in this node or descendant
+    allChildrenMask     = 0x000b,
+    /// Child was added/removed
+    childMask           = 0x0003,
+    /// Child was added
+    childAdded          = 0x0001,
+    /// Child was removed
+    childRemoved        = 0x0002,
+    /// Was given to/removed from a parent
+    parented            = 0x0004,
+    /// One or more descendants have a family change
+    childrenFamily      = 0x0008,
+
+    /// Some visual content has changed
+    contentMask         = 0x00f0,
 
     /// A style pass is needed
-    styleMask           = 0x0300,
+    styleMask           = 0x0030,
     /// Dynamic pseudo class has to be enabled/disabled.
-    dynStyle            = 0x0100,
+    dynStyle            = 0x0010,
     /// A css string has been updated/set/reset.
-    css                 = 0x0200,
+    css                 = 0x0020,
+
+    /// Content is dirty
+    content             = 0x0040,
+    /// One or more descendant have dirty content
+    childrenContent     = 0x0080,
+
+    /// transform was changed
+    transformMask       = 0x0f00,
+    /// ditto
+    transformToParent   = 0x0100,
+    /// ditto
+    transformFromParent = 0x0200,
+    /// ditto
+    transformToScene    = 0x0400,
+    /// ditto
+    transformFromScene  = 0x0800,
 
     /// All bits set
     all                 = 0xffff_ffff,
@@ -1007,30 +1086,6 @@ unittest {
 
     assert(approxUlp(subchild.mapToNode(child2, p),     fvec( 25,  -45)));
     assert(approxUlp(subchild.mapFromNode(child2, p),   fvec( -5,  65)));
-}
-
-struct RenderCacheCookie
-{
-    ulong cookie;
-
-    ulong collectCookie(in bool dynamic)
-    {
-        if (!dynamic && !cookie) {
-            cookie = RenderThread.instance.nextCacheCookie();
-        }
-        else if (dynamic && cookie) {
-            RenderThread.instance.deleteCache(cookie);
-            cookie = 0;
-        }
-        return cookie;
-    }
-    void dirty(in bool dynamic)
-    {
-        if (cookie) {
-            RenderThread.instance.deleteCache(cookie);
-            cookie = 0;
-        }
-    }
 }
 
 /// The runtime class name of obj.

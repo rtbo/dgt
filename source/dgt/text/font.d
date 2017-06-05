@@ -303,16 +303,14 @@ class Font : RefCounted
         // img.saveToFile(format("run%s.png", num++));
 
         // storing results
-        import dgt.render : RenderThread;
-        immutable cookie = RenderThread.instance.nextCacheCookie();
         immutable iimg = assumeUnique(img);
         immutable(RenderedGlyph)[] glyphs;
         foreach(g; gs) {
-            immutable rg = new immutable RenderedGlyph(g.glyph, g.rect, g.gm, iimg, cookie);
+            immutable rg = new immutable RenderedGlyph(g.glyph, g.rect, g.gm, iimg);
             glyphs ~= rg;
             _renderedGlyphs[g.glyph] = rg;
         }
-        _runs ~= new immutable GlyphRun(iimg, glyphs, cookie);
+        _runs ~= new immutable GlyphRun(iimg, glyphs);
     }
 
     immutable(RenderedGlyph) renderedGlyph(uint index)
@@ -454,42 +452,35 @@ class Font : RefCounted
 immutable class GlyphRun
 {
     immutable this(immutable(Image) img,
-                    immutable(RenderedGlyph)[] glyphs,
-                    ulong cacheCookie)
+                    immutable(RenderedGlyph)[] glyphs)
     {
         _img = img;
         _glyphs = glyphs;
-        _cacheCookie = cacheCookie;
     }
 
     @property immutable(Image) image() const { return _img; }
     @property immutable(RenderedGlyph)[] glyphs() const { return _glyphs; }
-    @property ulong cacheCookie() const { return _cacheCookie; }
 
     private Image _img;
     private RenderedGlyph[] _glyphs;
-    private ulong _cacheCookie;
 }
 
 
 immutable class RenderedGlyph
 {
     immutable this(in uint glyph, in IRect rect, in GlyphMetrics metrics,
-                    immutable(Image) runImg,
-                    in ulong cacheCookie)
+                    immutable(Image) runImg)
     {
         _glyph = glyph;
         _rect = rect;
         _metrics = metrics;
         _runImg = runImg;
-        _cacheCookie = cacheCookie;
     }
 
     @property uint glyph() const { return _glyph; }
     @property IRect rect() const { return _rect; }
     @property GlyphMetrics metrics() const { return _metrics; }
     @property immutable(Image) runImg() const { return _runImg; }
-    @property ulong cacheCookie() const { return _cacheCookie; }
 
     // 60 bytes of metadata per glyph.
     // Have to be reduced as soon as usage gets clearer
@@ -497,7 +488,6 @@ immutable class RenderedGlyph
     private IRect _rect;
     private GlyphMetrics _metrics;
     private Image _runImg;
-    private ulong _cacheCookie;
 }
 
 private int roundUp(in int number, in int multiple) pure

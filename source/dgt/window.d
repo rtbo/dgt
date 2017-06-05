@@ -10,8 +10,6 @@ import dgt.math;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.region;
-import dgt.render;
-import dgt.render.frame;
 import dgt.screen;
 import dgt.util;
 import dgt.view.view;
@@ -159,6 +157,24 @@ class Window
     body
     {
         _flags = flags;
+    }
+
+    @property FVec4 clearColor()
+    {
+        return _clearColor;
+    }
+    @property void clearColor(in FVec4 color)
+    {
+        _clearColor = color;
+        _hasClearColor = true;
+    }
+    @property bool hasClearColor()
+    {
+        return _hasClearColor;
+    }
+    @property void hasClearColor(bool has)
+    {
+        _hasClearColor = has;
     }
 
     void showMaximized()
@@ -314,22 +330,44 @@ class Window
         return ind != size_t.max ? screens[ind] : screens[0];
     }
 
+    /// Whether the window need to be rendered
+    @property bool dirtyContent()
+    {
+        return _dirtyContent;
+    }
+
+    /// notify that rendering occured
+    package(dgt) void cleanContent()
+    {
+        _dirtyContent = false;
+    }
+
     /// The region that needs update
     @property Region dirtyRegion() const
     {
         return _dirtyReg;
     }
 
-    /// Invalidate a rect
+    /// Reset the invalidate region to empty
+    void cleanRegion()
+    out {
+        assert(_dirtyReg.empty);
+    }
+    body {
+        _dirtyReg = new Region;
+    }
+
     void invalidate(in IRect rect)
     {
         _dirtyReg = unite(_dirtyReg, new Region(rect));
+        _dirtyContent = true;
     }
 
     /// Invalidate the whole window
     void invalidate()
     {
         _dirtyReg = new Region(IRect(0, 0, size));
+        _dirtyContent = true;
     }
 
     /// request a layout pass
@@ -492,15 +530,9 @@ class Window
             _evCompress = EvCompress.none;
         }
 
-        immutable(RenderFrame) collectFrame()
+        void styleAndLayout()
         {
-            scope(exit) _dirtyReg = new Region;
-
-            if (!_root) {
-                return new immutable RenderFrame (
-                    nativeHandle, IRect(0, 0, size)
-                );
-            }
+            if (!_root) return;
 
             if (_dirtyStyle) {
                 import dgt.css.cascade : cssCascade;
@@ -518,16 +550,6 @@ class Window
                 _root.layout(FRect(0, 0, fs));
                 _dirtyLayout = false;
             }
-
-            import dgt.render.node : GroupRenderNode;
-            immutable rn = _root.collectRenderNode();
-            immutable bg = _root.backgroundRenderNode();
-            immutable fn = bg ?
-                new immutable GroupRenderNode(_root.localRect, [bg, rn]) :
-                rn;
-            return new immutable RenderFrame (
-                nativeHandle, IRect(0, 0, size), fn
-            );
         }
     }
 
@@ -538,11 +560,13 @@ class Window
             immutable newSize = ev.size;
             _size = newSize;
             _onResize.fire(ev);
+            requestLayout();
             invalidate();
         }
 
         void handleExpose(ExposeEvent ev)
         {
+            invalidate();
         }
 
         void handleMouseDown(PlMouseEvent ev)
@@ -555,11 +579,16 @@ class Window
 
                 immutable pos = cast(FVec2)ev.point;
 
-                if (!_mouseNodes.length) {
+                if (!_mouseViews.length) {
                     errorf("mouse down without prior move");
-                    _root.nodesAtPos(pos, _mouseNodes);
+                    _root.viewsAtPos(pos, _mouseViews);
                 }
-                _dragChain = _mouseNodes;
+                _dragChain = _mouseViews;
+
+                if (!_mouseViews.length) {
+                    error("No View under mouse?");
+                    return;
+                }
 
                 auto sceneEv = scoped!MouseEvent(
                     EventType.mouseDown, _dragChain, pos, pos, ev.button, ev.state, ev.modifiers
@@ -587,12 +616,17 @@ class Window
 
                 immutable pos = cast(FPoint)ev.point;
 
-                assert(!_tempNodes.length);
-                _root.nodesAtPos(pos, _tempNodes);
-                checkEnterLeave(_mouseNodes, _tempNodes, ev);
+                assert(!_tempViews.length);
+                _root.viewsAtPos(pos, _tempViews);
+                checkEnterLeave(_mouseViews, _tempViews, ev);
 
-                swap(_mouseNodes, _tempNodes);
-                _tempNodes.length = 0;
+                swap(_mouseViews, _tempViews);
+                _tempViews.length = 0;
+
+                if (!_mouseViews.length) {
+                    error("No View under mouse?");
+                    return;
+                }
 
                 if (_dragChain.length) {
                     auto dragEv = scoped!MouseEvent(
@@ -603,7 +637,7 @@ class Window
                 }
                 else {
                     auto moveEv = scoped!MouseEvent(
-                        EventType.mouseMove, _mouseNodes, pos, pos,
+                        EventType.mouseMove, _mouseViews, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
                     moveEv.chainToNext();
@@ -628,8 +662,8 @@ class Window
                     );
                     upEv.chainToNext();
 
-                    if (_mouseNodes.length >= _dragChain.length &&
-                        _dragChain[$-1] is _mouseNodes[_dragChain.length-1])
+                    if (_mouseViews.length >= _dragChain.length &&
+                        _dragChain[$-1] is _mouseViews[_dragChain.length-1])
                     {
                         // still on same view => trigger click
                         auto clickEv = scoped!MouseEvent(
@@ -644,14 +678,18 @@ class Window
                 else {
                     // should not happen
                     warning("mouse up without drag?");
+                    if (!_mouseViews.length) {
+                        error("No View under mouse?");
+                        return;
+                    }
                     auto upEv = scoped!MouseEvent(
-                        EventType.mouseUp, _mouseNodes, pos, pos,
+                        EventType.mouseUp, _mouseViews, pos, pos,
                         ev.button, ev.state, ev.modifiers
                     );
                     upEv.chainToNext();
                 }
 
-                _mouseNodes.length = 0;
+                _mouseViews.length = 0;
             }
         }
 
@@ -661,13 +699,13 @@ class Window
                 import std.algorithm : swap;
                 immutable pos = cast(FPoint)ev.point;
 
-                if (_mouseNodes.length) {
+                if (_mouseViews.length) {
                     errorf("Enter window while having already nodes under mouse??");
-                    _mouseNodes.length = 0;
+                    _mouseViews.length = 0;
                 }
-                assert(!_tempNodes.length);
-                _root.nodesAtPos(pos, _mouseNodes);
-                checkEnterLeave(_tempNodes, _mouseNodes, ev);
+                assert(!_tempViews.length);
+                _root.viewsAtPos(pos, _mouseViews);
+                checkEnterLeave(_tempViews, _mouseViews, ev);
             }
         }
 
@@ -677,11 +715,11 @@ class Window
                 import std.algorithm : swap;
                 immutable pos = cast(FPoint)ev.point;
 
-                assert(!_tempNodes.length);
-                checkEnterLeave(_mouseNodes, _tempNodes, ev);
+                assert(!_tempViews.length);
+                checkEnterLeave(_mouseViews, _tempViews, ev);
 
-                swap(_mouseNodes, _tempNodes);
-                _tempNodes.length = 0;
+                swap(_mouseViews, _tempViews);
+                _tempViews.length = 0;
             }
         }
 
@@ -733,15 +771,18 @@ class Window
         }
 
         WindowFlags _flags;
+        PlatformWindow _platformWindow;
         string _title;
         IPoint _position = IPoint(-1, -1);
         ISize _size;
         GlAttribs _attribs;
-        PlatformWindow _platformWindow;
+        FVec4 _clearColor;
+        bool _hasClearColor;
+
         View _root;
         View[] _dragChain;
-        View[] _mouseNodes;
-        View[] _tempNodes;
+        View[] _mouseViews;
+        View[] _tempViews;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;
@@ -749,6 +790,7 @@ class Window
         Rebindable!Region _dirtyReg = new Region;
         bool _dirtyStyle    = true;
         bool _dirtyLayout   = true;
+        bool _dirtyContent  = true;
 
         FireableSignal!string    _onTitleChange = new FireableSignal!string;
         Handler!ShowEvent        _onShow        = new Handler!ShowEvent;
@@ -765,4 +807,10 @@ class Window
         Handler!CloseEvent       _onClose       = new Handler!CloseEvent;
         FireableSignal!Window    _onClosed      = new FireableSignal!Window;
     }
+
+    // scene graph reserved fields and methods
+package(dgt):
+
+    Object sgData;
+
 }

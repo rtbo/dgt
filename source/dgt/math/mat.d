@@ -119,6 +119,8 @@ if (isNumeric!T && R > 0 && C > 0)
     alias Column = Vec!(T, rowLength);
     /// The type of the componetypeof(rt.expand)nts.
     alias Component = T;
+    /// row major container: length is the number of rows
+    enum length = rowLength;
 
     /// The identity matrix.
     enum identity = mixin(identityCode);
