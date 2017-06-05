@@ -308,7 +308,6 @@ struct RectPipeMeta
     @GfxName("o_Color")
     @GfxBlend(Blend( Equation.add, Factor.one, Factor.oneMinusSrcAlpha ))
     BlendOutput!Rgba8           outColor;
-    //ColorOutput!Rgba8           outColor;
 }
 
 alias RectPipe = PipelineState!RectPipeMeta;
