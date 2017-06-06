@@ -121,7 +121,7 @@ class CSSValueBase
 }
 
 
-class CSSValue(T) : CSSValueBase
+class TCSSValue(T) : CSSValueBase
 {
     this(T value)
     {
@@ -145,7 +145,7 @@ class CSSValue(T) : CSSValueBase
         }
         else {
             import std.format : format;
-            return format("CSSValue!%s(%s)", T.stringof, _cssWideVal);
+            return format("TCSSValue!%s(%s)", T.stringof, _cssWideVal);
         }
     }
 

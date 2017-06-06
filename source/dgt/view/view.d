@@ -1,13 +1,13 @@
 /// View root class module
 module dgt.view.view;
 
+import dgt.css.style;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
 import dgt.sg.rect;
 import dgt.view.layout;
-import dgt.view.style;
 import dgt.window;
 
 import std.exception;
@@ -15,13 +15,21 @@ import std.experimental.logger;
 import std.range;
 import std.typecons;
 
+
+/// Font style as defined by the CSS specification
+enum FontStyle
+{
+    normal,
+    italic,
+    oblique,
+}
+
 /// View hierarchy root class
-class View
+class View : Style
 {
     /// builds a new view
     this()
     {
-        if (!_style) _style = new Style(this);
     }
 
     /// The window this view is attached to.
@@ -547,15 +555,10 @@ class View
         }
     }
 
-    /// The Style object attached to this view
-    final @property Style style()
+
+    override @property Style styleParent()
     {
-        return _style;
-    }
-    /// ditto
-    final protected @property void style(Style style)
-    {
-        _style = style;
+        return _parent;
     }
 
     /// A CSS formatted style attached to this view.
@@ -580,11 +583,11 @@ class View
     /// The type used in css type selector.
     /// e.g. in the following style rule, "label" is the CSS type:
     /// `label { font-family: serif; }`
-    @property string cssType() { return null; }
+    override @property string cssType() { return null; }
 
     /// The id of this view.
     /// Used in CSS '#' selector, and for debug printing if name is not set.
-    final @property string id() { return _id; }
+    override final @property string id() { return _id; }
     /// ditto
     final @property void id(in string id)
     {
@@ -596,7 +599,7 @@ class View
 
     /// The CSS class of this view.
     /// Used in CSS '.' selector.
-    final @property string cssClass() { return _cssClass; }
+    override final @property string cssClass() { return _cssClass; }
     /// ditto
     final @property void cssClass(in string cssClass)
     {
@@ -607,7 +610,7 @@ class View
     }
 
     /// A pseudo state of the view.
-    final @property PseudoState pseudoState() { return _pseudoState; }
+    override final @property PseudoState pseudoState() { return _pseudoState; }
     /// ditto
     final @property void pseudoState(in PseudoState state)
     {
@@ -631,6 +634,13 @@ class View
     final bool hoverSensitive() { return _hoverSensitive; }
     /// ditto
     final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
+
+
+    @property Color backgroundColor()
+    {
+        return _backgroundColor.value;
+    }
+
 
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
@@ -904,12 +914,19 @@ class View
     private bool _hasTransform;
 
     // style
-    private Style _style;
     private string _css;
     private string _id;
     private string _cssClass;
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
+    // style properties
+    private IStyleProperty[string]      _styleProperties_;
+    private StyleProperty!Color         _backgroundColor;
+    private StyleProperty!(string[])    _fontFamily;
+    private StyleProperty!int           _fontWeight;
+    private StyleProperty!FontStyle     _fontStyle;
+    private StyleProperty!int           _fontSize;
+    private Layout.Params               _layoutParams;
 
     // events
     private MaskedFilter[] _evFilters;

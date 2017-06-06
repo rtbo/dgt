@@ -3,8 +3,8 @@ module dgt.css.properties;
 
 package:
 
-import dgt.css.cascade;
 import dgt.css.color;
+import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
 import dgt.enums;
@@ -15,45 +15,30 @@ import dgt.view.style;
 import std.experimental.logger;
 import std.range;
 
-final class BackgroundColorProperty : CSSProperty
+
+final class BackgroundColorMetaProperty :
+        TStyleMetaProperty!(Color, "background-color")
 {
     this()
     {
-        super(
-            "background-color", false,
-            new CSSValue!Color(Color(ColorName.transparent))
-        );
+        super(false, Color(ColorName.transparent));
     }
 
-    override CSSValue!Color parseValueImpl(Token[] tokens)
+    override TCSSValue!Color parseValueImpl(Token[] tokens)
     {
-        return new CSSValue!Color(parseColor(tokens));
-    }
-
-    override void applyFromParent(Style target)
-    {
-        target.backgroundColor = target.parent.backgroundColor;
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto cv = cast(CSSValue!Color) value;
-        assert(cv);
-        target.backgroundColor = cv.value;
+        return new TCSSValue!Color(parseColor(tokens));
     }
 }
 
-final class FontFamilyProperty : CSSProperty
+final class FontFamilyMetaProperty :
+        TStyleMetaProperty!(string[], "font-family")
 {
     this()
     {
-        super(
-            "font-family", true,
-            new CSSValue!(string[])(["sans-serif"])
-        );
+        super(true, ["sans-serif"]);
     }
 
-    override CSSValue!(string[]) parseValueImpl(Token[] tokens)
+    override TCSSValue!(string[]) parseValueImpl(Token[] tokens)
     {
         import std.algorithm : filter;
         auto toks = tokens.filter!(t => t.tok != Tok.whitespace);
@@ -80,30 +65,17 @@ final class FontFamilyProperty : CSSProperty
                 toks.popFront();
             }
         }
-        return new CSSValue!(string[])(families);
-    }
-
-    override void applyFromParent(Style target)
-    {
-        target.fontFamily = target.parent.fontFamily;
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto cv = cast(CSSValue!(string[])) value;
-        assert(cv);
-        target.fontFamily = cv.value;
+        return new TCSSValue!(string[])(families);
     }
 }
 
-final class FontWeightProperty : CSSProperty
+final class FontWeightMetaProperty :
+        TStyleMetaProperty!(int, "font-weight", FontWeight)
 {
     enum initialFW = 400;
+
     this() {
-        super(
-            "font-weight", true,
-            new CSSValue!FontWeight(initialFW)
-        );
+        super(true, initialFW);
     }
 
     enum RelativeKwd
@@ -130,7 +102,7 @@ final class FontWeightProperty : CSSProperty
         }
     }
 
-    override CSSValue!FontWeight parseValueImpl(Token[] tokens)
+    override CSSValue parseValueImpl(Token[] tokens)
     {
         popSpaces(tokens);
         if (tokens.empty) return null;
@@ -138,97 +110,83 @@ final class FontWeightProperty : CSSProperty
         if (tok.tok == Tok.ident) {
             switch (tok.str) {
             case "normal":
-                return new CSSValue!FontWeight(400);
+                return new CSSValue(400);
             case "bold":
-                return new CSSValue!FontWeight(700);
+                return new CSSValue(700);
             case "lighter":
-                return new CSSValue!FontWeight(RelativeKwd.lighter);
+                return new CSSValue(RelativeKwd.lighter);
             case "bolder":
-                return new CSSValue!FontWeight(RelativeKwd.bolder);
+                return new CSSValue(RelativeKwd.bolder);
             default:
                 return null;
             }
         }
         else if (tok.tok == Tok.number && tok.integer) {
-            return new CSSValue!FontWeight(cast(int)tok.num);
+            return new CSSValue(cast(int)tok.num);
         }
         else {
             return null;
         }
     }
 
-    override void applyFromParent(Style target)
+    override int convert(FontWeight fw, Style target)
     {
-        target.fontWeight = target.parent.fontWeight;
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto val = cast(CSSValue!FontWeight)value;
-        assert(val);
-        immutable fw = val.value;
         if (fw.type == FontWeight.Type.absolute) {
-            target.fontWeight = fw.abs;
+            return fw.abs;
         }
         else {
-            immutable int pfw = target.parent ? target.parent.fontWeight : initialFW;
+            auto p = getProperty(target.parent);
+            immutable pfw = p ? p.value : initialFW;
+
             if (pfw >= 100 && pfw <= 300) {
-                target.fontWeight = fw.rel == RelativeKwd.lighter ? 100 : 400;
+                return fw.rel == RelativeKwd.lighter ? 100 : 400;
             }
             else if (pfw >= 301 && pfw <= 599) {
-                target.fontWeight = fw.rel == RelativeKwd.lighter ? 100 : 700;
+                return fw.rel == RelativeKwd.lighter ? 100 : 700;
             }
             else if (pfw >= 600 && pfw <= 799) {
-                target.fontWeight = fw.rel == RelativeKwd.lighter ? 400 : 900;
+                return fw.rel == RelativeKwd.lighter ? 400 : 900;
             }
             else if (pfw >= 800 && pfw <= 900) {
-                target.fontWeight = fw.rel == RelativeKwd.lighter ? 700 : 900;
+                return fw.rel == RelativeKwd.lighter ? 700 : 900;
             }
             else {
                 warningf("out of range font-weight: %s", pfw);
+                return getProperty(target).value;
             }
         }
     }
 }
 
-final class FontStyleProperty : CSSProperty
+final class FontStyleProperty :
+        TStyleMetaProperty!(FontStyle, "font-style")
 {
     this() {
-        super("font-style", true, new CSSValue!FontStyle(FontStyle.normal));
+        super(true, FontStyle.normal);
     }
 
-    override CSSValue!FontStyle parseValueImpl(Token[] tokens)
+    override CSSValue parseValueImpl(Token[] tokens)
     {
         popSpaces(tokens);
+
         if (tokens.front.tok == Tok.ident) {
             switch (tokens.front.str) {
-            case "normal": return new CSSValue!FontStyle(FontStyle.normal);
-            case "italic": return new CSSValue!FontStyle(FontStyle.italic);
-            case "oblique": return new CSSValue!FontStyle(FontStyle.oblique);
+            case "normal": return new CSSValue(FontStyle.normal);
+            case "italic": return new CSSValue(FontStyle.italic);
+            case "oblique": return new CSSValue(FontStyle.oblique);
             default:
                 break;
             }
         }
         return null;
     }
-
-    override void applyFromParent(Style target)
-    {
-        target.fontStyle = target.parent.fontStyle;
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto val = cast(CSSValue!FontStyle)value;
-        assert(val);
-        target.fontStyle = val.value;
-    }
 }
 
-final class FontSizeProperty : CSSProperty
+final class FontSizeProperty :
+        TStyleMetaProperty!(int, "font-size", FontSize)
 {
     this() {
-        super("font-size", true, new CSSValue!FontSize(AbsoluteKwd.medium));
+        super(true, FontSize(AbsoluteKwd.medium));
 
         typeof(relativeMap) rm;
         rm[10] = [ 9, 12];      // xxSmall
@@ -315,216 +273,166 @@ final class FontSizeProperty : CSSProperty
         if (tok.tok == Tok.ident) {
             switch(tok.str) {
             case "xx-small":
-                return new CSSValue!FontSize(AbsoluteKwd.xxSmall);
+                return new TCSSValue!FontSize(AbsoluteKwd.xxSmall);
             case "x-small":
-                return new CSSValue!FontSize(AbsoluteKwd.xSmall);
+                return new TCSSValue!FontSize(AbsoluteKwd.xSmall);
             case "small":
-                return new CSSValue!FontSize(AbsoluteKwd.small);
+                return new TCSSValue!FontSize(AbsoluteKwd.small);
             case "medium":
-                return new CSSValue!FontSize(AbsoluteKwd.medium);
+                return new TCSSValue!FontSize(AbsoluteKwd.medium);
             case "large":
-                return new CSSValue!FontSize(AbsoluteKwd.large);
+                return new TCSSValue!FontSize(AbsoluteKwd.large);
             case "x-large":
-                return new CSSValue!FontSize(AbsoluteKwd.xLarge);
+                return new TCSSValue!FontSize(AbsoluteKwd.xLarge);
             case "xx-large":
-                return new CSSValue!FontSize(AbsoluteKwd.xxLarge);
+                return new TCSSValue!FontSize(AbsoluteKwd.xxLarge);
 
             case "smaller":
-                return new CSSValue!FontSize(RelativeKwd.smaller);
+                return new TCSSValue!FontSize(RelativeKwd.smaller);
             case "larger":
-                return new CSSValue!FontSize(RelativeKwd.larger);
+                return new TCSSValue!FontSize(RelativeKwd.larger);
             default:
                 return null;
             }
         }
         else if (tok.tok == Tok.dimension) {
             Length l = void;
-            return parseLength(tok, l) ? new CSSValue!FontSize(l) : null;
+            return parseLength(tok, l) ? new TCSSValue!FontSize(l) : null;
         }
         else if (tok.tok == Tok.percentage) {
-            return new CSSValue!FontSize(tok.num);
+            return new TCSSValue!FontSize(tok.num);
         }
         else {
             return null;
         }
     }
 
-    override void applyFromParent(Style target)
-    {
-        target.fontSize = target.parent.fontSize;
-    }
-
     int parentOrInitial(Style target)
     {
-        return target.parent ? target.parent.fontSize :
-            cast(int)AbsoluteKwd.medium;
+        auto p = getProperty(target.parent);
+        return p ? p.value : cast(int)AbsoluteKwd.medium;
     }
 
-    override void applyFromValue(Style target, CSSValueBase value)
+    override int convert(FontSize fs, Style target)
     {
         import std.math : round;
-        auto val = cast(CSSValue!FontSize)value;
-        auto fs = val.value;
-        assert(val);
+
         final switch (fs.type) {
         case FontSize.Type.absolute:
-            target.fontSize = cast(int)fs.abs;
-            break;
+            return cast(int)fs.abs;
         case FontSize.Type.relative:
             immutable pfs = parentOrInitial(target);
             const pfsRelative = pfs in relativeMap;
             if (pfsRelative) {
-                target.fontSize = fs.rel == RelativeKwd.smaller ?
+                return fs.rel == RelativeKwd.smaller ?
                                     (*pfsRelative)[0] : (*pfsRelative)[1];
             }
             else {
                 import std.algorithm : max;
-                target.fontSize = cast(int)round(max(9,
+                return cast(int)round(max(9,
                         fs.rel == RelativeKwd.smaller ?
                         pfs/1.2f : pfs*1.2f
                 ));
             }
-            break;
         case FontSize.Type.percent:
             immutable pfs = parentOrInitial(target);
-            target.fontSize = cast(int)round(0.01f * pfs * fs.per);
-            break;
+            return cast(int)round(0.01f * pfs * fs.per);
         case FontSize.Type.length:
             immutable lenVal = fs.len.val;
             final switch (fs.len.unit) {
             case Length.Unit.em:
                 immutable pfs = parentOrInitial(target);
-                target.fontSize = cast(int)round(lenVal * pfs);
-                break;
+                return cast(int)round(lenVal * pfs);
             case Length.Unit.ex:
             case Length.Unit.ch:
                 // assuming 0.5em
                 immutable pfs = parentOrInitial(target);
-                target.fontSize = cast(int)round(0.5 * lenVal * pfs);
-                break;
+                return cast(int)round(0.5 * lenVal * pfs);
             case Length.Unit.rem:
                 immutable rfs = target.view.isRoot ?
                             cast(int)AbsoluteKwd.medium :
                             target.root.fontSize;
-                target.fontSize = cast(int)round(lenVal * rfs);
-                break;
+                return cast(int)round(lenVal * rfs);
             case Length.Unit.vw:
                 const win = target.view.window;
                 immutable width = win.geometry.width;
-                target.fontSize = cast(int)round(lenVal * width * 0.01f);
-                break;
+                return cast(int)round(lenVal * width * 0.01f);
             case Length.Unit.vh:
                 const win = target.view.window;
                 immutable height = win.geometry.height;
-                target.fontSize = cast(int)round(lenVal * height * 0.01f);
-                break;
+                return cast(int)round(lenVal * height * 0.01f);
             case Length.Unit.vmin:
                 import std.algorithm : min;
                 const win = target.view.window;
                 immutable rect = win.geometry;
-                target.fontSize = cast(int)round(lenVal * min(rect.width, rect.height) * 0.01f);
-                break;
+                return cast(int)round(lenVal * min(rect.width, rect.height) * 0.01f);
             case Length.Unit.vmax:
                 import std.algorithm : max;
                 const win = target.view.window;
                 immutable rect = win.geometry;
-                target.fontSize = cast(int)round(lenVal * max(rect.width, rect.height) * 0.01f);
-                break;
+                return cast(int)round(lenVal * max(rect.width, rect.height) * 0.01f);
             case Length.Unit.cm:
                 const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 2.54f;
-                target.fontSize = cast(int)round(dens * lenVal);
-                break;
+                return cast(int)round(dens * lenVal);
             case Length.Unit.mm:
                 const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 25.4f;
-                target.fontSize = cast(int)round(dens * lenVal);
-                break;
+                return cast(int)round(dens * lenVal);
             case Length.Unit.q:
                 const scr = target.view.window.screen;
                 immutable dens = scr.dpi / (4*25.4f);
-                target.fontSize = cast(int)round(dens * lenVal);
-                break;
+                return cast(int)round(dens * lenVal);
             case Length.Unit.inch:
                 const scr = target.view.window.screen;
                 immutable dens = scr.dpi;
-                target.fontSize = cast(int)round(dens * lenVal);
-                break;
+                return cast(int)round(dens * lenVal);
             case Length.Unit.pc:
                 const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 6f;
-                target.fontSize = cast(int)round(dens * lenVal);
-                break;
+                return cast(int)round(dens * lenVal);
             case Length.Unit.pt:
                 const scr = target.view.window.screen;
                 immutable dens = scr.dpi / 72f;
-                target.fontSize = cast(int)round(dens * lenVal);
-                break;
+                return cast(int)round(dens * lenVal);
             case Length.Unit.px:
-                target.fontSize = cast(int)round(lenVal);
-                break;
+                return cast(int)round(lenVal);
             }
-            break;
         }
+        return cast(int)AbsoluteKwd.medium;
     }
 }
+
+alias HLayoutSizeProperty = LayoutSizeProperty!"layout-width";
+alias VLayoutSizeProperty = LayoutSizeProperty!"layout-height";
 
 /// layout-width / layout-height
 /// Value:      number | match-parent | wrap-content
 /// Inherited:  no
 /// Initial:    wrap-content
-class LayoutSizeProperty(Orientation orientation) : CSSProperty
+class LayoutSizeProperty(string n) :
+        TStyleMetaProperty!(float, n)
 {
     this()
     {
-        auto name = orientation.isHorizontal ? "layout-width" : "layout-height";
-        super(name, false, new CSSValue!float(wrapContent));
+        super(false, wrapContent);
     }
 
-    override bool appliesTo(Style style)
-    {
-        return style.layoutParams !is null;
-    }
-
-    override CSSValue!float parseValueImpl(Token[] tokens)
+    override CSSValuet parseValueImpl(Token[] tokens)
     {
         popSpaces(tokens);
         if (tokens.front.tok == Tok.number) {
-            return new CSSValue!float(tokens.front.num);
+            return new CSSValue(tokens.front.num);
         }
         else if (tokens.front.tok == Tok.ident) {
             switch (tokens.front.str) {
-            case "match-parent": return new CSSValue!float(matchParent);
-            case "wrap-content": return new CSSValue!float(wrapContent);
+            case "match-parent": return new CSSValue(matchParent);
+            case "wrap-content": return new CSSValue(wrapContent);
             default:
                 break;
             }
         }
         return null;
-    }
-
-    override void applyFromParent(Style target)
-    {
-        assert(target.layoutParams && target.parent.layoutParams);
-        static if (orientation.isHorizontal) {
-            target.layoutParams.width = target.parent.layoutParams.width;
-        }
-        else {
-            target.layoutParams.height = target.parent.layoutParams.height;
-        }
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto val = cast(CSSValue!float)value;
-        assert(val);
-        assert(target.layoutParams);
-        static if (orientation.isHorizontal) {
-            target.layoutParams.width = val.value;
-        }
-        else {
-            target.layoutParams.height = val.value;
-        }
     }
 }
 
@@ -536,19 +444,15 @@ class LayoutSizeProperty(Orientation orientation) : CSSProperty
 ///             fill | fill-h | fill-v | clip | clip-h | clip-v | none
 ///
 /// Gravity applied to layout params that implement HasGravity
-class LayoutGravityProperty : CSSProperty
+class LayoutGravityProperty :
+            TStyleMetaProperty!(Gravity, "layout-gravity")
 {
     this()
     {
-        super("layout-gravity", false, new CSSValue!Gravity(Gravity.none));
+        super(false, Gravity.none);
     }
 
-    override bool appliesTo(Style style)
-    {
-        return (cast(HasGravity)style.layoutParams) !is null;
-    }
-
-    override CSSValue!Gravity parseValueImpl(Token[] tokens)
+    override CSSValue parseValueImpl(Token[] tokens)
     {
         popSpaces(tokens);
         immutable g1 = parseGravity(tokens);
@@ -559,10 +463,10 @@ class LayoutGravityProperty : CSSProperty
             tokens.popFront();
             popSpaces(tokens);
             immutable g2 = tokens.empty ? Gravity.none : parseGravity(tokens);
-            return new CSSValue!Gravity(g1 | g2);
+            return new CSSValue(g1 | g2);
         }
         else {
-            return new CSSValue!Gravity(g1);
+            return new CSSValue(g1);
         }
     }
 
@@ -590,21 +494,5 @@ class LayoutGravityProperty : CSSProperty
             }
         }
         return Gravity.none;
-    }
-
-    override void applyFromParent(Style target)
-    {
-        auto tlp = cast(HasGravity)target.layoutParams;
-        auto plp = cast(HasGravity)target.parent.layoutParams;
-
-        tlp.gravity = plp.gravity;
-    }
-
-    override void applyFromValue(Style target, CSSValueBase value)
-    {
-        auto val = cast(CSSValue!Gravity)value;
-        assert(val);
-        auto tlp = cast(HasGravity)target.layoutParams;
-        tlp.gravity = val.value;
     }
 }
