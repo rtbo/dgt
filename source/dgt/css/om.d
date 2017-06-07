@@ -1,15 +1,10 @@
 module dgt.css.om;
 
 import dgt.css.selector;
+import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
 
-enum Origin
-{
-    app     = 0,
-    user    = 1,
-    dgt     = 2,
-}
 
 class Stylesheet
 {
@@ -27,9 +22,9 @@ class Decl
 {
     string property;
     Token[] valueTokens;
-    bool important;
+    CSSValueBase value;
 
+    Origin origin;
     Selector selector;
     int specificity;
-    CSSValueBase value;
 }

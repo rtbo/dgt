@@ -62,10 +62,6 @@ class Application : EventLoop, Disposable
             loadHarfbuzzSymbols();
         }
 
-        // init style engine
-        import dgt.css.cascade : initializeCSSCascade;
-        initializeCSSCascade();
-
         // init platform
         if (!platform) platform = makeDefaultPlatform();
         _platform = platform;

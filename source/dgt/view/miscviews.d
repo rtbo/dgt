@@ -9,7 +9,6 @@ import dgt.sg.rect;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.view.layout;
-import dgt.view.style;
 import dgt.view.view;
 
 import std.experimental.logger;
@@ -146,8 +145,8 @@ class TextView : View
     this()
     {
         super();
-        _color = fvec(0, 0, 0 ,1);
-        style.onChange += &resetStyle;
+        _color = fvec(0, 0, 0, 1);
+        fontSizeProperty.onChange += &resetStyle;
     }
 
     @property string text () const { return _text; }
@@ -170,7 +169,7 @@ class TextView : View
         return _metrics;
     }
 
-    private void resetStyle(string)
+    private void resetStyle()
     {
         _layout = null;
         invalidate();
@@ -211,7 +210,7 @@ class TextView : View
     private void ensureLayout()
     {
         if (!_layout && _text.length) {
-            _layout = new TextLayout(_text, TextFormat.plain, style);
+            _layout = new TextLayout(_text, TextFormat.plain, this);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;

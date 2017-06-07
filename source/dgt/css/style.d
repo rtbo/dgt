@@ -1,8 +1,11 @@
 module dgt.css.style;
 
 import dgt.css.token;
-import dgt.css.value : CSSValueBase;
+import dgt.css.value;
+import dgt.geometry;
+import dgt.event.handler;
 
+import std.range;
 
 /// Bit flags that describe the pseudo state of a Style.
 /// Several states can be active at the same time (e.g. disabled and checked).
@@ -32,7 +35,14 @@ enum PseudoState
 
 interface Style
 {
-    @property Style styleParent();
+    @property Style parent();
+    @property bool isRoot();
+    @property Style root();
+    @property Style prevSibling();
+    @property Style nextSibling();
+
+    @property FSize viewportSize();
+    @property float dpi();
     @property string cssType();
     @property string id();
     @property string cssClass();
@@ -46,16 +56,19 @@ interface IStyleProperty
     @property Style style();
     @property string name();
     @property Origin origin();
-    @property CSSProperty metaProperty();
     bool assignFrom(IStyleProperty other, Origin origin);
 }
 
-abstract class StyleProperty(T) : IStyleProperty
+class StyleProperty(T) : IStyleProperty
 {
-    this(Style style, string name, T value) {
+    this(SMP)(Style style, SMP metaProperty)
+    if (is(SMP : StyleMetaProperty) && is(SMP.Value == T))
+    {
         _style = style;
-        _name = name;
-        _value = value;
+        _name = metaProperty.name;
+        _value = metaProperty.convert(
+            (cast(SMP.CSSValue)metaProperty.initial).value, style
+        );
     }
 
     @property Style style() {
@@ -71,9 +84,9 @@ abstract class StyleProperty(T) : IStyleProperty
         return _origin;
     }
 
-    @property StyleMetaProperty metaProperty()
+    @property Signal!() onChange()
     {
-        return _metaProperty;
+        return _onChanged;
     }
 
     override bool assignFrom(IStyleProperty other, Origin origin)
@@ -90,20 +103,29 @@ abstract class StyleProperty(T) : IStyleProperty
     bool setValue(T val, Origin orig=Origin.code)
     {
         if (orig.priority > _origin.priority) {
-            _value = val;
+            _origin = orig;
+            if (_value != val) {
+                _value = val;
+                _onChanged.fire();
+            }
             return true;
         }
         else {
             return false;
         }
+    }
 
+    override string toString()
+    {
+        import std.conv : to;
+        return name ~ ": " ~ _value.to!string;
     }
 
     private Style _style;
     private string _name;
     private Origin _origin;
-    private StyleMetaProperty _metaProperty;
     private T _value;
+    private FireableSignal!() _onChanged = new FireableSignal!();
 }
 
 abstract class StyleMetaProperty
@@ -115,20 +137,16 @@ abstract class StyleMetaProperty
         _initial = initial;
     }
 
-    @property string name() {
+    final @property string name() {
         return _name;
     }
 
-    @property bool inherited() {
+    final @property bool inherited() {
         return _inherited;
     }
 
-    @property CSSValueBase initial() {
+    final @property CSSValueBase initial() {
         return _initial;
-    }
-
-    bool appliesTo(Style style) {
-        return style.styleProperty(name) !is null;
     }
 
     /// Check whether this property is supported by the given style
@@ -166,18 +184,18 @@ abstract class StyleMetaProperty
 
         if (!cascaded || cascaded.unset) {
             if (inherited && parent && appliesTo(parent)) {
-                return applyFromParent(target, origin);
+                return applyFromParent(target, false);
             }
             else {
-                return applyFromValue(target, initial, origin);
+                return applyFromValue(target, initial, Origin.initial);
             }
         }
         else {
             if (cascaded.inherit && parent && appliesTo(parent)) {
-                return applyFromParent(target, origin);
+                return applyFromParent(target, origin.isImportant);
             }
-            else if (cascaded.inherit && !parent) {
-                return applyFromValue(target, initial, origin);
+            else if (cascaded.inherit) {
+                return applyFromValue(target, initial, Origin.initial);
             }
             else if (cascaded.initial) {
                 return applyFromValue(target, initial, origin);
@@ -188,12 +206,12 @@ abstract class StyleMetaProperty
         }
     }
 
-    final bool applyFromParent(Style target, Origin origin) {
+    final bool applyFromParent(Style target, bool addImportant) {
         assert(target.parent);
-        auto p = target.styleProperty(propName);
-        auto pp = target.parent.styleProperty(propName);
+        auto p = target.styleProperty(name);
+        auto pp = target.parent.styleProperty(name);
         assert(p && pp);
-        return p.applyFrom(pp, origin);
+        return p.assignFrom(pp, addImportant ? important(pp.origin) : pp.origin);
     }
 
     abstract bool applyFromValue(Style target, CSSValueBase value, Origin origin);
@@ -204,11 +222,13 @@ abstract class StyleMetaProperty
 }
 
 
-abstract class TStyleMetaProperty(V, string n, PV=V)
+abstract class TStyleMetaProperty(V, string n, PV=V) : StyleMetaProperty
 {
     alias Value = V;
     alias ParsedValue = PV;
     alias CSSValue = TCSSValue!PV;
+    alias Property = StyleProperty!V;
+
     enum propName = n;
 
     this(bool inherited, ParsedValue initial)
@@ -229,28 +249,47 @@ abstract class TStyleMetaProperty(V, string n, PV=V)
         else return cast(StyleProperty!Value)target.styleProperty(propName);
     }
 
-
     override final bool applyFromValue(Style target, CSSValueBase value, Origin origin)
     {
         auto p = getProperty(target);
+        assert(p);
         auto v = cast(CSSValue)value;
-        assert(p && v);
-        return p.setValue(convert(v, target), origin);
+        assert(v);
+        return p.setValue(convert(v.value, target), origin);
     }
 }
 
+/// template to be mixed-in instantiations of TStyleMetaProperty
+/// in order to turn them into a singleton that self registers to
+/// the cascade system
+mixin template StyleSingleton(T)
+{
+    public static @property T instance()
+    {
+        // TODO: thread safety
+        if (!_instance) {
+            import dgt.css.cascade : addMetaPropertySupport;
+            _instance = new T;
+            addMetaPropertySupport(_instance);
+        }
+        return _instance;
+    }
+    private static __gshared T _instance;
+}
 
 /// Origin of a style declaration, including optional important flag.
 enum Origin
 {
-    /// Style comes from DGT default styles
-    dgt         = 0,
+    /// First initialization of the style
+    initial     = 0,
+    /// Style comes from DGT default stylesheet
+    dgt         = 1,
     /// Style is set by the user in a user-wide stylesheet
-    user        = 1,
+    user        = 2,
     /// Style comes from the app style author
-    author      = 2,
+    author      = 3,
     /// Style override set in the code
-    code        = 3,
+    code        = 4,
 
     /// The important flag takes precedence over the origin and reverses
     /// the order.
@@ -279,7 +318,7 @@ bool isImportant(in Origin orig) pure
 /// Get priority order of origin taking into account the important flag.
 @property int priority(in Origin orig) pure
 {
-    enum numOrigImp = 8;
+    enum numOrigImp = 10;
     immutable o = cast(int)orig.origin;
     return orig.isImportant ? numOrigImp-o-1 : o;
 

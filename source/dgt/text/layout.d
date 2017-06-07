@@ -8,8 +8,8 @@ import dgt.math.transform;
 import dgt.math.vec;
 import dgt.text.font;
 import dgt.text.fontcache;
+import dgt.view.view;
 import dgt.vg.context;
-import dgt.view.style;
 
 import std.exception;
 import std.experimental.logger;
@@ -99,11 +99,11 @@ struct TextMetrics
 class TextLayout
 {
     /// Builds a layout
-    this(string text, TextFormat format, Style style)
+    this(string text, TextFormat format, View view)
     {
         _text = text;
         _format = format;
-        _matchedFonts = FontCache.instance.requestFont(style);
+        _matchedFonts = FontCache.instance.requestFont(view);
         enforce(_matchedFonts.length, "Text layout could not match any font for '"~text~"'");
     }
 

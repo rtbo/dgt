@@ -7,8 +7,8 @@ import dgt.image;
 import dgt.math.vec;
 import dgt.text.fontcache;
 import dgt.util;
+import dgt.view.view;
 import dgt.vg;
-import dgt.view.style;
 
 import gfx.foundation.rc;
 

@@ -1,8 +1,9 @@
 module dgt.text.fontcache;
 
 import dgt.bindings.fontconfig;
+import dgt.css.style;
 import dgt.text.font;
-import dgt.view.style;
+import dgt.view.view;
 
 import gfx.foundation.rc;
 
@@ -109,17 +110,17 @@ class FontCache : Disposable
         _appFontFiles ~= file;
     }
 
-    FontResult[] requestFont(Style style)
+    FontResult[] requestFont(View view)
     {
         auto pat = FcPatternCreate();
         scope(exit)
             FcPatternDestroy(pat);
-        if (style.fontFamily.length) {
-            FcPatternAddString(pat, FC_FAMILY, toStringz(style.fontFamily[0]));
+        if (view.fontFamily.length) {
+            FcPatternAddString(pat, FC_FAMILY, toStringz(view.fontFamily[0]));
         }
-        FcPatternAddInteger(pat, FC_SLANT, styleToFcSlant(style.fontStyle));
-        FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(style.fontWeight));
-        FcPatternAddDouble(pat, FC_PIXEL_SIZE, style.fontSize);
+        FcPatternAddInteger(pat, FC_SLANT, styleToFcSlant(view.fontStyle));
+        FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(view.fontWeight));
+        FcPatternAddDouble(pat, FC_PIXEL_SIZE, view.fontSize);
         FcPatternAddBool(pat, FC_OUTLINE, FcTrue);
         FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
 
