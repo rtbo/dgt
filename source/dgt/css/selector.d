@@ -2,8 +2,7 @@
 module dgt.css.selector;
 
 import dgt.css.token;
-import dgt.view.style;
-import dgt.view.view;
+import dgt.css.style;
 
 import std.exception;
 import std.experimental.logger;
@@ -11,7 +10,7 @@ import std.range;
 
 interface Selector
 {
-    bool matches(View view);
+    bool matches(Style style);
     @property int specificity();
 }
 
@@ -105,10 +104,10 @@ class SimpleSelectorSeq : AbstractSelector
         return Type.simpleSeq;
     }
 
-    bool matches(View view)
+    bool matches(Style style)
     {
         import std.algorithm : all;
-        return seq.all!(s => s.matches(view));
+        return seq.all!(s => s.matches(style));
     }
 
     @property int specificity()
@@ -145,27 +144,27 @@ class SimpleSelector : AbstractSelector
         return Type.simple;
     }
 
-    bool matches(View view)
+    bool matches(Style style)
     {
         final switch(ssType) {
         case SSType.type:
-            return view.cssType == val;
+            return style.cssType == val;
         case SSType.universal:
             return true;
         case SSType.class_:
-            return view.cssClass == val;
+            return style.cssClass == val;
         case SSType.id:
-            return view.id == val;
+            return style.id == val;
         case SSType.pseudo:
             if (_ps != PseudoState.def) {
-                return (view.pseudoState & _ps) != PseudoState.def;
+                return (style.pseudoState & _ps) != PseudoState.def;
             }
             else if (val == "root") {
-                return view.isRoot;
+                return style.isRoot;
             }
             else {
                 _ps = translatePseudoClass(val);
-                if ((view.pseudoState & _ps) != PseudoState.def) {
+                if ((style.pseudoState & _ps) != PseudoState.def) {
                     return true;
                 }
             }
@@ -219,10 +218,10 @@ class Group : AbstractSelector
         return Type.group;
     }
 
-    bool matches(View view)
+    bool matches(Style style)
     {
         import std.algorithm : any;
-        return selectors.any!(s => s.matches(view));
+        return selectors.any!(s => s.matches(style));
     }
 
     @property int specificity()
@@ -250,25 +249,25 @@ class Combinator : AbstractSelector
         return _type;
     }
 
-    bool matches(View view)
+    bool matches(Style style)
     {
-        if (!rhs.matches(view)) return false;
+        if (!rhs.matches(style)) return false;
         switch(_type) {
         case Type.descendant:
-            auto p = view.parent;
+            auto p = style.parent;
             while (p) {
                 if (lhs.matches(p)) return true;
                 else p = p.parent;
             }
             return false;
         case Type.child:
-            auto p = view.parent;
+            auto p = style.parent;
             return p ? lhs.matches(p) : false;
         case Type.adjSibl:
-            auto s = view.prevSibling;
+            auto s = style.prevSibling;
             return s ? lhs.matches(s) : false;
         case Type.genSibl:
-            auto s = view.prevSibling;
+            auto s = style.prevSibling;
             while (s) {
                 if (lhs.matches(s)) return true;
                 else s = s.prevSibling;

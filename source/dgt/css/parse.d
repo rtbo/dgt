@@ -8,13 +8,14 @@ module dgt.css.parse;
 
 import dgt.css.om;
 import dgt.css.selector;
+import dgt.css.style;
 import dgt.css.token;
 
 import std.exception;
 import std.range;
 import std.traits;
 
-Stylesheet parseCSS(CharRange)(in CharRange css, CssErrorCollector errors=null, Origin origin=Origin.app)
+Stylesheet parseCSS(CharRange)(in CharRange css, CssErrorCollector errors=null, Origin origin=Origin.author)
 if (isInputRange!CharRange && isSomeChar!(ElementEncodingType!CharRange))
 {
     import std.utf : byDchar;
@@ -24,6 +25,12 @@ if (isInputRange!CharRange && isSomeChar!(ElementEncodingType!CharRange))
     auto ss = new Stylesheet;
     ss.origin = origin;
     ss.rules = rules;
+    foreach (r; ss.rules) {
+        foreach (d; r.decls) {
+            // only important flag set at first
+            d.origin |= origin;
+        }
+    }
     return ss;
 }
 
@@ -261,6 +268,7 @@ Decl consumeDeclaration(Token[] tokens)
     auto d = new Decl;
     d.property = property;
     d.valueTokens = valueToks;
-    d.important = important;
+    if (important) d.origin = Origin.important;
+    else d.origin = Origin.init;
     return d;
 }

@@ -1,6 +1,8 @@
 /// A few misc nodes
 module dgt.view.miscviews;
 
+import dgt.css.properties;
+import dgt.css.style;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
@@ -9,7 +11,6 @@ import dgt.sg.rect;
 import dgt.text.fontcache;
 import dgt.text.layout;
 import dgt.view.layout;
-import dgt.view.style;
 import dgt.view.view;
 
 import std.experimental.logger;
@@ -141,13 +142,21 @@ class ImageView : View
 }
 
 
-class TextView : View
+class TextView : View, FontStyle
 {
     this()
     {
         super();
-        _color = fvec(0, 0, 0 ,1);
-        style.onChange += &resetStyle;
+        _color = fvec(0, 0, 0, 1);
+        _fontFamily = addStyleSupport(this, FontFamilyMetaProperty.instance);
+        _fontWeight = addStyleSupport(this, FontWeightMetaProperty.instance);
+        _fontSlant = addStyleSupport(this, FontStyleMetaProperty.instance);
+        _fontSize = addStyleSupport(this, FontSizeMetaProperty.instance);
+
+        _fontFamily.onChange += &resetStyle;
+        _fontWeight.onChange += &resetStyle;
+        _fontSlant.onChange += &resetStyle;
+        _fontSize.onChange += &resetStyle;
     }
 
     @property string text () const { return _text; }
@@ -170,7 +179,7 @@ class TextView : View
         return _metrics;
     }
 
-    private void resetStyle(string)
+    private void resetStyle()
     {
         _layout = null;
         invalidate();
@@ -180,6 +189,43 @@ class TextView : View
     {
         return "text";
     }
+
+    @property string[] fontFamily()
+    {
+        return _fontFamily.value;
+    }
+    @property StyleProperty!(string[]) fontFamilyProperty()
+    {
+        return _fontFamily;
+    }
+
+    @property int fontWeight()
+    {
+        return _fontWeight.value;
+    }
+    @property StyleProperty!int fontWeightProperty()
+    {
+        return _fontWeight;
+    }
+
+    @property FontSlant fontSlant()
+    {
+        return _fontSlant.value;
+    }
+    @property StyleProperty!FontSlant fontSlantProperty()
+    {
+        return _fontSlant;
+    }
+
+    @property int fontSize()
+    {
+        return _fontSize.value;
+    }
+    @property StyleProperty!int fontSizeProperty()
+    {
+        return _fontSize;
+    }
+
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
@@ -211,7 +257,7 @@ class TextView : View
     private void ensureLayout()
     {
         if (!_layout && _text.length) {
-            _layout = new TextLayout(_text, TextFormat.plain, style);
+            _layout = new TextLayout(_text, TextFormat.plain, this);
             _layout.layout();
             _layout.prepareGlyphRuns();
             _metrics = _layout.metrics;
@@ -225,4 +271,8 @@ class TextView : View
     private FVec4 _color;
     private TextLayout _layout;
     private TextMetrics _metrics;
+    private StyleProperty!(string[])    _fontFamily;
+    private StyleProperty!int           _fontWeight;
+    private StyleProperty!FontSlant     _fontSlant;
+    private StyleProperty!int           _fontSize;
 }

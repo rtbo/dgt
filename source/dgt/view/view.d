@@ -1,13 +1,15 @@
 /// View root class module
 module dgt.view.view;
 
+import dgt.css.color;
+import dgt.css.properties;
+import dgt.css.style;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
 import dgt.sg.node;
 import dgt.sg.rect;
 import dgt.view.layout;
-import dgt.view.style;
 import dgt.window;
 
 import std.exception;
@@ -15,13 +17,24 @@ import std.experimental.logger;
 import std.range;
 import std.typecons;
 
+
+
+auto addStyleSupport(SMP)(View view, SMP metaProp)
+if (is(SMP : StyleMetaProperty))
+{
+    auto sp = new SMP.Property(view, metaProp);
+    view._styleProperties[metaProp.name] = sp;
+    return sp;
+}
+
 /// View hierarchy root class
-class View
+class View : Style
 {
     /// builds a new view
     this()
     {
-        if (!_style) _style = new Style(this);
+        _backgroundColor = addStyleSupport(this, BackgroundColorMetaProperty.instance);
+        _backgroundColor.onChange += &invalidate;
     }
 
     /// The window this view is attached to.
@@ -46,19 +59,19 @@ class View
     }
 
     /// This view's parent.
-    @property inout(View) parent() inout
+    @property View parent()
     {
         return _parent;
     }
 
     /// This view's previous sibling.
-    @property inout(View) prevSibling() inout
+    @property View prevSibling()
     {
         return _prevSibling;
     }
 
     /// This view's next sibling.
-    @property inout(View) nextSibling() inout
+    @property View nextSibling()
     {
         return _nextSibling;
     }
@@ -547,15 +560,18 @@ class View
         }
     }
 
-    /// The Style object attached to this view
-    final @property Style style()
+
+    override @property FSize viewportSize()
     {
-        return _style;
+        auto win = window;
+        return win ? cast(FSize)win.geometry.size : FSize(0, 0);
     }
-    /// ditto
-    final protected @property void style(Style style)
+
+    override @property float dpi()
     {
-        _style = style;
+        auto win = window;
+        // FIXME: return default from platform directly
+        return win ? win.screen.dpi : 96f;
     }
 
     /// A CSS formatted style attached to this view.
@@ -580,11 +596,11 @@ class View
     /// The type used in css type selector.
     /// e.g. in the following style rule, "label" is the CSS type:
     /// `label { font-family: serif; }`
-    @property string cssType() { return null; }
+    override @property string cssType() { return null; }
 
     /// The id of this view.
     /// Used in CSS '#' selector, and for debug printing if name is not set.
-    final @property string id() { return _id; }
+    override final @property string id() { return _id; }
     /// ditto
     final @property void id(in string id)
     {
@@ -596,7 +612,7 @@ class View
 
     /// The CSS class of this view.
     /// Used in CSS '.' selector.
-    final @property string cssClass() { return _cssClass; }
+    override final @property string cssClass() { return _cssClass; }
     /// ditto
     final @property void cssClass(in string cssClass)
     {
@@ -607,7 +623,7 @@ class View
     }
 
     /// A pseudo state of the view.
-    final @property PseudoState pseudoState() { return _pseudoState; }
+    override final @property PseudoState pseudoState() { return _pseudoState; }
     /// ditto
     final @property void pseudoState(in PseudoState state)
     {
@@ -631,6 +647,48 @@ class View
     final bool hoverSensitive() { return _hoverSensitive; }
     /// ditto
     final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
+
+    IStyleProperty styleProperty(string name) {
+        auto sp = name in _styleProperties;
+        return sp ? *sp : null;
+    }
+
+    @property Color backgroundColor()
+    {
+        return _backgroundColor.value;
+    }
+    @property StyleProperty!Color backgroundColorProperty()
+    {
+        return _backgroundColor;
+    }
+    @property Layout.Params layoutParams()
+    {
+        return _layoutParams;
+    }
+
+    @property void layoutParams(Layout.Params params)
+    {
+        _layoutParams = params;
+    }
+
+    void printStyle(bool recursive=true)
+    {
+        import std.algorithm : sort;
+        import std.array : array;
+        import std.range : repeat;
+        import std.stdio : writeln;
+        auto styles = _styleProperties.values.sort!("a.name < b.name");
+        immutable l = repeat(' ', 4*level).array;
+        writeln(l, "style properties of ", name, ":");
+        foreach (s; styles) {
+            writeln(l, s);
+        }
+        if (recursive) {
+            foreach (c; children) {
+                c.printStyle(true);
+            }
+        }
+    }
 
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
@@ -772,7 +830,7 @@ class View
     /// Whether this view has background other than transparent
     @property bool hasBackground()
     {
-        return (style.backgroundColor.argb & 0xff00_0000) != 0;
+        return (backgroundColor.argb & 0xff00_0000) != 0;
     }
 
     @property bool sgHasContent()
@@ -794,9 +852,9 @@ class View
         return null;
     }
 
-    @property uint level() const
+    @property uint level()
     {
-        Rebindable!(const(View)) p = parent;
+        auto p = parent;
         uint lev=0;
         while (p !is null) {
             ++lev;
@@ -857,8 +915,8 @@ class View
 
     invariant()
     {
-        assert(!_firstChild || _firstChild.parent is this);
-        assert(!_lastChild || _lastChild.parent is this);
+        assert(!_firstChild || _firstChild._parent is this);
+        assert(!_lastChild || _lastChild._parent is this);
         assert(!_firstChild || _firstChild._prevSibling is null);
         assert(!_lastChild || _lastChild._nextSibling is null);
 
@@ -904,12 +962,15 @@ class View
     private bool _hasTransform;
 
     // style
-    private Style _style;
     private string _css;
     private string _id;
     private string _cssClass;
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
+    // style properties
+    private IStyleProperty[string]      _styleProperties;
+    private StyleProperty!Color         _backgroundColor;
+    private Layout.Params               _layoutParams;
 
     // events
     private MaskedFilter[] _evFilters;
@@ -933,7 +994,7 @@ package(dgt):
 
     @property SGNode sgBackgroundNode()
     {
-        immutable col = style.backgroundColor;
+        immutable col = backgroundColor;
         if (col.argb & 0xff00_0000) {
             if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
             _sgBackgroundNode.rect = localRect;

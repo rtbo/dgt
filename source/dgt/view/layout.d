@@ -1,6 +1,8 @@
 /// layout module
 module dgt.view.layout;
 
+import dgt.css.style;
+import dgt.css.properties;
 import dgt.enums;
 import dgt.geometry;
 import dgt.math;
@@ -154,10 +156,29 @@ class Layout : View
 {
     /// Params attached to each view for use with their parent
     static class Params {
+        this(View v)
+        {
+            _width = addStyleSupport(v, LayoutWidthMetaProperty.instance);
+            _height = addStyleSupport(v, LayoutHeightMetaProperty.instance);
+        }
+        this(View v, Params p)
+        {
+            _width = p._width;
+            _height = p._height;
+            assert(v.styleProperty("layout-width") is _width);
+            assert(v.styleProperty("layout-height") is _height);
+        }
         /// Either an actual dimension in pixels, or special values wrapContent or matchParent
-        float width     = wrapContent;
+        @property float width() {
+            return _width.value;
+        }
         /// Either an actual dimension in pixels, or special values wrapContent or matchParent
-        float height    = wrapContent;
+        @property float height() {
+            return _height.value;
+        }
+
+        private StyleProperty!float _width;
+        private StyleProperty!float _height;
     }
 
     /// Build a new layout
@@ -190,8 +211,8 @@ class Layout : View
     /// with this layout. If not, default params are assigned.
     protected void ensureLayout(View child)
     {
-        if (!child.style.layoutParams) {
-            child.style.layoutParams = new Layout.Params;
+        if (!child.layoutParams) {
+            child.layoutParams = new Layout.Params(child);
         }
     }
 
@@ -202,7 +223,7 @@ class Layout : View
                                 in MeasureSpec parentHeightSpec,
                                 in float usedWidth=0f, in float usedHeight=0f)
     {
-        auto lp = cast(Layout.Params)child.style.layoutParams;
+        auto lp = cast(Layout.Params)child.layoutParams;
 
         immutable ws = childMeasureSpec(parentWidthSpec,
                     padding.left+padding.right+usedWidth, lp.width);
@@ -228,36 +249,40 @@ class LinearLayout : Layout
         /// the orthogonal direction of this layout
         override @property Gravity gravity()
         {
-            return _gravity;
+            return _gravity.value;
         }
         /// ditto
         override @property void gravity(in Gravity gravity)
         {
-            _gravity = gravity;
+            _gravity.setValue(gravity);
         }
 
         /// Build a default value
-        this() {}
-
-        /// Build a value from an existing object of type Layout.Params
-        this(Layout.Params params)
+        this(View v)
         {
-            this.width = params.width;
-            this.height = params.height;
+            super(v);
+            _gravity = addStyleSupport(v, LayoutGravityMetaProperty.instance);
         }
 
-        private Gravity _gravity = Gravity.none;
+        /// Build a value from an existing object of type Layout.Params
+        this(View v, Layout.Params params)
+        {
+            super(v, params);
+            _gravity = addStyleSupport(v, LayoutGravityMetaProperty.instance);
+        }
+
+        private StyleProperty!Gravity _gravity;
     }
 
     /// Build a new linear layout
     this() {}
 
     override protected void ensureLayout(View view) {
-        auto llp = cast(Params)view.style.layoutParams;
+        auto llp = cast(Params)view.layoutParams;
         if (!llp) {
-            auto lp = cast(Layout.Params)view.style.layoutParams;
-            if (lp) view.style.layoutParams = new Params(lp);
-            else view.style.layoutParams = new Params;
+            auto lp = cast(Layout.Params)view.layoutParams;
+            if (lp) view.layoutParams = new Params(view, lp);
+            else view.layoutParams = new Params(view);
         }
     }
 
@@ -344,7 +369,7 @@ class LinearLayout : Layout
             totalHeight += c.measurement.height;
             largestWidth = max(largestWidth, c.measurement.width);
 
-            auto lp = cast(Params)style.layoutParams;
+            auto lp = cast(Params)layoutParams;
             if (lp) totalWeight += lp.weight;
         }
         totalHeight += padding.top + padding.bottom;
@@ -357,7 +382,7 @@ class LinearLayout : Layout
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalHeight = 0f;
             foreach(c; children) {
-                auto lp = cast(LinearLayout.Params)style.layoutParams;
+                auto lp = cast(LinearLayout.Params)layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
                     immutable share = remainExcess * weight / totalWeight;
@@ -404,7 +429,7 @@ class LinearLayout : Layout
             totalWidth += c.measurement.width;
             largestHeight = max(largestHeight, c.measurement.height);
 
-            auto lp = cast(LinearLayout.Params)style.layoutParams;
+            auto lp = cast(LinearLayout.Params)layoutParams;
             if (lp) totalWeight += lp.weight;
         }
         totalWidth += padding.left + padding.right;
@@ -417,7 +442,7 @@ class LinearLayout : Layout
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalWidth = 0f;
             foreach(c; children) {
-                auto lp = cast(Params)style.layoutParams;
+                auto lp = cast(Params)layoutParams;
                 immutable weight = lp ? lp.weight : 0f;
                 if (weight > 0f) {
                     immutable share = remainExcess * weight / totalWeight;
@@ -476,7 +501,7 @@ class LinearLayout : Layout
 
         foreach(i, c; enumerate(children)) {
 
-            auto lp = cast(Params)c.style.layoutParams;
+            auto lp = cast(Params)c.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
                     lp.gravity : _gravity;
 
@@ -524,7 +549,7 @@ class LinearLayout : Layout
 
         foreach(i, c; enumerate(children)) {
 
-            auto lp = cast(Params)c.style.layoutParams;
+            auto lp = cast(Params)c.layoutParams;
             immutable og = (lp && (lp.gravity != Gravity.none)) ?
                     lp.gravity : _gravity;
 

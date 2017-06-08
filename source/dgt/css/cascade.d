@@ -3,9 +3,9 @@ module dgt.css.cascade;
 import dgt.css.om;
 import dgt.css.parse;
 import dgt.css.selector;
+import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
-import dgt.view.style;
 import dgt.view.view;
 
 import std.experimental.logger;
@@ -19,134 +19,40 @@ in {
     assert(root.isRoot);
 }
 body {
+    if (propSortDirty) {
+        import std.algorithm : sort;
+        supportedProperties.sort!"a.name < b.name";
+        propSortDirty = false;
+    }
     // TODO: provide mechanism to allow lo-cost styling when only one view need update
     auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;
     ctx.cascade(root, [dgtCSS]);
 }
 
-/// A style property.
-/// Each instance of this class map to a CSS property (e.g. "background-color")
-/// and to a field in the Style class (e.g. "backgroundColor")
-abstract class CSSProperty
+void addMetaPropertySupport(StyleMetaProperty smp)
 {
-    this(in string name, in bool inherited, CSSValueBase initial)
-    {
-        _name = name;
-        _inherited = inherited;
-        _initial = initial;
+    supportedProperties ~= smp;
+    propSortDirty = true;
+    debug {
+        supportedPropertiesMap[smp.name] = smp;
     }
-
-    /// The name of the CSS property as it appears in the style sheets
-    final @property string name()
-    {
-        return _name;
-    }
-
-    /// Whether this property gets inherited when no cascaded value is found
-    final @property bool inherited()
-    {
-        return _inherited;
-    }
-
-    /// The initial value of this property
-    final @property CSSValueBase initial()
-    {
-        return _initial;
-    }
-
-    /// Check whether the property applies to a view
-    bool appliesTo(Style style) {
-        return true;
-    }
-
-    /// Parse the value from the tokens read in the style sheet.
-    /// Starts by checking whether the values is "inherit", "initial" or "unset",
-    /// and calls parseValueImpl if it is none of the three.
-    final CSSValueBase parseValue(Token[] tokens)
-    {
-        if (tokens.empty) return null;
-        immutable tok = tokens.front;
-        if (tok.tok == Tok.ident) {
-            if (tok.str == "inherit") {
-                return new CSSValueBase(CSSWideValue.inherit);
-            }
-            else if (tok.str == "initial") {
-                return new CSSValueBase(CSSWideValue.initial);
-            }
-            else if (tok.str == "unset") {
-                return new CSSValueBase(CSSWideValue.unset);
-            }
-        }
-        return parseValueImpl(tokens);
-    }
-
-    abstract CSSValueBase parseValueImpl(Token[] tokens);
-
-    final void applyCascade(Style target, CSSValueBase cascaded)
-    {
-        auto parent = target.parent;
-
-        if (!cascaded || cascaded.unset) {
-            if (inherited && parent && appliesTo(parent)) {
-                applyFromParent(target);
-            }
-            else {
-                applyFromValue(target, initial);
-            }
-        }
-        else {
-            if (cascaded.inherit && parent && appliesTo(parent)) {
-                applyFromParent(target);
-            }
-            else if (cascaded.inherit && !parent) {
-                applyFromValue(target, initial);
-            }
-            else if (cascaded.initial) {
-                applyFromValue(target, initial);
-            }
-            else {
-                applyFromValue(target, cascaded);
-            }
-        }
-    }
-
-    abstract void applyFromParent(Style target);
-    abstract void applyFromValue(Style target, CSSValueBase value);
-
-    private string _name;
-    private bool _inherited;
-    private CSSValueBase _initial;
-}
-
-package(dgt)
-void initializeCSSCascade() {
-    import dgt.css.properties;
-    import dgt.enums : Orientation;
-
-    supportedProperties = [
-        new BackgroundColorProperty,
-        new FontFamilyProperty,
-        new FontWeightProperty,
-        new FontStyleProperty,
-        new FontSizeProperty,
-
-        new LayoutSizeProperty!(Orientation.horizontal),
-        new LayoutSizeProperty!(Orientation.vertical),
-        new LayoutGravityProperty,
-    ];
 }
 
 private:
 
-__gshared CSSProperty[] supportedProperties;
+__gshared StyleMetaProperty[] supportedProperties;
+__gshared bool propSortDirty;
+debug {
+    __gshared StyleMetaProperty[string] supportedPropertiesMap;
+}
 
 final class CascadeContext
 {
     void cascade(View view, Stylesheet[] css)
     {
         if (view.css.length) {
-            css ~= parseCSS(view.css, null, Origin.app);
+            css ~= parseCSS(view.css, null, Origin.author);
         }
         doView(view, css);
 
@@ -156,53 +62,53 @@ final class CascadeContext
 
     void doView(View view, Stylesheet[] css)
     {
-        import std.algorithm : filter;
+        import std.algorithm : cmp, filter, sort, SwapStrategy;
 
-        // collect all relevant declarations sorted by origin and importance
-        enum numOrigImp = 6;
-        Decl[][numOrigImp] origImpDecls;
-        foreach(s; css) {
-            immutable origin = cast(int)s.origin;
+        Decl[] collectedDecls;
+        // retro is used such as to have inner scope before outer scope
+        foreach(s; retro(css)) {
             foreach(r; s.rules.filter!(r => r.selector.matches(view))) {
-                foreach(d; r.decls) {
-                    immutable ind = d.important ? numOrigImp-origin-1 : origin;
-                    origImpDecls[ind] ~= d;
-                }
+                collectedDecls ~= r.decls;
             }
         }
 
-        // sort them by specificity
-        foreach (decls; origImpDecls) {
-            import std.algorithm : sort, SwapStrategy;
-            // bigger specificity first
-            alias specCmp = (a, b) => a.specificity > b.specificity;
-            // stable to keep order of declaration
-            decls.sort!(specCmp, SwapStrategy.stable);
+        // sort declarations by:
+        //  1. property name
+        //  2. origin priority
+        //  3. specificity
+        //  4. scope (already done, using stable sort)
+        //  4. order of appearance (already done, using stable sort)
+        static bool declCmp(Decl a, Decl b) {
+            immutable nameCmp = cmp(a.property, b.property);
+            if (nameCmp != 0) return nameCmp < 0;
+            else return a.specificity > b.specificity;
         }
+        collectedDecls.sort!(declCmp, SwapStrategy.stable);
 
         // the rest is handled property by property
         foreach (p; supportedProperties) {
-            auto style = view.style;
-            if (!p.appliesTo(style)) continue;
-            // selecting the highest priority origin and importance
-            Decl cascaded;
-            foreach(origImp; origImpDecls) {
-                foreach(d; origImp) {
-                    if (d.property == p.name) {
-                        cascaded = d;
-                        break;
-                    }
-                }
-                if (cascaded) break;
+            immutable pname = p.name;
+            if (!p.appliesTo(view)) continue;
+            // both collections are sorted by name, so we can safely skip some
+            while (!collectedDecls.empty && collectedDecls.front.property < pname) {
+                collectedDecls.popFront();
+            }
+
+            // the winning declaration is the first one here
+            Decl winning;
+            if (!collectedDecls.empty && collectedDecls.front.property == pname) {
+                winning = collectedDecls.front;
+                collectedDecls.popFront();
             }
 
             CSSValueBase cascadedVal;
-            if (cascaded && !cascaded.value) {
-                if (!cascaded.value) cascaded.value = p.parseValue(cascaded.valueTokens);
-                cascadedVal = cascaded.value;
+            if (winning) {
+                if (!winning.value) {
+                    winning.value = p.parseValue(winning.valueTokens);
+                }
+                cascadedVal = winning.value;
             }
-
-            p.applyCascade(style, cascadedVal);
+            p.applyCascade(view, cascadedVal, winning ? winning.origin : Origin.init);
         }
     }
 }
