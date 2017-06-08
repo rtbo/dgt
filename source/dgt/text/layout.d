@@ -2,13 +2,13 @@
 module dgt.text.layout;
 
 import dgt.bindings.harfbuzz;
+import dgt.css.style;
 import dgt.image;
 import dgt.math.mat;
 import dgt.math.transform;
 import dgt.math.vec;
 import dgt.text.font;
 import dgt.text.fontcache;
-import dgt.view.view;
 import dgt.vg.context;
 
 import std.exception;
@@ -99,11 +99,11 @@ struct TextMetrics
 class TextLayout
 {
     /// Builds a layout
-    this(string text, TextFormat format, View view)
+    this(string text, TextFormat format, FontStyle style)
     {
         _text = text;
         _format = format;
-        _matchedFonts = FontCache.instance.requestFont(view);
+        _matchedFonts = FontCache.instance.requestFont(style);
         enforce(_matchedFonts.length, "Text layout could not match any font for '"~text~"'");
     }
 

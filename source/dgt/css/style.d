@@ -50,6 +50,22 @@ interface Style
     IStyleProperty styleProperty(string name);
 }
 
+/// Font style as defined by the CSS specification
+enum FontSlant
+{
+    normal,
+    italic,
+    oblique,
+}
+
+interface FontStyle
+{
+    @property string[] fontFamily();
+    @property int fontWeight();
+    @property FontSlant fontSlant();
+    @property int fontSize();
+}
+
 
 interface IStyleProperty
 {
@@ -102,7 +118,7 @@ class StyleProperty(T) : IStyleProperty
 
     bool setValue(T val, Origin orig=Origin.code)
     {
-        if (orig.priority > _origin.priority) {
+        if (orig.priority >= _origin.priority) {
             _origin = orig;
             if (_value != val) {
                 _value = val;
@@ -118,7 +134,8 @@ class StyleProperty(T) : IStyleProperty
     override string toString()
     {
         import std.conv : to;
-        return name ~ ": " ~ _value.to!string;
+        import std.format : format;
+        return format("%s: %s (origin %s)", _name, _value, _origin);
     }
 
     private Style _style;

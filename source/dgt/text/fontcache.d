@@ -23,7 +23,7 @@ struct FontResult
 {
     string family;
     FontSize size = FontSize.pts(10);
-    FontStyle style = FontStyle.normal;
+    FontSlant style = FontSlant.normal;
     int weight = FontWeight.normal;
     FontVariant variant = FontVariant.normal;
     string foundry;
@@ -110,17 +110,17 @@ class FontCache : Disposable
         _appFontFiles ~= file;
     }
 
-    FontResult[] requestFont(View view)
+    FontResult[] requestFont(FontStyle style)
     {
         auto pat = FcPatternCreate();
         scope(exit)
             FcPatternDestroy(pat);
-        if (view.fontFamily.length) {
-            FcPatternAddString(pat, FC_FAMILY, toStringz(view.fontFamily[0]));
+        if (style.fontFamily.length) {
+            FcPatternAddString(pat, FC_FAMILY, toStringz(style.fontFamily[0]));
         }
-        FcPatternAddInteger(pat, FC_SLANT, styleToFcSlant(view.fontStyle));
-        FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(view.fontWeight));
-        FcPatternAddDouble(pat, FC_PIXEL_SIZE, view.fontSize);
+        FcPatternAddInteger(pat, FC_SLANT, slantToFcSlant(style.fontSlant));
+        FcPatternAddInteger(pat, FC_WEIGHT, FcWeightFromOpenType(style.fontWeight));
+        FcPatternAddDouble(pat, FC_PIXEL_SIZE, style.fontSize);
         FcPatternAddBool(pat, FC_OUTLINE, FcTrue);
         FcPatternAddBool(pat, FC_SCALABLE, FcTrue);
 
@@ -249,31 +249,31 @@ class FontCache : Disposable
 
 private:
 
-int styleToFcSlant(in FontStyle style)
+int slantToFcSlant(in FontSlant style)
 {
     final switch(style)
     {
-        case FontStyle.normal:
+        case FontSlant.normal:
             return FC_SLANT_ROMAN;
-        case FontStyle.italic:
+        case FontSlant.italic:
             return FC_SLANT_ITALIC;
-        case FontStyle.oblique:
+        case FontSlant.oblique:
             return FC_SLANT_OBLIQUE;
     }
 }
 
-FontStyle fcSlantToStyle(in int slant)
+FontSlant fcSlantToStyle(in int slant)
 {
     switch(slant)
     {
         case FC_SLANT_ROMAN:
-            return FontStyle.normal;
+            return FontSlant.normal;
         case FC_SLANT_ITALIC:
-            return FontStyle.italic;
+            return FontSlant.italic;
         case FC_SLANT_OBLIQUE:
-            return FontStyle.oblique;
+            return FontSlant.oblique;
         default:
-            warningf("fontconfig slant %d do not match a FontStyle", slant);
-            return FontStyle.normal;
+            warningf("fontconfig slant %d do not match a FontSlant", slant);
+            return FontSlant.normal;
     }
 }

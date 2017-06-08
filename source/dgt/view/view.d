@@ -18,13 +18,6 @@ import std.range;
 import std.typecons;
 
 
-/// Font style as defined by the CSS specification
-enum FontStyle
-{
-    normal,
-    italic,
-    oblique,
-}
 
 auto addStyleSupport(SMP)(View view, SMP metaProp)
 if (is(SMP : StyleMetaProperty))
@@ -41,10 +34,7 @@ class View : Style
     this()
     {
         _backgroundColor = addStyleSupport(this, BackgroundColorMetaProperty.instance);
-        _fontFamily = addStyleSupport(this, FontFamilyMetaProperty.instance);
-        _fontWeight = addStyleSupport(this, FontWeightMetaProperty.instance);
-        _fontStyle = addStyleSupport(this, FontStyleMetaProperty.instance);
-        _fontSize = addStyleSupport(this, FontSizeMetaProperty.instance);
+        _backgroundColor.onChange += &invalidate;
     }
 
     /// The window this view is attached to.
@@ -671,43 +661,6 @@ class View : Style
     {
         return _backgroundColor;
     }
-
-    @property string[] fontFamily()
-    {
-        return _fontFamily.value;
-    }
-    @property StyleProperty!(string[]) fontFamilyProperty()
-    {
-        return _fontFamily;
-    }
-
-    @property int fontWeight()
-    {
-        return _fontWeight.value;
-    }
-    @property StyleProperty!int fontWeightProperty()
-    {
-        return _fontWeight;
-    }
-
-    @property FontStyle fontStyle()
-    {
-        return _fontStyle.value;
-    }
-    @property StyleProperty!FontStyle fontStyleProperty()
-    {
-        return _fontStyle;
-    }
-
-    @property int fontSize()
-    {
-        return _fontSize.value;
-    }
-    @property StyleProperty!int fontSizeProperty()
-    {
-        return _fontSize;
-    }
-
     @property Layout.Params layoutParams()
     {
         return _layoutParams;
@@ -1017,10 +970,6 @@ class View : Style
     // style properties
     private IStyleProperty[string]      _styleProperties;
     private StyleProperty!Color         _backgroundColor;
-    private StyleProperty!(string[])    _fontFamily;
-    private StyleProperty!int           _fontWeight;
-    private StyleProperty!FontStyle     _fontStyle;
-    private StyleProperty!int           _fontSize;
     private Layout.Params               _layoutParams;
 
     // events

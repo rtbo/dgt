@@ -2,12 +2,12 @@
 module dgt.text.font;
 
 import dgt.bindings.harfbuzz;
+import dgt.css.style;
 import dgt.geometry;
 import dgt.image;
 import dgt.math.vec;
 import dgt.text.fontcache;
 import dgt.util;
-import dgt.view.view;
 import dgt.vg;
 
 import gfx.foundation.rc;
@@ -324,7 +324,7 @@ class Font : RefCounted
     mixin ReadOnlyValueProperty!(string, "family");
     mixin ReadOnlyValueProperty!(FontSize, "size");
     mixin ReadOnlyValueProperty!(int, "weight");
-    mixin ReadOnlyValueProperty!(FontStyle, "style");
+    mixin ReadOnlyValueProperty!(FontSlant, "style");
     mixin ReadOnlyValueProperty!(string, "foundry");
     mixin ReadOnlyValueProperty!(FontFormat, "format");
 

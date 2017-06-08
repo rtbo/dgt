@@ -162,12 +162,12 @@ final class FontWeightMetaProperty :
 }
 
 final class FontStyleMetaProperty :
-        TStyleMetaProperty!(FontStyle, "font-style")
+        TStyleMetaProperty!(FontSlant, "font-style")
 {
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super(true, FontStyle.normal);
+        super(true, FontSlant.normal);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -176,9 +176,9 @@ final class FontStyleMetaProperty :
 
         if (tokens.front.tok == Tok.ident) {
             switch (tokens.front.str) {
-            case "normal": return new CSSValue(FontStyle.normal);
-            case "italic": return new CSSValue(FontStyle.italic);
-            case "oblique": return new CSSValue(FontStyle.oblique);
+            case "normal": return new CSSValue(FontSlant.normal);
+            case "italic": return new CSSValue(FontSlant.italic);
+            case "oblique": return new CSSValue(FontSlant.oblique);
             default:
                 break;
             }
