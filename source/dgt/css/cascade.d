@@ -73,37 +73,32 @@ final class CascadeContext
         }
 
         // sort declarations by:
-        //  1. property name
-        //  2. origin priority
-        //  3. specificity
-        //  4. scope (already done, using stable sort)
+        //  1. origin priority
+        //  2. specificity
+        //  3. scope (already done, using stable sort)
         //  4. order of appearance (already done, using stable sort)
         static bool declCmp(Decl a, Decl b) {
-            // FIXME: origin?
-            immutable nameCmp = cmp(a.property, b.property);
-            if (nameCmp != 0) return nameCmp < 0;
-            else return a.specificity > b.specificity;
+            //immutable nameCmp = cmp(a.property, b.property);
+            //if (nameCmp != 0) return nameCmp < 0;
+            immutable prioCmp = a.origin.priority - b.origin.priority;
+            if (prioCmp != 0) return prioCmp > 0;
+            return a.specificity > b.specificity;
         }
         collectedDecls.sort!(declCmp, SwapStrategy.stable);
 
         // the rest is handled property by property
         // supportedProperties also are sorted by name, so having sorted declarations
         // by name allows more efficient search
-        foreach (p; supportedProperties) {
-            immutable pname = p.name;
-            if (!p.appliesTo(view)) continue;
-            // both collections are sorted by name, so we can safely skip some
-            while (!collectedDecls.empty && collectedDecls.front.property < pname) {
-                collectedDecls.popFront();
-            }
-
-            // the winning declaration is the first one here
+        foreach (p; supportedProperties.filter!(p => p.appliesTo(view))) {
             Decl winning;
-            if (!collectedDecls.empty && collectedDecls.front.property == pname) {
-                winning = collectedDecls.front;
-                collectedDecls.popFront();
+            immutable pname = p.name;
+            foreach (d; collectedDecls) {
+                if (d.name == pname) {
+                    winning = d;
+                    break;
+                }
             }
-
+            auto subs = p.subProperties;
             p.applyCascade(view, winning);
         }
     }
