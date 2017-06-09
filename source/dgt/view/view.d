@@ -20,7 +20,7 @@ import std.typecons;
 
 
 auto addStyleSupport(SMP)(View view, SMP metaProp)
-if (is(SMP : StyleMetaProperty))
+if (is(SMP : IStyleMetaProperty))
 {
     auto sp = new SMP.Property(view, metaProp);
     view._styleProperties[metaProp.name] = sp;

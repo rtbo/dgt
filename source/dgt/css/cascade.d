@@ -30,7 +30,7 @@ body {
     ctx.cascade(root, [dgtCSS]);
 }
 
-void addMetaPropertySupport(StyleMetaProperty smp)
+void addMetaPropertySupport(IStyleMetaProperty smp)
 {
     supportedProperties ~= smp;
     propSortDirty = true;
@@ -41,10 +41,10 @@ void addMetaPropertySupport(StyleMetaProperty smp)
 
 private:
 
-__gshared StyleMetaProperty[] supportedProperties;
+__gshared IStyleMetaProperty[] supportedProperties;
 __gshared bool propSortDirty;
 debug {
-    __gshared StyleMetaProperty[string] supportedPropertiesMap;
+    __gshared IStyleMetaProperty[string] supportedPropertiesMap;
 }
 
 final class CascadeContext
@@ -79,6 +79,7 @@ final class CascadeContext
         //  4. scope (already done, using stable sort)
         //  4. order of appearance (already done, using stable sort)
         static bool declCmp(Decl a, Decl b) {
+            // FIXME: origin?
             immutable nameCmp = cmp(a.property, b.property);
             if (nameCmp != 0) return nameCmp < 0;
             else return a.specificity > b.specificity;
@@ -86,6 +87,8 @@ final class CascadeContext
         collectedDecls.sort!(declCmp, SwapStrategy.stable);
 
         // the rest is handled property by property
+        // supportedProperties also are sorted by name, so having sorted declarations
+        // by name allows more efficient search
         foreach (p; supportedProperties) {
             immutable pname = p.name;
             if (!p.appliesTo(view)) continue;
@@ -101,14 +104,7 @@ final class CascadeContext
                 collectedDecls.popFront();
             }
 
-            CSSValueBase cascadedVal;
-            if (winning) {
-                if (!winning.value) {
-                    winning.value = p.parseValue(winning.valueTokens);
-                }
-                cascadedVal = winning.value;
-            }
-            p.applyCascade(view, cascadedVal, winning ? winning.origin : Origin.init);
+            p.applyCascade(view, winning);
         }
     }
 }

@@ -14,14 +14,13 @@ import std.experimental.logger;
 import std.range;
 
 
-final class BackgroundColorMetaProperty :
-        TStyleMetaProperty!(Color, "background-color")
+final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
 {
     mixin StyleSingleton!(typeof(this));
 
     this()
     {
-        super(false, Color(ColorName.transparent));
+        super("background-color", false, Color(ColorName.transparent));
     }
 
     override TCSSValue!Color parseValueImpl(Token[] tokens)
@@ -30,17 +29,16 @@ final class BackgroundColorMetaProperty :
     }
 }
 
-final class FontFamilyMetaProperty :
-        TStyleMetaProperty!(string[], "font-family")
+final class FontFamilyMetaProperty : StyleMetaProperty!(string[])
 {
     mixin StyleSingleton!(typeof(this));
 
     this()
     {
-        super(true, ["sans-serif"]);
+        super("font-family", true, ["sans-serif"]);
     }
 
-    override TCSSValue!(string[]) parseValueImpl(Token[] tokens)
+    override CSSValue parseValueImpl(Token[] tokens)
     {
         import std.algorithm : filter;
         auto toks = tokens.filter!(t => t.tok != Tok.whitespace);
@@ -67,7 +65,7 @@ final class FontFamilyMetaProperty :
                 toks.popFront();
             }
         }
-        return new TCSSValue!(string[])(families);
+        return new CSSValue(families);
     }
 }
 
@@ -94,15 +92,14 @@ private struct ParsedFontWeight {
     }
 }
 
-final class FontWeightMetaProperty :
-        TStyleMetaProperty!(int, "font-weight", ParsedFontWeight)
+final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
 {
     mixin StyleSingleton!(typeof(this));
 
     enum initialFW = 400;
 
     this() {
-        super(true, ParsedFontWeight(initialFW));
+        super("font-weight", true, ParsedFontWeight(initialFW));
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -161,13 +158,12 @@ final class FontWeightMetaProperty :
     }
 }
 
-final class FontStyleMetaProperty :
-        TStyleMetaProperty!(FontSlant, "font-style")
+final class FontStyleMetaProperty : StyleMetaProperty!FontSlant
 {
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super(true, FontSlant.normal);
+        super("font-style", true, FontSlant.normal);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -234,13 +230,12 @@ private struct ParsedFontSize {
     }
 }
 
-final class FontSizeMetaProperty :
-        TStyleMetaProperty!(int, "font-size", ParsedFontSize)
+final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
 {
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super(true, ParsedFontSize(ParsedFontSize.AbsKwd.medium));
+        super("font-size", true, ParsedFontSize(ParsedFontSize.AbsKwd.medium));
 
         typeof(relativeMap) rm;
         rm[10] = [ 9, 12];      // xxSmall
@@ -274,7 +269,7 @@ final class FontSizeMetaProperty :
     int[2][int] relativeMap;
 
 
-    override CSSValueBase parseValueImpl(Token[] tokens)
+    override CSSValue parseValueImpl(Token[] tokens)
     {
         popSpaces(tokens);
         auto tok = tokens.front;
@@ -398,21 +393,28 @@ final class FontSizeMetaProperty :
     }
 }
 
-alias LayoutWidthMetaProperty = LayoutSizeMetaProperty!"layout-width";
-alias LayoutHeightMetaProperty = LayoutSizeMetaProperty!"layout-height";
+class LayoutWidthMetaProperty : LayoutSizeMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("layout-width"); }
+}
+class LayoutHeightMetaProperty : LayoutSizeMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("layout-height"); }
+}
 
 /// layout-width / layout-height
 /// Value:      number | match-parent | wrap-content
 /// Inherited:  no
 /// Initial:    wrap-content
-class LayoutSizeMetaProperty(string n) :
-        TStyleMetaProperty!(float, n)
+class LayoutSizeMetaProperty : StyleMetaProperty!float
 {
-    mixin StyleSingleton!(typeof(this));
-
-    this()
+    this(string name)
     {
-        super(false, wrapContent);
+        super(name, false, wrapContent);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -441,14 +443,13 @@ class LayoutSizeMetaProperty(string n) :
 ///             fill | fill-h | fill-v | clip | clip-h | clip-v | none
 ///
 /// Gravity applied to layout params that implement HasGravity
-class LayoutGravityMetaProperty :
-            TStyleMetaProperty!(Gravity, "layout-gravity")
+class LayoutGravityMetaProperty : StyleMetaProperty!Gravity
 {
     mixin StyleSingleton!(typeof(this));
 
     this()
     {
-        super(false, Gravity.none);
+        super("layout-gravity", false, Gravity.none);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
