@@ -149,6 +149,7 @@ class StyleProperty(T) : IStyleProperty
 interface IStyleMetaProperty
 {
     @property string name();
+    @property IStyleMetaProperty[] subProperties();
     bool appliesTo(Style style);
     bool applyCascade(Style target, Decl winning);
 }
@@ -160,11 +161,12 @@ abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
     alias Property = StyleProperty!V;
     alias CSSValue = TCSSValue!ParsedValue;
 
-    this(string name, in bool inherited, ParsedValue initial)
+    this(string name, in bool inherited, ParsedValue initial, IStyleMetaProperty[] subProperties=[])
     {
         _name = name;
         _inherited = inherited;
         _initial = new CSSValue(initial);
+        _subProperties = subProperties;
     }
 
     final @property string name() {
@@ -177,6 +179,11 @@ abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
 
     final @property CSSValue initial() {
         return _initial;
+    }
+
+    @property IStyleMetaProperty[] subProperties()
+    {
+        return _subProperties;
     }
 
     /// Check whether this property is supported by the given style
@@ -296,6 +303,7 @@ abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
     private string _name;
     private bool _inherited;
     private CSSValue _initial;
+    private IStyleMetaProperty[] _subProperties;
 }
 
 
