@@ -86,20 +86,8 @@ final class CascadeContext
         }
         collectedDecls.sort!(declCmp, SwapStrategy.stable);
 
-        // the rest is handled property by property
-        // supportedProperties also are sorted by name, so having sorted declarations
-        // by name allows more efficient search
-        foreach (p; supportedProperties.filter!(p => p.appliesTo(view))) {
-            Decl winning;
-            immutable pname = p.name;
-            foreach (d; collectedDecls) {
-                if (d.name == pname) {
-                    winning = d;
-                    break;
-                }
-            }
-            auto subs = p.subProperties;
-            p.applyCascade(view, winning);
+        foreach (smp; view.styleMetaProperties) {
+            smp.applyCascade(view, collectedDecls);
         }
     }
 }

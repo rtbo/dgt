@@ -20,7 +20,7 @@ final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
 
     this()
     {
-        super("background-color", false, Color(ColorName.transparent));
+        super("background-color", false, Color(ColorName.transparent), false);
     }
 
     override TCSSValue!Color parseValueImpl(Token[] tokens)
@@ -35,7 +35,7 @@ final class FontFamilyMetaProperty : StyleMetaProperty!(string[])
 
     this()
     {
-        super("font-family", true, ["sans-serif"]);
+        super("font-family", true, ["sans-serif"], false);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -99,7 +99,7 @@ final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
     enum initialFW = 400;
 
     this() {
-        super("font-weight", true, ParsedFontWeight(initialFW));
+        super("font-weight", true, ParsedFontWeight(initialFW), false);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -163,7 +163,7 @@ final class FontStyleMetaProperty : StyleMetaProperty!FontSlant
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super("font-style", true, FontSlant.normal);
+        super("font-style", true, FontSlant.normal, false);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -235,7 +235,7 @@ final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super("font-size", true, ParsedFontSize(ParsedFontSize.AbsKwd.medium));
+        super("font-size", true, ParsedFontSize(ParsedFontSize.AbsKwd.medium), false);
 
         typeof(relativeMap) rm;
         rm[10] = [ 9, 12];      // xxSmall
@@ -414,7 +414,7 @@ class LayoutSizeMetaProperty : StyleMetaProperty!float
 {
     this(string name)
     {
-        super(name, false, wrapContent);
+        super(name, false, wrapContent, false);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)
@@ -449,7 +449,7 @@ class LayoutGravityMetaProperty : StyleMetaProperty!Gravity
 
     this()
     {
-        super("layout-gravity", false, Gravity.none);
+        super("layout-gravity", false, Gravity.none, false);
     }
 
     override CSSValue parseValueImpl(Token[] tokens)

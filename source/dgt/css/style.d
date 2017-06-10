@@ -3,8 +3,8 @@ module dgt.css.style;
 import dgt.css.om;
 import dgt.css.token;
 import dgt.css.value;
-import dgt.geometry;
 import dgt.event.handler;
+import dgt.geometry;
 
 import std.range;
 
@@ -48,6 +48,7 @@ interface Style
     @property string id();
     @property string cssClass();
     @property PseudoState pseudoState();
+    @property IStyleMetaProperty[] styleMetaProperties();
     IStyleProperty styleProperty(string name);
 }
 
@@ -150,23 +151,20 @@ interface IStyleMetaProperty
 {
     @property string name();
     @property IStyleMetaProperty[] subProperties();
+    /// Check whether this property is supported by the given style
     bool appliesTo(Style style);
-    bool applyCascade(Style target, Decl winning);
+    void applyCascade(Style target, Decl[] collected);
+    void applyInitial(Style target, Origin origin);
 }
 
-abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
+abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
 {
-    alias Value = V;
     alias ParsedValue = PV;
-    alias Property = StyleProperty!V;
     alias CSSValue = TCSSValue!ParsedValue;
 
-    this(string name, in bool inherited, ParsedValue initial, IStyleMetaProperty[] subProperties=[])
-    {
+    this(string name, bool inherited) {
         _name = name;
         _inherited = inherited;
-        _initial = new CSSValue(initial);
-        _subProperties = subProperties;
     }
 
     final @property string name() {
@@ -175,93 +173,6 @@ abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
 
     final @property bool inherited() {
         return _inherited;
-    }
-
-    final @property CSSValue initial() {
-        return _initial;
-    }
-
-    @property IStyleMetaProperty[] subProperties()
-    {
-        return _subProperties;
-    }
-
-    /// Check whether this property is supported by the given style
-    final bool appliesTo(Style style)
-    {
-        return style.styleProperty(name) !is null;
-    }
-
-    bool applyCascade(Style target, Decl winning) {
-        CSSValueBase winningVal;
-        if (winning) {
-            winningVal = winning.value;
-            if (!winningVal) {
-                winningVal = parseValue(winning.valueTokens);
-                winning.value = winningVal;
-            }
-        }
-
-        return applyCascade(target, winningVal,
-                winning ? winning.origin : Origin.init,
-                fstSupportingParent(target));
-    }
-
-    private Style fstSupportingParent(Style style)
-    {
-        auto p = style.parent;
-        if (p && appliesTo(p)) return p;
-        else if (p) return fstSupportingParent(p);
-        else return null;
-    }
-
-    private bool applyCascade(Style target, CSSValueBase cascaded, Origin origin, lazy Style parent)
-    {
-        if (!cascaded || cascaded.unset) {
-            if (inherited && parent) {
-                return applyFromOther(target, parent);
-            }
-            else {
-                return applyFromValue(target, initial, Origin.initial);
-            }
-        }
-        else {
-            if (cascaded.inherit && parent) {
-                return applyFromOther(target, parent, origin);
-            }
-            else if (cascaded.inherit) {
-                return applyFromValue(target, initial, origin);
-            }
-            else if (cascaded.initial) {
-                return applyFromValue(target, initial, origin);
-            }
-            else {
-                return applyFromValue(target, cascaded, origin);
-            }
-        }
-    }
-
-    private bool applyFromOther(Style target, Style other) {
-        auto p = target.styleProperty(name);
-        auto op = other.styleProperty(name);
-        assert(p && op);
-        return p.assignFrom(op, op.origin);
-    }
-
-    private bool applyFromOther(Style target, Style other, Origin origin) {
-        auto p = target.styleProperty(name);
-        auto op = other.styleProperty(name);
-        assert(p && op);
-        return p.assignFrom(op, origin);
-    }
-
-    private bool applyFromValue(Style target, CSSValueBase value, Origin origin)
-    {
-        auto p = getProperty(target);
-        assert(p);
-        auto v = cast(CSSValue)value;
-        assert(v);
-        return p.setValue(convert(v.value, target), origin);
     }
 
     /// Parse the value from the tokens read in the style sheet.
@@ -287,6 +198,167 @@ abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
 
     abstract CSSValue parseValueImpl(Token[] tokens);
 
+    final protected Style fstSupportingParent(Style style)
+    {
+        auto p = style.parent;
+        if (p && appliesTo(p)) return p;
+        else if (p) return fstSupportingParent(p);
+        else return null;
+    }
+
+    final protected Decl winningDecl(Decl[] collected)
+    {
+        immutable n = _name;
+        foreach (d; collected) {
+            if (d.property == n) return d;
+        }
+        return null;
+    }
+
+    final protected void applyWinning(Style target, Decl winning)
+    in {
+        assert(winning);
+    }
+    body {
+        CSSValueBase winningVal;
+        if (!winningVal) {
+            winningVal = parseValue(winning.valueTokens);
+            winning.value = winningVal;
+        }
+        if (winningVal.inherit) {
+            auto p = fstSupportingParent(target);
+            if (p) {
+                applyFromOther(target, p, winning.origin);
+            }
+            else {
+                applyInitial(target, winning.origin);
+            }
+        }
+        else if (winningVal.initial) {
+            applyInitial(target, winning.origin);
+        }
+        else if (winningVal.unset) {
+            auto p = fstSupportingParent(target);
+            if (inherited && p) {
+                applyFromOther(target, p, winning.origin);
+            }
+            else {
+                applyInitial(target, winning.origin);
+            }
+        }
+        else {
+            applyFromValue(target, winningVal, winning.origin);
+        }
+    }
+
+    abstract protected void applyFromOther(Style target, Style other, Origin origin);
+    abstract protected void applyFromValue(Style target, CSSValueBase value, Origin origin);
+
+    private string _name;
+    private bool _inherited;
+}
+
+abstract class StyleShorthandProperty(PV) : StyleMetaPropertyBase!PV
+{
+    enum isShorthand = true;
+
+    this(string name, IStyleMetaProperty[] subProperties)
+    {
+        super(name);
+        _subProperties = subProperties;
+    }
+
+    @property IStyleMetaProperty[] subProperties()
+    {
+        return _subProperties;
+    }
+
+    bool appliesTo(Style style)
+    {
+        import std.algorithm : all;
+        return _subProperties.all!(sp => sp.appliesTo(style));
+    }
+
+    final void applyCascade(Style target, Decl[] collected) {
+        Decl winning = winningDecl(collected);
+        if (winning) {
+            applyWinning(target, winning);
+        }
+        else {
+            import std.algorithm : each;
+            _subProperties.each!(sp => sp.applyCascade(target, collected));
+        }
+    }
+
+    final void applyInitial(Style target, Origin origin) {
+        import std.algorithm : each;
+        _subProperties.each!(sp => sp.applyInitial(target, origin));
+    }
+
+    private IStyleMetaProperty[] _subProperties;
+}
+
+abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
+{
+    alias Value = V;
+    alias Property = StyleProperty!V;
+    enum isShorthand = false;
+
+    this(string name, in bool inherited, ParsedValue initial, bool hasShorthand)
+    {
+        super(name, inherited);
+        _initial = new CSSValue(initial);
+        _hasShorthand = hasShorthand;
+    }
+
+    final @property bool hasShorthand() { return _hasShorthand; }
+
+    final @property CSSValue initial() {
+        return _initial;
+    }
+
+    @property IStyleMetaProperty[] subProperties()
+    {
+        return [];
+    }
+
+    final bool appliesTo(Style style)
+    {
+        return style.styleProperty(name) !is null;
+    }
+
+    void applyCascade(Style target, Decl[] collected) {
+        Decl winning = winningDecl(collected);
+        if (winning) {
+            applyWinning(target, winning);
+        }
+        else {
+            applyInitial(target, Origin.initial);
+        }
+    }
+
+    void applyInitial(Style target, Origin origin)
+    {
+        applyFromValue(target, initial, origin);
+    }
+
+    override protected void applyFromOther(Style target, Style other, Origin origin) {
+        auto p = target.styleProperty(name);
+        auto op = other.styleProperty(name);
+        assert(p && op);
+        p.assignFrom(op, origin);
+    }
+
+    override protected void applyFromValue(Style target, CSSValueBase value, Origin origin)
+    {
+        auto p = getProperty(target);
+        assert(p);
+        auto v = cast(CSSValue)value;
+        assert(v);
+        p.setValue(convert(v.value, target), origin);
+    }
+
+
     static if (is(PV == V)) {
         final Value convert(ParsedValue v, Style target) { return v; }
     }
@@ -300,10 +372,8 @@ abstract class StyleMetaProperty(V, PV=V) : IStyleMetaProperty
         else return cast(Property)target.styleProperty(name);
     }
 
-    private string _name;
-    private bool _inherited;
     private CSSValue _initial;
-    private IStyleMetaProperty[] _subProperties;
+    private bool _hasShorthand;
 }
 
 
