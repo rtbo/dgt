@@ -35,21 +35,40 @@ enum PseudoState
 }
 
 
+/// Style must be implemented by a tree structure that can receive css style properties
 interface Style
 {
+    /// The parent of this style, or null if this style is the root.
     @property Style parent();
+    /// Whether this style is the root of the style tree.
     @property bool isRoot();
+    /// The root of the style tree
     @property Style root();
+    /// Get the next sibling of this style. Used in sibling selectors.
     @property Style prevSibling();
+    /// Get the previous sibling of this style. Used in sibling selectors.
     @property Style nextSibling();
 
+    /// Get the size of the viewport the style appears in. Used for sizes
+    /// relative to view port (e.g. 12vmin)
     @property FSize viewportSize();
+    /// Get the DPI of this style. Used for absolute sizes in inch, or centimeters
     @property float dpi();
+
+    /// The cssType of this element is equivalent to element tag in html
+    /// Ex. Button receive the type 'button'
     @property string cssType();
+    /// The id as used by css selector rule '#'
     @property string id();
+    /// The css class as used by css selector rule '.'
     @property string cssClass();
+    /// The current pseudo state of the element. Usable by pseudo class selector rules.
     @property PseudoState pseudoState();
+    /// The meta properties supported by this element
+    /// This only lists top-level properties. E.g: if a property is supported, but
+    /// has a shorthand, only the shorthand will be in this list.
     @property IStyleMetaProperty[] styleMetaProperties();
+    /// Get the property object of type name.
     IStyleProperty styleProperty(string name);
 }
 
@@ -61,15 +80,20 @@ enum FontSlant
     oblique,
 }
 
+/// Implemented by elements that must style some text.
 interface FontStyle
 {
-    @property string[] fontFamily();
-    @property int fontWeight();
+    /// The FontSlant is what is assigned by the 'font-style' property
     @property FontSlant fontSlant();
+    /// The font weight (from 100 to 900)
+    @property int fontWeight();
+    /// The font size, expressed in pixels / EM-square
     @property int fontSize();
+    /// The font families used to select the font.
+    @property string[] fontFamily();
 }
 
-
+/// A CSS property value
 interface IStyleProperty
 {
     @property Style style();
@@ -78,6 +102,7 @@ interface IStyleProperty
     bool assignFrom(IStyleProperty other, Origin origin);
 }
 
+/// Style property implementation for a specific type
 class StyleProperty(T) : IStyleProperty
 {
     this(SMP)(Style style, SMP metaProperty)
