@@ -1,5 +1,7 @@
-/// CSS colors
-module dgt.css.color;
+/// Color module.
+/// Provide a common construct to describe colors, and utility to
+/// build from/convert to various forms (including CSS).
+module dgt.color;
 
 import dgt.css.token;
 import dgt.math.vec;
@@ -7,66 +9,89 @@ import dgt.math.vec;
 import std.exception;
 import std.range;
 
-immutable Color[string] cssColors;
-
+/// A Color construct that has a uint representation with ARGB components of
+/// one byte each in this order.
 struct Color
 {
     this(uint argb)
     {
         _argb = argb;
     }
+    this(in ubyte r, in ubyte g, in ubyte b)
+    {
+        _argb = 0xff000000  |
+                r << 16     |
+                g << 8      |
+                b;
+    }
+    this(in ubyte r, in ubyte g, in ubyte b, in ubyte a)
+    {
+        _argb = a << 24 |
+                r << 16 |
+                g << 8  |
+                b;
+    }
+    this(in float r, in float g, in float b)
+    {
+        _argb = 0xff000000 |
+                ((cast(int)r*255)&0xff) << 16 |
+                ((cast(int)g*255)&0xff) << 8  |
+                ((cast(int)b*255)&0xff);
+    }
+    this(in float r, in float g, in float b, in float a)
+    {
+        _argb = ((cast(int)a*255)&0xff) << 24 |
+                ((cast(int)r*255)&0xff) << 16 |
+                ((cast(int)g*255)&0xff) << 8  |
+                ((cast(int)b*255)&0xff);
+    }
     this(in ubyte[3] rgb)
     {
-        _argb = 0xff000000    |
-                rgb[0] << 16 |
-                rgb[1] << 8  |
-                rgb[2];
+        this(rgb[0], rgb[1], rgb[2]);
     }
     this(in ubyte[4] rgba)
     {
-        _argb = rgba[3] << 24 |
-                rgba[0] << 16 |
-                rgba[1] << 8  |
-                rgba[2];
+        this(rgba[0], rgba[1], rgba[2], rgba[3]);
     }
     this(in float[3] rgb)
     {
-        _argb = 0xff000000                          |
-                ((cast(int)rgb[0]*255)&0xff) << 16 |
-                ((cast(int)rgb[1]*255)&0xff) << 8  |
-                ((cast(int)rgb[2]*255)&0xff);
+        this(rgb[0], rgb[1], rgb[2]);
     }
     this(in float[4] rgba)
     {
-        _argb = ((cast(int)rgba[3]*255)&0xff) << 24 |
-                ((cast(int)rgba[0]*255)&0xff) << 16 |
-                ((cast(int)rgba[1]*255)&0xff) << 8  |
-                ((cast(int)rgba[2]*255)&0xff);
+        this(rgba[0], rgba[1], rgba[2], rgba[3]);
     }
     this(in FVec3 rgb)
     {
-        this(rgb.data[0 .. 3]);
+        this(rgb.array);
     }
     this(in FVec4 rgba)
     {
-        this(rgba.data[0 .. 4]);
+        this(rgba.array);
     }
     this(in ColorName name)
     {
         _argb = cast(uint)name;
     }
-    this(in string cssColor)
+    this(in string css)
     {
         import std.utf : byDchar;
-        auto tokens = makeTokenInput(byDchar(cssColor));
+        auto tokens = makeTokenInput(byDchar(css));
         Color c = void;
         if (parseColor(tokens, c)) {
             _argb = c._argb;
         }
         else {
-            import std.experimental.logger;
-            errorf("could not parse %s as a color", cssColor);
+            import std.experimental.logger : errorf;
+            errorf("could not parse %s as a color", css);
         }
+    }
+
+    /// Build a Color from its css name.
+    static Color opDispatch(string name)()
+    if (isColorName!name)
+    {
+        return Color(mixin("ColorName."~name));
     }
 
     @property uint argb() const { return _argb; }
@@ -102,10 +127,212 @@ struct Color
         );
     }
 
+    /// The red component
+    @property ubyte red() const
+    {
+        return (_argb >> 16) & 0xff;
+    }
+    /// ditto
+    @property void red(in ubyte val)
+    {
+        immutable argb =
+            ((alpha << 24) & 0xff000000) |
+            ((val << 16) & 0x00ff0000) |
+            ((green << 8) & 0x0000ff00) |
+            (blue & 0x000000ff);
+        _argb = argb;
+    }
+
+    /// The green component
+    @property ubyte green() const
+    {
+        return (_argb >> 8) & 0xff;
+    }
+    /// ditto
+    @property void green(in ubyte val)
+    {
+        immutable argb =
+            ((alpha << 24) & 0xff000000) |
+            ((red << 16) & 0x00ff0000) |
+            ((val << 8) & 0x0000ff00) |
+            (blue & 0x000000ff);
+        _argb = argb;
+    }
+
+    /// The blue component
+    @property ubyte blue() const
+    {
+        return _argb & 0xff;
+    }
+    /// ditto
+    @property void blue(in ubyte val)
+    {
+        immutable argb =
+            ((alpha << 24) & 0xff000000) |
+            ((red << 16) & 0x00ff0000) |
+            ((green << 8) & 0x0000ff00) |
+            (val & 0x000000ff);
+        _argb = argb;
+    }
+
+    /// The opacity
+    @property ubyte alpha() const
+    {
+        return (_argb >> 24) & 0xff;
+    }
+    /// ditto
+    @property void alpha(in ubyte val)
+    {
+        immutable argb =
+            ((val << 24) & 0xff000000) |
+            ((red << 16) & 0x00ff0000) |
+            ((green << 8) & 0x0000ff00) |
+            (blue & 0x000000ff);
+        _argb = argb;
+    }
+
     private uint _argb;
 }
 
 
+/// Convert a color from HSV representation into RGB
+/// Params:
+///     h:      Hue, in range [0-1[
+///     s:      Saturation, in range [0-1]
+///     v:      Value, in range [0-1]
+FVec3 hsvToRGB(in float h, in float s, in float v) pure
+in {
+    assert(h >= 0 && h < 1);
+    assert(s >= 0 && s <= 1);
+    assert(v >= 0 && v <= 1);
+}
+body {
+    import std.math : abs;
+    immutable c = s * v;
+    immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
+    immutable m = v - c;
+
+    enum float yellow   = 1.0/60.0;
+    enum float green    = 2.0/60.0;
+    enum float cyan     = 3.0/60.0;
+    enum float blue     = 4.0/60.0;
+    enum float magenta  = 5.0/60.0;
+
+    if (h < yellow)
+        return fvec(c+m, x+m, m);
+    else if (h < green)
+        return fvec(x+m, c+m, m);
+    else if (h < cyan)
+        return fvec(m, c+m, x+m);
+    else if (h < blue)
+        return fvec(m, x+m, c+m);
+    else if (h < magenta)
+        return fvec(x+m, m, c+m);
+    else
+        return fvec(c+m, m, x+m);
+}
+
+/// Convert a color from HSL representation into RGB
+/// Params:
+///     h:      Hue, in range [0-1[
+///     s:      Saturation, in range [0-1]
+///     l:      Lightness, in range [0-1]
+FVec3 hslToRGB(in float h, in float s, in float l) pure
+in {
+    assert(h >= 0 && h < 1);
+    assert(s >= 0 && s <= 1);
+    assert(l >= 0 && l <= 1);
+}
+body {
+    import std.math : abs;
+    immutable c = (1 - abs(2*l - 1)) * s;
+    immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
+    immutable m = l - c/2;
+
+    enum float yellow   = 1.0/60.0;
+    enum float green    = 2.0/60.0;
+    enum float cyan     = 3.0/60.0;
+    enum float blue     = 4.0/60.0;
+    enum float magenta  = 5.0/60.0;
+
+    if (h < yellow)
+        return fvec(c+m, x+m, m);
+    else if (h < green)
+        return fvec(x+m, c+m, m);
+    else if (h < cyan)
+        return fvec(m, c+m, x+m);
+    else if (h < blue)
+        return fvec(m, x+m, c+m);
+    else if (h < magenta)
+        return fvec(x+m, m, c+m);
+    else
+        return fvec(c+m, m, x+m);
+}
+
+/// convert a RGB color into a HSV representation
+FVec3 rgbToHSV(in float r, in float g, in float b)
+{
+    import std.algorithm : max, min;
+    immutable cmin = min(r, g, b);
+    immutable cmax = max(r, g, b);
+    immutable delta = cmax - cmin;
+
+    FVec3 hsv = void;
+
+    if (delta == 0) {
+        hsv[0] = 0;
+    }
+    else if (cmax == r) {
+        hsv[0] = (((g - b)/delta) % 6) / 6f;
+    }
+    else if (cmax == g) {
+        hsv[0] = (((b - r)/delta) + 2) / 6f;
+    }
+    else {
+        hsv[0] = (((r - g)/delta) + 4) / 6f;
+    }
+
+    hsv[1] = cmax == 0 ? 0 : delta/cmax;
+    hsv[2] = cmax;
+
+    return hsv;
+}
+
+/// convert a RGB color into a HSL representation
+FVec3 rgbToHSL(in float r, in float g, in float b)
+{
+    import std.algorithm : max, min;
+    import std.math : abs;
+
+    immutable cmin = min(r, g, b);
+    immutable cmax = max(r, g, b);
+    immutable delta = cmax - cmin;
+
+    FVec3 hsl = void;
+
+    if (delta == 0) {
+        hsl[0] = 0;
+    }
+    else if (cmax == r) {
+        hsl[0] = (((g - b)/delta) % 6) / 6f;
+    }
+    else if (cmax == g) {
+        hsl[0] = (((b - r)/delta) + 2) / 6f;
+    }
+    else {
+        hsl[0] = (((r - g)/delta) + 4) / 6f;
+    }
+
+    immutable l = (cmax + cmin) / 2;
+    immutable div = (1 - abs(2*l - 1));
+    hsl[1] = div == 0 ? 0 : delta/div;
+    hsl[2] = l;
+
+    return hsl;
+}
+
+/// Attempts to parse a color from the given tokens.
+/// Returns: true if successful (out color is set), false otherwise.
 bool parseColor(TokenRange)(ref TokenRange tokens, out Color color)
 if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
 {
@@ -149,6 +376,7 @@ if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
     }
 }
 
+/// Standards: https://www.w3.org/TR/css3-color/#svg-color
 enum ColorName
 {
     transparent             = 0x00000000,
@@ -302,26 +530,50 @@ enum ColorName
     yellowgreen             = 0xff9acd32,
 }
 
-shared static this()
+/// Whether the string `n` refers to a CSS color
+template isColorName(string n)
+{
+    enum isColorName = is(typeof({
+        auto c = mixin("ColorName."~n);
+    }));
+}
+
+static assert(isColorName!"violet");
+static assert(isColorName!"transparent");
+static assert(!isColorName!"blablaba");
+
+/// An AA that allow to look-up colors by the extended CSS color name.
+/// To do such look-up at compile time, use `Color.<css name>` dispatch.
+/// Standards: https://www.w3.org/TR/css3-color/#svg-color
+@property immutable(Color[string]) cssColors()
 {
     import std.conv : to;
     import std.exception : assumeUnique;
     import std.meta : NoDuplicates;
     import std.traits : EnumMembers;
 
-    Color[string] colors;
-    foreach(em; NoDuplicates!(EnumMembers!ColorName)) {
-        colors[em.to!string] = Color(cast(uint)em);
+    static Color[string] colors;
+    if (colors.length == 0) {
+        foreach(em; NoDuplicates!(EnumMembers!ColorName)) {
+            colors[em.to!string] = Color(cast(uint)em);
+        }
+        // adding duplicates that do not yield a string by EnumMembers
+        colors["cyan"]              = Color(ColorName.cyan);
+        colors["darkgrey"]          = Color(ColorName.darkgrey);
+        colors["darkslategrey"]     = Color(ColorName.darkslategrey);
+        colors["grey"]              = Color(ColorName.grey);
+        colors["lightgrey"]         = Color(ColorName.lightgrey);
+        colors["lightslategrey"]    = Color(ColorName.lightslategrey);
+        colors["magenta"]           = Color(ColorName.magenta);
+        colors["slategrey"]         = Color(ColorName.slategrey);
+        colors = colors.rehash;
     }
-    // adding duplicates that do not yield a string by EnumMembers
-    colors["cyan"]              = Color(ColorName.cyan);
-    colors["darkgrey"]          = Color(ColorName.darkgrey);
-    colors["darkslategrey"]     = Color(ColorName.darkslategrey);
-    colors["grey"]              = Color(ColorName.grey);
-    colors["lightgrey"]         = Color(ColorName.lightgrey);
-    colors["lightslategrey"]    = Color(ColorName.lightslategrey);
-    colors["magenta"]           = Color(ColorName.magenta);
-    colors["slategrey"]         = Color(ColorName.slategrey);
-    colors = colors.rehash;
-    cssColors = assumeUnique(colors);
+    return assumeUnique(colors);
+}
+
+/// use of opDispatch ctor
+unittest
+{
+    auto c = Color.cyan;
+    assert(c.argb == cast(int)ColorName.cyan);
 }

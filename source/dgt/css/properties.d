@@ -1,7 +1,7 @@
 /// Module gathering all CSS properties implemented by DGT
 module dgt.css.properties;
 
-import dgt.css.color;
+import dgt.color;
 import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;

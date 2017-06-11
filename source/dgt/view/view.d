@@ -1,7 +1,7 @@
 /// View root class module
 module dgt.view.view;
 
-import dgt.css.color;
+import dgt.color;
 import dgt.css.properties;
 import dgt.css.style;
 import dgt.event;

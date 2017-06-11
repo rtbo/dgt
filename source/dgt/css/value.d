@@ -1,6 +1,5 @@
 module dgt.css.value;
 
-import dgt.css.color;
 import dgt.css.token;
 
 struct Length

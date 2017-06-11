@@ -58,12 +58,12 @@ unittest
     assert(colDecl.valueTokens.length == 1);
     assert(colDecl.valueTokens[0].tok == Tok.hash);
     assert(colDecl.valueTokens[0].str == "123456");
-    assert(!colDecl.important);
+    assert(!colDecl.origin.isImportant);
     assert(taDecl.property == "text-align");
     assert(taDecl.valueTokens.length == 1);
     assert(taDecl.valueTokens[0].tok == Tok.ident);
     assert(taDecl.valueTokens[0].str == "center");
-    assert(!taDecl.important);
+    assert(!taDecl.origin.isImportant);
 }
 
 auto makeParser(TokenInput)(TokenInput tokenInput, CssErrorCollector errors=null)
