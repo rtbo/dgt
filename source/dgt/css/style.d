@@ -178,25 +178,34 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
     /// Parse the value from the tokens read in the style sheet.
     /// Starts by checking whether the values is "inherit", "initial" or "unset",
     /// and calls parseValueImpl if it is none of the three.
-    final CSSValueBase parseValue(Token[] tokens)
+    final CSSValueBase parseValue(ref Token[] tokens)
     {
         if (tokens.empty) return null;
         immutable tok = tokens.front;
         if (tok.tok == Tok.ident) {
             if (tok.str == "inherit") {
+                tokens.popFront();
                 return new CSSValueBase(CSSWideValue.inherit);
             }
             else if (tok.str == "initial") {
+                tokens.popFront();
                 return new CSSValueBase(CSSWideValue.initial);
             }
             else if (tok.str == "unset") {
+                tokens.popFront();
                 return new CSSValueBase(CSSWideValue.unset);
             }
         }
-        return parseValueImpl(tokens);
+        ParsedValue pv;
+        if (parseValueImpl(tokens, pv)) {
+            return new CSSValue(pv);
+        }
+        else {
+            return null;
+        }
     }
 
-    abstract CSSValue parseValueImpl(Token[] tokens);
+    abstract bool parseValueImpl(ref Token[] tokens, out ParsedValue val);
 
     final protected Style fstSupportingParent(Style style)
     {
