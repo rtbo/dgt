@@ -54,7 +54,14 @@ final class CascadeContext
         if (view.css.length) {
             css ~= parseCSS(view.css, null, Origin.author);
         }
-        doView(view, css);
+        if (view.inlineCSS.length) {
+            auto cssStr = "*{"~view.inlineCSS~"}";
+            auto inlineCSS = parseCSS(cssStr, null, Origin.author);
+            doView(view, css ~ inlineCSS);
+        }
+        else {
+            doView(view, css);
+        }
 
         import std.algorithm : each;
         view.children.each!(c => cascade(c, css));

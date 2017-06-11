@@ -567,31 +567,24 @@ class View : Style
         }
     }
 
-
-    override @property FSize viewportSize()
+    override @property string inlineCSS() { return _inlineCSS; }
+    /// Set the inline CSS
+    @property void inlineCSS(string css)
     {
-        auto win = window;
-        return win ? cast(FSize)win.geometry.size : FSize(0, 0);
+        if (css != _inlineCSS) {
+            _inlineCSS = css;
+            dirty(Dirty.css);
+        }
     }
 
-    override @property float dpi()
-    {
-        auto win = window;
-        // FIXME: return default from platform directly
-        return win ? win.screen.dpi : 96f;
-    }
-
-    /// A CSS formatted style attached to this view.
-    /// It can be either rules with a selector, or only declarations.
-    /// In the latter case, a single * selector is implied
-    /// (if '{' is not found in the passed string, it is assumed to be only declarations).
-    /// The rules attached here are scoped to this view and its children.
-    @property string css() { return _css; }
-    /// ditto
+    override @property string css() { return _css; }
+    /// Set the CSS stylesheet.
+    /// Can be set without surrounding rules, in such case, the declarations
+    /// are surrdounding by a universal selector.
     @property void css(string css)
     {
         import std.algorithm : canFind;
-        if (!css.canFind("{")) {
+        if (!css.canFind('{')) {
             css = "*{"~css~"}";
         }
         if (css != _css) {
@@ -654,6 +647,19 @@ class View : Style
     final bool hoverSensitive() { return _hoverSensitive; }
     /// ditto
     final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
+
+    override @property FSize viewportSize()
+    {
+        auto win = window;
+        return win ? cast(FSize)win.geometry.size : FSize(0, 0);
+    }
+
+    override @property float dpi()
+    {
+        auto win = window;
+        // FIXME: return default from platform directly
+        return win ? win.screen.dpi : 96f;
+    }
 
     @property IStyleMetaProperty[] styleMetaProperties()
     {
@@ -975,6 +981,7 @@ class View : Style
 
     // style
     private string _css;
+    private string _inlineCSS;
     private string _id;
     private string _cssClass;
     private PseudoState _pseudoState;

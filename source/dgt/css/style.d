@@ -1,3 +1,4 @@
+/// Module that contains main style related interfaces and base classes
 module dgt.css.style;
 
 import dgt.css.om;
@@ -49,11 +50,13 @@ interface Style
     /// Get the previous sibling of this style. Used in sibling selectors.
     @property Style nextSibling();
 
-    /// Get the size of the viewport the style appears in. Used for sizes
-    /// relative to view port (e.g. 12vmin)
-    @property FSize viewportSize();
-    /// Get the DPI of this style. Used for absolute sizes in inch, or centimeters
-    @property float dpi();
+    /// The inline css of this element.
+    /// That is, style that apply to this node, but not to its children.
+    /// It must be specified as standalone declarations (without surrounding rules).
+    @property string inlineCSS();
+    /// A stylesheet attached to this element. A stylesheet contains CSS rules
+    /// and applies to this element and its children.
+    @property string css();
 
     /// The cssType of this element is equivalent to element tag in html
     /// Ex. Button receive the type 'button'
@@ -64,11 +67,18 @@ interface Style
     @property string cssClass();
     /// The current pseudo state of the element. Usable by pseudo class selector rules.
     @property PseudoState pseudoState();
+
+    /// Get the size of the viewport the style appears in. Used for sizes
+    /// relative to view port (e.g. 12vmin)
+    @property FSize viewportSize();
+    /// Get the DPI of this style. Used for absolute sizes in inch, or centimeters
+    @property float dpi();
+
     /// The meta properties supported by this element
     /// This only lists top-level properties. E.g: if a property is supported, but
     /// has a shorthand, only the shorthand will be in this list.
     @property IStyleMetaProperty[] styleMetaProperties();
-    /// Get the property object of type name.
+    /// Get the property object by name. (e.g. "background-color")
     IStyleProperty styleProperty(string name);
 }
 

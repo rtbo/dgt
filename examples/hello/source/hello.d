@@ -67,9 +67,7 @@ int main()
     root.appendChild(exit);
     root.spacing = 6;
     root.gravity = Gravity.center;
-    root.css = `
-        :root { background-color: lavenderblush; }
-    `;
+    root.inlineCSS = "background-color: lavenderblush";
 
     win.root = root;
 
