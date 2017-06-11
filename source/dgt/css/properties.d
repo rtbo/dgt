@@ -14,60 +14,119 @@ import std.experimental.logger;
 import std.range;
 
 
-final class BackgroundColorMetaProperty :
-        TStyleMetaProperty!(Color, "background-color")
+final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
 {
     mixin StyleSingleton!(typeof(this));
 
     this()
     {
-        super(false, Color(ColorName.transparent));
+        super("background-color", false, Color(ColorName.transparent), false);
     }
 
-    override TCSSValue!Color parseValueImpl(Token[] tokens)
-    {
-        return new TCSSValue!Color(parseColor(tokens));
+    override bool parseValueImpl(ref Token[] tokens, out Color color) {
+        return parseColor(tokens, color);
     }
 }
 
-final class FontFamilyMetaProperty :
-        TStyleMetaProperty!(string[], "font-family")
+private struct ParsedFont
+{
+    FontSlant fs;
+    ParsedFontWeight pfw;
+    ParsedFontSize pfs;
+    string[] families;
+}
+
+final class FontMetaProperty : StyleShorthandProperty!ParsedFont
 {
     mixin StyleSingleton!(typeof(this));
 
     this()
     {
-        super(true, ["sans-serif"]);
+        super("font", true, [
+            cast(IStyleMetaProperty)FontStyleMetaProperty.instance,
+            cast(IStyleMetaProperty)FontWeightMetaProperty.instance,
+            cast(IStyleMetaProperty)FontSizeMetaProperty.instance,
+            cast(IStyleMetaProperty)FontFamilyMetaProperty.instance,
+        ]);
     }
 
-    override TCSSValue!(string[]) parseValueImpl(Token[] tokens)
+    override bool parseValueImpl(ref Token[] tokens, out ParsedFont font)
     {
-        import std.algorithm : filter;
-        auto toks = tokens.filter!(t => t.tok != Tok.whitespace);
+        if (!FontStyleMetaProperty.instance.parseValueImpl(tokens, font.fs)) {
+        }
+        if (!FontWeightMetaProperty.instance.parseValueImpl(tokens, font.pfw)) {
+        }
+        if (!FontSizeMetaProperty.instance.parseValueImpl(tokens, font.pfs)) {
+        }
+        if (!FontFamilyMetaProperty.instance.parseValueImpl(tokens, font.families)) {
+        }
+        return true;
+    }
 
-        string[] families;
-        while (!toks.empty) {
-            if (toks.front.tok == Tok.ident) {
-                string fam = toks.front.str;
-                toks.popFront();
-                while (!toks.empty && toks.front.tok == Tok.ident) {
-                    fam ~= " " ~ toks.front.str;
-                    toks.popFront();
+    final void applyFromValue(Style target, CSSValueBase val, Origin origin) {
+        auto pf = (cast(CSSValue)val).value;
+
+        auto fsp = cast(StyleProperty!FontSlant)target.styleProperty("font-style");
+        fsp.setValue(FontStyleMetaProperty.instance.convert(pf.fs, target), origin);
+
+        auto fwp = cast(StyleProperty!int)target.styleProperty("font-weight");
+        fwp.setValue(FontWeightMetaProperty.instance.convert(pf.pfw, target), origin);
+
+        auto fszp = cast(StyleProperty!int)target.styleProperty("font-size");
+        fszp.setValue(FontSizeMetaProperty.instance.convert(pf.pfs, target), origin);
+
+        auto ffp = cast(StyleProperty!(string[]))target.styleProperty("font-family");
+        ffp.setValue(FontFamilyMetaProperty.instance.convert(pf.families, target), origin);
+    }
+}
+
+final class FontFamilyMetaProperty : StyleMetaProperty!(string[])
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this()
+    {
+        super("font-family", true, ["sans-serif"], false);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out string[] families)
+    {
+        while (!tokens.empty) {
+            if(tokens.front.tok == Tok.whitespace) {
+                tokens.popFront();
+                continue;
+            }
+            if (tokens.front.tok == Tok.ident) {
+                string fam = tokens.front.str;
+                tokens.popFront();
+                while (!tokens.empty && tokens.front.tok == Tok.ident) {
+                    if (tokens.front.tok == Tok.whitespace) {
+                        fam ~= " ";
+                    }
+                    else if (tokens.front.tok == Tok.ident) {
+                        fam ~= tokens.front.str;
+                    }
+                    else {
+                        break;
+                    }
+                    tokens.popFront();
                 }
                 families ~= fam;
             }
-            else if (toks.front.tok == Tok.str) {
-                families ~= toks.front.str;
-                toks.popFront();
+            else if (tokens.front.tok == Tok.str) {
+                families ~= tokens.front.str;
+                tokens.popFront();
             }
-            if (!toks.empty && toks.front.tok != Tok.comma) {
-                return null; // invalid
+            else if (tokens.front.tok == Tok.comma) {
+                tokens.popFront();
+                tokens.popSpaces();
+                if (tokens.empty) return false;
             }
-            else if (!toks.empty) {
-                toks.popFront();
+            else {
+                break;
             }
         }
-        return new TCSSValue!(string[])(families);
+        return true;
     }
 }
 
@@ -94,41 +153,52 @@ private struct ParsedFontWeight {
     }
 }
 
-final class FontWeightMetaProperty :
-        TStyleMetaProperty!(int, "font-weight", ParsedFontWeight)
+final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
 {
     mixin StyleSingleton!(typeof(this));
 
     enum initialFW = 400;
 
     this() {
-        super(true, ParsedFontWeight(initialFW));
+        super("font-weight", true, ParsedFontWeight(initialFW), false);
     }
 
-    override CSSValue parseValueImpl(Token[] tokens)
+    override bool parseValueImpl(ref Token[] tokens, out ParsedFontWeight pfw)
     {
         popSpaces(tokens);
-        if (tokens.empty) return null;
+        if (tokens.empty) return false;
         auto tok = tokens.front;
         if (tok.tok == Tok.ident) {
             switch (tok.str) {
             case "normal":
-                return new CSSValue(400);
+                pfw = ParsedFontWeight(400);
+                tokens.popFront();
+                return true;
             case "bold":
-                return new CSSValue(700);
+                pfw = ParsedFontWeight(700);
+                tokens.popFront();
+                return true;
             case "lighter":
-                return new CSSValue(ParsedFontWeight.RelKwd.lighter);
+                pfw.rel = ParsedFontWeight.RelKwd.lighter;
+                pfw.type = ParsedFontWeight.Type.relative;
+                tokens.popFront();
+                return true;
             case "bolder":
-                return new CSSValue(ParsedFontWeight.RelKwd.bolder);
+                pfw.rel = ParsedFontWeight.RelKwd.bolder;
+                pfw.type = ParsedFontWeight.Type.relative;
+                tokens.popFront();
+                return true;
             default:
-                return null;
+                return false;
             }
         }
         else if (tok.tok == Tok.number && tok.integer) {
-            return new CSSValue(cast(int)tok.num);
+            pfw = ParsedFontWeight(cast(int)tok.num);
+            tokens.popFront();
+            return true;
         }
         else {
-            return null;
+            return false;
         }
     }
 
@@ -161,29 +231,37 @@ final class FontWeightMetaProperty :
     }
 }
 
-final class FontStyleMetaProperty :
-        TStyleMetaProperty!(FontSlant, "font-style")
+final class FontStyleMetaProperty : StyleMetaProperty!FontSlant
 {
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super(true, FontSlant.normal);
+        super("font-style", true, FontSlant.normal, false);
     }
 
-    override CSSValue parseValueImpl(Token[] tokens)
+    override bool parseValueImpl(ref Token[] tokens, out FontSlant slant)
     {
         popSpaces(tokens);
 
         if (tokens.front.tok == Tok.ident) {
             switch (tokens.front.str) {
-            case "normal": return new CSSValue(FontSlant.normal);
-            case "italic": return new CSSValue(FontSlant.italic);
-            case "oblique": return new CSSValue(FontSlant.oblique);
+            case "normal":
+                slant = FontSlant.normal;
+                tokens.popFront();
+                return true;
+            case "italic":
+                slant = FontSlant.italic;
+                tokens.popFront();
+                return true;
+            case "oblique":
+                slant = FontSlant.oblique;
+                tokens.popFront();
+                return true;
             default:
                 break;
             }
         }
-        return null;
+        return false;
     }
 }
 
@@ -234,13 +312,12 @@ private struct ParsedFontSize {
     }
 }
 
-final class FontSizeMetaProperty :
-        TStyleMetaProperty!(int, "font-size", ParsedFontSize)
+final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
 {
     mixin StyleSingleton!(typeof(this));
 
     this() {
-        super(true, ParsedFontSize(ParsedFontSize.AbsKwd.medium));
+        super("font-size", true, ParsedFontSize(ParsedFontSize.AbsKwd.medium), false);
 
         typeof(relativeMap) rm;
         rm[10] = [ 9, 12];      // xxSmall
@@ -274,44 +351,71 @@ final class FontSizeMetaProperty :
     int[2][int] relativeMap;
 
 
-    override CSSValueBase parseValueImpl(Token[] tokens)
+    override bool parseValueImpl(ref Token[] tokens, out ParsedFontSize pfs)
     {
         popSpaces(tokens);
         auto tok = tokens.front;
         if (tok.tok == Tok.ident) {
             switch(tok.str) {
             case "xx-small":
-                return new CSSValue(ParsedFontSize.AbsKwd.xxSmall);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.xxSmall);
+                tokens.popFront();
+                return true;
             case "x-small":
-                return new CSSValue(ParsedFontSize.AbsKwd.xSmall);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.xSmall);
+                tokens.popFront();
+                return true;
             case "small":
-                return new CSSValue(ParsedFontSize.AbsKwd.small);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.small);
+                tokens.popFront();
+                return true;
             case "medium":
-                return new CSSValue(ParsedFontSize.AbsKwd.medium);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.medium);
+                tokens.popFront();
+                return true;
             case "large":
-                return new CSSValue(ParsedFontSize.AbsKwd.large);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.large);
+                tokens.popFront();
+                return true;
             case "x-large":
-                return new CSSValue(ParsedFontSize.AbsKwd.xLarge);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.xLarge);
+                tokens.popFront();
+                return true;
             case "xx-large":
-                return new CSSValue(ParsedFontSize.AbsKwd.xxLarge);
+                pfs = ParsedFontSize(ParsedFontSize.AbsKwd.xxLarge);
+                tokens.popFront();
+                return true;
 
             case "smaller":
-                return new CSSValue(ParsedFontSize.RelKwd.smaller);
+                pfs = ParsedFontSize(ParsedFontSize.RelKwd.smaller);
+                tokens.popFront();
+                return true;
             case "larger":
-                return new CSSValue(ParsedFontSize.RelKwd.larger);
+                pfs = ParsedFontSize(ParsedFontSize.RelKwd.larger);
+                tokens.popFront();
+                return true;
             default:
-                return null;
+                return false;
             }
         }
         else if (tok.tok == Tok.dimension) {
             Length l = void;
-            return parseLength(tok, l) ? new CSSValue(l) : null;
+            if (parseLength(tok, l)) {
+                tokens.popFront();
+                pfs = ParsedFontSize(l);
+                return true;
+            }
+            else {
+                return false;
+            }
         }
         else if (tok.tok == Tok.percentage) {
-            return new CSSValue(tok.num);
+            pfs = ParsedFontSize(tok.num);
+            tokens.popFront();
+            return true;
         }
         else {
-            return null;
+            return false;
         }
     }
 
@@ -398,38 +502,58 @@ final class FontSizeMetaProperty :
     }
 }
 
-alias LayoutWidthMetaProperty = LayoutSizeMetaProperty!"layout-width";
-alias LayoutHeightMetaProperty = LayoutSizeMetaProperty!"layout-height";
+class LayoutWidthMetaProperty : LayoutSizeMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("layout-width"); }
+}
+class LayoutHeightMetaProperty : LayoutSizeMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("layout-height"); }
+}
 
 /// layout-width / layout-height
 /// Value:      number | match-parent | wrap-content
 /// Inherited:  no
 /// Initial:    wrap-content
-class LayoutSizeMetaProperty(string n) :
-        TStyleMetaProperty!(float, n)
+class LayoutSizeMetaProperty : StyleMetaProperty!float
 {
-    mixin StyleSingleton!(typeof(this));
-
-    this()
+    this(string name)
     {
-        super(false, wrapContent);
+        super(name, false, wrapContent, false);
     }
 
-    override CSSValue parseValueImpl(Token[] tokens)
+    override bool parseValueImpl(ref Token[] tokens, out float sz)
     {
         popSpaces(tokens);
-        if (tokens.front.tok == Tok.number) {
-            return new CSSValue(tokens.front.num);
+        if (tokens.empty) {
+            return false;
+        }
+        else if (tokens.front.tok == Tok.number) {
+            sz = tokens.front.num;
+            tokens.popFront();
+            return true;
         }
         else if (tokens.front.tok == Tok.ident) {
             switch (tokens.front.str) {
-            case "match-parent": return new CSSValue(matchParent);
-            case "wrap-content": return new CSSValue(wrapContent);
+            case "match-parent":
+                tokens.popFront();
+                sz = matchParent;
+                return true;
+            case "wrap-content":
+                tokens.popFront();
+                sz = wrapContent;
+                return true;
             default:
-                break;
+                return false;
             }
         }
-        return null;
+        else {
+            return false;
+        }
     }
 }
 
@@ -441,40 +565,46 @@ class LayoutSizeMetaProperty(string n) :
 ///             fill | fill-h | fill-v | clip | clip-h | clip-v | none
 ///
 /// Gravity applied to layout params that implement HasGravity
-class LayoutGravityMetaProperty :
-            TStyleMetaProperty!(Gravity, "layout-gravity")
+class LayoutGravityMetaProperty : StyleMetaProperty!Gravity
 {
     mixin StyleSingleton!(typeof(this));
 
     this()
     {
-        super(false, Gravity.none);
+        super("layout-gravity", false, Gravity.none, false);
     }
 
-    override CSSValue parseValueImpl(Token[] tokens)
+    override bool parseValueImpl(ref Token[] tokens, out Gravity grav)
     {
         popSpaces(tokens);
-        immutable g1 = parseGravity(tokens);
+        if (tokens.empty) return false;
+        immutable g1 = parseGravity(tokens.front);
+        if (g1 == Gravity.none) return false;
+        else tokens.popFront();
+
         popSpaces(tokens);
         if (!tokens.empty &&
                 tokens.front.tok == Tok.delim &&
                 tokens.front.delimCP == '|') {
             tokens.popFront();
             popSpaces(tokens);
-            immutable g2 = tokens.empty ? Gravity.none : parseGravity(tokens);
-            return new CSSValue(g1 | g2);
+            if (tokens.empty) return false;
+            immutable g2 = parseGravity(tokens.front);
+            if (g2 == Gravity.none) return false;
+            else tokens.popFront();
+
+            grav = g1 | g2;
+            return true;
         }
         else {
-            return new CSSValue(g1);
+            grav = g1;
+            return true;
         }
     }
 
-    private Gravity parseGravity(ref Token[] tokens)
+    private Gravity parseGravity(Token tok)
     {
-        assert(!tokens.empty);
-        auto tok = tokens.front;
         if (tok.tok == Tok.ident) {
-            tokens.popFront();
             switch(tok.str) {
             case "left":        return Gravity.left;
             case "right":       return Gravity.right;

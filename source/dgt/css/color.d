@@ -59,8 +59,14 @@ struct Color
     {
         import std.utf : byDchar;
         auto tokens = makeTokenInput(byDchar(cssColor));
-        auto c = parseColor(tokens);
-        _argb = c._argb;
+        Color c = void;
+        if (parseColor(tokens, c)) {
+            _argb = c._argb;
+        }
+        else {
+            import std.experimental.logger;
+            errorf("could not parse %s as a color", cssColor);
+        }
     }
 
     @property uint argb() const { return _argb; }
@@ -100,7 +106,7 @@ struct Color
 }
 
 
-Color parseColor(TokenRange)(TokenRange tokens)
+bool parseColor(TokenRange)(ref TokenRange tokens, out Color color)
 if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
 {
     import std.conv : to;
@@ -108,9 +114,8 @@ if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
 
     tokens.popSpaces();
 
-    enforce(!tokens.empty);
+    if (tokens.empty) return false;
 
-    Color c;
     switch(tokens.front.tok) {
     case Tok.hash:
         auto hexStr = tokens.front.str;
@@ -129,23 +134,19 @@ if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
         }
         hexStr = "ff" ~ hexStr.toLower;
         assert(hexStr.length == 8);
-        c = Color(hexStr.to!uint(16));
+        color = Color(hexStr.to!uint(16));
         tokens.popFront();
-        break;
+        return true;
     case Tok.ident:
         auto ident = tokens.front.str;
         auto cp = ident in cssColors;
         enforce(cp !is null, ident ~ " is not a valid CSS color");
-        c = *cp;
+        color = *cp;
         tokens.popFront();
-        break;
+        return true;
     default:
-        throw new Exception("Unexpected token instead of color: "~tokens.front.tok.to!string);
+        return false;
     }
-
-    tokens.popSpaces();
-    enforce(tokens.empty, "Unexpected token after color: "~tokens.front.tok.to!string);
-    return c;
 }
 
 enum ColorName

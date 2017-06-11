@@ -20,11 +20,18 @@ import std.typecons;
 
 
 auto addStyleSupport(SMP)(View view, SMP metaProp)
-if (is(SMP : StyleMetaProperty))
+if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
 {
     auto sp = new SMP.Property(view, metaProp);
     view._styleProperties[metaProp.name] = sp;
+    if (!metaProp.hasShorthand) view._styleMetaProperties ~= metaProp;
     return sp;
+}
+
+void addShorthandStyleSupport(SMP)(View view, SMP metaProp)
+if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
+{
+    view._styleMetaProperties ~= metaProp;
 }
 
 /// View hierarchy root class
@@ -648,6 +655,11 @@ class View : Style
     /// ditto
     final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
 
+    @property IStyleMetaProperty[] styleMetaProperties()
+    {
+        return _styleMetaProperties;
+    }
+
     IStyleProperty styleProperty(string name) {
         auto sp = name in _styleProperties;
         return sp ? *sp : null;
@@ -968,6 +980,7 @@ class View : Style
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
     // style properties
+    private IStyleMetaProperty[]        _styleMetaProperties;
     private IStyleProperty[string]      _styleProperties;
     private StyleProperty!Color         _backgroundColor;
     private Layout.Params               _layoutParams;
