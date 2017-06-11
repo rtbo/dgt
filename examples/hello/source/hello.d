@@ -67,7 +67,7 @@ int main()
     root.appendChild(exit);
     root.spacing = 6;
     root.gravity = Gravity.center;
-    root.inlineCSS = "background-color: lavenderblush";
+    root.inlineCSS = "background-color: hsl(0, 0, 90%)";
 
     win.root = root;
 

@@ -34,16 +34,16 @@ struct Color
     this(in float r, in float g, in float b)
     {
         _argb = 0xff000000 |
-                ((cast(int)r*255)&0xff) << 16 |
-                ((cast(int)g*255)&0xff) << 8  |
-                ((cast(int)b*255)&0xff);
+                (cast(int)(r*255) & 0xff) << 16 |
+                (cast(int)(g*255) & 0xff) << 8  |
+                (cast(int)(b*255) & 0xff);
     }
     this(in float r, in float g, in float b, in float a)
     {
-        _argb = ((cast(int)a*255)&0xff) << 24 |
-                ((cast(int)r*255)&0xff) << 16 |
-                ((cast(int)g*255)&0xff) << 8  |
-                ((cast(int)b*255)&0xff);
+        _argb = (cast(int)(a*255) & 0xff) << 24 |
+                (cast(int)(r*255) & 0xff) << 16 |
+                (cast(int)(g*255) & 0xff) << 8  |
+                (cast(int)(b*255) & 0xff);
     }
     this(in ubyte[3] rgb)
     {
@@ -63,11 +63,11 @@ struct Color
     }
     this(in FVec3 rgb)
     {
-        this(rgb.array);
+        this(rgb[0], rgb[1], rgb[2]);
     }
     this(in FVec4 rgba)
     {
-        this(rgba.array);
+        this(rgba[0], rgba[1], rgba[2], rgba[3]);
     }
     this(in ColorName name)
     {
@@ -98,12 +98,8 @@ struct Color
 
     @property ubyte[4] asBytes() const
     {
-        immutable argb = _argb;
         return [
-            (argb >> 16) & 0xff,
-            (argb >> 8) & 0xff,
-            argb & 0xff,
-            (argb >> 24) & 0xff
+            red, green, blue, alpha
         ];
     }
     @property float[4] asFloats() const
@@ -194,187 +190,6 @@ struct Color
     private uint _argb;
 }
 
-
-/// Convert a color from HSV representation into RGB
-/// Params:
-///     h:      Hue, in range [0-1[
-///     s:      Saturation, in range [0-1]
-///     v:      Value, in range [0-1]
-FVec3 hsvToRGB(in float h, in float s, in float v) pure
-in {
-    assert(h >= 0 && h < 1);
-    assert(s >= 0 && s <= 1);
-    assert(v >= 0 && v <= 1);
-}
-body {
-    import std.math : abs;
-    immutable c = s * v;
-    immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
-    immutable m = v - c;
-
-    enum float yellow   = 1.0/60.0;
-    enum float green    = 2.0/60.0;
-    enum float cyan     = 3.0/60.0;
-    enum float blue     = 4.0/60.0;
-    enum float magenta  = 5.0/60.0;
-
-    if (h < yellow)
-        return fvec(c+m, x+m, m);
-    else if (h < green)
-        return fvec(x+m, c+m, m);
-    else if (h < cyan)
-        return fvec(m, c+m, x+m);
-    else if (h < blue)
-        return fvec(m, x+m, c+m);
-    else if (h < magenta)
-        return fvec(x+m, m, c+m);
-    else
-        return fvec(c+m, m, x+m);
-}
-
-/// Convert a color from HSL representation into RGB
-/// Params:
-///     h:      Hue, in range [0-1[
-///     s:      Saturation, in range [0-1]
-///     l:      Lightness, in range [0-1]
-FVec3 hslToRGB(in float h, in float s, in float l) pure
-in {
-    assert(h >= 0 && h < 1);
-    assert(s >= 0 && s <= 1);
-    assert(l >= 0 && l <= 1);
-}
-body {
-    import std.math : abs;
-    immutable c = (1 - abs(2*l - 1)) * s;
-    immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
-    immutable m = l - c/2;
-
-    enum float yellow   = 1.0/60.0;
-    enum float green    = 2.0/60.0;
-    enum float cyan     = 3.0/60.0;
-    enum float blue     = 4.0/60.0;
-    enum float magenta  = 5.0/60.0;
-
-    if (h < yellow)
-        return fvec(c+m, x+m, m);
-    else if (h < green)
-        return fvec(x+m, c+m, m);
-    else if (h < cyan)
-        return fvec(m, c+m, x+m);
-    else if (h < blue)
-        return fvec(m, x+m, c+m);
-    else if (h < magenta)
-        return fvec(x+m, m, c+m);
-    else
-        return fvec(c+m, m, x+m);
-}
-
-/// convert a RGB color into a HSV representation
-FVec3 rgbToHSV(in float r, in float g, in float b)
-{
-    import std.algorithm : max, min;
-    immutable cmin = min(r, g, b);
-    immutable cmax = max(r, g, b);
-    immutable delta = cmax - cmin;
-
-    FVec3 hsv = void;
-
-    if (delta == 0) {
-        hsv[0] = 0;
-    }
-    else if (cmax == r) {
-        hsv[0] = (((g - b)/delta) % 6) / 6f;
-    }
-    else if (cmax == g) {
-        hsv[0] = (((b - r)/delta) + 2) / 6f;
-    }
-    else {
-        hsv[0] = (((r - g)/delta) + 4) / 6f;
-    }
-
-    hsv[1] = cmax == 0 ? 0 : delta/cmax;
-    hsv[2] = cmax;
-
-    return hsv;
-}
-
-/// convert a RGB color into a HSL representation
-FVec3 rgbToHSL(in float r, in float g, in float b)
-{
-    import std.algorithm : max, min;
-    import std.math : abs;
-
-    immutable cmin = min(r, g, b);
-    immutable cmax = max(r, g, b);
-    immutable delta = cmax - cmin;
-
-    FVec3 hsl = void;
-
-    if (delta == 0) {
-        hsl[0] = 0;
-    }
-    else if (cmax == r) {
-        hsl[0] = (((g - b)/delta) % 6) / 6f;
-    }
-    else if (cmax == g) {
-        hsl[0] = (((b - r)/delta) + 2) / 6f;
-    }
-    else {
-        hsl[0] = (((r - g)/delta) + 4) / 6f;
-    }
-
-    immutable l = (cmax + cmin) / 2;
-    immutable div = (1 - abs(2*l - 1));
-    hsl[1] = div == 0 ? 0 : delta/div;
-    hsl[2] = l;
-
-    return hsl;
-}
-
-/// Attempts to parse a color from the given tokens.
-/// Returns: true if successful (out color is set), false otherwise.
-bool parseColor(TokenRange)(ref TokenRange tokens, out Color color)
-if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
-{
-    import std.conv : to;
-    import std.uni : toLower;
-
-    tokens.popSpaces();
-
-    if (tokens.empty) return false;
-
-    switch(tokens.front.tok) {
-    case Tok.hash:
-        auto hexStr = tokens.front.str;
-        switch(hexStr.length) {
-        case 3:
-            hexStr = [
-                hexStr[0], hexStr[0],
-                hexStr[1], hexStr[1],
-                hexStr[2], hexStr[2],
-            ];
-            break;
-        case 6:
-            break;
-        default:
-            throw new Exception("unsupported color hash string: "~hexStr);
-        }
-        hexStr = "ff" ~ hexStr.toLower;
-        assert(hexStr.length == 8);
-        color = Color(hexStr.to!uint(16));
-        tokens.popFront();
-        return true;
-    case Tok.ident:
-        auto ident = tokens.front.str;
-        auto cp = ident in cssColors;
-        enforce(cp !is null, ident ~ " is not a valid CSS color");
-        color = *cp;
-        tokens.popFront();
-        return true;
-    default:
-        return false;
-    }
-}
 
 /// Standards: https://www.w3.org/TR/css3-color/#svg-color
 enum ColorName
@@ -570,10 +385,369 @@ static assert(!isColorName!"blablaba");
     }
     return assumeUnique(colors);
 }
-
 /// use of opDispatch ctor
 unittest
 {
     auto c = Color.cyan;
     assert(c.argb == cast(int)ColorName.cyan);
+}
+
+
+/// Convert a color from HSV representation into RGB
+/// Params:
+///     h:      Hue, in range [0-1[
+///     s:      Saturation, in range [0-1]
+///     v:      Value, in range [0-1]
+FVec3 hsvToRGB(in float h, in float s, in float v) pure
+in {
+    assert(h >= 0 && h < 1);
+    assert(s >= 0 && s <= 1);
+    assert(v >= 0 && v <= 1);
+}
+body {
+    import std.math : abs;
+    immutable c = s * v;
+    immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
+    immutable m = v - c;
+
+    enum float yellow   = 1.0/60.0;
+    enum float green    = 2.0/60.0;
+    enum float cyan     = 3.0/60.0;
+    enum float blue     = 4.0/60.0;
+    enum float magenta  = 5.0/60.0;
+
+    if (h < yellow)
+        return fvec(c+m, x+m, m);
+    else if (h < green)
+        return fvec(x+m, c+m, m);
+    else if (h < cyan)
+        return fvec(m, c+m, x+m);
+    else if (h < blue)
+        return fvec(m, x+m, c+m);
+    else if (h < magenta)
+        return fvec(x+m, m, c+m);
+    else
+        return fvec(c+m, m, x+m);
+}
+
+/// Convert a color from HSL representation into RGB
+/// Params:
+///     h:      Hue, in range [0-1[
+///     s:      Saturation, in range [0-1]
+///     l:      Lightness, in range [0-1]
+FVec3 hslToRGB(in float h, in float s, in float l) pure
+in {
+    assert(h >= 0 && h < 1);
+    assert(s >= 0 && s <= 1);
+    assert(l >= 0 && l <= 1);
+}
+body {
+    import std.math : abs;
+    immutable c = (1 - abs(2*l - 1)) * s;
+    immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
+    immutable m = l - c/2;
+
+    enum float yellow   = 1.0/60.0;
+    enum float green    = 2.0/60.0;
+    enum float cyan     = 3.0/60.0;
+    enum float blue     = 4.0/60.0;
+    enum float magenta  = 5.0/60.0;
+
+    if (h < yellow)
+        return fvec(c+m, x+m, m);
+    else if (h < green)
+        return fvec(x+m, c+m, m);
+    else if (h < cyan)
+        return fvec(m, c+m, x+m);
+    else if (h < blue)
+        return fvec(m, x+m, c+m);
+    else if (h < magenta)
+        return fvec(x+m, m, c+m);
+    else
+        return fvec(c+m, m, x+m);
+}
+
+/// convert a RGB color into a HSV representation
+FVec3 rgbToHSV(in float r, in float g, in float b)
+{
+    import std.algorithm : max, min;
+    immutable cmin = min(r, g, b);
+    immutable cmax = max(r, g, b);
+    immutable delta = cmax - cmin;
+
+    FVec3 hsv = void;
+
+    if (delta == 0) {
+        hsv[0] = 0;
+    }
+    else if (cmax == r) {
+        hsv[0] = (((g - b)/delta) % 6) / 6f;
+    }
+    else if (cmax == g) {
+        hsv[0] = (((b - r)/delta) + 2) / 6f;
+    }
+    else {
+        hsv[0] = (((r - g)/delta) + 4) / 6f;
+    }
+
+    hsv[1] = cmax == 0 ? 0 : delta/cmax;
+    hsv[2] = cmax;
+
+    return hsv;
+}
+
+/// convert a RGB color into a HSL representation
+FVec3 rgbToHSL(in float r, in float g, in float b)
+{
+    import std.algorithm : max, min;
+    import std.math : abs;
+
+    immutable cmin = min(r, g, b);
+    immutable cmax = max(r, g, b);
+    immutable delta = cmax - cmin;
+
+    FVec3 hsl = void;
+
+    if (delta == 0) {
+        hsl[0] = 0;
+    }
+    else if (cmax == r) {
+        hsl[0] = (((g - b)/delta) % 6) / 6f;
+    }
+    else if (cmax == g) {
+        hsl[0] = (((b - r)/delta) + 2) / 6f;
+    }
+    else {
+        hsl[0] = (((r - g)/delta) + 4) / 6f;
+    }
+
+    immutable l = (cmax + cmin) / 2;
+    immutable div = (1 - abs(2*l - 1));
+    hsl[1] = div == 0 ? 0 : delta/div;
+    hsl[2] = l;
+
+    return hsl;
+}
+
+/// Attempts to parse a color from the given tokens.
+/// Returns: true if successful (out color is set), false otherwise.
+bool parseColor(TokenRange)(ref TokenRange tokens, out Color color)
+if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
+{
+    import std.conv : to;
+    import std.uni : toLower;
+
+    tokens.popSpaces();
+
+    if (tokens.empty) return false;
+
+    switch(tokens.front.tok) {
+    case Tok.hash:
+        auto hexStr = tokens.front.str;
+        switch(hexStr.length) {
+        case 3:
+            hexStr = [
+                hexStr[0], hexStr[0],
+                hexStr[1], hexStr[1],
+                hexStr[2], hexStr[2],
+            ];
+            break;
+        case 6:
+            break;
+        default:
+            throw new Exception("unsupported color hash string: "~hexStr);
+        }
+        hexStr = "ff" ~ hexStr.toLower;
+        assert(hexStr.length == 8);
+        color = Color(hexStr.to!uint(16));
+        tokens.popFront();
+        return true;
+    case Tok.ident:
+        auto ident = tokens.front.str;
+        auto cp = ident in cssColors;
+        enforce(cp !is null, ident ~ " is not a valid CSS color");
+        color = *cp;
+        tokens.popFront();
+        return true;
+    case Tok.func:
+        if (tokens.front.str == "rgb") {
+            tokens.popFront();
+            return parseRGB(tokens, color);
+        }
+        else if (tokens.front.str == "rgba") {
+            tokens.popFront();
+            return parseRGBA(tokens, color);
+        }
+        else if (tokens.front.str == "hsv") {
+            tokens.popFront();
+            return parseHSV(tokens, color);
+        }
+        else if (tokens.front.str == "hsva") {
+            tokens.popFront();
+            return parseHSVA(tokens, color);
+        }
+        else if (tokens.front.str == "hsl") {
+            tokens.popFront();
+            return parseHSL(tokens, color);
+        }
+        else if (tokens.front.str == "hsla") {
+            tokens.popFront();
+            return parseHSLA(tokens, color);
+        }
+        else {
+            return false;
+        }
+    default:
+        return false;
+    }
+}
+
+private Token[] funcArgs(Tokens)(ref Tokens tokens)
+{
+    import std.algorithm : filter, until;
+    Token[] args;
+    while(!tokens.empty) {
+        tokens.popSpaces();
+        if (tokens.empty) break;
+        if (tokens.front.tok == Tok.parenCl) {
+            tokens.popFront();
+            break;
+        }
+        if (tokens.front.tok == Tok.comma) {
+            tokens.popFront();
+            continue;  // possibly ignores empty arg
+        }
+        args ~= tokens.front;
+        tokens.popFront();
+    }
+    return args;
+}
+
+private bool getComp(Token tok, out ubyte res)
+{
+    import std.algorithm : clamp;
+    switch(tok.tok) {
+    case Tok.number:
+        res = cast(ubyte)clamp(tok.num, 0, 255);
+        return true;
+    case Tok.percentage:
+        res = cast(ubyte)clamp(tok.num*255/100f, 0, 255);
+        return true;
+    default:
+        return false;
+    }
+}
+private bool getNComp(Token tok, out float res)
+{
+    import std.algorithm : clamp;
+    switch(tok.tok) {
+    case Tok.number:
+        res = clamp(tok.num, 0, 1);
+        return true;
+    case Tok.percentage:
+        res = clamp(tok.num/100f, 0, 1);
+        return true;
+    default:
+        return false;
+    }
+}
+private bool getAlpha(Token tok, out float res)
+{
+    import std.algorithm : clamp;
+    switch(tok.tok) {
+    case Tok.number:
+        res = clamp(tok.num, 0, 1);
+        return true;
+    default:
+        return false;
+    }
+}
+private bool getAngle(Token tok, out float res)
+{
+    import std.algorithm : clamp;
+    switch(tok.tok) {
+    case Tok.number:
+        res = tok.num / 360f;
+        while (res < 0) res += 1;
+        while (res >= 1) res -= 1;
+        return true;
+    default:
+        return false;
+    }
+}
+
+private bool parseRGB(Tokens)(ref Tokens tokens, out Color col)
+{
+    auto args = funcArgs(tokens);
+    if (args.length != 3) return false;
+    ubyte r = void, g = void, b = void;
+    if (!getComp(args[0], r)) return false;
+    if (!getComp(args[1], g)) return false;
+    if (!getComp(args[2], b)) return false;
+    col = Color(r, g, b);
+    return true;
+}
+
+private bool parseRGBA(Tokens)(ref Tokens tokens, out Color col)
+{
+    auto args = funcArgs(tokens);
+    if (args.length != 4) return false;
+    ubyte r = void, g = void, b = void;
+    float a = void;
+    if (!getComp(args[0], r)) return false;
+    if (!getComp(args[1], g)) return false;
+    if (!getComp(args[2], b)) return false;
+    if (!getAlpha(args[3], a)) return false;
+    col = Color(r, g, b, cast(ubyte)a*255);
+    return true;
+}
+
+private bool parseHSV(Tokens)(ref Tokens tokens, out Color col)
+{
+    auto args = funcArgs(tokens);
+    if (args.length != 3) return false;
+    float h = void, s = void, v = void;
+    if (!getAngle(args[0], h)) return false;
+    if (!getNComp(args[1], s)) return false;
+    if (!getNComp(args[2], v)) return false;
+    col = Color(hsvToRGB(h, s, v));
+    return true;
+}
+
+private bool parseHSVA(Tokens)(ref Tokens tokens, out Color col)
+{
+    auto args = funcArgs(tokens);
+    if (args.length != 3) return false;
+    float h = void, s = void, v = void, a = void;
+    if (!getAngle(args[0], h)) return false;
+    if (!getNComp(args[1], s)) return false;
+    if (!getNComp(args[2], v)) return false;
+    if (!getAlpha(args[3], a)) return false;
+    col = Color(fvec(hsvToRGB(h, s, v), a));
+    return true;
+}
+
+private bool parseHSL(Tokens)(ref Tokens tokens, out Color col)
+{
+    auto args = funcArgs(tokens);
+    if (args.length != 3) return false;
+    float h = void, s = void, l = void;
+    if (!getAngle(args[0], h)) return false;
+    if (!getNComp(args[1], s)) return false;
+    if (!getNComp(args[2], l)) return false;
+    col = Color(hslToRGB(h, s, l));
+    return true;
+}
+
+private bool parseHSLA(Tokens)(ref Tokens tokens, out Color col)
+{
+    auto args = funcArgs(tokens);
+    if (args.length != 3) return false;
+    float h = void, s = void, l = void, a = void;
+    if (!getAngle(args[0], h)) return false;
+    if (!getNComp(args[1], s)) return false;
+    if (!getNComp(args[2], l)) return false;
+    if (!getAlpha(args[3], a)) return false;
+    col = Color(fvec(hslToRGB(h, s, l), a));
+    return true;
 }
