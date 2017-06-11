@@ -148,6 +148,9 @@ class TextView : View, FontStyle
     {
         super();
         _color = fvec(0, 0, 0, 1);
+
+        addShorthandStyleSupport(this, FontMetaProperty.instance);
+
         _fontFamily = addStyleSupport(this, FontFamilyMetaProperty.instance);
         _fontWeight = addStyleSupport(this, FontWeightMetaProperty.instance);
         _fontSlant = addStyleSupport(this, FontStyleMetaProperty.instance);

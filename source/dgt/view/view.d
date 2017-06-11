@@ -28,7 +28,7 @@ if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
     return sp;
 }
 
-void addStyleSupport(SMP)(View view, SMP metaProp)
+void addShorthandStyleSupport(SMP)(View view, SMP metaProp)
 if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
 {
     view._styleMetaProperties ~= metaProp;

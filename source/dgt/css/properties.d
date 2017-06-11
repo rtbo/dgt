@@ -28,6 +28,58 @@ final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
     }
 }
 
+private struct ParsedFont
+{
+    FontSlant fs;
+    ParsedFontWeight pfw;
+    ParsedFontSize pfs;
+    string[] families;
+}
+
+final class FontMetaProperty : StyleShorthandProperty!ParsedFont
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this()
+    {
+        super("font", true, [
+            cast(IStyleMetaProperty)FontStyleMetaProperty.instance,
+            cast(IStyleMetaProperty)FontWeightMetaProperty.instance,
+            cast(IStyleMetaProperty)FontSizeMetaProperty.instance,
+            cast(IStyleMetaProperty)FontFamilyMetaProperty.instance,
+        ]);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out ParsedFont font)
+    {
+        if (!FontStyleMetaProperty.instance.parseValueImpl(tokens, font.fs)) {
+        }
+        if (!FontWeightMetaProperty.instance.parseValueImpl(tokens, font.pfw)) {
+        }
+        if (!FontSizeMetaProperty.instance.parseValueImpl(tokens, font.pfs)) {
+        }
+        if (!FontFamilyMetaProperty.instance.parseValueImpl(tokens, font.families)) {
+        }
+        return true;
+    }
+
+    final void applyFromValue(Style target, CSSValueBase val, Origin origin) {
+        auto pf = (cast(CSSValue)val).value;
+
+        auto fsp = cast(StyleProperty!FontSlant)target.styleProperty("font-style");
+        fsp.setValue(FontStyleMetaProperty.instance.convert(pf.fs, target), origin);
+
+        auto fwp = cast(StyleProperty!int)target.styleProperty("font-weight");
+        fwp.setValue(FontWeightMetaProperty.instance.convert(pf.pfw, target), origin);
+
+        auto fszp = cast(StyleProperty!int)target.styleProperty("font-size");
+        fszp.setValue(FontSizeMetaProperty.instance.convert(pf.pfs, target), origin);
+
+        auto ffp = cast(StyleProperty!(string[]))target.styleProperty("font-family");
+        ffp.setValue(FontFamilyMetaProperty.instance.convert(pf.families, target), origin);
+    }
+}
+
 final class FontFamilyMetaProperty : StyleMetaProperty!(string[])
 {
     mixin StyleSingleton!(typeof(this));

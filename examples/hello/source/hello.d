@@ -36,7 +36,7 @@ int main()
     hello.name = "hello";
     hello.text = "Hello";
     hello.alignment = Alignment.center;
-    hello.css = "font-family: serif; font-style: italic; font-size: 1in;";
+    hello.css = "font: italic 1in serif";
 
     auto icon = new Label;
     icon.name = "icon";

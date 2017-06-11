@@ -6,6 +6,7 @@ import dgt.css.value;
 import dgt.event.handler;
 import dgt.geometry;
 
+import std.experimental.logger;
 import std.range;
 
 /// Bit flags that describe the pseudo state of a Style.
@@ -155,6 +156,8 @@ interface IStyleMetaProperty
     bool appliesTo(Style style);
     void applyCascade(Style target, Decl[] collected);
     void applyInitial(Style target, Origin origin);
+    void applyFromOther(Style target, Style other, Origin origin);
+    void applyFromValue(Style target, CSSValueBase value, Origin origin);
 }
 
 abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
@@ -178,21 +181,18 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
     /// Parse the value from the tokens read in the style sheet.
     /// Starts by checking whether the values is "inherit", "initial" or "unset",
     /// and calls parseValueImpl if it is none of the three.
-    final CSSValueBase parseValue(ref Token[] tokens)
+    final CSSValueBase parseValue(Token[] tokens)
     {
         if (tokens.empty) return null;
         immutable tok = tokens.front;
         if (tok.tok == Tok.ident) {
             if (tok.str == "inherit") {
-                tokens.popFront();
                 return new CSSValueBase(CSSWideValue.inherit);
             }
             else if (tok.str == "initial") {
-                tokens.popFront();
                 return new CSSValueBase(CSSWideValue.initial);
             }
             else if (tok.str == "unset") {
-                tokens.popFront();
                 return new CSSValueBase(CSSWideValue.unset);
             }
         }
@@ -233,6 +233,10 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
         if (!winningVal) {
             winningVal = parseValue(winning.valueTokens);
             winning.value = winningVal;
+            if (!winningVal) {
+                warningf("could not parse winning declaration "~winning.property);
+                applyInitial(target, winning.origin);
+            }
         }
         if (winningVal.inherit) {
             auto p = fstSupportingParent(target);
@@ -260,9 +264,6 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
         }
     }
 
-    abstract protected void applyFromOther(Style target, Style other, Origin origin);
-    abstract protected void applyFromValue(Style target, CSSValueBase value, Origin origin);
-
     private string _name;
     private bool _inherited;
 }
@@ -271,9 +272,9 @@ abstract class StyleShorthandProperty(PV) : StyleMetaPropertyBase!PV
 {
     enum isShorthand = true;
 
-    this(string name, IStyleMetaProperty[] subProperties)
+    this(string name, bool inherited, IStyleMetaProperty[] subProperties)
     {
-        super(name);
+        super(name, inherited);
         _subProperties = subProperties;
     }
 
@@ -304,6 +305,11 @@ abstract class StyleShorthandProperty(PV) : StyleMetaPropertyBase!PV
         _subProperties.each!(sp => sp.applyInitial(target, origin));
     }
 
+    final void applyFromOther(Style target, Style other, Origin origin) {
+        import std.algorithm : each;
+        _subProperties.each!(sp => sp.applyFromOther(target, other, origin));
+    }
+
     private IStyleMetaProperty[] _subProperties;
 }
 
@@ -316,11 +322,16 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
     this(string name, in bool inherited, ParsedValue initial, bool hasShorthand)
     {
         super(name, inherited);
+        _initialVal = initial;
         _initial = new CSSValue(initial);
         _hasShorthand = hasShorthand;
     }
 
     final @property bool hasShorthand() { return _hasShorthand; }
+
+    final @property ParsedValue initialVal() {
+        return _initialVal;
+    }
 
     final @property CSSValue initial() {
         return _initial;
@@ -351,14 +362,14 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
         applyFromValue(target, initial, origin);
     }
 
-    override protected void applyFromOther(Style target, Style other, Origin origin) {
+    void applyFromOther(Style target, Style other, Origin origin) {
         auto p = target.styleProperty(name);
         auto op = other.styleProperty(name);
         assert(p && op);
         p.assignFrom(op, origin);
     }
 
-    override protected void applyFromValue(Style target, CSSValueBase value, Origin origin)
+    void applyFromValue(Style target, CSSValueBase value, Origin origin)
     {
         auto p = getProperty(target);
         assert(p);
@@ -381,6 +392,7 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
         else return cast(Property)target.styleProperty(name);
     }
 
+    private ParsedValue _initialVal;
     private CSSValue _initial;
     private bool _hasShorthand;
 }
