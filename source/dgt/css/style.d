@@ -434,17 +434,14 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
 
 
 /// template to be mixed-in instantiations of TStyleMetaProperty
-/// in order to turn them into a singleton that self registers to
-/// the cascade system
+/// in order to turn them into a singleton.
 mixin template StyleSingleton(T)
 {
     public static @property T instance()
     {
         // TODO: thread safety
         if (!_instance) {
-            import dgt.css.cascade : addMetaPropertySupport;
             _instance = new T;
-            addMetaPropertySupport(_instance);
         }
         return _instance;
     }

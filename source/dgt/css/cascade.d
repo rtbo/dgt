@@ -19,33 +19,13 @@ in {
     assert(root.isRoot);
 }
 body {
-    if (propSortDirty) {
-        import std.algorithm : sort;
-        supportedProperties.sort!"a.name < b.name";
-        propSortDirty = false;
-    }
     // TODO: provide mechanism to allow lo-cost styling when only one view need update
     auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;
     ctx.cascade(root, [dgtCSS]);
 }
 
-void addMetaPropertySupport(IStyleMetaProperty smp)
-{
-    supportedProperties ~= smp;
-    propSortDirty = true;
-    debug {
-        supportedPropertiesMap[smp.name] = smp;
-    }
-}
-
 private:
-
-__gshared IStyleMetaProperty[] supportedProperties;
-__gshared bool propSortDirty;
-debug {
-    __gshared IStyleMetaProperty[string] supportedPropertiesMap;
-}
 
 final class CascadeContext
 {
