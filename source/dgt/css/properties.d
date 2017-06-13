@@ -28,6 +28,65 @@ final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
     }
 }
 
+final class BorderWidthMetaProperty : StyleMetaProperty!int
+{
+    mixin StyleSingleton!(typeof(this));
+
+    enum none = 0;
+    enum thin = 1;
+    enum medium = 3;
+    enum thick = 5;
+
+    this()
+    {
+        super("border-width", false, none, false);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out int width)
+    {
+        tokens.popSpaces();
+        if (tokens.empty) return false;
+        switch (tokens.front.tok) {
+        case Tok.number:
+            width = cast(int)tokens.front.num;
+            tokens.popFront();
+            return true;
+        case Tok.dimension:
+            if (tokens.front.unit == "px") {
+                width = cast(int)tokens.front.num;
+                tokens.popFront();
+                return true;
+            }
+            else {
+                return false;
+            }
+        case Tok.ident:
+            switch(tokens.front.str) {
+            case "none":
+                tokens.popFront();
+                width = 0;
+                return true;
+            case "thin":
+                tokens.popFront();
+                width = thin;
+                return true;
+            case "medium":
+                tokens.popFront();
+                width = medium;
+                return true;
+            case "thick":
+                tokens.popFront();
+                width = thick;
+                return true;
+            default:
+                return false;
+            }
+        default:
+            return false;
+        }
+    }
+}
+
 private struct ParsedFont
 {
     FontSlant fs;
