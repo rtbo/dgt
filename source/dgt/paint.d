@@ -1,4 +1,4 @@
-/// Paint module describes the stroke and fill paint.
+/// Paint module describes the stroke and fill paint used during rendering.
 module dgt.paint;
 
 import dgt.color;
@@ -21,7 +21,7 @@ enum PaintType
 /// A gradient stop.
 struct GradientStop
 {
-    /// linear distance between two points of this stop.
+    /// linear position of the stop in the range [0-1].
     float offset;
     /// color of this stop.
     Color color;
@@ -43,7 +43,7 @@ enum SpreadMode
 
 /// Paint defines the material that fills and strokes paths.
 /// It can hold one of the different paint types.
-abstract class Paint
+abstract immutable class Paint
 {
     private PaintType _type;
 
@@ -52,26 +52,17 @@ abstract class Paint
         _type = type;
     }
 
-    final @property PaintType type() const
+    /// get the type of this paint
+    final @property PaintType type()
     {
         return _type;
     }
-
-    abstract @property Paint dup() const;
 }
 
 /// A solid paint color.
 /// The color is represented with sRGBA float channels.
 class ColorPaint : Paint
 {
-    private Color _color;
-
-    /// Initialize with opaque black.
-    this ()
-    {
-        super(PaintType.color);
-        _color = Color.black;
-    }
     /// Initialize with color
     this (in Color color)
     {
@@ -79,55 +70,30 @@ class ColorPaint : Paint
         _color = color;
     }
 
-    /// The color of this paint.
-    @property Color color() const
+    /// Get the color.
+    @property Color color()
     {
         return _color;
     }
-    /// Set the color.
-    @property void color(in Color color)
-    {
-        _color = color;
-    }
 
-    override @property ColorPaint dup() const
-    {
-        return new ColorPaint(_color);
-    }
+    private Color _color;
 }
 
 /// Abstract base for gradient paints.
 abstract class GradientPaint : Paint
 {
-    private GradientStop[] _stops;
-    private SpreadMode _spreadMode;
-
-    private this(PaintType type)
-    {
+    private this(PaintType type, immutable GradientStop[] stops) {
         super(type);
-    }
-
-    /// Get the color stops.
-    @property const(GradientStop)[] stops() const
-    {
-        return _stops;
-    }
-    /// Set the color stops.
-    @property void stops (GradientStop[] stops)
-    {
         _stops = stops;
     }
 
-    /// Get the spread mode.
-    @property SpreadMode spreadMode() const
+    /// Get the color stops.
+    @property const(GradientStop)[] stops()
     {
-        return _spreadMode;
+        return _stops;
     }
-    /// Set the spread mode.
-    @property void spreadMode(in SpreadMode spreadMode)
-    {
-        _spreadMode = spreadMode;
-    }
+
+    private GradientStop[] _stops;
 }
 
 /// Gradient that interpolate colors in a linear way between two points.
@@ -135,130 +101,64 @@ abstract class GradientPaint : Paint
 /// orthogonally on both sides of the line.
 class LinearGradientPaint : GradientPaint
 {
-    private FVec2 _start;
-    private FVec2 _end;
-
-    this()
+    this (in float angle, immutable GradientStop[] stops)
     {
-        super(PaintType.linearGradient);
-    }
-    this (in FVec2 start, in FVec2 end, GradientStop[] stops)
-    {
-        super(PaintType.linearGradient);
-        _start = start;
-        _end = end;
-        _stops = stops;
+        super(PaintType.linearGradient, stops);
+        _angle = angle;
     }
 
-    /// Get the start point (offset 0).
-    @property FVec2 start() const
+    /// Get the angle (in degrees)
+    @property float angle()
     {
-        return _start;
-    }
-    /// Set the start point (offset 0).
-    @property void start(in FVec2 start)
-    {
-        _start = start;
+        return _angle;
     }
 
-    /// Get the end point (offset 1).
-    @property FVec2 end() const
-    {
-        return _end;
-    }
-    /// Set the end point (offset 1).
-    @property void end(in FVec2 end)
-    {
-        _end = end;
-    }
-
-    override @property LinearGradientPaint dup() const
-    {
-        auto lp = new LinearGradientPaint(_start, _end, _stops.dup);
-        lp.spreadMode = _spreadMode;
-        return lp;
-    }
+    private float _angle;
 }
 
 /// Gradient paint that interpolates the color defined in stops between a focal
 /// point and a circle.
 class RadialGradientPaint : GradientPaint
 {
-    private FVec2 _focal;
-    private FVec2 _center;
-    private float _radius;
-
-    this()
+    this (in FVec2 focal, in FVec2 center, in float radius, immutable GradientStop[] stops)
     {
-        super(PaintType.radialGradient);
-    }
-
-    this (in FVec2 focal, in FVec2 center, in float radius, GradientStop[] stops)
-    {
-        super(PaintType.radialGradient);
+        super(PaintType.radialGradient, stops);
         _focal = focal;
         _center = center;
         _radius = radius;
-        _stops = stops;
     }
 
-    @property FVec2 focal() const
+    @property FVec2 focal()
     {
         return _focal;
     }
-    @property void focal(in FVec2 focal)
-    {
-        _focal = focal;
-    }
-
-    @property FVec2 center() const
+    @property FVec2 center()
     {
         return _center;
     }
-    @property void center(in FVec2 center)
-    {
-        _center = center;
-    }
-
-    @property float radius() const
+    @property float radius()
     {
         return _radius;
     }
-    @property void radius(in float radius)
-    {
-        _radius = radius;
-    }
 
-    override @property RadialGradientPaint dup() const
-    {
-        auto rp = new RadialGradientPaint(_focal, _center, _radius, _stops.dup);
-        rp.spreadMode = _spreadMode;
-        return rp;
-    }
+    private FVec2 _focal;
+    private FVec2 _center;
+    private float _radius;
 }
 
 /// A Paint that will paint image data
 class ImagePaint : Paint
 {
-    private Image _image;
-
-    this()
-    {
-        super(PaintType.image);
-    }
-    this(Image image)
+    this(immutable(Image) image)
     {
         super(PaintType.image);
         _image = image;
     }
 
-    @property inout(Image) image() inout
+    @property immutable(Image) image()
     {
         return _image;
     }
 
-    override @property ImagePaint dup() const
-    {
-        return new ImagePaint(_image.dup);
-    }
+    private Image _image;
 }
