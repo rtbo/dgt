@@ -28,6 +28,20 @@ final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
     }
 }
 
+final class BorderColorMetaProperty : StyleMetaProperty!(Color)
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this()
+    {
+        super("border-color", false, Color(ColorName.transparent), false);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out Color color) {
+        return parseColor(tokens, color);
+    }
+}
+
 final class BorderWidthMetaProperty : StyleMetaProperty!int
 {
     mixin StyleSingleton!(typeof(this));
@@ -79,6 +93,39 @@ final class BorderWidthMetaProperty : StyleMetaProperty!int
                 width = thick;
                 return true;
             default:
+                return false;
+            }
+        default:
+            return false;
+        }
+    }
+}
+
+final class BorderRadiusMetaProperty : StyleMetaProperty!float
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this()
+    {
+        super("border-radius", false, 0, false);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out float radius)
+    {
+        tokens.popSpaces();
+        if (tokens.empty) return false;
+        switch (tokens.front.tok) {
+        case Tok.number:
+            radius = tokens.front.num;
+            tokens.popFront();
+            return true;
+        case Tok.dimension:
+            if (tokens.front.unit == "px") {
+                radius = tokens.front.num;
+                tokens.popFront();
+                return true;
+            }
+            else {
                 return false;
             }
         default:

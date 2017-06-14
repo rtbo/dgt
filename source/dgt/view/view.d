@@ -41,7 +41,14 @@ class View : Style
     this()
     {
         _backgroundColor = addStyleSupport(this, BackgroundColorMetaProperty.instance);
+        _borderColor = addStyleSupport(this, BorderColorMetaProperty.instance);
+        _borderWidth = addStyleSupport(this, BorderWidthMetaProperty.instance);
+        _borderRadius = addStyleSupport(this, BorderRadiusMetaProperty.instance);
+
         _backgroundColor.onChange += &invalidate;
+        _borderColor.onChange += &invalidate;
+        _borderWidth.onChange += &invalidate;
+        _borderRadius.onChange += &invalidate;
     }
 
     /// The window this view is attached to.
@@ -679,11 +686,50 @@ class View : Style
     {
         return _backgroundColor;
     }
+
+    @property Color borderColor()
+    {
+        return _borderColor.value;
+    }
+    @property void borderColor(in Color color)
+    {
+        _borderColor.setValue(color);
+    }
+    @property StyleProperty!Color borderColorProperty()
+    {
+        return _borderColor;
+    }
+
+    @property int borderWidth()
+    {
+        return _borderWidth.value;
+    }
+    @property void borderWidth(in int val)
+    {
+        _borderWidth.setValue(val);
+    }
+    @property StyleProperty!int borderWidthProperty()
+    {
+        return _borderWidth;
+    }
+
+    @property float borderRadius()
+    {
+        return _borderRadius.value;
+    }
+    @property void borderRadius(in float val)
+    {
+        _borderRadius.setValue(val);
+    }
+    @property StyleProperty!float borderRadiusProperty()
+    {
+        return _borderRadius;
+    }
+
     @property Layout.Params layoutParams()
     {
         return _layoutParams;
     }
-
     @property void layoutParams(Layout.Params params)
     {
         _layoutParams = params;
@@ -990,6 +1036,9 @@ class View : Style
     private IStyleMetaProperty[]        _styleMetaProperties;
     private IStyleProperty[string]      _styleProperties;
     private StyleProperty!Color         _backgroundColor;
+    private StyleProperty!Color         _borderColor;
+    private StyleProperty!int           _borderWidth;
+    private StyleProperty!float         _borderRadius;
     private Layout.Params               _layoutParams;
 
     // events
@@ -1014,11 +1063,16 @@ package(dgt):
 
     @property SGNode sgBackgroundNode()
     {
-        immutable col = backgroundColor;
-        if (col.argb & 0xff00_0000) {
+        immutable fCol = backgroundColor;
+        immutable sCol = borderColor;
+
+        if (fCol.argb & 0xff00_0000 || sCol.argb & 0xff00_0000) {
             if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
             _sgBackgroundNode.rect = localRect;
-            _sgBackgroundNode.fillColor = col.asVec;
+            _sgBackgroundNode.fillColor = fCol.asVec;
+            _sgBackgroundNode.strokeColor = sCol.asVec;
+            _sgBackgroundNode.strokeWidth = borderWidth;
+            _sgBackgroundNode.radius = borderRadius;
         }
         else {
             _sgBackgroundNode = null;
