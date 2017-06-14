@@ -23,7 +23,9 @@ class Label : View
     {
         padding = FPadding(6);
         _iconNode = new ImageView;
+        _iconNode.name = "img";
         _textNode = new TextView;
+        _textNode.name = "txt";
 
         appendChild(_iconNode);
         appendChild(_textNode);
