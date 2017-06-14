@@ -34,17 +34,25 @@ final class CascadeContext
         if (view.css.length) {
             css ~= parseCSS(view.css, null, Origin.author);
         }
-        if (view.inlineCSS.length) {
-            auto cssStr = "*{"~view.inlineCSS~"}";
-            auto inlineCSS = parseCSS(cssStr, null, Origin.author);
-            doView(view, css ~ inlineCSS);
-        }
-        else {
-            doView(view, css);
+
+        if (view.isDirty(Dirty.style)) {
+            if (view.inlineCSS.length) {
+                auto cssStr = "*{"~view.inlineCSS~"}";
+                auto inlineCSS = parseCSS(cssStr, null, Origin.author);
+                doView(view, css ~ inlineCSS);
+            }
+            else {
+                doView(view, css);
+            }
+            view.clean(Dirty.style);
         }
 
-        import std.algorithm : each;
-        view.children.each!(c => cascade(c, css));
+        if (view.isDirty(Dirty.childrenStyle)) {
+            import std.algorithm : each, filter;
+            view.children
+                .filter!(c => c.isDirty(Dirty.styleMask))
+                .each!(c => cascade(c, css));
+        }
     }
 
     void doView(View view, Stylesheet[] css)

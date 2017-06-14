@@ -49,6 +49,10 @@ class View : Style
         _borderColor.onChange += &invalidate;
         _borderWidth.onChange += &invalidate;
         _borderRadius.onChange += &invalidate;
+
+        // whats need to be dirty at start.
+        // flags not set here get set one way or another in due time.
+        _dirtyState = Dirty.styleMask;
     }
 
     /// The window this view is attached to.
@@ -277,11 +281,14 @@ class View : Style
             if (parent) parent.dirty(Dirty.childrenFamily);
         }
         if (flags & Dirty.styleMask) {
-            if (window) window.requestStylePass();
+            if (flags & Dirty.style && window)
+                window.requestStylePass();
+            if (parent) parent.dirty(Dirty.childrenStyle);
         }
         if (flags & Dirty.contentMask)
         {
-            if (window) window.invalidate();
+            if (flags & Dirty.content && window)
+                window.invalidate();
             if (parent) parent.dirty(Dirty.childrenContent);
         }
     }
@@ -301,6 +308,12 @@ class View : Style
                 (flags & Dirty.childrenContent && !isDirty(Dirty.content))) {
             parent.clean(Dirty.childrenContent);
         }
+    }
+    package(dgt) void recursClean(in Dirty flags)
+    {
+        _dirtyState &= ~flags;
+        import std.algorithm : each;
+        children.each!(c => c.recursClean(flags));
     }
     /// Checks whether one of the passed flags is dirty
     final bool isDirty(in Dirty flags)
@@ -580,7 +593,7 @@ class View : Style
     {
         if (css != _inlineCSS) {
             _inlineCSS = css;
-            dirty(Dirty.css);
+            dirty(Dirty.style);
         }
     }
 
@@ -596,7 +609,7 @@ class View : Style
         }
         if (css != _css) {
             _css = css;
-            dirty(Dirty.css);
+            dirty(Dirty.style);
         }
     }
 
@@ -613,7 +626,7 @@ class View : Style
     {
         if (id != _id) {
             _id = id;
-            dirty(Dirty.css);
+            dirty(Dirty.style);
         }
     }
 
@@ -625,7 +638,7 @@ class View : Style
     {
         if (cssClass != _cssClass) {
             _cssClass = cssClass;
-            dirty(Dirty.css);
+            dirty(Dirty.style);
         }
     }
 
@@ -636,7 +649,7 @@ class View : Style
     {
         if (state != _pseudoState) {
             _pseudoState = state;
-            dirty(Dirty.dynStyle);
+            dirty(Dirty.style);
         }
     }
     /// ditto
@@ -653,7 +666,13 @@ class View : Style
     /// Flag that causes PseudoState.hover to be set when the cursor hovers the view
     final bool hoverSensitive() { return _hoverSensitive; }
     /// ditto
-    final void hoverSensitive(in bool hs) { _hoverSensitive = hs; }
+    final void hoverSensitive(in bool hs)
+    {
+        if (!_hoverSensitive == hs) {
+            _hoverSensitive = hs;
+            dirty(Dirty.style);
+        }
+    }
 
     override @property FSize viewportSize()
     {
@@ -1133,10 +1152,11 @@ enum Dirty
 
     /// A style pass is needed
     styleMask           = 0x0030,
-    /// Dynamic pseudo class has to be enabled/disabled.
-    dynStyle            = 0x0010,
-    /// A css string has been updated/set/reset.
-    css                 = 0x0020,
+    /// Style has changed for this node.
+    /// This includes: id, class, pseudo-class and of course rules.
+    style               = 0x0010,
+    /// One children or descendant has its style dirty.
+    childrenStyle       = 0x0020,
 
     /// Content is dirty
     content             = 0x0040,

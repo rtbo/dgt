@@ -538,6 +538,7 @@ class Window
                 import dgt.css.cascade : cssCascade;
                 cssCascade(_root);
                 _dirtyStyle = false;
+                _root.recursClean(Dirty.styleMask);
             }
 
             if (_dirtyLayout) {
