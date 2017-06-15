@@ -10,7 +10,7 @@ import dgt.geometry;
 import std.experimental.logger;
 import std.range;
 
-/// Bit flags that describe the pseudo state of a Style.
+/// Bit flags that describe the pseudo state of a StyleElement.
 /// Several states can be active at the same time (e.g. disabled and checked).
 /// Pseudo state style can be specified by using corresponding
 /// css pseudo-class selectors.
@@ -36,19 +36,19 @@ enum PseudoState
 }
 
 
-/// Style must be implemented by a tree structure that can receive css style properties
-interface Style
+/// StyleElement must be implemented by a tree structure that can receive css style properties
+interface StyleElement
 {
     /// The parent of this style, or null if this style is the root.
-    @property Style parent();
+    @property StyleElement parent();
     /// Whether this style is the root of the style tree.
     @property bool isRoot();
     /// The root of the style tree
-    @property Style root();
+    @property StyleElement root();
     /// Get the next sibling of this style. Used in sibling selectors.
-    @property Style prevSibling();
+    @property StyleElement prevSibling();
     /// Get the previous sibling of this style. Used in sibling selectors.
-    @property Style nextSibling();
+    @property StyleElement nextSibling();
 
     /// The inline css of this element.
     /// That is, style that apply to this node, but not to its children.
@@ -106,7 +106,7 @@ interface FontStyle
 /// A CSS property value
 interface IStyleProperty
 {
-    @property Style style();
+    @property StyleElement style();
     @property string name();
     @property Origin origin();
     bool assignFrom(IStyleProperty other, Origin origin);
@@ -115,7 +115,7 @@ interface IStyleProperty
 /// Style property implementation for a specific type
 class StyleProperty(T) : IStyleProperty
 {
-    this(SMP)(Style style, SMP metaProperty)
+    this(SMP)(StyleElement style, SMP metaProperty)
     if (is(SMP : IStyleMetaProperty) && is(SMP.Value == T))
     {
         _style = style;
@@ -125,7 +125,7 @@ class StyleProperty(T) : IStyleProperty
         );
     }
 
-    @property Style style() {
+    @property StyleElement style() {
         return _style;
     }
 
@@ -176,7 +176,7 @@ class StyleProperty(T) : IStyleProperty
         return format("%s: %s (origin %s)", _name, _value, _origin);
     }
 
-    private Style _style;
+    private StyleElement _style;
     private string _name;
     private Origin _origin;
     private T _value;
@@ -188,11 +188,11 @@ interface IStyleMetaProperty
     @property string name();
     @property IStyleMetaProperty[] subProperties();
     /// Check whether this property is supported by the given style
-    bool appliesTo(Style style);
-    void applyCascade(Style target, Decl[] collected);
-    void applyInitial(Style target, Origin origin);
-    void applyFromOther(Style target, Style other, Origin origin);
-    void applyFromValue(Style target, CSSValueBase value, Origin origin);
+    bool appliesTo(StyleElement style);
+    void applyCascade(StyleElement target, Decl[] collected);
+    void applyInitial(StyleElement target, Origin origin);
+    void applyFromOther(StyleElement target, StyleElement other, Origin origin);
+    void applyFromValue(StyleElement target, CSSValueBase value, Origin origin);
 }
 
 abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
@@ -242,7 +242,7 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
 
     abstract bool parseValueImpl(ref Token[] tokens, out ParsedValue val);
 
-    final protected Style fstSupportingParent(Style style)
+    final protected StyleElement fstSupportingParent(StyleElement style)
     {
         auto p = style.parent;
         if (p && appliesTo(p)) return p;
@@ -259,7 +259,7 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
         return null;
     }
 
-    final protected void applyWinning(Style target, Decl winning)
+    final protected void applyWinning(StyleElement target, Decl winning)
     in {
         assert(winning);
     }
@@ -318,13 +318,13 @@ abstract class StyleShorthandProperty(PV) : StyleMetaPropertyBase!PV
         return _subProperties;
     }
 
-    bool appliesTo(Style style)
+    bool appliesTo(StyleElement style)
     {
         import std.algorithm : all;
         return _subProperties.all!(sp => sp.appliesTo(style));
     }
 
-    final void applyCascade(Style target, Decl[] collected) {
+    final void applyCascade(StyleElement target, Decl[] collected) {
         Decl winning = winningDecl(collected);
         if (winning) {
             applyWinning(target, winning);
@@ -335,12 +335,12 @@ abstract class StyleShorthandProperty(PV) : StyleMetaPropertyBase!PV
         }
     }
 
-    final void applyInitial(Style target, Origin origin) {
+    final void applyInitial(StyleElement target, Origin origin) {
         import std.algorithm : each;
         _subProperties.each!(sp => sp.applyInitial(target, origin));
     }
 
-    final void applyFromOther(Style target, Style other, Origin origin) {
+    final void applyFromOther(StyleElement target, StyleElement other, Origin origin) {
         import std.algorithm : each;
         _subProperties.each!(sp => sp.applyFromOther(target, other, origin));
     }
@@ -377,12 +377,12 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
         return [];
     }
 
-    final bool appliesTo(Style style)
+    final bool appliesTo(StyleElement style)
     {
         return style.styleProperty(name) !is null;
     }
 
-    void applyCascade(Style target, Decl[] collected) {
+    void applyCascade(StyleElement target, Decl[] collected) {
         Decl winning = winningDecl(collected);
         if (winning) {
             applyWinning(target, winning);
@@ -392,19 +392,19 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
         }
     }
 
-    void applyInitial(Style target, Origin origin)
+    void applyInitial(StyleElement target, Origin origin)
     {
         applyFromValue(target, initial, origin);
     }
 
-    void applyFromOther(Style target, Style other, Origin origin) {
+    void applyFromOther(StyleElement target, StyleElement other, Origin origin) {
         auto p = target.styleProperty(name);
         auto op = other.styleProperty(name);
         assert(p && op);
         p.assignFrom(op, origin);
     }
 
-    void applyFromValue(Style target, CSSValueBase value, Origin origin)
+    void applyFromValue(StyleElement target, CSSValueBase value, Origin origin)
     {
         auto p = getProperty(target);
         assert(p);
@@ -415,13 +415,13 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
 
 
     static if (is(PV == V)) {
-        final Value convert(ParsedValue v, Style target) { return v; }
+        final Value convert(ParsedValue v, StyleElement target) { return v; }
     }
     else {
-        abstract Value convert(ParsedValue v, Style target);
+        abstract Value convert(ParsedValue v, StyleElement target);
     }
 
-    final Property getProperty(Style target)
+    final Property getProperty(StyleElement target)
     {
         if (!target) return null;
         else return cast(Property)target.styleProperty(name);

@@ -169,7 +169,7 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
         return true;
     }
 
-    final void applyFromValue(Style target, CSSValueBase val, Origin origin) {
+    final void applyFromValue(StyleElement target, CSSValueBase val, Origin origin) {
         auto pf = (cast(CSSValue)val).value;
 
         auto fsp = cast(StyleProperty!FontSlant)target.styleProperty("font-style");
@@ -308,7 +308,7 @@ final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
         }
     }
 
-    override int convert(ParsedFontWeight fw, Style target)
+    override int convert(ParsedFontWeight fw, StyleElement target)
     {
         if (fw.type == ParsedFontWeight.Type.absolute) {
             return fw.abs;
@@ -525,13 +525,13 @@ final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
         }
     }
 
-    int fontSizeOrInitial(Style style)
+    int fontSizeOrInitial(StyleElement style)
     {
         auto p = getProperty(style);
         return p ? p.value : cast(int)ParsedFontSize.AbsKwd.medium;
     }
 
-    override int convert(ParsedFontSize fs, Style target)
+    override int convert(ParsedFontSize fs, StyleElement target)
     {
         import std.math : round;
 

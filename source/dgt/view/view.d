@@ -35,7 +35,7 @@ if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
 }
 
 /// View hierarchy root class
-class View : Style
+class View : StyleElement
 {
     /// builds a new view
     this()

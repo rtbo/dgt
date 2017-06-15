@@ -10,7 +10,7 @@ import std.range;
 
 interface Selector
 {
-    bool matches(Style style);
+    bool matches(StyleElement style);
     @property int specificity();
 }
 
@@ -104,7 +104,7 @@ class SimpleSelectorSeq : AbstractSelector
         return Type.simpleSeq;
     }
 
-    bool matches(Style style)
+    bool matches(StyleElement style)
     {
         import std.algorithm : all;
         return seq.all!(s => s.matches(style));
@@ -144,7 +144,7 @@ class SimpleSelector : AbstractSelector
         return Type.simple;
     }
 
-    bool matches(Style style)
+    bool matches(StyleElement style)
     {
         final switch(ssType) {
         case SSType.type:
@@ -218,7 +218,7 @@ class Group : AbstractSelector
         return Type.group;
     }
 
-    bool matches(Style style)
+    bool matches(StyleElement style)
     {
         import std.algorithm : any;
         return selectors.any!(s => s.matches(style));
@@ -249,7 +249,7 @@ class Combinator : AbstractSelector
         return _type;
     }
 
-    bool matches(Style style)
+    bool matches(StyleElement style)
     {
         if (!rhs.matches(style)) return false;
         switch(_type) {
