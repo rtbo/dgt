@@ -7,12 +7,28 @@ import dgt.css.token;
 import dgt.css.value;
 import dgt.enums;
 import dgt.geometry;
+import dgt.paint;
 import dgt.view.layout;
 import dgt.view.view;
 
 import std.experimental.logger;
 import std.range;
+import std.typecons;
 
+final class BackgroundMetaProperty : StyleMetaProperty!Paint
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this()
+    {
+        super("background", false, new ColorPaint(Color.transparent), false);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out Paint paint)
+    {
+        return false;
+    }
+}
 
 final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
 {

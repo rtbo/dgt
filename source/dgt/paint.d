@@ -2,6 +2,7 @@
 module dgt.paint;
 
 import dgt.color;
+import dgt.geometry;
 import dgt.image;
 import dgt.math.vec;
 
@@ -43,10 +44,8 @@ enum SpreadMode
 
 /// Paint defines the material that fills and strokes paths.
 /// It can hold one of the different paint types.
-abstract immutable class Paint
+abstract class Paint
 {
-    private PaintType _type;
-
     private this (PaintType type)
     {
         _type = type;
@@ -57,6 +56,8 @@ abstract immutable class Paint
     {
         return _type;
     }
+
+    private immutable PaintType _type;
 }
 
 /// A solid paint color.
@@ -76,7 +77,7 @@ class ColorPaint : Paint
         return _color;
     }
 
-    private Color _color;
+    private immutable Color _color;
 }
 
 /// Abstract base for gradient paints.
@@ -88,12 +89,12 @@ abstract class GradientPaint : Paint
     }
 
     /// Get the color stops.
-    @property const(GradientStop)[] stops()
+    @property immutable(GradientStop)[] stops()
     {
         return _stops;
     }
 
-    private GradientStop[] _stops;
+    private immutable GradientStop[] _stops;
 }
 
 /// Gradient that interpolate colors in a linear way between two points.
@@ -101,19 +102,54 @@ abstract class GradientPaint : Paint
 /// orthogonally on both sides of the line.
 class LinearGradientPaint : GradientPaint
 {
+    /// gradient line direction
+    enum Direction
+    {
+        N, NE, E, SE, S, SW, W, NW,
+        angle
+    }
+
+    /// Build a linear gradiant paint with an angle in degrees and gradient stops.
     this (in float angle, immutable GradientStop[] stops)
     {
         super(PaintType.linearGradient, stops);
+        _direction = Direction.angle;
         _angle = angle;
     }
 
-    /// Get the angle (in degrees)
+
+
+    /// The angle of the gradient line in degrees. Per CSS specification, 0deg means upwards,
+    /// and 90deg means rightwards
+    /// This property is only relevant for Direction.angle, use computeAngle for
+    /// other cases.
+    ///
+    /// Returns:
+    ///     NaN if direction is not Direction.angle, the angle of the gradient
+    ///     line in degrees otherwise.
     @property float angle()
     {
         return _angle;
     }
 
-    private float _angle;
+    /// Returns: The angle of the gradient line in radians.
+    float computeAngle(in FSize size) {
+        import std.math : atan, PI;
+        final switch (_direction) {
+            case Direction.N:   return 0f;
+            case Direction.E:   return PI / 2;
+            case Direction.S:   return PI;
+            case Direction.W:   return 3 * PI / 2;
+            case Direction.NE:  return atan(size.width / size.height);
+            case Direction.SE:  return PI - atan(size.width / size.height);
+            case Direction.SW:  return PI + atan(size.width / size.height);
+            case Direction.NW:  return 2*PI - atan(size.width / size.height);
+            case Direction.angle: return _angle * PI / 180;
+        }
+    }
+
+    private immutable Direction _direction = Direction.S;
+    private immutable float _angle;
 }
 
 /// Gradient paint that interpolates the color defined in stops between a focal
@@ -141,9 +177,9 @@ class RadialGradientPaint : GradientPaint
         return _radius;
     }
 
-    private FVec2 _focal;
-    private FVec2 _center;
-    private float _radius;
+    private immutable FVec2 _focal;
+    private immutable FVec2 _center;
+    private immutable float _radius;
 }
 
 /// A Paint that will paint image data
@@ -160,5 +196,5 @@ class ImagePaint : Paint
         return _image;
     }
 
-    private Image _image;
+    private immutable Image _image;
 }
