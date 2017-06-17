@@ -26,7 +26,8 @@ final class BackgroundMetaProperty : StyleMetaProperty!Paint
 
     override bool parseValueImpl(ref Token[] tokens, out Paint paint)
     {
-        return false;
+        paint = parsePaint(tokens);
+        return paint !is null;
     }
 }
 
