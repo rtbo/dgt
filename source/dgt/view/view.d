@@ -7,6 +7,7 @@ import dgt.css.style;
 import dgt.event;
 import dgt.geometry;
 import dgt.math;
+import dgt.paint;
 import dgt.sg.node;
 import dgt.sg.rect;
 import dgt.view.layout;
@@ -40,11 +41,13 @@ class View : StyleElement
     /// builds a new view
     this()
     {
+        _background = addStyleSupport(this, BackgroundMetaProperty.instance);
         _backgroundColor = addStyleSupport(this, BackgroundColorMetaProperty.instance);
         _borderColor = addStyleSupport(this, BorderColorMetaProperty.instance);
         _borderWidth = addStyleSupport(this, BorderWidthMetaProperty.instance);
         _borderRadius = addStyleSupport(this, BorderRadiusMetaProperty.instance);
 
+        _background.onChange += &invalidate;
         _backgroundColor.onChange += &invalidate;
         _borderColor.onChange += &invalidate;
         _borderWidth.onChange += &invalidate;
@@ -697,6 +700,19 @@ class View : StyleElement
         return sp ? *sp : null;
     }
 
+    @property Paint background()
+    {
+        return _background.value;
+    }
+    @property void background(Paint paint)
+    {
+        _background.setValue(paint);
+    }
+    @property StyleProperty!Paint backgroundProperty()
+    {
+        return _background;
+    }
+
     @property Color backgroundColor()
     {
         return _backgroundColor.value;
@@ -1054,6 +1070,7 @@ class View : StyleElement
     // style properties
     private IStyleMetaProperty[]        _styleMetaProperties;
     private IStyleProperty[string]      _styleProperties;
+    private StyleProperty!Paint         _background;
     private StyleProperty!Color         _backgroundColor;
     private StyleProperty!Color         _borderColor;
     private StyleProperty!int           _borderWidth;

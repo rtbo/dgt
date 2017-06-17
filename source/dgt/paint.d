@@ -52,7 +52,7 @@ abstract class Paint
     }
 
     /// get the type of this paint
-    final @property PaintType type()
+    final @property PaintType type() const
     {
         return _type;
     }
@@ -72,7 +72,7 @@ class ColorPaint : Paint
     }
 
     /// Get the color.
-    @property Color color()
+    final @property Color color() const
     {
         return _color;
     }
@@ -89,7 +89,7 @@ abstract class GradientPaint : Paint
     }
 
     /// Get the color stops.
-    @property immutable(GradientStop)[] stops()
+    final @property immutable(GradientStop)[] stops() const
     {
         return _stops;
     }
@@ -144,7 +144,7 @@ class LinearGradientPaint : GradientPaint
     }
 
     /// The Direction of this gradient
-    @property Direction direction()
+    final @property Direction direction() const
     {
         return _direction;
     }
@@ -157,13 +157,13 @@ class LinearGradientPaint : GradientPaint
     /// Returns:
     ///     NaN if direction is not Direction.angle, the angle of the gradient
     ///     line in degrees otherwise.
-    @property float angle()
+    final @property float angle() const
     {
         return _angle;
     }
 
     /// Returns: The angle of the gradient line in radians.
-    float computeAngle(in FSize size) {
+    final float computeAngle(in FSize size) const {
         import std.math : atan, PI;
         final switch (_direction) {
             case Direction.N:       return 0f;
@@ -194,15 +194,15 @@ class RadialGradientPaint : GradientPaint
         _radius = radius;
     }
 
-    @property FVec2 focal()
+    final @property FVec2 focal() const
     {
         return _focal;
     }
-    @property FVec2 center()
+    final @property FVec2 center() const
     {
         return _center;
     }
-    @property float radius()
+    final @property float radius() const
     {
         return _radius;
     }
@@ -221,7 +221,7 @@ class ImagePaint : Paint
         _image = image;
     }
 
-    @property immutable(Image) image()
+    final @property immutable(Image) image() const
     {
         return _image;
     }
