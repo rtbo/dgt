@@ -99,7 +99,7 @@ struct Color
     @property ubyte[4] asBytes() const
     {
         return [
-            red, green, blue, alpha
+            redComp, greenComp, blueComp, alphaComp
         ];
     }
     @property float[4] asFloats() const
@@ -124,66 +124,66 @@ struct Color
     }
 
     /// The red component
-    @property ubyte red() const
+    @property ubyte redComp() const
     {
         return (_argb >> 16) & 0xff;
     }
     /// ditto
-    @property void red(in ubyte val)
+    @property void redComp(in ubyte val)
     {
         immutable argb =
-            ((alpha << 24) & 0xff000000) |
+            ((alphaComp << 24) & 0xff000000) |
             ((val << 16) & 0x00ff0000) |
-            ((green << 8) & 0x0000ff00) |
-            (blue & 0x000000ff);
+            ((greenComp << 8) & 0x0000ff00) |
+            (blueComp & 0x000000ff);
         _argb = argb;
     }
 
     /// The green component
-    @property ubyte green() const
+    @property ubyte greenComp() const
     {
         return (_argb >> 8) & 0xff;
     }
     /// ditto
-    @property void green(in ubyte val)
+    @property void greenComp(in ubyte val)
     {
         immutable argb =
-            ((alpha << 24) & 0xff000000) |
-            ((red << 16) & 0x00ff0000) |
+            ((alphaComp << 24) & 0xff000000) |
+            ((redComp << 16) & 0x00ff0000) |
             ((val << 8) & 0x0000ff00) |
-            (blue & 0x000000ff);
+            (blueComp & 0x000000ff);
         _argb = argb;
     }
 
     /// The blue component
-    @property ubyte blue() const
+    @property ubyte blueComp() const
     {
         return _argb & 0xff;
     }
     /// ditto
-    @property void blue(in ubyte val)
+    @property void blueComp(in ubyte val)
     {
         immutable argb =
-            ((alpha << 24) & 0xff000000) |
-            ((red << 16) & 0x00ff0000) |
-            ((green << 8) & 0x0000ff00) |
+            ((alphaComp << 24) & 0xff000000) |
+            ((redComp << 16) & 0x00ff0000) |
+            ((greenComp << 8) & 0x0000ff00) |
             (val & 0x000000ff);
         _argb = argb;
     }
 
     /// The opacity
-    @property ubyte alpha() const
+    @property ubyte alphaComp() const
     {
         return (_argb >> 24) & 0xff;
     }
     /// ditto
-    @property void alpha(in ubyte val)
+    @property void alphaComp(in ubyte val)
     {
         immutable argb =
             ((val << 24) & 0xff000000) |
-            ((red << 16) & 0x00ff0000) |
-            ((green << 8) & 0x0000ff00) |
-            (blue & 0x000000ff);
+            ((redComp << 16) & 0x00ff0000) |
+            ((greenComp << 8) & 0x0000ff00) |
+            (blueComp & 0x000000ff);
         _argb = argb;
     }
 
