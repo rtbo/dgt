@@ -258,7 +258,7 @@ class Image
 
     /// Read the file specified at compile time by using an import expression
     /// to read the bytes
-    static Image loadFromImport(string path)(in ImageFormat format)
+    static Image loadFromView(string path)(in ImageFormat format)
     {
         immutable data = cast(immutable(ubyte)[])import(path);
         auto io = imgIOFromMem(data);

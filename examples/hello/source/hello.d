@@ -31,7 +31,7 @@ int main()
     auto win = new Window("Hello DGT");
 
     immutable logoImg = assumeUnique (
-        Image.loadFromImport!"dlang_logo.png"(ImageFormat.argb)
+        Image.loadFromView!"dlang_logo.png"(ImageFormat.argb)
     );
     auto hello = new Label;
     hello.name = "hello";
