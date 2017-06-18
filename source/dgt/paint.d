@@ -42,8 +42,10 @@ enum SpreadMode
     reflect,
 }
 
-/// Paint defines the material that fills and strokes paths.
+/// Paint defines a coloring material.
 /// It can hold one of the different paint types.
+/// While Paint are mutable references, they only have immutable members.
+/// They can therefore safely be sent as-is to the rendering thread.
 abstract class Paint
 {
     private this (PaintType type)
@@ -203,6 +205,7 @@ class LinearGradientPaint : GradientPaint
 
 /// Gradient paint that interpolates the color defined in stops between a focal
 /// point and a circle.
+/// Not supported yet.
 class RadialGradientPaint : GradientPaint
 {
     this (in FVec2 focal, in FVec2 center, in float radius, immutable GradientStop[] stops)
@@ -232,6 +235,7 @@ class RadialGradientPaint : GradientPaint
 }
 
 /// A Paint that will paint image data
+/// Not supported yet.
 class ImagePaint : Paint
 {
     this(immutable(Image) image)
