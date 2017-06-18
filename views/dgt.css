@@ -4,7 +4,6 @@
 
 button {
     background: linear-gradient(#ddd, #bbb, #999);
-    background-color:   #bbb;
     border-color:       #444;
     border-radius:      4px;
     border-width:       1px;
@@ -12,10 +11,8 @@ button {
 
 button:active {
     background: linear-gradient(#555, #777, #999);
-    background-color: #999;
 }
 
 button:hover {
     background: linear-gradient(#ddd, #ccc, #bbb);
-    background-color: #ccc;
 }

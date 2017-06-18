@@ -2,11 +2,11 @@ module dgt.sg.rect;
 
 import dgt.geometry;
 import dgt.math;
+import dgt.paint;
 import dgt.sg.context;
 import dgt.sg.defs;
 import dgt.sg.geometry;
 import dgt.sg.node;
-import dgt.sg.paint;
 
 import gfx.foundation.rc;
 import gfx.pipeline;
@@ -16,6 +16,8 @@ import std.experimental.logger;
 // this is the approach I use for a rounded rectangle:
 // https://mortoray.com/2015/06/05/quickly-drawing-a-rounded-rectangle-with-a-gl-shader/
 // rounded version still needs blending in order to have anti aliased corners
+
+enum maxNumStops = 8;
 
 /// Rounded rectangle node
 class SGRectNode : SGDrawNode
@@ -28,8 +30,10 @@ class SGRectNode : SGDrawNode
     }
     @property void rect(in FRect rect)
     {
-        _rect = rect;
-        _dirty |= Dirty.buf;
+        if (rect != _rect) {
+            _rect = rect;
+            _dirty |= Dirty.buf;
+        }
     }
 
     @property float radius()
@@ -38,18 +42,31 @@ class SGRectNode : SGDrawNode
     }
     @property void radius(in float radius)
     {
-        _radius = radius;
-        _dirty |= Dirty.buf;
+        if (radius != _radius) {
+            _radius = radius;
+            _dirty |= Dirty.buf;
+        }
     }
 
-    @property FVec4 fillColor()
+    @property Paint fillPaint()
     {
-        return _fillColor;
+        return _fillPaint;
     }
-    @property void fillColor(in FVec4 fillCol)
+    @property void fillPaint(Paint paint)
     {
-        _fillColor = fillCol;
-        _dirty |= Dirty.col;
+        if (paint !is _fillPaint) {
+            bool dirtyBuf = true;
+            if (paint && _fillPaint && paint.type == PaintType.linearGradient &&
+                    _fillPaint.type == PaintType.linearGradient)
+            {
+                auto lgp = cast(LinearGradientPaint)paint;
+                auto _lgp = cast(LinearGradientPaint)_fillPaint;
+                dirtyBuf = (lgp.computeAngle(rect.size) != _lgp.computeAngle(rect.size));
+            }
+            _fillPaint = paint;
+            _dirty |= Dirty.col;
+            if (dirtyBuf) _dirty |= Dirty.buf;
+        }
     }
 
     @property FVec4 strokeColor()
@@ -58,8 +75,10 @@ class SGRectNode : SGDrawNode
     }
     @property void strokeColor(in FVec4 strokeCol)
     {
-        _strokeColor = strokeCol;
-        _dirty |= Dirty.col;
+        if (_strokeColor != strokeCol) {
+            _strokeColor = strokeCol;
+            _dirty |= Dirty.col;
+        }
     }
 
     @property float strokeWidth()
@@ -68,9 +87,11 @@ class SGRectNode : SGDrawNode
     }
     @property void strokeWidth(in float width)
     {
-        _strokeWidth = width;
-        _dirty |= Dirty.buf;
-        _dirty |= Dirty.col;
+        if (_strokeWidth != width) {
+            _strokeWidth = width;
+            _dirty |= Dirty.buf;
+            _dirty |= Dirty.col;
+        }
     }
 
     override void draw (CommandBuffer cmdBuf, SGContext context, in FMat4 modelMat)
@@ -216,6 +237,8 @@ class SGRectNode : SGDrawNode
                 ];
             }
 
+            setGPos(verts);
+
             _vbuf = new VertexBuffer!RectVertex(verts);
             _ibuf = new IndexBuffer!ushort(inds);
         }
@@ -223,6 +246,7 @@ class SGRectNode : SGDrawNode
         if (!_pipe) {
             _mvpBlk = new ConstBuffer!MVP;
             _fsBlk = new ConstBuffer!FillStroke;
+            _csBlk = new ConstBuffer!ColorStop(maxNumStops);
             _pipe = new RectPipe (
                 new Program(ShaderSet.vertexPixel(
                     import("rect_vx.glsl"), import("rect_px.glsl")
@@ -236,18 +260,81 @@ class SGRectNode : SGDrawNode
         encoder.updateConstBuffer(_mvpBlk, MVP(transpose(modelMat), transpose(context.viewProj)));
 
         if (_dirty & Dirty.col) {
-            encoder.updateConstBuffer(_fsBlk, FillStroke(_fillColor, _strokeColor, _strokeWidth));
+            auto fs = FillStroke(_strokeColor, _strokeWidth, 0);
+            if (_fillPaint) {
+                switch (_fillPaint.type) {
+                case PaintType.color:
+                    auto cp = cast(ColorPaint)_fillPaint;
+                    fs.numStops = 1;
+                    encoder.updateConstBuffer(_csBlk, [ColorStop(cp.color.asVec, 0f)]);
+                    break;
+                case PaintType.linearGradient:
+                    import std.algorithm : map;
+                    import std.array : array;
+                    auto lgp = cast(LinearGradientPaint)_fillPaint;
+                    fs.numStops = cast(int)lgp.stops.length;
+                    encoder.updateConstBuffer(
+                        _csBlk, lgp.stops.map!(gs => ColorStop(gs.color.asVec, gs.position)).array
+                    );
+                    break;
+                default:
+                    break;
+                }
+            }
+            encoder.updateConstBuffer(_fsBlk, fs);
+
             _dirty &= ~Dirty.col;
         }
 
         encoder.draw!RectPipeMeta(VertexBufferSlice(_ibuf), _pipe.obj, RectData(
-            _vbuf, _mvpBlk, _fsBlk, context.renderTarget.rc
+            _vbuf, _mvpBlk, _fsBlk, _csBlk, context.renderTarget.rc
         ));
     }
 
+    void setGPos(RectVertex[] verts)
+    {
+        auto lgp = cast(LinearGradientPaint)_fillPaint;
+        if (!lgp) return;
+
+        import std.algorithm : max;
+        import std.math : cos, sin;
+
+        // angle zero is defined to top (-Y)
+        // angle 90deg is defined to right (+X)
+        immutable r = rect;
+        immutable angle = lgp.computeAngle(r.size);
+        immutable c = r.center;
+        // immutable ta = tan(angle);
+        immutable ca = cos(angle);
+        immutable sa = sin(angle);
+        // gradient line eq
+        // y = ax + b
+        // immutable a = -1f / ta;
+        // immutable b = c.x / ta + c.y;
+
+        // unit vec along gradient line
+        immutable u = fvec(sa, -ca);
+
+        // signed distance from center along the gradient line
+        float orthoProjDist(in FVec2 p) {
+            return dot(p-c, u);
+        }
+
+        immutable tl = orthoProjDist(r.topLeft);
+        immutable tr = orthoProjDist(r.topRight);
+        immutable br = orthoProjDist(r.bottomRight);
+        immutable bl = orthoProjDist(r.bottomLeft);
+        immutable fact = 0.5 / max(tl, tr, br, bl);
+
+        foreach (ref v; verts) {
+            v.gpos = fact * orthoProjDist(v.vpos) + 0.5f;
+        }
+    }
+
+
     private FRect _rect;
     private float _radius = 0f;
-    private FVec4 _fillColor;
+    private Paint _fillPaint;
     private FVec4 _strokeColor;
     private float _strokeWidth = 0f;
 
@@ -257,6 +344,7 @@ class SGRectNode : SGDrawNode
     private Rc!RectPipe _pipe;
     private Rc!(ConstBuffer!MVP) _mvpBlk;
     private Rc!(ConstBuffer!FillStroke) _fsBlk;
+    private Rc!(ConstBuffer!ColorStop) _csBlk;
 
     private enum Dirty {
         none    = 0,
@@ -271,14 +359,24 @@ private:
 struct RectVertex
 {
     @GfxName("a_Pos")
-    float[2] pos;
+    float[3] pos;   // z is gradient position
 
     @GfxName("a_Edge")
     float[3] edge;
 
     this(FVec2 pos, FVec3 edge) {
-        this.pos = pos.array;
+        this.pos = [pos.x, pos.y, 0f];
         this.edge = edge.array;
+    }
+
+    @property FVec2 vpos() const {
+        return FVec2(pos[0 .. 2]);
+    }
+    @property float gpos() {
+        return pos[2];
+    }
+    @property void gpos(in float gpos) {
+        pos[2] = gpos;
     }
 }
 
@@ -290,9 +388,21 @@ struct MVP
 
 struct FillStroke
 {
-    FVec4 fill;
     FVec4 stroke;
     float strokeWidth;
+    int numStops;
+}
+
+struct ColorStop
+{
+    FVec4 color;
+    float position;
+    float[3] pad;
+
+    this(in FVec4 color, in float position) {
+        this.color = color;
+        this.position = position;
+    }
 }
 
 struct RectPipeMeta
@@ -304,6 +414,9 @@ struct RectPipeMeta
 
     @GfxName("FillStroke")
     ConstantBlock!FillStroke    fs;
+
+    @GfxName("ColorStops")
+    ConstantBlock!ColorStop     cs;
 
     @GfxName("o_Color")
     @GfxBlend(Blend( Equation.add, Factor.one, Factor.oneMinusSrcAlpha ))

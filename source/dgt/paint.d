@@ -77,6 +77,12 @@ class ColorPaint : Paint
         return _color;
     }
 
+    override string toString()
+    {
+        import std.format : format;
+        return format("ColorPaint [ color = %s ]");
+    }
+
     private immutable Color _color;
 }
 
@@ -176,6 +182,19 @@ class LinearGradientPaint : GradientPaint
             case Direction.NW:      return 2*PI - atan(size.width / size.height);
             case Direction.angle:   return _angle * PI / 180;
         }
+    }
+
+    override string toString()
+    {
+        import std.format : format;
+        string res = format("LinearGradientPaint ( dir=%s, angle=%s, stops=[", _direction, _angle);
+        foreach (i, s; stops) {
+            res ~= format("{ pos=%s, col=%s }", s.position, s.color);
+            if (i != stops.length - 1) {
+                res ~= ", ";
+            }
+        }
+        return res ~ "] )";
     }
 
     private immutable Direction _direction = Direction.S;

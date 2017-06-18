@@ -42,13 +42,11 @@ class View : StyleElement
     this()
     {
         _background = addStyleSupport(this, BackgroundMetaProperty.instance);
-        _backgroundColor = addStyleSupport(this, BackgroundColorMetaProperty.instance);
         _borderColor = addStyleSupport(this, BorderColorMetaProperty.instance);
         _borderWidth = addStyleSupport(this, BorderWidthMetaProperty.instance);
         _borderRadius = addStyleSupport(this, BorderRadiusMetaProperty.instance);
 
         _background.onChange += &invalidate;
-        _backgroundColor.onChange += &invalidate;
         _borderColor.onChange += &invalidate;
         _borderWidth.onChange += &invalidate;
         _borderRadius.onChange += &invalidate;
@@ -713,15 +711,6 @@ class View : StyleElement
         return _background;
     }
 
-    @property Color backgroundColor()
-    {
-        return _backgroundColor.value;
-    }
-    @property StyleProperty!Color backgroundColorProperty()
-    {
-        return _backgroundColor;
-    }
-
     @property Color borderColor()
     {
         return _borderColor.value;
@@ -929,7 +918,21 @@ class View : StyleElement
     /// Whether this view has background other than transparent
     @property bool hasBackground()
     {
-        return (backgroundColor.argb & 0xff00_0000) != 0;
+        immutable sCol = borderColor;
+        auto paint = background;
+        if (sCol.argb & 0xff00_0000) {
+            return true;
+        }
+        if (paint && paint.type == PaintType.color) {
+            if ((cast(ColorPaint)paint).color.argb & 0xff00_0000) {
+                return true;
+            }
+        }
+        else if (paint) {
+            return true;
+        }
+
+        return false;
     }
 
     @property bool sgHasContent()
@@ -1071,7 +1074,6 @@ class View : StyleElement
     private IStyleMetaProperty[]        _styleMetaProperties;
     private IStyleProperty[string]      _styleProperties;
     private StyleProperty!Paint         _background;
-    private StyleProperty!Color         _backgroundColor;
     private StyleProperty!Color         _borderColor;
     private StyleProperty!int           _borderWidth;
     private StyleProperty!float         _borderRadius;
@@ -1099,14 +1101,11 @@ package(dgt):
 
     @property SGNode sgBackgroundNode()
     {
-        immutable fCol = backgroundColor;
-        immutable sCol = borderColor;
-
-        if (fCol.argb & 0xff00_0000 || sCol.argb & 0xff00_0000) {
+        if (hasBackground) {
             if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
             _sgBackgroundNode.rect = localRect;
-            _sgBackgroundNode.fillColor = fCol.asVec;
-            _sgBackgroundNode.strokeColor = sCol.asVec;
+            _sgBackgroundNode.fillPaint = background;
+            _sgBackgroundNode.strokeColor = borderColor.asVec;
             _sgBackgroundNode.strokeWidth = borderWidth;
             _sgBackgroundNode.radius = borderRadius;
         }

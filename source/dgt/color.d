@@ -124,12 +124,12 @@ struct Color
     }
 
     /// The red component
-    @property ubyte redComp() const
+    @property ubyte redComp() const pure @safe
     {
         return (_argb >> 16) & 0xff;
     }
     /// ditto
-    @property void redComp(in ubyte val)
+    @property void redComp(in ubyte val) pure @safe
     {
         immutable argb =
             ((alphaComp << 24) & 0xff000000) |
@@ -140,12 +140,12 @@ struct Color
     }
 
     /// The green component
-    @property ubyte greenComp() const
+    @property ubyte greenComp() const pure @safe
     {
         return (_argb >> 8) & 0xff;
     }
     /// ditto
-    @property void greenComp(in ubyte val)
+    @property void greenComp(in ubyte val) pure @safe
     {
         immutable argb =
             ((alphaComp << 24) & 0xff000000) |
@@ -156,12 +156,12 @@ struct Color
     }
 
     /// The blue component
-    @property ubyte blueComp() const
+    @property ubyte blueComp() const pure @safe
     {
         return _argb & 0xff;
     }
     /// ditto
-    @property void blueComp(in ubyte val)
+    @property void blueComp(in ubyte val) pure @safe
     {
         immutable argb =
             ((alphaComp << 24) & 0xff000000) |
@@ -172,12 +172,12 @@ struct Color
     }
 
     /// The opacity
-    @property ubyte alphaComp() const
+    @property ubyte alphaComp() const pure @safe
     {
         return (_argb >> 24) & 0xff;
     }
     /// ditto
-    @property void alphaComp(in ubyte val)
+    @property void alphaComp(in ubyte val) pure @safe
     {
         immutable argb =
             ((val << 24) & 0xff000000) |
@@ -185,6 +185,17 @@ struct Color
             ((greenComp << 8) & 0x0000ff00) |
             (blueComp & 0x000000ff);
         _argb = argb;
+    }
+
+    string toString() const pure @safe
+    {
+        import std.format : format;
+        if ((_argb & 0xff00_0000) != 0xff00_0000) {
+            return format("RGBA(%s, %s, %s, %s)", redComp, greenComp, blueComp, alphaComp);
+        }
+        else {
+            return format("RGB(%s, %s, %s)", redComp, greenComp, blueComp);
+        }
     }
 
     private uint _argb;

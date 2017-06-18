@@ -3,9 +3,11 @@ module dgt.view.miscviews;
 
 import dgt.css.properties;
 import dgt.css.style;
+import dgt.color;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
+import dgt.paint;
 import dgt.sg.node;
 import dgt.sg.rect;
 import dgt.text.fontcache;
@@ -78,7 +80,7 @@ class ColorRect : View
         auto rn = cast(SGRectNode)previous;
         if (!rn) rn = new SGRectNode;
         rn.rect = localRect;
-        rn.fillColor = fillColor;
+        rn.fillPaint = new ColorPaint(Color(fillColor));
         rn.strokeColor = strokeColor;
         rn.strokeWidth = strokeWidth;
         rn.radius = radius;
