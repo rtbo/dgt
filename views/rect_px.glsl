@@ -51,6 +51,7 @@ void main()
                         float pos = (vx_Pos.z - u_Stops[i-1].position.x) /
                                     (u_Stops[i].position.x - u_Stops[i-1].position.x);
                         col = mix(u_Stops[i-1].color, u_Stops[i].color, pos);
+                        break;
                     }
                 }
             }
