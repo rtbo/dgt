@@ -60,7 +60,7 @@ abstract class SGRenderer
 
         sgData.nativeHandle = w.nativeHandle;
         sgData.size = w.size;
-        sgData.clearColor = w.clearColor;
+        sgData.clearColor = w.clearColor.asVec;
         sgData.hasClearColor = w.hasClearColor;
     }
 
@@ -388,7 +388,7 @@ private:
 
     void renderRectFillNode(SGRectFillNode node, SGContext ctx, in FMat4 model)
     {
-        immutable color = node.color;
+        immutable color = node.color.asVec;
         immutable rect = node.rect;
         immutable rectTr = translate(
             scale!float(rect.width, rect.height, 1f),
@@ -405,7 +405,7 @@ private:
 
     void renderRectStrokeNode(SGRectStrokeNode node, SGContext ctx, in FMat4 model)
     {
-        immutable color = node.color;
+        immutable color = node.color.asVec;
         immutable rect = node.rect;
         immutable rectTr = translate(
             scale!float(rect.width, rect.height, 1f),
@@ -474,7 +474,7 @@ private:
 
     void renderTextNode(SGTextNode node, SGContext ctx, in FMat4 model)
     {
-        _textPipeline.updateColor(node.color);
+        _textPipeline.updateColor(node.color.asVec);
         immutable pos = node.pos;
         foreach(gl; node.glyphs) {
             Rc!(ShaderResourceView!Alpha8) srv;

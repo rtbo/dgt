@@ -1,5 +1,6 @@
 module dgt.sg.rect;
 
+import dgt.color;
 import dgt.geometry;
 import dgt.math;
 import dgt.paint;
@@ -12,6 +13,8 @@ import gfx.foundation.rc;
 import gfx.pipeline;
 
 import std.experimental.logger;
+
+alias Color = dgt.color.Color;
 
 // this is the approach I use for a rounded rectangle:
 // https://mortoray.com/2015/06/05/quickly-drawing-a-rounded-rectangle-with-a-gl-shader/
@@ -69,11 +72,11 @@ class SGRectNode : SGDrawNode
         }
     }
 
-    @property FVec4 strokeColor()
+    @property Color strokeColor()
     {
         return _strokeColor;
     }
-    @property void strokeColor(in FVec4 strokeCol)
+    @property void strokeColor(in Color strokeCol)
     {
         if (_strokeColor != strokeCol) {
             _strokeColor = strokeCol;
@@ -260,7 +263,7 @@ class SGRectNode : SGDrawNode
         encoder.updateConstBuffer(_mvpBlk, MVP(transpose(modelMat), transpose(context.viewProj)));
 
         if (_dirty & Dirty.col) {
-            auto fs = FillStroke(_strokeColor, _strokeWidth, 0);
+            auto fs = FillStroke(_strokeColor.asVec, _strokeWidth, 0);
             if (_fillPaint) {
                 switch (_fillPaint.type) {
                 case PaintType.color:
@@ -335,7 +338,7 @@ class SGRectNode : SGDrawNode
     private FRect _rect;
     private float _radius = 0f;
     private Paint _fillPaint;
-    private FVec4 _strokeColor;
+    private Color _strokeColor;
     private float _strokeWidth = 0f;
 
     private Rc!(VertexBuffer!RectVertex) _vbuf;

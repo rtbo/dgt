@@ -1,6 +1,7 @@
 /// Scene graph node module
 module dgt.sg.node;
 
+import dgt.color;
 import dgt.geometry;
 import dgt.image;
 import dgt.math;
@@ -310,17 +311,17 @@ class SGRectFillNode : SGNode
         _rect = rect;
     }
 
-    @property FVec4 color()
+    @property Color color()
     {
         return _color;
     }
-    @property void color(in FVec4 color)
+    @property void color(in Color color)
     {
         _color = color;
     }
 
     private FRect _rect;
-    private FVec4 _color;
+    private Color _color;
 }
 
 
@@ -340,11 +341,11 @@ class SGRectStrokeNode : SGNode
         _rect = rect;
     }
 
-    @property FVec4 color()
+    @property Color color()
     {
         return _color;
     }
-    @property void color(in FVec4 color)
+    @property void color(in Color color)
     {
         _color = color;
     }
@@ -359,7 +360,7 @@ class SGRectStrokeNode : SGNode
     }
 
     private FRect _rect;
-    private FVec4 _color;
+    private Color _color;
     private float _width;
 }
 
@@ -417,18 +418,18 @@ class SGTextNode : SGNode
         _pos = pos;
     }
 
-    @property FVec4 color()
+    @property Color color()
     {
         return _color;
     }
-    @property void color(in FVec4 color)
+    @property void color(in Color color)
     {
         _color = color;
     }
 
     private immutable(ShapedGlyph)[] _glyphs;
     private FVec2 _pos;
-    private FVec4 _color;
+    private Color _color;
 }
 
 /// General node that issue drawing calls into a command buffer

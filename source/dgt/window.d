@@ -2,6 +2,7 @@
 module dgt.window;
 
 import dgt.application;
+import dgt.color;
 import dgt.context;
 import dgt.event;
 import dgt.geometry;
@@ -159,11 +160,11 @@ class Window
         _flags = flags;
     }
 
-    @property FVec4 clearColor()
+    @property Color clearColor()
     {
         return _clearColor;
     }
-    @property void clearColor(in FVec4 color)
+    @property void clearColor(in Color color)
     {
         _clearColor = color;
         _hasClearColor = true;
@@ -777,7 +778,7 @@ class Window
         IPoint _position = IPoint(-1, -1);
         ISize _size;
         GlAttribs _attribs;
-        FVec4 _clearColor;
+        Color _clearColor;
         bool _hasClearColor;
 
         View _root;

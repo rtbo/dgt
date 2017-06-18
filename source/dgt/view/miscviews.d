@@ -35,21 +35,21 @@ class ColorRect : View
         invalidate();
     }
 
-    @property FVec4 fillColor()
+    @property Color fillColor()
     {
         return _fillColor;
     }
-    @property void fillColor(in FVec4 fillCol)
+    @property void fillColor(in Color fillCol)
     {
         _fillColor = fillCol;
         invalidate();
     }
 
-    @property FVec4 strokeColor()
+    @property Color strokeColor()
     {
         return _strokeColor;
     }
-    @property void strokeColor(in FVec4 strokeCol)
+    @property void strokeColor(in Color strokeCol)
     {
         _strokeColor = strokeCol;
         invalidate();
@@ -80,7 +80,7 @@ class ColorRect : View
         auto rn = cast(SGRectNode)previous;
         if (!rn) rn = new SGRectNode;
         rn.rect = localRect;
-        rn.fillPaint = new ColorPaint(Color(fillColor));
+        rn.fillPaint = new ColorPaint(fillColor);
         rn.strokeColor = strokeColor;
         rn.strokeWidth = strokeWidth;
         rn.radius = radius;
@@ -88,8 +88,8 @@ class ColorRect : View
     }
 
     private float _radius = 0f;
-    private FVec4 _fillColor;
-    private FVec4 _strokeColor;
+    private Color _fillColor;
+    private Color _strokeColor;
     private float _strokeWidth;
 }
 
@@ -172,8 +172,8 @@ class TextView : View, FontStyle
         sgHasContent = _text.length != 0;
     }
 
-    @property FVec4 color() const { return _color; }
-    @property void color(in FVec4 color)
+    @property Color color() const { return _color; }
+    @property void color(in Color color)
     {
         _color = color;
     }
@@ -273,7 +273,7 @@ class TextView : View, FontStyle
     }
 
     private string _text;
-    private FVec4 _color;
+    private Color _color;
     private TextLayout _layout;
     private TextMetrics _metrics;
     private StyleProperty!(string[])    _fontFamily;

@@ -1105,7 +1105,7 @@ package(dgt):
             if (!_sgBackgroundNode) _sgBackgroundNode = new SGRectNode;
             _sgBackgroundNode.rect = localRect;
             _sgBackgroundNode.fillPaint = background;
-            _sgBackgroundNode.strokeColor = borderColor.asVec;
+            _sgBackgroundNode.strokeColor = borderColor;
             _sgBackgroundNode.strokeWidth = borderWidth;
             _sgBackgroundNode.radius = borderRadius;
         }

@@ -1,5 +1,6 @@
 module dgt.sg.paint;
 
+import dgt.color;
 import dgt.math.vec;
 
 import gfx.foundation.rc;
@@ -24,16 +25,16 @@ class SGSolidPaint : SGPaintEffect
         return solidPxShader;
     }
 
-    @property FVec4 color()
+    @property Color color()
     {
         return _color;
     }
-    @property void color(in FVec4 color)
+    @property void color(in Color color)
     {
         _color = color;
     }
 
-    private FVec4 _color;
+    private Color _color;
 }
 
 
