@@ -1,6 +1,7 @@
 module hello;
 
 import dgt.application;
+import dgt.color;
 import dgt.enums;
 import dgt.event;
 import dgt.geometry;
@@ -67,9 +68,9 @@ int main()
     root.appendChild(exit);
     root.spacing = 6;
     root.gravity = Gravity.center;
-    root.inlineCSS = "background: hsl(0, 0, 90%)";
 
     win.root = root;
+    win.clearColor = Color.lightgray;
 
     win.show();
     return app.loop();
