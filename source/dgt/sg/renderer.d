@@ -361,12 +361,6 @@ private:
             auto trNode = cast(SGTransformNode)node;
             model = model * trNode.transform;
             break;
-        case SGNode.Type.rectFill:
-            renderRectFillNode(cast(SGRectFillNode)node, ctx, model);
-            break;
-        case SGNode.Type.rectStroke:
-            renderRectStrokeNode(cast(SGRectStrokeNode)node, ctx, model);
-            break;
         case SGNode.Type.image:
             renderImageNode(cast(SGImageNode)node, ctx, model);
             break;
@@ -384,37 +378,6 @@ private:
         foreach (c; node.children) {
             renderNode(c, ctx, model);
         }
-    }
-
-    void renderRectFillNode(SGRectFillNode node, SGContext ctx, in FMat4 model)
-    {
-        immutable color = node.color.asVec;
-        immutable rect = node.rect;
-        immutable rectTr = translate(
-            scale!float(rect.width, rect.height, 1f),
-            fvec(rect.topLeft, 0f)
-        );
-        immutable mvp = transpose(ctx.viewProj * model * rectTr);
-
-        SolidPipeline pl = color.a == 1f ?
-            _solidPipeline : _solidBlendPipeline;
-
-        pl.updateUniforms(mvp, color);
-        pl.draw(_solidQuadVBuf, VertexBufferSlice(_quadIBuf), ctx.renderTarget);
-    }
-
-    void renderRectStrokeNode(SGRectStrokeNode node, SGContext ctx, in FMat4 model)
-    {
-        immutable color = node.color.asVec;
-        immutable rect = node.rect;
-        immutable rectTr = translate(
-            scale!float(rect.width, rect.height, 1f),
-            fvec(rect.topLeft, 0f)
-        );
-        immutable mvp = transpose(ctx.viewProj * model * rectTr);
-
-        _linesPipeline.updateUniforms(mvp, color);
-        _linesPipeline.draw(_frameVBuf, VertexBufferSlice(frameVBufCount), ctx.renderTarget);
     }
 
     void renderImageNode(SGImageNode node, SGContext ctx, in FMat4 model)
