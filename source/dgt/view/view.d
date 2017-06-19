@@ -422,6 +422,7 @@ class View : StyleElement
         _transform = transform;
         _hasTransform = transform != FMat4.identity;
         dirty(Dirty.transformMask);
+        invalidate();
     }
 
     /// Transform that maps view coordinates to parent coordinates

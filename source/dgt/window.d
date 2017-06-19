@@ -13,6 +13,7 @@ import dgt.platform.event;
 import dgt.region;
 import dgt.screen;
 import dgt.util;
+import dgt.view.animation;
 import dgt.view.view;
 
 import gfx.foundation.rc;
@@ -467,6 +468,11 @@ class Window
             return _platformWindow.created;
         }
 
+        @property AnimationManager animManager()
+        {
+            return _animManager;
+        }
+
         void compressEvent(WindowEvent ev)
         {
             if (ev.type == PlEventType.move) {
@@ -529,6 +535,16 @@ class Window
             }
             _events = [];
             _evCompress = EvCompress.none;
+        }
+
+        @property bool hasAnimations()
+        {
+            return _animManager.hasAnimations;
+        }
+
+        void playAnimations()
+        {
+            _animManager.tick();
         }
 
         void styleAndLayout()
@@ -785,6 +801,7 @@ class Window
         View[] _dragChain;
         View[] _mouseViews;
         View[] _tempViews;
+        AnimationManager _animManager = new AnimationManager;
 
         EvCompress _evCompress = EvCompress.fstFrame;
         WindowEvent[] _events;

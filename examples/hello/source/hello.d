@@ -10,6 +10,7 @@ import dgt.math;
 import dgt.text.font;
 import dgt.text.fontcache;
 import dgt.text.layout;
+import dgt.view.animation;
 import dgt.view.button;
 import dgt.view.label;
 import dgt.view.layout;
@@ -73,5 +74,21 @@ int main()
     win.clearColor = Color.lightgray;
 
     win.show();
+
+    auto anim = new class Animation {
+        this() {
+            super(win, dur!"seconds"(2));
+        }
+
+        override void tick(Duration sinceStart) {
+            import std.math : PI;
+            immutable angle = sinceStart >= duration ? 0 : (2 * PI * (
+                real(sinceStart.total!"usecs") / real(duration.total!"usecs")
+            ));
+            exit.transform = rotation(angle, fvec(0, 0, 1));
+        }
+    };
+    anim.start();
+
     return app.loop();
 }

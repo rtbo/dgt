@@ -16,20 +16,22 @@ class EventLoop
     {
         while (!_exitFlag) {
 
-            import std.algorithm : each, filter;
+            import std.algorithm : any, each, filter;
             import std.array : array;
 
+            _windows.each!(w => w.playAnimations());
             _windows.each!(w => w.styleAndLayout());
 
             auto dirtyWindows = _windows
-                    .filter!(w => w.dirtyContent)
+                    .filter!(w => w.dirtyContent || w.hasAnimations)
                     .array();
             if (dirtyWindows.length) {
                 SGRenderer.instance.syncAndRender(dirtyWindows);
                 dirtyWindows.each!(w => w.cleanContent());
             }
 
-            Application.platform.waitFor(Wait.input);
+            if (!_windows.any!(w => w.hasAnimations))
+                Application.platform.waitFor(Wait.input);
             Application.platform.collectEvents(&compressEvent);
             deliverEvents();
         }
