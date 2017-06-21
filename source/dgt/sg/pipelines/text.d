@@ -49,9 +49,9 @@ class TextPipeline : Disposable
         _encoder = Encoder.init;
     }
 
-    void updateMVP(in FMat4 transform)
+    void updateMVP(in FMat4 model, in FMat4 viewProj)
     {
-        _encoder.updateConstBuffer(_mvpBlk, MVP(transform));
+        _encoder.updateConstBuffer(_mvpBlk, MVP(model, viewProj));
     }
 
     void updateColor(in FVec4 color)
@@ -74,7 +74,8 @@ class TextPipeline : Disposable
 private:
 
 struct MVP {
-    FMat4 mvp;
+    FMat4 model;
+    FMat4 viewProj;
 }
 
 struct Color {
@@ -108,18 +109,18 @@ enum textVShader = `
     in vec2 a_Tex;
 
     uniform MVP {
-        mat4 u_mvpMat;
+        mat4 u_modelMat;
+        mat4 u_viewProjMat;
     };
 
     out vec2 v_Tex;
 
     void main() {
         v_Tex = a_Tex;
-        gl_Position = u_mvpMat * vec4(a_Pos, 0.0, 1.0);
+        vec4 worldPos = u_modelMat * vec4(a_Pos, 0, 1);
+        gl_Position = u_viewProjMat * vec4(round(worldPos.x), round(worldPos.y), 0, 1);
     }
 `;
-// ImageFormat order is argb, in native order (that is actually bgra)
-// the framebuffer order is rgba, so some swizzling is needed
 enum textFShader = `
     #version 330
 

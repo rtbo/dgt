@@ -477,10 +477,8 @@ private:
                 txRect.topLeft / fSize,
                 FSize(txRect.width / fSize.x, txRect.height / fSize.y)
             );
-            immutable vertRect = roundRect(
-                transformBounds(FRect(
-                    gl.layoutPos, txRect.size
-                ), model)
+            immutable vertRect = FRect(
+                gl.layoutPos, txRect.size
             );
             auto quadVerts = [
                 P2T2Vertex([vertRect.left+pos.x, vertRect.top+pos.y], [normRect.left, normRect.top]),
@@ -490,7 +488,7 @@ private:
             ];
             auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 
-            _textPipeline.updateMVP(transpose(ctx.viewProj));
+            _textPipeline.updateMVP(transpose(model), transpose(ctx.viewProj));
             _textPipeline.draw(vbuf.obj, VertexBufferSlice(_quadIBuf), srv.obj, sampler.obj, ctx.renderTarget);
         }
     }
