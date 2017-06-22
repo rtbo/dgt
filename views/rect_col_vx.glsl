@@ -15,6 +15,5 @@ void main() {
     vx_Edge = a_Edge;
 
     vec4 worldPos = u_modelMat * vec4(a_Pos.xy, 0, 1);
-
     gl_Position = u_viewProjMat * vec4(round(worldPos.x), round(worldPos.y), 0, 1);
 }

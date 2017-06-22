@@ -2,6 +2,7 @@ module dgt.sg.rect;
 
 import dgt.color;
 import dgt.geometry;
+import dgt.image;
 import dgt.math;
 import dgt.paint;
 import dgt.sg.context;
@@ -16,13 +17,9 @@ import std.experimental.logger;
 
 alias Color = dgt.color.Color;
 
-// this is the approach I use for a rounded rectangle:
-// https://mortoray.com/2015/06/05/quickly-drawing-a-rounded-rectangle-with-a-gl-shader/
-// rounded version still needs blending in order to have anti aliased corners
+enum colPipeId = "pipes.rect_col";
+enum imgPipeId = "pipes.rect_img";
 
-enum maxNumStops = 8;
-
-/// Rounded rectangle node
 class SGRectNode : SGDrawNode
 {
     this() {}
@@ -58,17 +55,27 @@ class SGRectNode : SGDrawNode
     @property void fillPaint(Paint paint)
     {
         if (paint !is _fillPaint) {
-            bool dirtyBuf = true;
-            if (paint && _fillPaint && paint.type == PaintType.linearGradient &&
-                    _fillPaint.type == PaintType.linearGradient)
-            {
-                auto lgp = cast(LinearGradientPaint)paint;
-                auto _lgp = cast(LinearGradientPaint)_fillPaint;
-                dirtyBuf = (lgp.computeAngle(rect.size) != _lgp.computeAngle(rect.size));
+            // trying to preserve vertices
+            bool preserveBuf = false;
+            if (paint && _fillPaint && paint.type == _fillPaint.type) {
+                switch (paint.type) {
+                case PaintType.linearGradient:
+                    auto lgp = cast(LinearGradientPaint)paint;
+                    auto _lgp = cast(LinearGradientPaint)_fillPaint;
+                    preserveBuf = (lgp.computeAngle(rect.size) == _lgp.computeAngle(rect.size));
+                    break;
+                case PaintType.image:
+                    auto ip = cast(ImagePaint)paint;
+                    auto _ip = cast(ImagePaint)_fillPaint;
+                    preserveBuf = (ip.image && _ip.image && ip.image.size == _ip.image.size);
+                    break;
+                default:
+                    break;
+                }
             }
             _fillPaint = paint;
-            _dirty |= Dirty.col;
-            if (dirtyBuf) _dirty |= Dirty.buf;
+            _dirty |= Dirty.blk;
+            if (!preserveBuf) _dirty |= Dirty.buf;
         }
     }
 
@@ -80,7 +87,7 @@ class SGRectNode : SGDrawNode
     {
         if (_strokeColor != strokeCol) {
             _strokeColor = strokeCol;
-            _dirty |= Dirty.col;
+            _dirty |= Dirty.blk;
         }
     }
 
@@ -92,105 +99,125 @@ class SGRectNode : SGDrawNode
     {
         if (_strokeWidth != width) {
             _strokeWidth = width;
-            _dirty |= Dirty.buf;
-            _dirty |= Dirty.col;
+            _dirty |= (Dirty.blk | Dirty.buf);
         }
     }
 
-    override void draw (CommandBuffer cmdBuf, SGContext context, in FMat4 modelMat)
+    private @property Pipe pipe()
     {
-        if (_dirty & Dirty.buf) {
-            _vbuf.unload();
-            _ibuf.unload();
+        if (!_fillPaint) return Pipe.col;
+        switch(_fillPaint.type) {
+        case PaintType.image:
+            return Pipe.img;
+        default:
+            return Pipe.col;
+        }
+    }
+
+    override void draw(CommandBuffer cmdBuf, SGContext context, in FMat4 modelMat)
+    {
+        immutable p = pipe;
+        if (p == Pipe.col) {
+            drawCol(cmdBuf, context, modelMat);
+        }
+    }
+
+    private ColPipe getColPipe() {
+        import dgt.sg.renderer : SGRenderer;
+        auto pipe = cast(ColPipe)SGRenderer.resource(colPipeId);
+        if (!pipe) {
+            pipe = new ColPipe(
+                new Program(ShaderSet.vertexPixel(
+                    import("rect_col_vx.glsl"), import("rect_col_px.glsl")
+                )),
+                Primitive.triangles, Rasterizer.fill.withSamples()
+            );
+            SGRenderer.resource(colPipeId, pipe);
+        }
+        return pipe;
+    }
+
+    private ColDataSet getColDataSet()
+    {
+        enum maxNumStops = 8;
+
+        auto ds = cast(ColDataSet) _dataSet;
+        if (!ds) {
+            ds = new ColDataSet;
+            ds.mvpBlk = new ConstBuffer!MVP;
+            ds.fsBlk = new ConstBuffer!FillStroke;
+            ds.csBlk = new ConstBuffer!ColorStop(maxNumStops);
+            _dirty |= Dirty.blk;
+            if (_dataSet) _dataSet.dispose();
+            _dataSet = ds;
+        }
+        return ds;
+    }
+
+    private void drawCol(CommandBuffer cmdBuf, SGContext context, in FMat4 modelMat)
+    {
+        auto encoder = Encoder(cmdBuf);
+
+        auto ds = getColDataSet();
+        if (!ds.vbuf || _dirty & Dirty.buf) {
+            auto verts = buildVertices!ColVertex();
+            setGPos(verts);
+            ds.vbuf = new VertexBuffer!ColVertex(verts);
             _dirty &= ~Dirty.buf;
         }
 
-        if (_rect.area <= 0) return;
+        encoder.updateConstBuffer(ds.mvpBlk, MVP(
+            transpose(modelMat), transpose(context.viewProj)
+        ));
 
-        if (!_vbuf) {
-            import std.algorithm : min;
-
-            immutable r = rect;
-            immutable hm = min(r.width, r.height) / 2; // half min
-            immutable hw = _strokeWidth / 2;
-
-            // inner rect
-            immutable ir = r - FPadding(hm);
-            // extent rect
-            immutable er = r + FMargins(hw);
-
-            RectVertex[] verts;
-            ushort[] inds;
-
-            if (radius > 0) {
-                immutable rd = min(hm, radius);
-                if (rd != radius) {
-                    warning("specified radius for rect is too big");
+        if (_dirty & Dirty.blk) {
+            auto fs = FillStroke(_strokeColor.asVec, _strokeWidth, 0);
+            if (_fillPaint) {
+                switch (_fillPaint.type) {
+                case PaintType.color:
+                    auto cp = cast(ColorPaint)_fillPaint;
+                    fs.numStops = 1;
+                    encoder.updateConstBuffer(ds.csBlk, [ColorStop(cp.color.asVec, 0f)]);
+                    break;
+                case PaintType.linearGradient:
+                    import std.algorithm : map;
+                    import std.array : array;
+                    auto lgp = cast(LinearGradientPaint)_fillPaint;
+                    fs.numStops = cast(int)lgp.stops.length;
+                    encoder.updateConstBuffer(
+                        ds.csBlk, lgp.stops.map!(gs => ColorStop(gs.color.asVec, gs.position)).array
+                    );
+                    break;
+                default:
+                    break;
                 }
-                verts.reserve(40);
+            }
+            encoder.updateConstBuffer(ds.fsBlk, fs);
+            _dirty &= ~Dirty.blk;
+        }
+
+        auto pipe = getColPipe().rc();
+        encoder.draw!ColPipeMeta(VertexBufferSlice(getIBuf()), pipe, ColPipe.Data(
+            ds.vbuf, ds.mvpBlk, ds.fsBlk, ds.csBlk, context.renderTarget.rc
+        ));
+    }
+
+    private IndexBuffer!ushort getIBuf()
+    {
+        import dgt.sg.renderer : SGRenderer;
+        enum radId = "rect.rad_ibuf";
+        enum noRadId = "rect.norad_ibuf";
+        immutable id = radius > 0 ? radId : noRadId;
+
+        auto ibuf = cast(IndexBuffer!ushort)SGRenderer.resource(id);
+        if (!ibuf) {
+            ushort[] inds;
+            if (radius > 0) {
                 inds.reserve(6*4 + 12*4);
-
-                // top left corner
-                immutable tlEdge = fvec(r.left+rd, r.top+rd, rd);
-                verts ~= RectVertex(fvec(er.left, er.top), tlEdge);     // 0
-                verts ~= RectVertex(fvec(r.left+rd, er.top), tlEdge);     // 1
-                verts ~= RectVertex(fvec(r.left+rd, r.top+rd), tlEdge);     // 2
-                verts ~= RectVertex(fvec(er.left, r.top+rd), tlEdge);     // 3
                 inds ~= [0, 1, 2, 0, 2, 3];
-                // top right corner
-                immutable trEdge = fvec(r.right-rd, r.top+rd, rd);
-                verts ~= RectVertex(fvec(r.right-rd, er.top), trEdge);    // 4
-                verts ~= RectVertex(fvec(er.right, er.top), trEdge);    // 5
-                verts ~= RectVertex(fvec(er.right, r.top+rd), trEdge);    // 6
-                verts ~= RectVertex(fvec(r.right-rd, r.top+rd), trEdge);    // 7
                 inds ~= [4, 5, 6, 4, 6, 7];
-                // bottom right corner
-                immutable brEdge = fvec(r.right-rd, r.bottom-rd, rd);
-                verts ~= RectVertex(fvec(r.right-rd, r.bottom-rd), brEdge); // 8
-                verts ~= RectVertex(fvec(er.right, r.bottom-rd), brEdge); // 9
-                verts ~= RectVertex(fvec(er.right, er.bottom), brEdge); // 10
-                verts ~= RectVertex(fvec(r.right-rd, er.bottom), brEdge); // 11
                 inds ~= [8, 9, 10, 8, 10, 11];
-                // bottom left corner
-                immutable blEdge = fvec(r.left+rd, r.bottom-rd, rd);
-                verts ~= RectVertex(fvec(er.left, r.bottom-rd), blEdge);  // 12
-                verts ~= RectVertex(fvec(r.left+rd, r.bottom-rd), blEdge);  // 13
-                verts ~= RectVertex(fvec(r.left+rd, er.bottom), blEdge);  // 14
-                verts ~= RectVertex(fvec(er.left, er.bottom), blEdge);  // 15
                 inds ~= [12, 13, 14, 12, 14, 15];
-
-                // sides
-                verts ~= [
-                    // top
-                    RectVertex(fvec(r.left+rd, er.top), fvec(r.left+rd, ir.top, hm)),           // 16
-                    RectVertex(fvec(r.right-rd, er.top), fvec(r.right-rd, ir.top, hm)),
-                    RectVertex(fvec(r.left+rd, r.top+rd), fvec(r.left+rd, ir.top, hm)),
-                    RectVertex(fvec(r.right-rd, r.top+rd), fvec(r.right-rd, ir.top, hm)),
-                    RectVertex(ir.topLeft, fvec(ir.topLeft, hm)),
-                    RectVertex(ir.topRight, fvec(ir.topRight, hm)),
-                    // right
-                    RectVertex(fvec(er.right, r.top+rd), fvec(ir.right, r.top+rd, hm)),         // 22
-                    RectVertex(fvec(er.right, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm)),
-                    RectVertex(fvec(r.right-rd, r.top+rd), fvec(ir.right, r.top+rd, hm)),
-                    RectVertex(fvec(r.right-rd, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm)),
-                    RectVertex(ir.topRight, fvec(ir.topRight, hm)),
-                    RectVertex(ir.bottomRight, fvec(ir.bottomRight, hm)),
-                    // bottom
-                    RectVertex(fvec(r.right-rd, er.bottom), fvec(r.right-rd, ir.bottom, hm)),   // 28
-                    RectVertex(fvec(r.left+rd, er.bottom), fvec(r.left+rd, ir.bottom, hm)),
-                    RectVertex(fvec(r.right-rd, r.bottom-rd), fvec(r.right-rd, ir.bottom, hm)),
-                    RectVertex(fvec(r.left+rd, r.bottom-rd), fvec(r.left+rd, ir.bottom, hm)),
-                    RectVertex(ir.bottomRight, fvec(ir.bottomRight, hm)),
-                    RectVertex(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-                    // left
-                    RectVertex(fvec(er.left, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm)),         // 34
-                    RectVertex(fvec(er.left, r.top+rd), fvec(ir.left, r.top+rd, hm)),
-                    RectVertex(fvec(r.left+rd, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm)),
-                    RectVertex(fvec(r.left+rd, r.top+rd), fvec(ir.left, r.top+rd, hm)),
-                    RectVertex(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-                    RectVertex(ir.topLeft, fvec(ir.topLeft, hm)),
-                ];
-
                 void addIndices(in ushort start) {
                     inds ~= [
                         cast(ushort)(start+0), cast(ushort)(start+1), cast(ushort)(start+4),
@@ -205,33 +232,6 @@ class SGRectNode : SGDrawNode
                 addIndices(34);
             }
             else {
-
-                verts.reserve(16);
-                inds.reserve(8*3);
-
-                verts ~= [
-                    // top side
-                    RectVertex(er.topLeft, fvec(er.left, ir.top, hm)),
-                    RectVertex(er.topRight, fvec(er.right, ir.top, hm)),
-                    RectVertex(ir.topLeft, fvec(ir.topLeft, hm)),
-                    RectVertex(ir.topRight, fvec(ir.topRight, hm)),
-                    // right side
-                    RectVertex(er.topRight, fvec(ir.right, er.top, hm)),
-                    RectVertex(er.bottomRight, fvec(ir.right, er.bottom, hm)),
-                    RectVertex(ir.topRight, fvec(ir.topRight, hm)),
-                    RectVertex(ir.bottomRight, fvec(ir.bottomRight, hm)),
-                    // bottom side
-                    RectVertex(er.bottomRight, fvec(er.right, ir.bottom, hm)),
-                    RectVertex(er.bottomLeft, fvec(er.left, ir.bottom, hm)),
-                    RectVertex(ir.bottomRight, fvec(ir.bottomRight, hm)),
-                    RectVertex(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-                    // left side
-                    RectVertex(er.bottomLeft, fvec(ir.left, er.bottom, hm)),
-                    RectVertex(er.topLeft, fvec(ir.left, er.top, hm)),
-                    RectVertex(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-                    RectVertex(ir.topLeft, fvec(ir.topLeft, hm)),
-                ];
-
                 inds = [
                     0, 1, 2, 2, 1, 3,
                     4, 5, 6, 6, 5, 7,
@@ -239,62 +239,123 @@ class SGRectNode : SGDrawNode
                     12, 13, 14, 14, 13, 15,
                 ];
             }
-
-            setGPos(verts);
-
-            _vbuf = new VertexBuffer!RectVertex(verts);
-            _ibuf = new IndexBuffer!ushort(inds);
+            ibuf = new IndexBuffer!ushort(inds);
+            SGRenderer.resource(id, ibuf);
         }
-
-        if (!_pipe) {
-            _mvpBlk = new ConstBuffer!MVP;
-            _fsBlk = new ConstBuffer!FillStroke;
-            _csBlk = new ConstBuffer!ColorStop(maxNumStops);
-            _pipe = new RectPipe (
-                new Program(ShaderSet.vertexPixel(
-                    import("rect_vx.glsl"), import("rect_px.glsl")
-                )),
-                Primitive.triangles, Rasterizer.fill.withSamples()
-            );
-        }
-
-        auto encoder = Encoder(cmdBuf);
-
-        encoder.updateConstBuffer(_mvpBlk, MVP(transpose(modelMat), transpose(context.viewProj)));
-
-        if (_dirty & Dirty.col) {
-            auto fs = FillStroke(_strokeColor.asVec, _strokeWidth, 0);
-            if (_fillPaint) {
-                switch (_fillPaint.type) {
-                case PaintType.color:
-                    auto cp = cast(ColorPaint)_fillPaint;
-                    fs.numStops = 1;
-                    encoder.updateConstBuffer(_csBlk, [ColorStop(cp.color.asVec, 0f)]);
-                    break;
-                case PaintType.linearGradient:
-                    import std.algorithm : map;
-                    import std.array : array;
-                    auto lgp = cast(LinearGradientPaint)_fillPaint;
-                    fs.numStops = cast(int)lgp.stops.length;
-                    encoder.updateConstBuffer(
-                        _csBlk, lgp.stops.map!(gs => ColorStop(gs.color.asVec, gs.position)).array
-                    );
-                    break;
-                default:
-                    break;
-                }
-            }
-            encoder.updateConstBuffer(_fsBlk, fs);
-
-            _dirty &= ~Dirty.col;
-        }
-
-        encoder.draw!RectPipeMeta(VertexBufferSlice(_ibuf), _pipe.obj, RectData(
-            _vbuf, _mvpBlk, _fsBlk, _csBlk, context.renderTarget.rc
-        ));
+        return ibuf;
     }
 
-    void setGPos(RectVertex[] verts)
+    private V[] buildVertices(V)()
+    {
+        import std.algorithm : min;
+
+        immutable r = rect;
+        immutable hm = min(r.width, r.height) / 2; // half min
+        immutable hw = _strokeWidth / 2;
+
+        // inner rect
+        immutable ir = r - FPadding(hm);
+        // extent rect
+        immutable er = r + FMargins(hw);
+
+        V[] verts;
+
+        if (radius > 0) {
+            verts.reserve(40);
+
+            immutable rd = min(hm, radius);
+            if (rd != radius) {
+                warning("specified radius for rect is too big");
+            }
+
+            // top left corner
+            immutable tlEdge = fvec(r.left+rd, r.top+rd, rd);
+            verts ~= V(fvec(er.left, er.top), tlEdge);     // 0
+            verts ~= V(fvec(r.left+rd, er.top), tlEdge);     // 1
+            verts ~= V(fvec(r.left+rd, r.top+rd), tlEdge);     // 2
+            verts ~= V(fvec(er.left, r.top+rd), tlEdge);     // 3
+            // top right corner
+            immutable trEdge = fvec(r.right-rd, r.top+rd, rd);
+            verts ~= V(fvec(r.right-rd, er.top), trEdge);    // 4
+            verts ~= V(fvec(er.right, er.top), trEdge);    // 5
+            verts ~= V(fvec(er.right, r.top+rd), trEdge);    // 6
+            verts ~= V(fvec(r.right-rd, r.top+rd), trEdge);    // 7
+            // bottom right corner
+            immutable brEdge = fvec(r.right-rd, r.bottom-rd, rd);
+            verts ~= V(fvec(r.right-rd, r.bottom-rd), brEdge); // 8
+            verts ~= V(fvec(er.right, r.bottom-rd), brEdge); // 9
+            verts ~= V(fvec(er.right, er.bottom), brEdge); // 10
+            verts ~= V(fvec(r.right-rd, er.bottom), brEdge); // 11
+            // bottom left corner
+            immutable blEdge = fvec(r.left+rd, r.bottom-rd, rd);
+            verts ~= V(fvec(er.left, r.bottom-rd), blEdge);  // 12
+            verts ~= V(fvec(r.left+rd, r.bottom-rd), blEdge);  // 13
+            verts ~= V(fvec(r.left+rd, er.bottom), blEdge);  // 14
+            verts ~= V(fvec(er.left, er.bottom), blEdge);  // 15
+
+            // sides
+            verts ~= [
+                // top
+                V(fvec(r.left+rd, er.top), fvec(r.left+rd, ir.top, hm)),           // 16
+                V(fvec(r.right-rd, er.top), fvec(r.right-rd, ir.top, hm)),
+                V(fvec(r.left+rd, r.top+rd), fvec(r.left+rd, ir.top, hm)),
+                V(fvec(r.right-rd, r.top+rd), fvec(r.right-rd, ir.top, hm)),
+                V(ir.topLeft, fvec(ir.topLeft, hm)),
+                V(ir.topRight, fvec(ir.topRight, hm)),
+                // right
+                V(fvec(er.right, r.top+rd), fvec(ir.right, r.top+rd, hm)),         // 22
+                V(fvec(er.right, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm)),
+                V(fvec(r.right-rd, r.top+rd), fvec(ir.right, r.top+rd, hm)),
+                V(fvec(r.right-rd, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm)),
+                V(ir.topRight, fvec(ir.topRight, hm)),
+                V(ir.bottomRight, fvec(ir.bottomRight, hm)),
+                // bottom
+                V(fvec(r.right-rd, er.bottom), fvec(r.right-rd, ir.bottom, hm)),   // 28
+                V(fvec(r.left+rd, er.bottom), fvec(r.left+rd, ir.bottom, hm)),
+                V(fvec(r.right-rd, r.bottom-rd), fvec(r.right-rd, ir.bottom, hm)),
+                V(fvec(r.left+rd, r.bottom-rd), fvec(r.left+rd, ir.bottom, hm)),
+                V(ir.bottomRight, fvec(ir.bottomRight, hm)),
+                V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
+                // left
+                V(fvec(er.left, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm)),         // 34
+                V(fvec(er.left, r.top+rd), fvec(ir.left, r.top+rd, hm)),
+                V(fvec(r.left+rd, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm)),
+                V(fvec(r.left+rd, r.top+rd), fvec(ir.left, r.top+rd, hm)),
+                V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
+                V(ir.topLeft, fvec(ir.topLeft, hm)),
+            ];
+
+        }
+        else {
+            verts = [
+                // top side
+                V(er.topLeft, fvec(er.left, ir.top, hm)),
+                V(er.topRight, fvec(er.right, ir.top, hm)),
+                V(ir.topLeft, fvec(ir.topLeft, hm)),
+                V(ir.topRight, fvec(ir.topRight, hm)),
+                // right side
+                V(er.topRight, fvec(ir.right, er.top, hm)),
+                V(er.bottomRight, fvec(ir.right, er.bottom, hm)),
+                V(ir.topRight, fvec(ir.topRight, hm)),
+                V(ir.bottomRight, fvec(ir.bottomRight, hm)),
+                // bottom side
+                V(er.bottomRight, fvec(er.right, ir.bottom, hm)),
+                V(er.bottomLeft, fvec(er.left, ir.bottom, hm)),
+                V(ir.bottomRight, fvec(ir.bottomRight, hm)),
+                V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
+                // left side
+                V(er.bottomLeft, fvec(ir.left, er.bottom, hm)),
+                V(er.topLeft, fvec(ir.left, er.top, hm)),
+                V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
+                V(ir.topLeft, fvec(ir.topLeft, hm)),
+            ];
+        }
+
+        return verts;
+    }
+
+    // set the gradient pos of the vertices
+    private void setGPos(ColVertex[] verts)
     {
         auto lgp = cast(LinearGradientPaint)_fillPaint;
         if (!lgp) return;
@@ -310,10 +371,6 @@ class SGRectNode : SGDrawNode
         // immutable ta = tan(angle);
         immutable ca = cos(angle);
         immutable sa = sin(angle);
-        // gradient line eq
-        // y = ax + b
-        // immutable a = -1f / ta;
-        // immutable b = c.x / ta + c.y;
 
         // unit vec along gradient line
         immutable u = fvec(sa, -ca);
@@ -335,34 +392,47 @@ class SGRectNode : SGDrawNode
     }
 
 
+    private enum Dirty {
+        none    = 0,
+        buf     = 1,
+        blk     = 2,
+        all     = buf | blk,
+    }
+    private enum Pipe {
+        col, img,
+    }
+
+    private Dirty _dirty = Dirty.all;
     private FRect _rect;
     private float _radius = 0f;
     private Paint _fillPaint;
     private Color _strokeColor;
     private float _strokeWidth = 0f;
 
-    private Rc!(VertexBuffer!RectVertex) _vbuf;
-    private Rc!(IndexBuffer!ushort)    _ibuf;
-
-    private Rc!RectPipe _pipe;
-    private Rc!(ConstBuffer!MVP) _mvpBlk;
-    private Rc!(ConstBuffer!FillStroke) _fsBlk;
-    private Rc!(ConstBuffer!ColorStop) _csBlk;
-
-    private enum Dirty {
-        none    = 0,
-        buf     = 1,
-        col     = 2,
-    }
-    private Dirty _dirty = Dirty.buf | Dirty.col;
+    private Disposable _dataSet;
 }
 
 private:
 
-struct RectVertex
+class ColDataSet : Disposable
+{
+    Rc!(VertexBuffer!ColVertex) vbuf;
+    Rc!(ConstBuffer!MVP)        mvpBlk;
+    Rc!(ConstBuffer!FillStroke) fsBlk;
+    Rc!(ConstBuffer!ColorStop)  csBlk;
+
+    override void dispose() {
+        vbuf.unload();
+        mvpBlk.unload();
+        fsBlk.unload();
+        csBlk.unload();
+    }
+}
+
+struct ColVertex
 {
     @GfxName("a_Pos")
-    float[3] pos;   // z is gradient position
+    float[3] pos;   // z is color gradient position
 
     @GfxName("a_Edge")
     float[3] edge;
@@ -408,9 +478,9 @@ struct ColorStop
     }
 }
 
-struct RectPipeMeta
+struct ColPipeMeta
 {
-    VertexInput!RectVertex      input;
+    VertexInput!ColVertex      input;
 
     @GfxName("MVP")
     ConstantBlock!MVP           mvp;
@@ -426,5 +496,67 @@ struct RectPipeMeta
     BlendOutput!Rgba8           outColor;
 }
 
-alias RectPipe = PipelineState!RectPipeMeta;
-alias RectData = RectPipe.Data;
+alias ColPipe = PipelineState!ColPipeMeta;
+alias ColData = ColPipe.Data;
+
+
+struct ImgVertex
+{
+    @GfxName("a_Pos")
+    float[2] pos;
+
+    @GfxName("a_Tex")
+    float[2] tex;
+
+    @GfxName("a_Edge")
+    float[3] edge;
+
+    this(FVec2 pos, FVec3 edge)
+    {
+        this.pos = pos.array;
+        this.edge = edge.array;
+    }
+    this(FVec2 pos, FVec2 tex, FVec3 edge)
+    {
+        this.pos = pos.array;
+        this.tex = tex.array;
+        this.edge = edge.array;
+    }
+
+    @property FVec2 vpos() const {
+        return FVec2(pos);
+    }
+    @property void vtex(in FVec2 tex) {
+        this.tex = tex.array;
+    }
+}
+
+struct Stroke
+{
+    FVec4 stroke;
+    float strokeWidth;
+}
+
+struct ImgPipeMeta
+{
+    VertexInput!ColVertex      input;
+
+    @GfxName("MVP")
+    ConstantBlock!MVP           mvp;
+
+    @GfxName("Stroke")
+    ConstantBlock!Stroke        fs;
+
+    @GfxName("u_Sampler")
+    ResourceView!Rgba8          texture;
+
+    @GfxName("u_Sampler")
+    ResourceSampler             sampler;
+
+    @GfxName("o_Color")
+    @GfxBlend(Blend( Equation.add, Factor.one, Factor.oneMinusSrcAlpha ))
+    BlendOutput!Rgba8           outColor;
+}
+
+alias ImgPipe = PipelineState!ImgPipeMeta;
+alias ImgData = ImgPipe.Data;

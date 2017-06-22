@@ -132,6 +132,27 @@ abstract class SGRenderer
         _context.swapBuffers(pw.nativeHandle);
     }
 
+    /// access to global resource cache
+    static ResourceHolder resource(in string resId)
+    {
+        auto res = resId in instance._resourceCache;
+        if (res) return *res;
+        else return null;
+    }
+    /// access to global resource cache
+    static void resource (in string resId, ResourceHolder resource)
+    {
+        auto res = resId in instance._resourceCache;
+        if (res) res.release();
+        if (resource) {
+            resource.retain();
+            instance._resourceCache[resId] = resource;
+        }
+        else {
+            instance._resourceCache.remove(resId);
+        }
+    }
+
 private:
 
     this() {}
@@ -209,11 +230,12 @@ private:
         ISize   _prevSize;
     }
 
-    GlContext       _context;
-    Device          _device;
-    Encoder         _encoder;
-    CommandBuffer   _cmdBuf;
-    PerWindow[]     _windowCache;
+    GlContext               _context;
+    Device                  _device;
+    Encoder                 _encoder;
+    CommandBuffer           _cmdBuf;
+    PerWindow[]             _windowCache;
+    ResourceHolder[string]  _resourceCache;
 
     SolidPipeline   _solidPipeline;
     SolidPipeline   _solidBlendPipeline;
