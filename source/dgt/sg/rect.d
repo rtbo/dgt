@@ -11,6 +11,7 @@ import dgt.sg.geometry;
 import dgt.sg.node;
 
 import gfx.foundation.rc;
+import gfx.foundation.util;
 import gfx.pipeline;
 
 import std.experimental.logger;
@@ -73,9 +74,11 @@ class SGRectNode : SGDrawNode
                     break;
                 }
             }
-            _fillPaint = paint;
             _dirty |= Dirty.blk;
+            _dirty |= Dirty.tex;
             if (!preserveBuf) _dirty |= Dirty.buf;
+
+            _fillPaint = paint;
         }
     }
 
@@ -119,6 +122,10 @@ class SGRectNode : SGDrawNode
         immutable p = pipe;
         if (p == Pipe.col) {
             drawCol(cmdBuf, context, modelMat);
+        }
+        else {
+            assert(p == Pipe.img);
+            drawImg(cmdBuf, context, modelMat);
         }
     }
 
@@ -199,6 +206,83 @@ class SGRectNode : SGDrawNode
         auto pipe = getColPipe().rc();
         encoder.draw!ColPipeMeta(VertexBufferSlice(getIBuf()), pipe, ColPipe.Data(
             ds.vbuf, ds.mvpBlk, ds.fsBlk, ds.csBlk, context.renderTarget.rc
+        ));
+    }
+
+    private ImgPipe getImgPipe() {
+        import dgt.sg.renderer : SGRenderer;
+        auto pipe = cast(ImgPipe)SGRenderer.resource(imgPipeId);
+        if (!pipe) {
+            pipe = new ImgPipe(
+                new Program(ShaderSet.vertexPixel(
+                    import("rect_img_vx.glsl"), import("rect_img_px.glsl")
+                )),
+                Primitive.triangles, Rasterizer.fill.withSamples()
+            );
+            SGRenderer.resource(imgPipeId, pipe);
+        }
+        return pipe;
+    }
+
+    private ImgDataSet getImgDataSet()
+    {
+        enum maxNumStops = 8;
+
+        auto ds = cast(ImgDataSet) _dataSet;
+        if (!ds) {
+            ds = new ImgDataSet;
+            ds.mvpBlk = new ConstBuffer!MVP;
+            ds.sBlk = new ConstBuffer!Stroke;
+            _dirty |= Dirty.blk;
+            if (_dataSet) _dataSet.dispose();
+            _dataSet = ds;
+        }
+        return ds;
+    }
+
+    private void drawImg(CommandBuffer cmdBuf, SGContext context, in FMat4 modelMat)
+    {
+        auto encoder = Encoder(cmdBuf);
+
+        auto ds = getImgDataSet();
+        if (!ds.vbuf || _dirty & Dirty.buf) {
+            auto verts = buildVertices!ImgVertex();
+            setTexCoords(verts);
+            ds.vbuf = new VertexBuffer!ImgVertex(verts);
+            _dirty &= ~Dirty.buf;
+        }
+
+        encoder.updateConstBuffer(ds.mvpBlk, MVP(
+            transpose(modelMat), transpose(context.viewProj)
+        ));
+
+        if (_dirty & Dirty.tex || !ds.srv || !ds.sampler) {
+            auto ip = cast(ImagePaint)_fillPaint;
+            assert(ip);
+            immutable img = ip.image;
+            auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
+            TexUsageFlags usage = TextureUsage.shaderResource;
+            auto tex = makeRc!(Texture2D!Rgba8)(
+                usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
+            );
+            ds.srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+            ds.sampler = new Sampler(
+                ds.srv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
+            );
+
+            _dirty &= ~Dirty.tex;
+        }
+
+        if (_dirty & Dirty.blk) {
+            auto s = Stroke(_strokeColor.asVec, _strokeWidth);
+            encoder.updateConstBuffer(ds.sBlk, s);
+
+            _dirty &= ~Dirty.blk;
+        }
+
+        auto pipe = getImgPipe().rc();
+        encoder.draw!ImgPipeMeta(VertexBufferSlice(getIBuf()), pipe, ImgPipe.Data(
+            ds.vbuf, ds.mvpBlk, ds.sBlk, ds.srv, ds.sampler, context.renderTarget.rc
         ));
     }
 
@@ -391,12 +475,24 @@ class SGRectNode : SGDrawNode
         }
     }
 
+    void setTexCoords(ImgVertex[] verts) {
+        auto ip = cast(ImagePaint)_fillPaint;
+        assert(ip);
+        immutable img = ip.image;
+
+        immutable factor = fvec(1f / cast(float)img.width, 1f / cast(float)img.height);
+        foreach (ref v; verts) {
+            v.vtex = factor * v.vpos;
+        }
+    }
+
 
     private enum Dirty {
         none    = 0,
         buf     = 1,
         blk     = 2,
-        all     = buf | blk,
+        tex     = 4,
+        all     = buf | blk | tex,
     }
     private enum Pipe {
         col, img,
@@ -426,6 +522,22 @@ class ColDataSet : Disposable
         mvpBlk.unload();
         fsBlk.unload();
         csBlk.unload();
+    }
+}
+class ImgDataSet : Disposable
+{
+    Rc!(VertexBuffer!ImgVertex)     vbuf;
+    Rc!(ConstBuffer!MVP)            mvpBlk;
+    Rc!(ConstBuffer!Stroke)         sBlk;
+    Rc!(ShaderResourceView!Rgba8)   srv;
+    Rc!Sampler                      sampler;
+
+    override void dispose() {
+        vbuf.unload();
+        mvpBlk.unload();
+        sBlk.unload();
+        srv.unload();
+        sampler.unload();
     }
 }
 
@@ -539,13 +651,13 @@ struct Stroke
 
 struct ImgPipeMeta
 {
-    VertexInput!ColVertex      input;
+    VertexInput!ImgVertex      input;
 
     @GfxName("MVP")
     ConstantBlock!MVP           mvp;
 
     @GfxName("Stroke")
-    ConstantBlock!Stroke        fs;
+    ConstantBlock!Stroke        s;
 
     @GfxName("u_Sampler")
     ResourceView!Rgba8          texture;

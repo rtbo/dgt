@@ -128,10 +128,13 @@ class ImageView : View
     override SGNode sgUpdateContent(SGNode previous)
     {
         if (_img) {
-            auto imgN = cast(SGImageNode)previous;
-            if (!imgN) imgN = new SGImageNode;
-            imgN.topLeft = fvec(0, 0);
-            imgN.image = _img;
+            auto imgN = cast(SGRectNode)previous;
+            if (!imgN) imgN = new SGRectNode;
+            auto ip = cast(ImagePaint)imgN.fillPaint;
+            if (!ip || ip.image !is _img) {
+                ip = new ImagePaint(_img);
+                imgN.fillPaint = ip;
+            }
             return imgN;
         }
         else {
