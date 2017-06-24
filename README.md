@@ -1,17 +1,22 @@
 # D GUI Toolkit
 
-A few design choices:
- - 2D scene graph
- - Vector graphics
-    - software rendered into in-memory buffers only and upload to textures
-    - backed by cairo
- - Using OpenGL to composite the SG nodes together
- - Widget toolkit built on the scene graph
+## Toolkit highlights
 
-Runtime Dependencies
- - Cairo
+ - Widget toolkit (called `View`s)
+ - native support for transforms and animations
+ - full styling with CSS
+ - Widgets sync with a 2D scene graph that lives in a render thread
+ - Using [gfx-d](https://github.com/rtbo/gfx-d) (hardware renderer) to composite the SG nodes together
+
+## Screenshot
+
+![Hello example screenshot](misc/hello_screenshot.png)
+
+## Runtime Dependencies
+
  - Freetype
  - Harfbuzz
  - Fontconfig
  - libpng
  - turbojpeg
+ - Cairo (might move out)
