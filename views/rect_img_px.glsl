@@ -18,7 +18,8 @@ void main()
     float dist = length(vx_Pos.xy - vx_Edge.xy) - vx_Edge.z;
 
     float fillOpacity = clamp(0.5 - dist, 0, 1);
-    vec4 col = texture(u_Sampler, vx_Tex) * fillOpacity;
+    // little endian texel swizzling
+    vec4 col = texture(u_Sampler, vx_Tex).bgra * fillOpacity;
 
     if (u_Width > 0.0) {
         float strokeOpacity = clamp(0.5 - (abs(dist)-u_Width/2), 0, 1);

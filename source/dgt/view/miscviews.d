@@ -130,6 +130,7 @@ class ImageView : View
         if (_img) {
             auto imgN = cast(SGRectNode)previous;
             if (!imgN) imgN = new SGRectNode;
+            imgN.rect = localRect;
             auto ip = cast(ImagePaint)imgN.fillPaint;
             if (!ip || ip.image !is _img) {
                 ip = new ImagePaint(_img);
