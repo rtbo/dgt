@@ -651,8 +651,9 @@ unittest
 
 
 /// Compute the extents of an input range of rects.
+/// Returns the rect init value if the range is empty
 auto computeRectsExtents(R)(R rects)
-if (isInputRange!R)
+if (isInputRange!R && isRect!(ElementType!R))
 {
     alias RectT = ElementType!R;
     if (rects.empty) return RectT.init;
