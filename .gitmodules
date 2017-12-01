@@ -1,0 +1,4 @@
+[submodule "gfx-d"]
+	path = gfx-d
+	url = git@github.com:rtbo/gfx-d.git
+	branch = master

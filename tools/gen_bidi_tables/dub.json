@@ -1,0 +1,11 @@
+{
+	"name": "gen_bidi_tables",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"sourceFiles": ["source/gen_bidi_tables.d"],
+	"targetType": "executable",
+	"description": "Generates Trie table to map the Bidi_class of a code point.",
+	"copyright": "Copyright © 2016, Rémi Thebault",
+	"license": "MIT"
+}

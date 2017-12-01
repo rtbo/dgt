@@ -1,0 +1,17 @@
+{
+	"name": "harfbuzz",
+	"targetType": "library",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"description": "D GUI Toolkit - Dynamic bindings to Harfbuzz",
+	"copyright": "Copyright © 2017, Rémi Thebault",
+	"license": "MIT",
+
+  "dependencies":	{
+		"dgt:bindings": {
+			"path": ".."
+		},
+		"derelict-ft":		"~>1.1.3"
+  }
+}

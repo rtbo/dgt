@@ -1,0 +1,10 @@
+{
+	"name": "bindings",
+	"targetType": "library",
+	"authors": [
+		"Rémi Thebault"
+	],
+	"description": "D GUI Toolkit - Foundation for bindings to C libraries",
+	"copyright": "Copyright © 2017, Rémi Thebault",
+	"license": "MIT"
+}

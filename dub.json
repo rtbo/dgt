@@ -1,0 +1,55 @@
+{
+    "name": "dgt",
+    "authors": [
+        "Rémi Thebault"
+    ],
+    "description": "D GUI Toolkit",
+    "copyright": "Copyright © 2016, Rémi Thebault",
+    "license": "MIT",
+
+    "buildRequirements": [ "disallowDeprecations" ],
+
+    "subPackages": [
+        "./bindings",
+        "./bindings/cairo",
+        "./bindings/libpng",
+        "./bindings/turbojpeg",
+        "./bindings/fontconfig",
+        "./bindings/harfbuzz",
+        "./bindings/xcb-image"
+    ],
+
+    "dependencies":	{
+        "dgt:bindings":		"*",
+        "dgt:libpng":		"*",
+        "dgt:turbojpeg":	"*",
+        "dgt:fontconfig":	"*",
+        "dgt:harfbuzz":		"*",
+
+        "gfx-d": {
+            "path": "gfx-d"
+        },
+
+        "derelict-gl3":		"~>1.0.19",
+        "derelict-ft":		"~>1.1.3"
+    },
+
+    "configurations": [
+        {
+            "name": "linux",
+            "platforms": ["linux"],
+            "dependencies": {
+                "xcb-d":			"~>2.1.0",
+                "xcb-util-wm-d":	"~>0.5.0",
+                "xkbcommon-d":      "~>0.5.1",
+                "xlib-d":           "~>0.1.1"
+            },
+            "libs" : ["xcb-xkb", "xcb-dri2", "xcb-dri3", "xcb-shm"]
+        },
+        {
+            "name": "windows",
+            "platforms": ["windows"],
+            "libs": ["gdi32", "opengl32"]
+        }
+    ]
+}
