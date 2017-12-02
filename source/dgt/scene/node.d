@@ -1,6 +1,7 @@
 module dgt.scene.node;
 
 import dgt.core.geometry;
+import dgt.core.tree;
 import dgt.css.style;
 import dgt.math.mat : FMat4, inverse;
 import dgt.math.transform : transform, translate, translation;
@@ -9,6 +10,7 @@ import dgt.scene.scene;
 import std.algorithm : map;
 import std.exception : enforce;
 
+/// Base class for all nodes in the scene graph.
 class Node : StyleElement {
     /// The scene this node is attached to.
     @property Scene scene()
@@ -17,7 +19,7 @@ class Node : StyleElement {
     }
 
     /// The root of this scene graph
-    @property Node root()
+    override @property Node root()
     {
         if (!_parent) return this;
         Node p = _parent;
@@ -25,26 +27,20 @@ class Node : StyleElement {
         return p;
     }
 
-    /// Whether this node is root
-    @property bool isRoot() const
-    {
-        return _parent is null;
-    }
-
     /// This node's parent.
-    @property Node parent()
+    override @property Node parent()
     {
         return _parent;
     }
 
     /// This node's previous sibling.
-    @property Node prevSibling()
+    override @property Node prevSibling()
     {
         return _prevSibling;
     }
 
     /// This node's next sibling.
-    @property Node nextSibling()
+    override @property Node nextSibling()
     {
         return _nextSibling;
     }
@@ -62,13 +58,13 @@ class Node : StyleElement {
     }
 
     /// This node's first child.
-    @property inout(Node) firstChild() inout
+    override @property Node firstChild()
     {
         return _firstChild;
     }
 
     /// This node's last child.
-    @property inout(Node) lastChild() inout
+    override @property Node lastChild()
     {
         return _lastChild;
     }
@@ -76,13 +72,7 @@ class Node : StyleElement {
     /// A bidirectional range of this node's children
     @property auto children()
     {
-        return SgSiblingNodeRange!Node(_firstChild, _lastChild);
-    }
-
-    /// ditto
-    @property auto children() const
-    {
-        return SgSiblingNodeRange!(const(Node))(_firstChild, _lastChild);
+        return siblingRange!Node(_firstChild, _lastChild);
     }
 
     /// Appends the given node to this node children list.
@@ -531,6 +521,14 @@ class Node : StyleElement {
         return sp ? *sp : null;
     }
 
+    override @property bool isStyleDirty() {
+        return isDirty(Dirty.style);
+    }
+
+    override @property bool hasChildrenStyleDirty() {
+        return isDirty(Dirty.childrenStyle);
+    }
+
     /// Get the name of this node, or its id if name is not set.
     /// For debug purpose only.
     @property string name() {
@@ -606,7 +604,7 @@ class Node : StyleElement {
     }
 
 
-    private Scene _scene;
+    package(dgt.scene) Scene _scene;
 
     private Node _parent;
     private Node _prevSibling;
@@ -638,13 +636,12 @@ class Node : StyleElement {
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
     // style properties
-    private IStyleMetaProperty[]        _styleMetaProperties;
-    private IStyleProperty[string]      _styleProperties;
+    package(dgt.scene) IStyleMetaProperty[]        _styleMetaProperties;
+    package(dgt.scene) IStyleProperty[string]      _styleProperties;
 
     // debug
     private string _name;
 }
-
 
 
 /// Testing scene graph relationship
@@ -728,54 +725,3 @@ unittest {
     assert(approxUlp(subchild.mapToNode(child2, p),     fvec( 25,  -45)));
     assert(approxUlp(subchild.mapFromNode(child2, p),   fvec( -5,  65)));
 }
-
-
-private:
-
-/// Bidirectional range that traverses a sibling node list
-struct SgSiblingNodeRange(NodeT)
-{
-    import std.typecons : Rebindable;
-
-    Rebindable!NodeT _first;
-    Rebindable!NodeT _last;
-
-    this (NodeT first, NodeT last)
-    {
-        _first = first;
-        _last = last;
-    }
-
-    @property bool empty() { return _first is null; }
-    @property NodeT front() { return _first; }
-    void popFront() {
-        if (_first is _last) {
-            _first = null;
-            _last = null;
-        }
-        else {
-            _first = _first._nextSibling;
-        }
-    }
-
-    @property auto save()
-    {
-        return SgSiblingNodeRange(_first, _last);
-    }
-
-    @property NodeT back() { return _last; }
-    void popBack() {
-        if (_first is _last) {
-            _first = null;
-            _last = null;
-        }
-        else {
-            _last = _last._prevSibling;
-        }
-    }
-}
-
-import std.range : isBidirectionalRange;
-
-static assert (isBidirectionalRange!(SgSiblingNodeRange!Node));
-static assert (isBidirectionalRange!(SgSiblingNodeRange!(const(Node))));

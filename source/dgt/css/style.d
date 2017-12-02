@@ -3,6 +3,7 @@ module dgt.css.style;
 
 import dgt.core.geometry;
 import dgt.core.signal;
+import dgt.core.tree;
 import dgt.css.om;
 import dgt.css.token;
 import dgt.css.value;
@@ -37,19 +38,8 @@ enum PseudoState
 
 
 /// StyleElement must be implemented by a tree structure that can receive css style properties
-interface StyleElement
+interface StyleElement : TreeNode!StyleElement
 {
-    /// The parent of this style, or null if this style is the root.
-    @property StyleElement parent();
-    /// Whether this style is the root of the style tree.
-    @property bool isRoot();
-    /// The root of the style tree
-    @property StyleElement root();
-    /// Get the next sibling of this style. Used in sibling selectors.
-    @property StyleElement prevSibling();
-    /// Get the previous sibling of this style. Used in sibling selectors.
-    @property StyleElement nextSibling();
-
     /// The inline css of this element.
     /// That is, style that apply to this node, but not to its children.
     /// It must be specified as standalone declarations (without surrounding rules).
@@ -80,7 +70,13 @@ interface StyleElement
     @property IStyleMetaProperty[] styleMetaProperties();
     /// Get the property object by name. (e.g. "background-color")
     IStyleProperty styleProperty(string name);
+
+    /// Check whether the style of this element was modified and needs a pass
+    @property bool isStyleDirty();
+    /// Check whether one descendant of this element need a style pass
+    @property bool hasChildrenStyleDirty();
 }
+
 
 /// Font style as defined by the CSS specification
 enum FontSlant
