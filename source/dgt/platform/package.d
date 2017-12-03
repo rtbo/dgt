@@ -36,10 +36,9 @@ interface Platform : Disposable
                 GlAttribs attribs, PlatformWindow window,
                 GlContext sharedCtx, Screen screen);
 
-    void wait(in Wait waitFlags);
+    Wait wait(in Wait waitFlags);
 
     void collectEvents(void delegate(PlEvent) collector);
-    void processEvents();
 }
 
 /// OS specific window interface.
@@ -58,10 +57,10 @@ interface PlatformWindow
     @property size_t nativeHandle() const;
 
     @property string title() const;
-    void setTitle(string title);
+    void setTitle(in string title);
 
     @property WindowState state() const;
-    void setState(WindowState state);
+    void setState(in WindowState state);
 
     @property IRect rect() const;
     void setRect(in IRect rect);
