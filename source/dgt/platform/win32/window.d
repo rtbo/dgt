@@ -448,7 +448,8 @@ class Win32Window : PlatformWindow
                 immutable auto count = msg.lParam & repeatCountMask;
                 auto str = new wchar[count];
                 str[] = cast(wchar)msg.wParam;
-                return str.idup;
+                import std.exception : assumeUnique;
+                return assumeUnique(str);
             }
             return "";
         }
