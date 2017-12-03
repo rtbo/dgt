@@ -32,6 +32,10 @@ interface Platform : Disposable
     @property inout(Screen)[] screens() inout;
     PlatformWindow createWindow(Window window);
 
+    GlContext createGlContext(
+                GlAttribs attribs, PlatformWindow window,
+                GlContext sharedCtx, Screen screen);
+
     void wait(in Wait waitFlags);
 
     void collectEvents(void delegate(PlEvent) collector);
@@ -54,7 +58,7 @@ interface PlatformWindow
     @property size_t nativeHandle() const;
 
     @property string title() const;
-    @property void title(string title);
+    void setTitle(string title);
 
     @property WindowState state() const;
     void setState(WindowState state);
