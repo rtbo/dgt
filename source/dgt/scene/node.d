@@ -5,6 +5,7 @@ import dgt.core.tree;
 import dgt.css.style;
 import dgt.math.mat : FMat4, inverse;
 import dgt.math.transform : transform, translate, translation;
+import dgt.render.framegraph;
 import dgt.scene.scene;
 
 import std.algorithm : map;
@@ -527,6 +528,19 @@ class Node : StyleElement {
 
     override @property bool hasChildrenStyleDirty() {
         return isDirty(Dirty.childrenStyle);
+    }
+
+    immutable(FGNode) render() {
+        import std.array : array;
+        return new immutable FGGroupNode (
+            children.map!(c => c.transformRender()).array
+        );
+    }
+
+    final immutable(FGNode) transformRender() {
+        return hasTransform ?
+            new immutable FGTransformNode(transform, render()) :
+            render();
     }
 
     /// Get the name of this node, or its id if name is not set.
