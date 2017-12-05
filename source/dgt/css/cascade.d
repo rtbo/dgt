@@ -10,12 +10,11 @@ import std.range : retro;
 /// Entry point of the Style pass before rendering
 /// This function interates over the whole tree and assign each style property
 /// of each view
-void cssCascade(StyleElement root)
+void cssCascade(StyleElement root, Stylesheet dgtCSS)
 in {
     assert(root.isRoot);
 }
 body {
-    auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;
     ctx.cascade(root, [dgtCSS]);
 }
