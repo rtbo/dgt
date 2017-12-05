@@ -2,8 +2,10 @@ module dgt.scene.scene;
 
 import dgt.core.color;
 import dgt.core.geometry;
+import dgt.css.om : Stylesheet;
 import dgt.render.framegraph;
-import dgt.scene.node;
+import dgt.scene.node : Node;
+import dgt.view.view : View;
 
 import gfx.foundation.typecons : option, Option;
 
@@ -47,6 +49,37 @@ class Scene {
         _dirtyPass |= pass;
     }
 
+    void stylePass () {
+        if (!_root) return;
+
+        import dgt.css.cascade : cssCascade;
+        import dgt.css.parse : parseCSS;
+        import dgt.css.style : Origin;
+
+        if (!_dgtCSS) {
+            _dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
+        }
+        cssCascade(_root, _dgtCSS);
+        _root.recursClean(Node.Dirty.styleMask);
+        _dirtyPass &= ~ScenePass.style;
+    }
+
+    void layoutPass () {
+        if (!_root) return;
+
+        // at the moment the only supported layout mode is with view at the root
+        auto v = cast(View) _root;
+        if (!v) return;
+        import dgt.view.layout : MeasureSpec;
+        auto fs = cast(FSize) _size;
+        v.measure(
+            MeasureSpec.makeAtMost(fs.width),
+            MeasureSpec.makeAtMost(fs.height)
+        );
+        v.layout(FRect(0, 0, fs));
+        _dirtyPass &= ~ScenePass.layout;
+    }
+
     immutable(FGFrame) frame(in size_t windowHandle) {
         import std.algorithm : map;
         return new immutable FGFrame (
@@ -55,10 +88,25 @@ class Scene {
         );
     }
 
+    private View[] getViewRoots() {
+        import std.algorithm : each;
+        View [] roots;
+        void collect(Node n) {
+            auto v = cast(View) n;
+            if (v) roots ~= v;
+            else {
+                n.children.each!(c => collect(c));
+            }
+        }
+        if (_root) collect(_root);
+        return roots;
+    }
+
     private ISize _size;
     private Option!Color _clearColor;
     private Node _root;
     private ScenePass _dirtyPass;
+    private Stylesheet _dgtCSS;
 }
 
 enum ScenePass {
