@@ -4,6 +4,8 @@ import dgt.application : Application;
 import dgt.context : GlAttribs;
 import dgt.core.geometry;
 import dgt.platform : PlatformWindow;
+import dgt.platform.event;
+import dgt.scene.scene : Scene;
 
 import std.exception;
 
@@ -196,6 +198,17 @@ class Window
         return _platformWindow.nativeHandle;
     }
 
+    void handleEvent(WindowEvent ev) {
+    }
+
+    @property Scene scene() {
+        return _scene;
+    }
+
+    @property void scene(Scene scene) {
+        _scene = scene;
+    }
+
     package(dgt)
     {
         @property bool dummy() const
@@ -212,6 +225,90 @@ class Window
         {
             return _platformWindow.created;
         }
+
+        void compressEvent(WindowEvent ev)
+        {
+            if (ev.type == PlEventType.move) {
+                if (_evCompress & EvCompress.move) {
+                    auto prev = getEvent!MoveEvent(PlEventType.move);
+                    auto cur = cast(MoveEvent)ev;
+                    prev.point = cur.point;
+                }
+                else {
+                    _events ~= ev;
+                    _evCompress |= EvCompress.move;
+                }
+            }
+            else if (ev.type == PlEventType.resize) {
+                if (_evCompress & EvCompress.resize) {
+                    auto prev = getEvent!ResizeEvent(PlEventType.resize);
+                    auto cur = cast(ResizeEvent)ev;
+                    prev.size = cur.size;
+                }
+                else {
+                    _events ~= ev;
+                    _evCompress |= EvCompress.resize;
+                }
+            }
+            else if (ev.type == PlEventType.mouseMove) {
+                if (_evCompress & EvCompress.mouseMove && !(_evCompress & EvCompress.click)) {
+                    auto prev = getEvent!PlMouseEvent(PlEventType.mouseMove);
+                    auto cur = cast(PlMouseEvent)ev;
+                    prev.point = cur.point;
+                    prev.modifiers = prev.modifiers | cur.modifiers;
+                }
+                else {
+                    _events ~= ev;
+                    _evCompress |= EvCompress.mouseMove;
+                }
+            }
+            else {
+                if (ev.type == PlEventType.mouseDown || ev.type == PlEventType.mouseUp) {
+                    _evCompress |= EvCompress.click;
+                }
+                else if (ev.type == PlEventType.show) {
+                    _evCompress |= EvCompress.show;
+                }
+                _events ~= ev;
+            }
+        }
+
+        void deliverEvents()
+        {
+            if (_evCompress & EvCompress.fstFrame) {
+                if (!(_evCompress & EvCompress.show)) {
+                    handleEvent(new ShowEvent(this));
+                }
+                if (!(_evCompress & EvCompress.resize)) {
+                    handleEvent(new ResizeEvent(this, size));
+                }
+            }
+            foreach(ev; _events) {
+                handleEvent(ev);
+            }
+            _events = [];
+            _evCompress = EvCompress.none;
+        }
+
+        EvT getEvent(EvT)(PlEventType type)
+        {
+            foreach(e; _events) {
+                if (e.type == type) return cast(EvT)e;
+            }
+            return null;
+        }
+
+        enum EvCompress
+        {
+            none        = 0,
+            fstFrame    = 1,
+            move        = 2,
+            resize      = 4,
+            mouseMove   = 8,
+            click       = 16,
+            show        = 32,
+        }
+
     }
 
     private WindowFlags _flags;
@@ -220,4 +317,9 @@ class Window
     private IPoint _position = IPoint(-1, -1);
     private ISize _size;
     private GlAttribs _attribs;
+
+    EvCompress _evCompress = EvCompress.fstFrame;
+    WindowEvent[] _events;
+
+    private Scene _scene;
 }

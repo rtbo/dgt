@@ -13,8 +13,30 @@ class EventLoop
     /// Enter event processing loop
     int loop()
     {
+        import std.algorithm : each;
+
         while (!_exitFlag) {
-            // wait code
+            // the loop is as follow:
+            //  - gather events
+            //  - deliver events
+            //  - style pass
+            //  - layout pass
+            //  - collect frame and send it to renderer
+            //  - wait for both following events:
+            //     1. at least one event is in the queue
+            //     2. at most one frame is in the render queue
+            PlEvent[] events;
+            Application.platform.collectEvents(&compressEvent);
+            windows.each!(w => w.deliverEvents());
+            windows.each!((Window w) {
+                if (w.scene) w.scene.stylePass();
+            });
+            windows.each!((Window w) {
+                if (w.scene) w.scene.layoutPass();
+            });
+            // collect frame and send it to the renderer
+            // wait for an event in the queue
+            // wait that at most one frame remain in the render queue
         }
 
         // Window.close removes itself from _windows, so we need to dup.
@@ -73,6 +95,27 @@ class EventLoop
 
     protected void onRegisterWindow(Window w) {}
     protected void onUnregisterWindow(Window w) {}
+
+    private void compressEvent(PlEvent ev)
+    {
+        auto wEv = cast(WindowEvent)ev;
+        if (wEv) {
+            assert(hasWindow(wEv.window));
+            version(Windows) {
+                // windows has modal resize and move envents
+                if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
+                    wEv.window.handleEvent(wEv);
+                    // render here
+                }
+                else {
+                    wEv.window.compressEvent(wEv);
+                }
+            }
+            else {
+                wEv.window.compressEvent(wEv);
+            }
+        }
+    }
 
     private bool _exitFlag;
     private int _exitCode;
