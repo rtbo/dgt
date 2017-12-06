@@ -3,6 +3,7 @@ module dgt.eventloop;
 import dgt.application;
 import dgt.platform;
 import dgt.platform.event;
+import dgt.render.queue : RenderQueue;
 import dgt.window;
 
 import std.experimental.logger;
@@ -13,30 +14,35 @@ class EventLoop
     /// Enter event processing loop
     int loop()
     {
-        import std.algorithm : each;
+        import dgt.platform : Wait;
+        import std.algorithm : each, filter, map;
+        import std.array : array;
 
         while (!_exitFlag) {
             // the loop is as follow:
-            //  - gather events
-            //  - deliver events
+            //  - collect all events from platform
+            //  - deliver events to scene(s)
             //  - style pass
             //  - layout pass
             //  - collect frame and send it to renderer
             //  - wait for both following events:
             //     1. at least one event is in the queue
             //     2. at most one frame is in the render queue
-            PlEvent[] events;
             Application.platform.collectEvents(&compressEvent);
             windows.each!(w => w.deliverEvents());
-            windows.each!((Window w) {
-                if (w.scene) w.scene.stylePass();
-            });
-            windows.each!((Window w) {
-                if (w.scene) w.scene.layoutPass();
-            });
-            // collect frame and send it to the renderer
-            // wait for an event in the queue
-            // wait that at most one frame remain in the render queue
+            windows
+                .filter!(w => w.scene && w.scene.needStylePass)
+                .each!(w => w.scene.stylePass());
+            windows
+                .filter!(w => w.scene && w.scene.needLayoutPass)
+                .each!(w => w.scene.layoutPass());
+            immutable frames = windows
+                .filter!(w => w.scene && w.scene.needRenderPass)
+                .map!(w => w.scene.frame(w.nativeHandle))
+                .array;
+            RenderQueue.instance.postFrames(frames);
+            Application.platform.wait(Wait.input | Wait.timer);
+            RenderQueue.instance.waitAtMostFrames(1);
         }
 
         // Window.close removes itself from _windows, so we need to dup.
@@ -105,7 +111,12 @@ class EventLoop
                 // windows has modal resize and move envents
                 if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
                     wEv.window.handleEvent(wEv);
-                    // render here
+                    if (wEv.window.scene && RenderQueue.instance.numWaitingFrames <= 1) {
+                        immutable frames = [
+                            wEv.window.scene.frame(wEv.window.nativeHandle)
+                        ];
+                        RenderQueue.instance.postFrames(frames);
+                    }
                 }
                 else {
                     wEv.window.compressEvent(wEv);

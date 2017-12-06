@@ -3,6 +3,7 @@ module dgt.application;
 
 import dgt.context;
 import dgt.eventloop;
+import dgt.render.queue : RenderQueue;
 import dgt.platform;
 import dgt.window;
 import gfx.foundation.rc;
@@ -72,8 +73,34 @@ class Application : EventLoop, Disposable
             // import dgt.text.font : FontEngine;
             // FontEngine.initialize();
             // FontCache.initialize();
+            RenderQueue.initialize();
         }
     }
+
+    override protected void onRegisterWindow(Window w) {
+        if (windows.length == 1) {
+            initializeGfx(w);
+        }
+    }
+
+    override protected void onUnregisterWindow(Window w) {
+        if (windows.length == 1) {
+            finalizeGfx(w);
+        }
+    }
+
+    private void initializeGfx(Window window)
+    {
+        assert(window.created && !window.dummy);
+        RenderQueue.instance.start(createGlContext(window));
+    }
+
+    private void finalizeGfx(Window window)
+    {
+        assert(window.created && !window.dummy);
+        RenderQueue.instance.stop(window.nativeHandle);
+    }
+
 
     private Platform _platform;
 
