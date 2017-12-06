@@ -49,9 +49,20 @@ class Scene {
         _dirtyPass |= pass;
     }
 
+    @property bool needStylePass() {
+        return (_dirtyPass & ScenePass.style) == ScenePass.style;
+    }
+
+    @property bool needLayoutPass() {
+        return (_dirtyPass & ScenePass.layout) == ScenePass.layout;
+    }
+
+    @property bool needRenderPass() {
+        return (_dirtyPass & ScenePass.render) == ScenePass.render;
+    }
+
     void stylePass () {
         if (!_root) return;
-        if ((_dirtyPass & ScenePass.style) == ScenePass.none) return;
 
         import dgt.css.cascade : cssCascade;
         import dgt.css.parse : parseCSS;
@@ -67,7 +78,6 @@ class Scene {
 
     void layoutPass () {
         if (!_root) return;
-        if ((_dirtyPass & ScenePass.layout) == ScenePass.none) return;
 
         // at the moment the only supported layout mode is with view at the root
         auto v = cast(View) _root;
