@@ -16,7 +16,9 @@
         "./bindings/turbojpeg",
         "./bindings/fontconfig",
         "./bindings/harfbuzz",
-        "./bindings/xcb-image"
+        "./bindings/xcb-image",
+
+        "./examples/hello"
     ],
 
     "dependencies":	{

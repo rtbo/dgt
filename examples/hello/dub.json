@@ -1,0 +1,15 @@
+{
+    "name": "hello",
+    "targetType": "executable",
+    "authors": [
+        "Rémi Thebault"
+    ],
+    "description": "A DGT example.",
+    "copyright": "Copyright © 2016, Rémi Thebault",
+    "license": "MIT",
+    "dependencies": {
+        "dgt": {
+            "path": "../../"
+        }
+    }
+}
