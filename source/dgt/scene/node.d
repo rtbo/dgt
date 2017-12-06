@@ -595,7 +595,7 @@ class Node : StyleElement {
         childrenLayout      = 0x2000,
 
         /// All bits set
-        all                 = 0xffff_ffff,
+        all                 = styleMask | renderMask | transformMask | layoutMask
     }
 
     private enum PrivDirty {

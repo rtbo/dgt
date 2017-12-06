@@ -117,7 +117,7 @@ class Scene {
     private ISize _size;
     private Option!Color _clearColor;
     private Node _root;
-    private ScenePass _dirtyPass;
+    private ScenePass _dirtyPass = ScenePass.all;
     private Stylesheet _dgtCSS;
 }
 
@@ -126,4 +126,5 @@ enum ScenePass {
     style   = 1,
     layout  = 2,
     render  = 4,
+    all     = style | layout | render,
 }
