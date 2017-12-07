@@ -87,8 +87,6 @@ class XcbPlatform : Platform
         XcbScreen[] _xcbScreens;
         XcbWindow[xcb_window_t] _windows;
         int _xcbFd;
-        int _vsyncReadFd;
-        int _vsyncWriteFd;
     }
 
     /// Builds an XcbPlatform
@@ -113,19 +111,8 @@ class XcbPlatform : Platform
         initializeScreens();
         _kbd = new XcbKeyboard(g_connection, _xkbFirstEv);
         initializeDRI();
-        initializeVG();
 
         _xcbFd = xcb_get_file_descriptor(g_connection);
-
-        import core.sys.posix.unistd : pipe;
-        int[2] pipeFds;
-        enforce(pipe(pipeFds) ==0, "could not create pipe");
-        _vsyncReadFd = pipeFds[0];
-        _vsyncWriteFd = pipeFds[1];
-
-        import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
-        immutable flags = fcntl(_vsyncWriteFd, F_GETFL, 0);
-        fcntl(_vsyncWriteFd, F_SETFL, flags | O_NONBLOCK);
     }
 
     override void dispose()
@@ -177,14 +164,14 @@ class XcbPlatform : Platform
     {
         import core.sys.posix.poll : poll, pollfd, POLLIN;
 
-        pollfd[2] fds;
+        enum numFd = 1;
+        pollfd[numFd] fds;
         fds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
         fds[0].events = POLLIN;
-        fds[1].fd = (flags & Wait.vsync) ? _vsyncReadFd : -1;
-        fds[1].events = POLLIN;
+        // fds[1] will be for timers
 
         while(true) {
-            immutable rc = poll(fds.ptr, 2, -1);
+            immutable rc = poll(fds.ptr, numFd, -1);
             if (rc == -1) {
                 import core.stdc.errno : EINTR, errno;
                 import core.stdc.string : strerror;
@@ -198,12 +185,6 @@ class XcbPlatform : Platform
         Wait res = Wait.none;
         if (fds[0].revents & POLLIN) {
             res |= Wait.input;
-        }
-        if (fds[1].revents & POLLIN) {
-            res |= Wait.vsync;
-            import core.sys.posix.unistd : read;
-            ubyte[8] buf;
-            read(_vsyncReadFd, cast(void*)buf.ptr, 8);
         }
         return res;
     }
@@ -432,17 +413,6 @@ class XcbPlatform : Platform
                 const reply = xcb_get_extension_data(g_connection, &xcb_dri3_id);
                 if (reply && reply.present)
                     _dri3FirstEv = reply.first_event;
-            }
-        }
-
-        void initializeVG()
-        {
-            import xcb.shm : xcb_shm_id;
-            {
-                xcb_prefetch_extension_data(g_connection, &xcb_shm_id);
-
-                const reply = xcb_get_extension_data(g_connection, &xcb_shm_id);
-                enforce(reply && reply.present, "XCB-SHM extension is not found");
             }
         }
 
