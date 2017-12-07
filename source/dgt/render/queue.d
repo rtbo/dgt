@@ -48,6 +48,7 @@ class RenderQueue
     /// The frames are submitted by batch, 1 frame for each window that needs to be rendered.
     /// It is illegal to have 2 frames for the same window in the same batch.
     void postFrames(immutable(FGFrame)[] frames) {
+        assert(_running);
         send(_tid, frames);
         _numFrames++;
     }
@@ -55,6 +56,7 @@ class RenderQueue
     /// Blocks calling thread until the number of frames in the render queue is at most numFrames.
     /// To be noted: a frame that has started to be processed but not finished is still reported in the queue.
     void waitAtMostFrames(in size_t numFrames) {
+        assert(_running);
         while (_numFrames > numFrames) {
             receive((DoneFrames df) {
                 --_numFrames;
@@ -65,6 +67,7 @@ class RenderQueue
     /// The number of frames waiting to be processed.
     /// To be noted: a frame that has started to be processed but not finished is still reported in the queue.
     @property size_t numWaitingFrames() {
+        assert(_running);
         import core.time : Duration;
         // draining the mail box
         while (receiveTimeout(Duration.min, (DoneFrames df) {
