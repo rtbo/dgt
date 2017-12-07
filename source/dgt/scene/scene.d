@@ -94,6 +94,9 @@ class Scene {
 
     immutable(FGFrame) frame(in size_t windowHandle) {
         import std.algorithm : map;
+        scope(success) {
+            _dirtyPass &= ~ScenePass.render;
+        }
         return new immutable FGFrame (
             windowHandle, IRect(0, 0, _size),
             option(_clearColor.map!(c => c.asVec)), _root ? _root.transformRender() : null
