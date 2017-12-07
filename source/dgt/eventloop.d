@@ -18,6 +18,15 @@ class EventLoop
         import std.algorithm : each, filter, map;
         import std.array : array;
 
+        // initialize style and layout such as first event handlers has the
+        // right state
+        windows
+            .filter!(w => w.scene && w.scene.needStylePass)
+            .each!(w => w.scene.stylePass());
+        windows
+            .filter!(w => w.scene && w.scene.needLayoutPass)
+            .each!(w => w.scene.layoutPass());
+
         while (!_exitFlag) {
             // the loop is as follow:
             //  - collect all events from platform
