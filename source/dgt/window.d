@@ -3,6 +3,7 @@ module dgt.window;
 import dgt.application : Application;
 import dgt.context : GlAttribs;
 import dgt.core.geometry;
+import dgt.core.signal;
 import dgt.platform : PlatformWindow;
 import dgt.platform.event;
 import dgt.scene.scene : Scene;
@@ -199,6 +200,17 @@ class Window
     }
 
     void handleEvent(WindowEvent ev) {
+        switch (ev.type) {
+        case PlEventType.close:
+            auto cev = cast(CloseEvent)ev;
+            _onClose.fire(cev);
+            if (!cev.declined) {
+                close();
+            }
+            break;
+        default:
+            break;
+        }
     }
 
     @property Scene scene() {
@@ -320,6 +332,7 @@ class Window
 
     EvCompress _evCompress = EvCompress.fstFrame;
     WindowEvent[] _events;
+    Handler!CloseEvent _onClose = new Handler!CloseEvent;
 
     private Scene _scene;
 }
