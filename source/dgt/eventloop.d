@@ -27,18 +27,20 @@ class EventLoop
             .filter!(w => w.scene && w.scene.needLayoutPass)
             .each!(w => w.scene.layoutPass());
 
-        while (!_exitFlag) {
+        while (true) {
             // the loop is as follow:
             //  - collect all events from platform
             //  - deliver events to scene(s)
             //  - style pass
             //  - layout pass
             //  - collect frame and send it to renderer
-            //  - wait for both following events:
-            //     1. at least one event is in the queue
-            //     2. at most one frame is in the render queue
+            //  - wait that at most one frame is in the render queue
+            //  - wait that at least one event is in the event queue
             Application.platform.collectEvents(&compressEvent);
             windows.each!(w => w.deliverEvents());
+            if (_exitFlag) {
+                break;
+            }
             windows
                 .filter!(w => w.scene && w.scene.needStylePass)
                 .each!(w => w.scene.stylePass());
@@ -49,9 +51,13 @@ class EventLoop
                 .filter!(w => w.scene && w.scene.needRenderPass)
                 .map!(w => w.scene.frame(w.nativeHandle))
                 .array;
-            RenderQueue.instance.postFrames(frames);
+            if (frames.length) {
+                RenderQueue.instance.postFrames(frames);
+                // actually wait if the frames from the previous loop are still
+                // in process
+                RenderQueue.instance.waitAtMostFrames(1);
+            }
             Application.platform.wait(Wait.input | Wait.timer);
-            RenderQueue.instance.waitAtMostFrames(1);
         }
 
         // Window.close removes itself from _windows, so we need to dup.

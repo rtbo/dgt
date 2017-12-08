@@ -40,9 +40,13 @@ class RenderQueue
     void stop(size_t windowHandle) {
         assert(_running);
         prioritySend(_tid, Exit(windowHandle));
-        receiveOnly!ExitCopy();
+        while (_running) {
+            receive(
+                (DoneFrames df) { --_numFrames; },
+                (ExitCopy ec) { _running = false; }
+            );
+        }
         _numFrames = 0;
-        _running = false;
     }
 
     /// The frames are submitted by batch, 1 frame for each window that needs to be rendered.
@@ -93,7 +97,7 @@ struct Exit {
 }
 
 /// posted by render loop
-struct ExitCopy { }
+struct ExitCopy {}
 
 /// posted by the render loop after processing of each batch of frames
 struct DoneFrames {}
