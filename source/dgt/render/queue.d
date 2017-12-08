@@ -122,6 +122,7 @@ void renderLoop(shared(GlContext) context, Tid caller) {
 class RenderThread {
     GlContext _context;
     Renderer _renderer;
+    bool _fstFrame = true;
 
     this(GlContext context) {
         _context = context;
@@ -136,6 +137,14 @@ class RenderThread {
     }
 
     void frames(immutable(FGFrame)[] frames) {
+        if (_fstFrame) {
+            import core.thread : Thread;
+            import core.time : dur;
+            enum fstFrameLatMs = 10;
+            Thread.sleep(dur!"msecs"(fstFrameLatMs));
+            _fstFrame = false;
+        }
+
         foreach (i, f; frames) {
             if (!_context.makeCurrent(f.windowHandle)) {
                 error("could not make rendering context current!");
