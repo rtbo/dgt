@@ -11,10 +11,12 @@ import dgt.core.signal;
 import dgt.platform;
 import dgt.platform.win32;
 
+import std.exception;
+import std.experimental.logger;
+
 class Win32Timer : PlatformTimer
 {
-    UINT_PTR _timerId;
-    UINT_PTR _timerHandle;
+    HANDLE _handle;
     Mode _mode;
     MonoTime _started;
     Duration _duration;
@@ -25,14 +27,14 @@ class Win32Timer : PlatformTimer
     uint _remShots;
     Mode _activeMode;
 
-    this (in UINT_PTR timerId) {
-        _timerId = timerId;
+    this () {
+        _handle = CreateWaitableTimer(null, FALSE, null);
+        enforce(_handle, "cannot create a win32 timer");
     }
 
     override void dispose() {
         if (_engaged) stop();
-        auto wPl = cast(Win32Platform)Application.platform;
-        wPl.releaseTimerID(_timerId);
+        CloseHandle(_handle);
     }
 
     @property Mode mode() {
@@ -76,16 +78,24 @@ class Win32Timer : PlatformTimer
         auto wPl = cast(Win32Platform)Application.platform;
         wPl.registerTimer(this);
 
-        _timerHandle = SetTimer(null, _timerId, cast(UINT)_duration.total!"msecs", null);
+        immutable dur = _duration.total!"hnsecs";
+        immutable relDur = -dur;
+        immutable LARGE_INTEGER dueTime = {
+            QuadPart: relDur
+        };
+        immutable period = (_activeMode == Mode.singleShot) ? 0 : cast(LONG)dur;
+        import std.format : format;
+        enforce(SetWaitableTimer(
+            _handle, &dueTime, period, null, null, FALSE
+        ), format("could not set win32 timer: error code %s", GetLastError()));
     }
 
     void stop() {
-        KillTimer(null, _timerHandle);
+        CancelWaitableTimer(_handle);
 
         auto wPl = cast(Win32Platform)Application.platform;
         wPl.unregisterTimer(this);
 
-        _timerHandle = 0;
         _engaged = false;
         _remShots = 0;
     }
@@ -106,7 +116,7 @@ class Win32Timer : PlatformTimer
         }
     }
 
-    @property UINT_PTR timerId() {
-        return _timerId;
+    @property HANDLE handle() {
+        return _handle;
     }
 }

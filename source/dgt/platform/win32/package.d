@@ -24,8 +24,9 @@ class Win32Platform : Platform
     private wstring[] _registeredClasses;
     private Win32Window[HWND] _windows;
     private Screen[] _screens;
-    private UINT_PTR[] _timerIds;
-    private Win32Timer[UINT_PTR] _timers;
+
+    private Win32Timer[] _timers;
+    private PlEvent[] _timerEvents;
 
     private void delegate(PlEvent) _collector;
 
@@ -67,7 +68,7 @@ class Win32Platform : Platform
     }
 
     override PlatformTimer createTimer() {
-        return new Win32Timer(nextTimerID());
+        return new Win32Timer();
     }
 
     override @property inout(Screen) defaultScreen() inout
@@ -96,32 +97,61 @@ class Win32Platform : Platform
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-    }
 
-    private enum WM_VSYNC = WM_USER+1;
+        // collect the events issued from timer
+        import std.algorithm : each;
+        _timerEvents.each!(collector);
+        _timerEvents = [];
+    }
 
     override Wait wait(in Wait flags)
     {
-        Wait check() {
-            Wait res = Wait.none;
-            MSG msg;
-            if (PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
-                if (msg.message == WM_VSYNC) {
-                    res |= Wait.vsync;
-                }
-                else {
-                    res |= Wait.input;
-                }
-            }
-            return res;
+        import std.array : array;
+        import std.algorithm : map;
+
+        MSG msg;
+        if (PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
+            return Wait.input;
         }
 
-        Wait wait = check();
-        if (wait != Wait.none) return wait;
+        const timers = _timers.map!(t => t.handle).array;
 
-        immutable code = MsgWaitForMultipleObjects(0, null, FALSE, INFINITE, QS_ALLINPUT);
+        immutable code = MsgWaitForMultipleObjects(
+                    cast(DWORD)timers.length,
+                    timers.ptr,
+                    FALSE,
+                    INFINITE,
+                    QS_ALLINPUT);
 
-        return check();
+        if (code == WAIT_FAILED) {
+            errorf("win32 wait failed with code: %s", GetLastError());
+            return Wait.none;
+        }
+        Wait wait = Wait.none;
+        immutable first = code - WAIT_OBJECT_0;
+        if (first < timers.length) {
+
+            wait |= Wait.timer;
+
+            void addTimerEvent(Win32Timer timer) {
+                _timerEvents ~= new TimerEvent(timer.handler);
+            }
+
+            addTimerEvent(_timers[first]);
+
+            // check for following timers that may have timed out at the same time
+            foreach (t; _timers[first+1 .. $]) {
+                if (WaitForSingleObject(t.handle, 0) == WAIT_OBJECT_0) {
+                    addTimerEvent(t);
+                }
+            }
+        }
+
+        if (first == _timers.length || PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
+            wait |= Wait.input;
+        }
+
+        return wait;
     }
 
     wstring windowClassName(Window w)
@@ -176,11 +206,12 @@ class Win32Platform : Platform
     }
 
     void registerTimer(Win32Timer timer) {
-        _timers[timer.timerId] = timer;
+        _timers ~= timer;
     }
 
     void unregisterTimer(Win32Timer timer) {
-        _timers.remove(timer.timerId);
+        import std.algorithm : remove;
+        _timers = _timers.remove!(t => t is timer);
     }
 
     private void fetchScreens()
@@ -210,17 +241,6 @@ class Win32Platform : Platform
 
         switch(msg)
         {
-            case WM_TIMER:
-                auto timer = _timers[wParam];
-                if (!timer) {
-                    error("Win32: cannot find timer of id %s", wParam);
-                    return false;
-                }
-                else {
-                    _collector(new TimerEvent(timer.handler));
-                    timer.notifyShot();
-                    return true;
-                }
             case WM_CLOSE:
                 return wnd.handleClose(_collector);
             case WM_PAINT:
@@ -255,29 +275,6 @@ class Win32Platform : Platform
         // TODO: impl an temp event buf
     }
 
-    private UINT_PTR nextTimerID() {
-        enum fstId = 1001;
-        UINT_PTR id = fstId;
-        foreach (tid; _timerIds) {
-            if (tid == id) {
-                ++id;
-                continue;
-            }
-            else {
-                break;
-            }
-        }
-        _timerIds ~= id;
-        import std.algorithm : equal, sort, uniq;
-        sort(_timerIds);
-        assert(equal(uniq(_timerIds), _timerIds));
-        return id;
-    }
-
-    package void releaseTimerID(in UINT_PTR id) {
-        import std.algorithm : remove;
-        _timerIds = _timerIds.remove!(tid => tid == id);
-    }
 }
 
 class Win32Screen : Screen
