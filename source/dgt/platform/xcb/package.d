@@ -2,6 +2,9 @@ module dgt.platform.xcb;
 
 version(linux):
 
+import core.stdc.stdlib : free;
+import core.sys.posix.poll : pollfd;
+
 import dgt.context;
 import dgt.core.geometry;
 import dgt.input.keys;
@@ -11,6 +14,7 @@ import dgt.platform.event;
 import dgt.platform.xcb.context;
 import dgt.platform.xcb.keyboard;
 import dgt.platform.xcb.screen;
+import dgt.platform.xcb.timer;
 import dgt.platform.xcb.window;
 import dgt.screen;
 import dgt.window;
@@ -23,12 +27,12 @@ import xcb.xkb;
 import X11.Xlib_xcb;
 import X11.Xlib;
 
+import std.container : DList;
 import std.exception : enforce;
+import std.experimental.logger;
+import std.stdio;
 import std.string : toStringz;
 import std.typecons : scoped;
-import std.experimental.logger;
-import core.stdc.stdlib : free;
-import std.stdio;
 
 alias Window = dgt.window.Window;
 alias Screen = dgt.screen.Screen;
@@ -87,6 +91,10 @@ class XcbPlatform : Platform
         XcbScreen[] _xcbScreens;
         XcbWindow[xcb_window_t] _windows;
         int _xcbFd;
+        pollfd[] _pollFds;
+
+        LinuxFdTimer[] _timers;
+        PlEvent[]  _events;
     }
 
     /// Builds an XcbPlatform
@@ -134,6 +142,10 @@ class XcbPlatform : Platform
         return createXcbGlContext(attribs, window, sharedCtx, screen);
     }
 
+    override PlatformTimer createTimer() {
+        return new LinuxFdTimer;
+    }
+
     override @property inout(Screen) defaultScreen() inout
     {
         return _screens[_defaultScreen];
@@ -151,27 +163,34 @@ class XcbPlatform : Platform
 
     override void collectEvents(void delegate(PlEvent) collector)
     {
+        import std.algorithm : each;
         while(true) {
             xcb_generic_event_t* e = xcb_poll_for_event(g_connection);
             if (!e) break;
             scope(exit) free(e);
             handleEvent(e, collector);
         }
+        _events.each!(collector);
         xcb_flush(g_connection);
     }
 
     override Wait wait(in Wait flags)
     {
-        import core.sys.posix.poll : poll, pollfd, POLLIN;
+        import core.sys.posix.poll : poll, POLLIN;
 
-        enum numFd = 1;
-        pollfd[numFd] fds;
-        fds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
-        fds[0].events = POLLIN;
-        // fds[1] will be for timers
+        _pollFds.length = _timers.length + 1;
+        _pollFds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
+        _pollFds[0].events = POLLIN;
+        if (flags & Wait.timer) {
+            foreach (i, t; _timers) {
+                _pollFds[i+1].fd = t.fd;
+                _pollFds[i+1].events = POLLIN;
+            }
+        }
+        immutable numFds = 1 + ((flags & Wait.timer) ? _timers.length : 0);
 
         while(true) {
-            immutable rc = poll(fds.ptr, numFd, -1);
+            immutable rc = poll(_pollFds.ptr, numFds, -1);
             if (rc == -1) {
                 import core.stdc.errno : EINTR, errno;
                 import core.stdc.string : strerror;
@@ -183,10 +202,28 @@ class XcbPlatform : Platform
         }
 
         Wait res = Wait.none;
-        if (fds[0].revents & POLLIN) {
+        if (_pollFds[0].revents & POLLIN) {
             res |= Wait.input;
         }
+        if (flags & Wait.timer) {
+            foreach (i, t; _timers) {
+                auto fd = _pollFds[i+1];
+                if (fd.revents & POLLIN) {
+                    res |= Wait.timer;
+                    _events ~= new TimerEvent(t.handler);
+                    t.notifyShot();
+                }
+            }
+        }
         return res;
+    }
+
+    package void registerTimer(LinuxFdTimer timer) {
+        _timers ~= timer;
+    }
+    package void unregisterTimer(LinuxFdTimer timer) {
+        import std.algorithm : remove;
+        _timers = _timers.remove!(t => t is timer);
     }
 
     private void handleEvent(xcb_generic_event_t* e, void delegate(PlEvent) collector)

@@ -3,12 +3,14 @@ module dgt.platform.event;
 
 import dgt.core.enums;
 import dgt.core.geometry;
+import dgt.core.signal;
 import dgt.input.keys;
 import dgt.input.mouse;
 import dgt.window;
 
 enum PlEventType
 {
+    timer,
     // events delivered to windows
     show, hide,
     expose, resize, move,
@@ -50,6 +52,21 @@ abstract class PlEvent
 
     private PlEventType _type;
     private bool _consumed;
+}
+
+class TimerEvent : PlEvent
+{
+    this(void delegate() handler)
+    {
+        super(PlEventType.timer);
+        _handler = handler;
+    }
+
+    void handle() {
+        _handler();
+    }
+
+    private Slot!() _handler;
 }
 
 abstract class WindowEvent : PlEvent

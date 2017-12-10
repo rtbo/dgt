@@ -37,7 +37,7 @@ class EventLoop
             //  - wait that at most one frame is in the render queue
             //  - wait that at least one event is in the event queue
             Application.platform.collectEvents(&compressEvent);
-            windows.each!(w => w.deliverEvents());
+            deliverEvents();
             if (_exitFlag) {
                 break;
             }
@@ -141,9 +141,23 @@ class EventLoop
                 wEv.window.compressEvent(wEv);
             }
         }
+        else {
+            if (ev.type == PlEventType.timer) {
+                _timerEvents ~= cast(TimerEvent)ev;
+            }
+        }
+    }
+
+    private void deliverEvents()
+    {
+        import std.algorithm : each;
+        windows.each!(w => w.deliverEvents());
+        _timerEvents.each!(t => t.handle());
+        _timerEvents = [];
     }
 
     private bool _exitFlag;
     private int _exitCode;
     private Window[] _windows;
+    private TimerEvent[] _timerEvents;
 }

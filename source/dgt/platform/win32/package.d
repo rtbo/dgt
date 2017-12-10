@@ -7,6 +7,7 @@ import dgt.core.geometry;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32.context;
+import dgt.platform.win32.timer;
 import dgt.platform.win32.window;
 import dgt.screen;
 import dgt.window;
@@ -23,6 +24,8 @@ class Win32Platform : Platform
     private wstring[] _registeredClasses;
     private Win32Window[HWND] _windows;
     private Screen[] _screens;
+    private UINT_PTR[] _timerIds;
+    private Win32Timer[UINT_PTR] _timers;
 
     private void delegate(PlEvent) _collector;
 
@@ -61,6 +64,10 @@ class Win32Platform : Platform
                 GlContext sharedCtx, Screen screen)
     {
         return createWin32GlContext(attribs, window, sharedCtx, screen);
+    }
+
+    override PlatformTimer createTimer() {
+        return new Win32Timer(nextTimerID());
     }
 
     override @property inout(Screen) defaultScreen() inout
@@ -168,6 +175,14 @@ class Win32Platform : Platform
         _windows.remove(hWnd);
     }
 
+    void registerTimer(Win32Timer timer) {
+        _timers[timer.timerId] = timer;
+    }
+
+    void unregisterTimer(Win32Timer timer) {
+        _timers.remove(timer.timerId);
+    }
+
     private void fetchScreens()
     {
         _screens = [];
@@ -195,6 +210,17 @@ class Win32Platform : Platform
 
         switch(msg)
         {
+            case WM_TIMER:
+                auto timer = _timers[wParam];
+                if (!timer) {
+                    error("Win32: cannot find timer of id %s", wParam);
+                    return false;
+                }
+                else {
+                    _collector(new TimerEvent(timer.handler));
+                    timer.notifyShot();
+                    return true;
+                }
             case WM_CLOSE:
                 return wnd.handleClose(_collector);
             case WM_PAINT:
@@ -227,6 +253,30 @@ class Win32Platform : Platform
     private void internalCollect(PlEvent ev)
     {
         // TODO: impl an temp event buf
+    }
+
+    private UINT_PTR nextTimerID() {
+        enum fstId = 1001;
+        UINT_PTR id = fstId;
+        foreach (tid; _timerIds) {
+            if (tid == id) {
+                ++id;
+                continue;
+            }
+            else {
+                break;
+            }
+        }
+        _timerIds ~= id;
+        import std.algorithm : equal, sort, uniq;
+        sort(_timerIds);
+        assert(equal(uniq(_timerIds), _timerIds));
+        return id;
+    }
+
+    package void releaseTimerID(in UINT_PTR id) {
+        import std.algorithm : remove;
+        _timerIds = _timerIds.remove!(tid => tid == id);
     }
 }
 

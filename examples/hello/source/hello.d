@@ -1,5 +1,7 @@
 module hello;
 
+import core.time : dur;
+
 import dgt.application;
 import dgt.core.color : Color;
 import dgt.scene.scene : Scene;
@@ -23,5 +25,12 @@ int main()
     sc.clearColor = some(Color.blue);
 
     win.show();
+
+    auto timer = Application.platform.createTimer();
+    timer.duration = dur!"seconds"(2);
+    timer.handler = &win.close;
+    timer.start();
+    scope(exit) timer.dispose();
+
     return app.loop();
 }
