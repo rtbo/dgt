@@ -28,6 +28,8 @@ class Win32Platform : Platform
     private Win32Timer[] _timers;
     private PlEvent[] _timerEvents;
 
+    private PlEvent[] _internalCollectEvents;
+
     private void delegate(PlEvent) _collector;
 
     /// Instance access
@@ -89,6 +91,11 @@ class Win32Platform : Platform
 
     override void collectEvents(void delegate(PlEvent) collector)
     {
+        import std.algorithm : each;
+
+        _internalCollectEvents.each!(collector);
+        _internalCollectEvents = [];
+
         _collector = collector;
         scope(exit) _collector = &internalCollect;
 
@@ -99,7 +106,6 @@ class Win32Platform : Platform
         }
 
         // collect the events issued from timer
-        import std.algorithm : each;
         _timerEvents.each!(collector);
         _timerEvents = [];
     }
@@ -272,7 +278,7 @@ class Win32Platform : Platform
 
     private void internalCollect(PlEvent ev)
     {
-        // TODO: impl an temp event buf
+        _internalCollectEvents ~= ev;
     }
 
 }
