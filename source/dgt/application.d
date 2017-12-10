@@ -54,11 +54,11 @@ class Application : EventLoop, Disposable
             import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
 
             DerelictGL3.load();
-            DerelictFT.load();
-            loadLibPngSymbols();
-            loadTurboJpegSymbols();
-            loadFontconfigSymbols();
-            loadHarfbuzzSymbols();
+            // DerelictFT.load();
+            // loadLibPngSymbols();
+            // loadTurboJpegSymbols();
+            // loadFontconfigSymbols();
+            // loadHarfbuzzSymbols();
         }
 
         // init platform
