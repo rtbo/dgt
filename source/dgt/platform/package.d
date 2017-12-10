@@ -1,8 +1,11 @@
 /// Platform abstraction module
 module dgt.platform;
 
+import core.time : Duration, MonoTime;
+
 import dgt.context;
 import dgt.core.geometry;
+import dgt.core.signal;
 import dgt.platform.event;
 import dgt.screen;
 import dgt.window;
@@ -30,14 +33,16 @@ interface Platform : Disposable
 
     @property inout(Screen) defaultScreen() inout;
     @property inout(Screen)[] screens() inout;
+
     PlatformWindow createWindow(Window window);
 
     GlContext createGlContext(
                 GlAttribs attribs, PlatformWindow window,
                 GlContext sharedCtx, Screen screen);
 
-    Wait wait(in Wait waitFlags);
+    PlatformTimer createTimer();
 
+    Wait wait(in Wait waitFlags);
     void collectEvents(void delegate(PlEvent) collector);
 }
 
@@ -64,4 +69,40 @@ interface PlatformWindow
 
     @property IRect rect() const;
     void setRect(in IRect rect);
+}
+
+interface PlatformTimer : Disposable {
+    enum Mode {
+        singleShot,
+        multipleShots,
+        endless,
+    }
+    @property Mode mode();
+    @property void mode(in Mode mode);
+    @property bool engaged();
+    @property MonoTime started();
+    @property Duration duration();
+    @property void duration(in Duration dur);
+    @property uint shots();
+    @property void shots(in uint val);
+
+    void start()
+    in {
+        assert(!engaged);
+        assert(duration > Duration.zero);
+    }
+    out {
+        assert(engaged);
+    }
+
+    void stop()
+    in {
+        assert(engaged);
+    }
+    out {
+        assert(!engaged);
+    }
+
+    @property Slot!() handler();
+    @property void handler(Slot!() slot);
 }
