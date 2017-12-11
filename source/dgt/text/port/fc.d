@@ -1,5 +1,7 @@
 module dgt.text.port.fc;
 
+version(linux):
+
 import dgt.bindings.fontconfig;
 import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
 
