@@ -1,4 +1,4 @@
-module dgt.text.fontstyle;
+module dgt.font.style;
 
 /// Font weight as defined by the CSS specification.
 /// An integer is typically expected for the weight. Either a value of this enum

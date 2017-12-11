@@ -1,11 +1,11 @@
-module dgt.text.port.fc;
+module dgt.font.port.fc;
 
 version(linux):
 
 import dgt.bindings.fontconfig;
 import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
 
-import dgt.text.fontlibrary;
+import dgt.font.library;
 
 import std.string;
 

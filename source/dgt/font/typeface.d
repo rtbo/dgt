@@ -1,4 +1,4 @@
-module dgt.text.typeface;
+module dgt.font.typeface;
 
 abstract class Typeface {
 

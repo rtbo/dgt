@@ -1,7 +1,7 @@
-module dgt.text.fontlibrary;
+module dgt.font.library;
 
-import dgt.text.fontstyle;
-import dgt.text.typeface;
+import dgt.font.style;
+import dgt.font.typeface;
 import gfx.foundation.rc;
 
 /// a collection of font style for a given family
