@@ -8,6 +8,7 @@ import dgt.core.paint;
 import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
+import dgt.font.style;
 import dgt.view.layout;
 import dgt.view.view;
 

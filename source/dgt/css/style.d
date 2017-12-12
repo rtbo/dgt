@@ -77,28 +77,6 @@ interface StyleElement : TreeNode!StyleElement
     @property bool hasChildrenStyleDirty();
 }
 
-
-/// Font style as defined by the CSS specification
-enum FontSlant
-{
-    normal,
-    italic,
-    oblique,
-}
-
-/// Implemented by elements that must style some text.
-interface FontStyle
-{
-    /// The FontSlant is what is assigned by the 'font-style' property
-    @property FontSlant fontSlant();
-    /// The font weight (from 100 to 900)
-    @property int fontWeight();
-    /// The font size, expressed in pixels / EM-square
-    @property int fontSize();
-    /// The font families used to select the font.
-    @property string[] fontFamily();
-}
-
 /// A CSS property value
 interface IStyleProperty
 {
