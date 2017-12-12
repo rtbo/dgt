@@ -22,6 +22,22 @@ class FcFontLibrary : FontLibrary
         config = FcInitLoadConfigAndFonts();
         families = getFamilies(config);
     }
+
+    override void dispose() {
+        FcConfigDestroy(config);
+        FcFini();
+    }
+
+    override @property size_t length() {
+        return families.length;
+    }
+    override string family(size_t index) {
+        return families[index];
+    }
+    override FamilyStyleSet matchFamily(string family) {
+        return null;
+    }
+
 }
 
 

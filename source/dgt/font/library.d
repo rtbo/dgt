@@ -17,6 +17,7 @@ abstract class FamilyStyleSet : RefCounted {
 
 /// system font library
 class FontLibrary : Disposable {
+    abstract void dispose();
     abstract @property size_t length();
     abstract string family(size_t index);
     abstract FamilyStyleSet matchFamily(string family);
