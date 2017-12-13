@@ -8,6 +8,23 @@ import gfx.foundation.rc;
 /// system font library
 class FontLibrary : RefCounted {
     mixin (rcCode);
+
+    static Rc!FontLibrary create() {
+        Rc!FontLibrary fl;
+        version(linux) {
+            import dgt.font.port.fc : FcFontLibrary;
+            fl = new FcFontLibrary;
+        }
+        else version(Windows) {
+            import dgt.font.port.gdi : GdiFontLibrary;
+            fl = new GdiFontLibrary;
+        }
+        else {
+            static assert(false, "unsupported platform");
+        }
+        return fl;
+    }
+
     abstract void dispose();
     abstract @property size_t familyCount();
     abstract string family(in size_t index);

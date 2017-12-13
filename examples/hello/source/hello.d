@@ -32,5 +32,11 @@ int main()
     timer.start();
     scope(exit) timer.dispose();
 
+    import dgt.font.library : FontLibrary;
+    auto fl = FontLibrary.create();
+    foreach(const i; 0 .. fl.familyCount) {
+        writeln(fl.family(i));
+    }
+
     return app.loop();
 }
