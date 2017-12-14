@@ -27,12 +27,14 @@ class FcFontLibrary : FontLibrary
         FcFini();
     }
 
-    override @property size_t length() {
+    override @property size_t familyCount() {
         return families.length;
     }
+
     override string family(in size_t index) {
         return families[index];
     }
+
     override FamilyStyleSet matchFamily(string family) {
         auto pattern = FcPatternCreate();
         scope(exit) FcPatternDestroy(pattern);
@@ -52,39 +54,29 @@ class FcFontLibrary : FontLibrary
         iota(matches.nfont)
             .map!(i => matches.fonts[i])
             .filter!(f => f.isAccessible)
-            // is the following necessary?
-            .filter!(f => familyMatches(f, family))
-            .map!(f => FcFontRenderPrepare(config, f, pattern))
+            .filter!(f => familyMatches(f, pattern))
+            .map!(f => FcFontRenderPrepare(config, pattern, f))
             .each!(f => FcFontSetAdd(fontSet, f));
 
-        return new FcFamilyStyleSet(family, fontSet);
+        return new FcFamilyStyleSet(this, family, fontSet);
     }
 
-    override FamilyStyleSet matchFamily(string family) {
+    override Typeface matchFamilyStyle(string family, in FontStyle style) {
         auto pattern = FcPatternCreate();
         scope(exit) FcPatternDestroy(pattern);
 
         FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
+        addFontStyleToFcPattern(style, pattern);
         FcConfigSubstitute(config, pattern, FcMatchPattern);
         FcDefaultSubstitute(pattern);
 
         FcResult res;
-        auto matches = FcFontSort(config, pattern, FcFalse, null, &res);
-        scope(exit) FcFontSetDestroy(matches);
+        auto font = FcFontMatch(config, pattern, &res);
+        if (!font) return null;
+        scope(exit) FcPatternDestroy(font);
+        if (!font.isAccessible) return null;
 
-        auto fontSet = FcFontSetCreate();
-
-        import std.algorithm : each, filter, map;
-        import std.range : iota;
-        iota(matches.nfont)
-            .map!(i => matches.fonts[i])
-            .filter!(f => f.isAccessible)
-            // is the following necessary?
-            .filter!(f => familyMatches(f, family))
-            .map!(f => FcFontRenderPrepare(config, f, pattern))
-            .each!(f => FcFontSetAdd(fontSet, f));
-
-        return new FcFamilyStyleSet(family, fontSet);
+        return new FcTypeface(font);
     }
 
 }
@@ -100,54 +92,6 @@ shared static this() {
     return exists(getFcString(pattern, FC_FILE, ""));
 }
 
-bool familyMatches(FcPattern* pattern, string family) {
-    import std.uni : sicmp;
-    foreach (const i; 0 .. 16) {
-        FcChar8* val;
-        const res = FcPatternGetString(pattern, FC_FAMILY, i, &val);
-        if (res == FcResultNoId) {
-            break;
-        }
-        if (res == FcResultNoMatch) {
-            continue;
-        }
-        const f = fromStringz(val).idup;
-        if (sicmp(f, family) == 0) return true;
-    }
-    return false;
-}
-
-class FcFamilyStyleSet : FamilyStyleSet
-{
-    private Rc!FcFontLibrary fl;
-    private string family;
-    private FcFontSet* fs;
-
-    this (FcFontLibrary fl, string family, FcFontSet* fs) {
-        this.fl = fl;
-        this.family = family;
-        this.fs = fs;
-    }
-
-    override void dispose() {
-        FcFontSetDestroy(fs);
-        fl.unload();
-    }
-
-    override @property size_t length() {
-        return fs.nfont;
-    }
-
-    override FontStyle style(in size_t index) {
-        auto pattern = fs.fonts[index];
-        return fcPatternToFontStyle(pattern);
-    }
-
-    override Typeface createTypeface(in size_t index) {
-        return null;
-    }
-}
-
 string[] getFamilies(FcConfig* cfg) {
     string[] families;
     immutable sets = [ FcSetSystem, FcSetApplication ];
@@ -156,10 +100,13 @@ string[] getFamilies(FcConfig* cfg) {
         if (!fontSet) continue;
 
         foreach (FcPattern* font; fontSet.fonts[0 .. fontSet.nfont]) {
+            if (!isAccessible(font)) {
+                continue;
+            }
             int id=0;
             while (1) {
                 FcChar8* fcName;
-                const res = FcPatternGetString(font, FC_FAMILY, id, &fcName);
+                const res = FcPatternGetString(font, FC_FAMILY, id++, &fcName);
                 if (res == FcResultNoId) {
                     break;
                 }
@@ -178,6 +125,91 @@ string[] getFamilies(FcConfig* cfg) {
     return families;
 }
 
+
+class FcFamilyStyleSet : FamilyStyleSet
+{
+    private Rc!FcFontLibrary fl;
+    private string family;
+    private FcFontSet* fs;
+
+    this (FcFontLibrary fl, string family, FcFontSet* fs) {
+        this.fl = fl;
+        this.family = family;
+        this.fs = fs;
+    }
+
+    override void dispose() {
+        FcFontSetDestroy(fs);
+        fl.unload();
+    }
+
+    override @property size_t styleCount() {
+        return fs.nfont;
+    }
+
+    override FontStyle style(in size_t index) {
+        auto pattern = fs.fonts[index];
+        return fcPatternToFontStyle(pattern);
+    }
+
+    override Typeface createTypeface(in size_t index) {
+        return new FcTypeface(fs.fonts[index]);
+    }
+
+    override Typeface matchStyle(in FontStyle style) {
+        auto pattern = FcPatternCreate();
+        addFontStyleToFcPattern(style, pattern);
+        FcConfigSubstitute(fl.config, pattern, FcMatchPattern);
+        FcDefaultSubstitute(pattern);
+
+        FcResult res;
+        auto match = FcFontSetMatch(fl.config, &fs, 1, pattern, &res);
+        if (!match) return null;
+        scope(exit) FcPatternDestroy(match);
+        return new FcTypeface(match);
+    }
+}
+
+class FcTypeface : Typeface {
+
+    private FcPattern* font;
+
+    this(FcPattern* font) {
+        this.font = font;
+        FcPatternReference(font);
+    }
+
+    override void dispose() {
+        FcPatternDestroy(font);
+    }
+}
+
+bool familyMatches(FcPattern* font, FcPattern* pattern) {
+    import std.uni : sicmp;
+    foreach (const pi; 0 .. 16) {
+        FcChar8* val;
+        const pres = FcPatternGetString(pattern, FC_FAMILY, pi, &val);
+        if (pres == FcResultNoId) {
+            break;
+        }
+        if (pres == FcResultNoMatch) {
+            continue;
+        }
+        const pf = fromStringz(val).idup;
+        foreach (const fi; 0 .. 16) {
+            const fres = FcPatternGetString(font, FC_FAMILY, fi, &val);
+            if (fres == FcResultNoId) {
+                break;
+            }
+            if (fres == FcResultNoMatch) {
+                continue;
+            }
+            const ff = fromStringz(val).idup;
+            if (sicmp(pf, ff) == 0) return true;
+        }
+    }
+    return false;
+}
 
 bool getFcBool(FcPattern *pattern, in string key, in bool defVal) {
     FcBool val;
@@ -331,59 +363,6 @@ body {
     return to[$-1];
 }
 
-
-/// template that resolves to true if an object of type T can be assigned to null
-template isNullAssignable(T) {
-    enum isNullAssignable =
-        is(typeof((inout int = 0) {
-            T t = T.init;
-            t = null;
-        }));
+unittest {
+    assert(mapRange(FC_WIDTH_SEMICONDENSED, fcWidths, dgtWidths) == cast(int)FontWidth.semiCondensed);
 }
-
-
-template GenericRc(T, alias CreateF, alias RefF, alias ReleaseF)
-if (isNullAssignable!T)
-{
-    struct GenericRc
-    {
-        private T _obj;
-
-        @disable this();
-        this(T obj) {
-            import std.exception : enforce;
-            enforce(obj, "contructing GenericRc!("~T.stringof~") with an invalid reference");
-            RefF(obj);
-            _obj = obj;
-        }
-        this(this) {
-            RefF(_obj);
-        }
-        ~this() {
-            ReleaseF(_obj);
-            _obj = null;
-        }
-
-        // trick to define a ctor that do not call RefT
-        // and therefore allow create to not release the reference
-        private enum CtorTok { _ }
-        private this(T obj, CtorTok _) {
-            _obj = obj;
-        }
-
-        static GenericRc create(Args...)(Args args) {
-            import std.exception : enforce;
-            auto obj = CreateF(args);
-            enforce(obj, CreateF.stringof~" returned an invalid reference");
-            return GenericRc(obj);
-        }
-
-        @property inout(T) obj() inout {
-            return _obj;
-        }
-
-        alias obj this;
-    }
-}
-
-alias FcPatternRc = GenericRc!(FcPattern*, FcPatternCreate, FcPatternReference, FcPatternDestroy);

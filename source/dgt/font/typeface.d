@@ -1,5 +1,8 @@
 module dgt.font.typeface;
 
-abstract class Typeface {
+import gfx.foundation.rc;
 
+abstract class Typeface : RefCounted {
+    mixin(rcCode);
+    abstract void dispose();
 }

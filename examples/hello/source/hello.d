@@ -8,6 +8,7 @@ import dgt.scene.scene : Scene;
 import dgt.window;
 
 import gfx.foundation.typecons : some;
+import gfx.foundation.rc : rc;
 
 import std.math : PI;
 import std.stdio;
@@ -33,9 +34,11 @@ int main()
     scope(exit) timer.dispose();
 
     import dgt.font.library : FontLibrary;
+    import dgt.font.style : FontStyle;
     auto fl = FontLibrary.create();
-    foreach(const i; 0 .. fl.familyCount) {
-        writeln(fl.family(i));
+    auto fs = fl.matchFamily("serif").rc;
+    foreach(const i; 0 .. fs.styleCount) {
+        writeln(fs.style(i));
     }
 
     return app.loop();
