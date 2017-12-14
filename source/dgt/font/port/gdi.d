@@ -16,6 +16,12 @@ import std.stdio;
 class GdiFontLibrary : FontLibrary
 {
     private ENUMLOGFONTEX[] fonts;
+    private string sansFam;
+    private string serifFam;
+    private string monoFam;
+    private string cursiveFam;
+    private string fantasyFam;
+    private string systemFam;
 
     this() {
         auto dc = CreateCompatibleDC(null);
@@ -24,6 +30,7 @@ class GdiFontLibrary : FontLibrary
         lf.lfCharSet = DEFAULT_CHARSET;
         lf.lfFaceName[] = 0;
         EnumFontFamiliesEx(dc, &lf, &enumFontLibProc, cast(LPARAM)(cast(void*)this), 0);
+        initGenericFamilies();
     }
 
     override void dispose() {
@@ -37,7 +44,54 @@ class GdiFontLibrary : FontLibrary
         return fonts[index].elfLogFont.lfFaceName.ptr.to!string;
     }
     override FamilyStyleSet matchFamily(in string family) {
-        return new GdiFamilyStyleSet(family);
+
+        return new GdiFamilyStyleSet(checkGenFamily(family));
+    }
+
+    private string checkGenFamily(in string familyName) {
+        import std.uni : toLower;
+        switch(familyName.toLower) {
+            case "sans-serif": return sansFam;
+            case "serif": return serifFam;
+            case "monospace": return monoFam;
+            case "cursive": return cursiveFam;
+            case "fantasy": return fantasyFam;
+            case "system-ui": return systemFam;
+            default: return familyName;
+        }
+    }
+
+    private void initGenericFamilies() {
+
+        void doFam(ref string font, immutable(string[]) fonts, ref int score, string fam) {
+            import std.algorithm : find, min;
+            import std.uni : sicmp;
+            if (score == 0) return;
+            auto f = fonts.find!(f => sicmp(fam, f) == 0);
+            if (!f.empty) {
+                const s = fonts.length - f.length;
+                if (s < score) {
+                    score = s;
+                    font = fam;
+                }
+            }
+        }
+        int sansScore = int.max;
+        int serifScore = int.max;
+        int monoScore = int.max;
+        int cursScore = int.max;
+        int fantaScore = int.max;
+        int systemScore = int.max;
+
+        foreach (const i; 0 .. familyCount) {
+            string f = family(i);
+            doFam(sansFam, sansFonts, sansScore, f);
+            doFam(serifFam, serifFonts, serifScore, f);
+            doFam(monoFam, monoFonts, monoScore, f);
+            doFam(cursiveFam, cursiveFonts, cursScore, f);
+            doFam(fantasyFam, fantasyFonts, fantaScore, f);
+            doFam(systemFam, systemUiFonts, systemScore, f);
+        }
     }
 }
 
@@ -124,3 +178,23 @@ class GdiFamilyStyleSet : FamilyStyleSet {
         return null;
     }
 }
+
+immutable sansFonts = [
+    "sans-serif", "segoe", "tahoma", "verdana", "arial", "ms sans serif"
+];
+immutable serifFonts = [
+    "serif", "georgia", "times new roman", "times",
+    "dejavu serif", "droid serif"       // these two ones for wine support
+];
+immutable monoFonts = [
+    "monospace", "courier", "consolas", "lucida console", "courier new"
+];
+immutable cursiveFonts = [
+    "cursive", "segoe script", "lucida handwriting", "brush script mt", "z003"
+];
+immutable fantasyFonts = [
+    "fantasy", "comic sans ms", "papyrus"
+];
+immutable systemUiFonts = [
+    "system-ui", "segoe ui", "tahoma", "system"
+];
