@@ -53,3 +53,27 @@ abstract class FamilyStyleSet : RefCounted {
 
     abstract Typeface matchStyle(in FontStyle style);
 }
+
+
+class TypefaceCache : Disposable {
+
+    this() {}
+
+    override void dispose() {
+        release(_typefaces);
+    }
+
+    void add(Typeface tf) {
+        _typefaces ~= tf.rc;
+    }
+
+    private Typeface[] _typefaces;
+}
+
+Typeface find (alias pred)(TypefaceCache tfCache) {
+    foreach(tf; tfCache._typefaces) {
+        if (pred(tf)) return tf;
+    }
+    return null;
+}
+

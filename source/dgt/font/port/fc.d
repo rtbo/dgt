@@ -14,17 +14,19 @@ import std.string;
 
 class FcFontLibrary : FontLibrary
 {
-    private FcConfig *config;
-    private string[] families;
-
     this() {
         config = FcInitLoadConfigAndFonts();
+        tfCache = new TypefaceCache;
         families = getFamilies(config);
     }
 
     override void dispose() {
+        tfCache.dispose();
         FcConfigDestroy(config);
         FcFini();
+        families = null;
+        tfCache = null;
+        config = null;
     }
 
     override @property size_t familyCount() {
@@ -79,6 +81,21 @@ class FcFontLibrary : FontLibrary
         return new FcTypeface(font);
     }
 
+    private Typeface typefaceFromPattern(FcPattern* font) {
+        auto tf = tfCache.find!((Typeface tf) {
+            auto fcTf = cast(FcTypeface)tf;
+            return FcPatternEqual(font, fcTf.font) == FcTrue;
+        });
+        if (!tf) {
+            tf = new FcTypeface(font);
+            tfCache.add(tf);
+        }
+        return tf;
+    }
+
+    private FcConfig *config;
+    private string[] families;
+    private TypefaceCache tfCache;
 }
 
 private:
@@ -153,7 +170,7 @@ class FcFamilyStyleSet : FamilyStyleSet
     }
 
     override Typeface createTypeface(in size_t index) {
-        return new FcTypeface(fs.fonts[index]);
+        return fl.typefaceFromPattern(fs.fonts[index]);
     }
 
     override Typeface matchStyle(in FontStyle style) {
@@ -166,7 +183,7 @@ class FcFamilyStyleSet : FamilyStyleSet
         auto match = FcFontSetMatch(fl.config, &fs, 1, pattern, &res);
         if (!match) return null;
         scope(exit) FcPatternDestroy(match);
-        return new FcTypeface(match);
+        return fl.typefaceFromPattern(match);
     }
 }
 
