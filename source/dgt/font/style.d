@@ -55,6 +55,13 @@ struct FontStyle
         return cast(FontWidth)_width;
     }
 
+    @property string toString() const {
+        import std.format : format;
+        return format("FontStyle(FontWeight.%s, FontSlant.%s, FontWidth.%s)",
+            weight, slant, width
+        );
+    }
+
     // algorithm from Skia
     package int css3MatchingScore(in FontStyle other) const pure {
         import std.conv : to;
