@@ -6,6 +6,7 @@ import dgt.bindings.fontconfig;
 import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
 import dgt.core.rc;
 import dgt.font.library;
+import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
 
@@ -79,7 +80,7 @@ class FcFontLibrary : FontLibrary
         scope(exit) FcPatternDestroy(font);
         if (!font.isAccessible) return null;
 
-        return new FcTypeface(font);
+        return typefaceFromPattern(font);
     }
 
     private Typeface typefaceFromPattern(FcPattern* font) {
@@ -88,7 +89,7 @@ class FcFontLibrary : FontLibrary
             return FcPatternEqual(font, fcTf._font) == FcTrue;
         });
         if (!tf) {
-            tf = new FcTypeface(font);
+            tf = new FcTypeface(null, font);
             tfCache.add(tf);
         }
         return tf;
@@ -188,14 +189,15 @@ class FcFamilyStyleSet : FamilyStyleSet
     }
 }
 
-class FcTypeface : Typeface
+class FcTypeface : FtTypeface
 {
     import std.typecons : Nullable;
 
     private FcPattern* _font;
     private Nullable!CodepointSet _coverage;
 
-    this(FcPattern* font) {
+    this(FT_Face face, FcPattern* font) {
+        super(face);
         _font = font;
         FcPatternReference(_font);
     }
