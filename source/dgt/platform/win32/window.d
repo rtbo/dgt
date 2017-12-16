@@ -3,14 +3,13 @@ module dgt.platform.win32.window;
 version(Windows):
 
 import dgt.core.geometry;
+import dgt.core.rc;
 import dgt.input.keys;
 import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32;
 import dgt.window;
-
-import gfx.foundation.rc;
 
 import core.sys.windows.windows;
 import std.exception : enforce;

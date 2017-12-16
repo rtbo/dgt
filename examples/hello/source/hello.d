@@ -4,11 +4,11 @@ import core.time : dur;
 
 import dgt.application;
 import dgt.core.color : Color;
+import dgt.core.rc : rc;
 import dgt.scene.scene : Scene;
 import dgt.window;
 
 import gfx.foundation.typecons : some;
-import gfx.foundation.rc : rc;
 
 import std.math : PI;
 import std.stdio;

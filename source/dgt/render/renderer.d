@@ -1,9 +1,9 @@
 module dgt.render.renderer;
 
 import dgt.core.geometry;
+import dgt.core.rc : Disposable, Rc;
 import dgt.render.framegraph;
 import gfx.device;
-import gfx.foundation.rc : Disposable, Rc;
 import gfx.pipeline;
 
 struct RenderOptions {

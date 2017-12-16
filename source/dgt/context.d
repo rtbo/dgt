@@ -1,11 +1,10 @@
 module dgt.context;
 
 import dgt.core.geometry : ISize;
+import dgt.core.rc;
 import dgt.core.util : ValueProperty;
 import dgt.screen;
 import dgt.window;
-
-import gfx.foundation.rc;
 
 import std.exception;
 import std.experimental.logger;

@@ -4,6 +4,7 @@ version(linux):
 
 import dgt.context;
 import dgt.core.geometry;
+import dgt.core.rc;
 import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;
@@ -11,8 +12,6 @@ import dgt.platform.xcb;
 import dgt.platform.xcb.context;
 import dgt.screen;
 import dgt.window;
-
-import gfx.foundation.rc;
 
 import xcb.xcb;
 import xcb.xcb_icccm;

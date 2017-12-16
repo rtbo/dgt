@@ -5,11 +5,11 @@ import core.time : Duration, MonoTime;
 
 import dgt.context;
 import dgt.core.geometry;
+import dgt.core.rc;
 import dgt.core.signal;
 import dgt.platform.event;
 import dgt.screen;
 import dgt.window;
-import gfx.foundation.rc;
 
 import std.typecons : BitFlags;
 

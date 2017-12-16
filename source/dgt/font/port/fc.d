@@ -4,10 +4,10 @@ version(linux):
 
 import dgt.bindings.fontconfig;
 import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
+import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.style;
 import dgt.font.typeface;
-import gfx.foundation.rc;
 
 import std.experimental.logger;
 import std.string;

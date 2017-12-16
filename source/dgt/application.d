@@ -2,11 +2,11 @@
 module dgt.application;
 
 import dgt.context;
+import dgt.core.rc;
 import dgt.eventloop;
 import dgt.render.queue : RenderQueue;
 import dgt.platform;
 import dgt.window;
-import gfx.foundation.rc;
 
 import std.experimental.logger;
 

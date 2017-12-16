@@ -1,7 +1,7 @@
 module dgt.font.typeface;
 
+import dgt.core.rc;
 import dgt.font.style;
-import gfx.foundation.rc;
 
 import std.uni;
 

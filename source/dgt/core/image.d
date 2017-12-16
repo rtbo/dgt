@@ -2,7 +2,7 @@
 module dgt.core.image;
 
 import dgt.core.geometry;
-import gfx.foundation.rc;
+import dgt.core.rc;
 
 import std.exception;
 import std.typecons : Nullable, Flag, Yes, No;

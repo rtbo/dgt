@@ -1,8 +1,8 @@
 module dgt.font.library;
 
+import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
-import gfx.foundation.rc;
 
 
 /// system font library
