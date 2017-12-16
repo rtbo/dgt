@@ -11,6 +11,7 @@ import gfx.foundation.rc;
 
 import std.experimental.logger;
 import std.string;
+import std.uni;
 
 class FcFontLibrary : FontLibrary
 {
@@ -84,7 +85,7 @@ class FcFontLibrary : FontLibrary
     private Typeface typefaceFromPattern(FcPattern* font) {
         auto tf = tfCache.find!((Typeface tf) {
             auto fcTf = cast(FcTypeface)tf;
-            return FcPatternEqual(font, fcTf.font) == FcTrue;
+            return FcPatternEqual(font, fcTf._font) == FcTrue;
         });
         if (!tf) {
             tf = new FcTypeface(font);
@@ -187,17 +188,46 @@ class FcFamilyStyleSet : FamilyStyleSet
     }
 }
 
-class FcTypeface : Typeface {
+class FcTypeface : Typeface
+{
+    import std.typecons : Nullable;
 
-    private FcPattern* font;
+    private FcPattern* _font;
+    private Nullable!CodepointSet _coverage;
 
     this(FcPattern* font) {
-        this.font = font;
-        FcPatternReference(font);
+        _font = font;
+        FcPatternReference(_font);
     }
 
     override void dispose() {
-        FcPatternDestroy(font);
+        FcPatternDestroy(_font);
+    }
+
+    override @property string family() {
+        return getFcString(_font, FC_FAMILY, "");
+    }
+
+    override @property FontStyle style() {
+        return fcPatternToFontStyle(_font);
+    }
+
+    override @property CodepointSet coverage() {
+        if (_coverage.isNull) {
+            FcCharSet* csval;
+            if (FcPatternGetCharSet(_font, FC_CHARSET, 0, &csval) == FcResultMatch) {
+                _coverage = fcCharsetToCoverage(csval);
+            }
+            else {
+                errorf("Cannot find charset in font %s to build coverage", family);
+                _coverage = CodepointSet.init;
+            }
+        }
+        return _coverage;
+    }
+
+    override GlyphId[] glyphsForString(in string text) {
+        return [];
     }
 }
 
@@ -382,4 +412,51 @@ body {
 
 unittest {
     assert(mapRange(FC_WIDTH_SEMICONDENSED, fcWidths, dgtWidths) == cast(int)FontWidth.semiCondensed);
+}
+
+CodepointSet fcCharsetToCoverage(FcCharSet* cs)
+{
+    import std.typecons : Flag, Yes, No;
+
+    CodepointSet coverage;
+    Flag!"included" inSet = No.included;
+    dchar intervalSt;
+    dchar intervalEnd;
+
+    FcChar32[FC_CHARSET_MAP_SIZE] map;
+    FcChar32 pos;
+    for(FcChar32 base = FcCharSetFirstPage(cs, map, &pos);
+        base != FC_CHARSET_DONE;
+        base = FcCharSetNextPage(cs, map, &pos))
+    {
+        foreach (const uint i, bits; map)
+        {
+            foreach (const dchar cp; base+i*32 .. base+i*64)
+            {
+                const cIsIn = (bits & 1) ? Yes.included : No.included;
+                if (cIsIn)
+                {
+                    intervalEnd = cp;
+                }
+
+                if (cIsIn && !inSet)
+                {
+                    intervalSt = cp;
+                }
+                else if (!cIsIn && inSet)
+                {
+                    coverage.add(intervalSt, intervalEnd + 1);
+                }
+
+                inSet = cIsIn;
+                bits >>>= 1;
+                if (!cIsIn && !bits) break;
+            }
+        }
+    }
+    if (inSet)
+    {
+        coverage.add(intervalSt, intervalEnd+1);
+    }
+    return coverage;
 }
