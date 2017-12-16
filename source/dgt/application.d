@@ -1,6 +1,7 @@
 /// Main application module.
 module dgt.application;
 
+import dgt;
 import dgt.context;
 import dgt.core.rc;
 import dgt.eventloop;
@@ -28,27 +29,18 @@ class Application : EventLoop, Disposable
 
     override void dispose()
     {
-        // import dgt.text.font : FontEngine;
-        // import dgt.text.fontcache : FontCache;
-
-        // FontCache.instance.dispose();
-        // FontEngine.instance.dispose();
         _platform.dispose();
+        finalizeSubsystems();
     }
 
 
     private void initialize(Platform platform)
     {
+        initializeSubsystems();
+
         // init Application singleton
         assert(!_instance, "Attempt to initialize twice DGT Application singleton");
         _instance = this;
-
-        log("loading 3rd party libraries");
-        // init bindings to C libraries
-        {
-            import derelict.opengl3.gl3 : DerelictGL3;
-            DerelictGL3.load();
-        }
 
         // init platform
         log("initializing platform");
