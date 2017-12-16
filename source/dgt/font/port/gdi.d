@@ -175,7 +175,7 @@ class GdiFamilyStyleSet : FamilyStyleSet {
     }
 
     override Typeface matchStyle(in FontStyle style) {
-        return null;
+        return matchStyleCSS3(style);
     }
 }
 

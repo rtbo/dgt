@@ -52,6 +52,21 @@ abstract class FamilyStyleSet : RefCounted {
     abstract Typeface createTypeface(in size_t index);
 
     abstract Typeface matchStyle(in FontStyle style);
+
+protected:
+
+    Typeface matchStyleCSS3(in FontStyle style) {
+        import std.algorithm : map, maxIndex;
+        import std.range : iota;
+
+        const count = styleCount;
+        if (!count) return null;
+
+        const index = iota(count)
+            .map!(i => this.style(i).css3MatchingScore(style))
+            .maxIndex;
+        return createTypeface(index);
+    }
 }
 
 
