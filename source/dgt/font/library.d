@@ -37,6 +37,9 @@ class FontLibrary : RefCounted {
     {
         return matchFamily(family).matchStyle(style);
     }
+
+    abstract Typeface createFromMemory(const(ubyte)[] data, int faceIndex=0);
+    abstract Typeface createFromFile(in string path, int faceIndex=0);
 }
 
 /// a collection of font style for a given family

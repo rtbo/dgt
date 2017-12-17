@@ -83,6 +83,18 @@ class FcFontLibrary : FontLibrary
         return typefaceFromPattern(font);
     }
 
+    override Typeface createFromMemory(const(ubyte)[] data, int faceIndex)
+    {
+        auto face = openFaceFromMemory(data, faceIndex);
+        return new FtTypeface(face);
+    }
+
+    override Typeface createFromFile(in string path, int faceIndex)
+    {
+        auto face = openFaceFromFile(path, faceIndex);
+        return new FtTypeface(face);
+    }
+
     private Typeface typefaceFromPattern(FcPattern* font) {
         auto tf = tfCache.find!((Typeface tf) {
             auto fcTf = cast(FcTypeface)tf;
@@ -194,7 +206,6 @@ class FcTypeface : FtTypeface
     import std.typecons : Nullable;
 
     private FcPattern* _font;
-    private Nullable!CodepointSet _coverage;
 
     this(FT_Face face, FcPattern* font) {
         super(face);
@@ -214,22 +225,15 @@ class FcTypeface : FtTypeface
         return fcPatternToFontStyle(_font);
     }
 
-    override @property CodepointSet coverage() {
-        if (_coverage.isNull) {
-            FcCharSet* csval;
-            if (FcPatternGetCharSet(_font, FC_CHARSET, 0, &csval) == FcResultMatch) {
-                _coverage = fcCharsetToCoverage(csval);
-            }
-            else {
-                errorf("Cannot find charset in font %s to build coverage", family);
-                _coverage = CodepointSet.init;
-            }
+    override CodepointSet buildCoverage() {
+        FcCharSet* csval;
+        if (FcPatternGetCharSet(_font, FC_CHARSET, 0, &csval) == FcResultMatch) {
+            return fcCharsetToCoverage(csval);
         }
-        return _coverage;
-    }
-
-    override GlyphId[] glyphsForString(in string text) {
-        return [];
+        else {
+            errorf("Cannot find charset in font %s to build coverage", family);
+            return CodepointSet.init;
+        }
     }
 }
 

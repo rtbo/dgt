@@ -38,7 +38,8 @@ int main()
     auto fl = FontLibrary.create();
     auto fs = fl.matchFamily("serif").rc;
     foreach(const i; 0 .. fs.styleCount) {
-        writeln(fs.style(i));
+        auto f = fs.createTypeface(i).rc;
+        writefln("%s %s", f.family, f.style);
     }
 
     return app.loop();
