@@ -2,8 +2,12 @@ module dgt.font.port.ft;
 
 import derelict.freetype.ft;
 
+import dgt : Subsystem;
 import dgt.core.rc;
 import dgt.font.typeface;
+
+import std.exception;
+import std.experimental.logger;
 
 // for other modules to import without having to deal with derelict
 alias FT_Face = derelict.freetype.ft.FT_Face;
@@ -22,19 +26,27 @@ abstract class FtTypeface : Typeface
 }
 
 
-package(dgt.font):
-
-FT_Library gFtLib;
-
-void initializeFreetype() {
-    DerelictFT.load();
-    FT_New_Library(null, &gFtLib);
-}
-
-void finalizeFreetype() {
-    FT_Done_FreeType(gFtLib);
-    gFtLib = null;
-}
 
 private:
+
+shared static this() {
+    import dgt : registerSubsystem;
+    registerSubsystem(new FtSubsystem);
+}
+
+__gshared FT_Library gFtLib = null;
+
+class FtSubsystem : Subsystem {
+    override @property bool running() const {
+        return gFtLib !is null;
+    }
+    override void initialize() {
+        DerelictFT.load();
+        enforce(FT_Init_FreeType(&gFtLib) == 0);
+    }
+    override void finalize() {
+        FT_Done_FreeType(gFtLib);
+        gFtLib = null;
+    }
+}
 
