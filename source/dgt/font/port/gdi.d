@@ -5,12 +5,13 @@ version(Windows):
 import core.sys.windows.windows;
 import core.sys.windows.wingdi;
 
+import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.style;
 import dgt.font.typeface;
 
+import std.exception;
 import std.string;
-
 import std.stdio;
 
 class GdiFontLibrary : FontLibrary
@@ -44,8 +45,43 @@ class GdiFontLibrary : FontLibrary
         return fonts[index].elfLogFont.lfFaceName.ptr.to!string;
     }
     override FamilyStyleSet matchFamily(in string family) {
-
         return new GdiFamilyStyleSet(checkGenFamily(family));
+    }
+
+    override Typeface createFromMemory(const(ubyte)[] data, int faceIndex)
+    {
+        import dgt.font.port.ft : FtTypeface, openFaceFromMemory;
+
+        auto ftF = openFaceFromMemory(data, faceIndex);
+        auto ftTf = rc(new FtTypeface(ftF));
+        const string family = ftTf.family;
+        const auto style = ftTf.style;
+
+        DWORD numFonts=void;
+        AddFontMemResourceEx(cast(PVOID)data.ptr, cast(DWORD)data.length, null, &numFonts);
+        enforce(numFonts >= 1, "could not install GDI font from memory");
+
+        auto fss = rc(matchFamily(family));
+        return fss.matchStyle(style);
+    }
+
+    override Typeface createFromFile(in string path, int faceIndex)
+    {
+        import dgt.font.port.ft : FtTypeface, openFaceFromFile;
+        import std.conv : to;
+
+        auto ftF = openFaceFromFile(path, faceIndex);
+        auto ftTf = rc(new FtTypeface(ftF));
+        const string family = ftTf.family;
+        const auto style = ftTf.style;
+
+        const auto wpath = path.to!wstring ~ '\0';
+        enforce(
+            AddFontResource(wpath.ptr),
+            "could not install GDI font from file: " ~ path);
+
+        auto fss = rc(matchFamily(family));
+        return fss.matchStyle(style);
     }
 
     private string checkGenFamily(in string familyName) {
