@@ -82,7 +82,8 @@ class TypefaceCache : Disposable {
     }
 
     void add(Typeface tf) {
-        _typefaces ~= tf.rc;
+        tf.retain();
+        _typefaces ~= tf;
     }
 
     private Typeface[] _typefaces;
@@ -94,4 +95,3 @@ Typeface find (alias pred)(TypefaceCache tfCache) {
     }
     return null;
 }
-
