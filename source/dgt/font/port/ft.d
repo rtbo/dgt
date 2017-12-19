@@ -19,6 +19,24 @@ class FtTypeface : Typeface
 {
     this(FT_Face face) {
         _face = face;
+        // todo handle MS symbols
+    }
+
+    // version that keeps the font file data in memory (needed for cloning)
+    private this (FT_Face face, const(ubyte)[] blob)
+    {
+        this(face);
+        _blob = blob;
+    }
+
+    static FtTypeface newFromMemory(const(ubyte)[] data, int faceIndex) {
+        auto f = openFaceFromMemory(data, faceIndex);
+        return new FtTypeface(f, data);
+    }
+
+    static FtTypeface newFromFile(in string filename, int faceIndex) {
+        auto f = openFaceFromFile(filename, faceIndex);
+        return new FtTypeface(f);
     }
 
     override void dispose() {
@@ -48,14 +66,45 @@ class FtTypeface : Typeface
         return [];
     }
 
+    /// Clone the typeface such as the size and glyph slot in the FT_Face
+    /// can be manipulated independently by different scaling contexts
+    FtTypeface clone() {
+        if (!_blob.length) {
+            _blob = fetchBlob();
+        }
+        if (!_blob.length) {
+            return null;
+        }
+        FT_Face faceClone;
+        if (FT_New_Memory_Face(gFtLib, _blob.ptr, cast(FT_ULong)_blob.length,
+                 _face.face_index, &faceClone)) {
+            return null;
+        }
+        return new FtTypeface(faceClone, _blob);
+    }
+
     protected CodepointSet buildCoverage() {
         return ftFaceToCoverage(_face);
     }
 
+    private const(ubyte)[] fetchBlob() {
+        FT_ULong length=0;
+        if (FT_Load_Sfnt_Table(_face, 0, 0, null, &length)) {
+            return null;
+        }
+        auto blob = new ubyte[length];
+        if (FT_Load_Sfnt_Table(_face, 0, 0, blob.ptr, &length)) {
+            return null;
+        }
+        return blob;
+    }
+
     private FT_Face _face;
+    private const(ubyte)[] _blob;
     protected Nullable!CodepointSet _coverage;
 }
 
+/// data must be alive until FT_Done_Face is called
 FT_Face openFaceFromMemory(const(ubyte)[] data, int faceIndex) {
     FT_Open_Args args;
     args.flags = FT_OPEN_MEMORY;
