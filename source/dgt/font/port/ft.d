@@ -6,6 +6,7 @@ import dgt : Subsystem;
 import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
+import dgt.text.render;
 
 import std.exception;
 import std.experimental.logger;
@@ -66,6 +67,10 @@ class FtTypeface : Typeface
         return [];
     }
 
+    override ScalingContext makeScalingContext(int pixelSize) {
+        return null;
+    }
+
     /// Clone the typeface such as the size and glyph slot in the FT_Face
     /// can be manipulated independently by different scaling contexts
     FtTypeface clone() {
@@ -120,7 +125,7 @@ FT_Face openFaceFromFile(in string filename, int faceIndex) {
     import std.string : toStringz;
     char[] fn = filename.dup ~ '\0';
     FT_Open_Args args;
-    args.flags = FT_OPEN_PATHNAME;
+    args.flags = 4; // see https://github.com/DerelictOrg/DerelictFT/issues/13
     args.pathname = fn.ptr;
     FT_Face face;
     enforce(FT_Open_Face(gFtLib, &args, faceIndex, &face) == 0,
