@@ -101,7 +101,11 @@ class FcFontLibrary : FontLibrary
             return FcPatternEqual(font, fcTf._font) == FcTrue;
         });
         if (!tf) {
-            tf = new FcTypeface(null, font);
+            assert(font.isAccessible);
+            const fname = getFcString(font, FC_FILE, "");
+            const index = getFcInt(font, FC_INDEX, 0);
+            auto face = openFaceFromFile(fname, index);
+            tf = new FcTypeface(face, font);
             tfCache.add(tf);
         }
         return tf;
