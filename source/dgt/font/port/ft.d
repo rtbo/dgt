@@ -21,6 +21,7 @@ class FtTypeface : Typeface
     this(FT_Face face) {
         _face = face;
         // todo handle MS symbols
+        FT_Set_Pixel_Sizes(_face, 32, 0);
     }
 
     // version that keeps the font file data in memory (needed for cloning)

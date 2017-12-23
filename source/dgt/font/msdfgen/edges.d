@@ -44,6 +44,8 @@ abstract class EdgeSegment {
 
     abstract @property immutable(EdgeSegment)[3] thirds() const;
 
+    abstract string asString() const;
+
 }
 
 
@@ -76,12 +78,13 @@ final class LinearSegment : EdgeSegment {
         const aq = origin-start;
         const ab = end - start;
         param = dot(aq, ab)/dot(ab, ab);
-        const eq = p[(param > 0.5) ? 1 : 0]-origin;
+        const eq = p[(param > 0.5f) ? 1 : 0] - origin;
         const endpointDistance = magnitude(eq);
         if (param > 0 && param < 1) {
-            const orthoDistance = dot(ab.orthogonal(false), aq);
-            if (abs(orthoDistance) < endpointDistance)
+            const orthoDistance = dot(ab.orthonormal(false), aq);
+            if (abs(orthoDistance) < endpointDistance) {
                 return SignedDistance(orthoDistance, 0);
+            }
         }
         return SignedDistance(nonZeroSign(cross2d(aq, ab))*endpointDistance,
                               abs(dot(normalize(ab), normalize(eq))));
@@ -104,6 +107,10 @@ final class LinearSegment : EdgeSegment {
         ];
     }
 
+    override string asString() const {
+        import std.format : format;
+        return format("LinearSegment(%s, %s)", fvecStr(start), fvecStr(end));
+    }
 }
 
 final class QuadraticSegment : EdgeSegment {
@@ -207,6 +214,11 @@ final class QuadraticSegment : EdgeSegment {
             new immutable QuadraticSegment(
                 point(2/3.), mix(p[1], p[2], 2/3.), p[2]),
         ];
+    }
+
+    override string asString() const {
+        import std.format : format;
+        return format("QuadraticSegment(%s, %s)", fvecStr(start), fvecStr(end));
     }
 
 }
@@ -350,6 +362,11 @@ final class CubicSegment : EdgeSegment {
         ];
     }
 
+    override string asString() const {
+        import std.format : format;
+        return format("CubicSegment(%s, %s)", fvecStr(start), fvecStr(end));
+    }
+
 }
 
 private void pointBounds(in FVec2 p, ref float l, ref float b, ref float r, ref float t) {
@@ -357,4 +374,9 @@ private void pointBounds(in FVec2 p, ref float l, ref float b, ref float r, ref 
     if (p.y < b) b = p.y;
     if (p.x > r) r = p.x;
     if (p.y > t) t = p.x;
+}
+
+private string fvecStr(in FVec2 p) {
+    import std.format : format;
+    return format("[%s, %s]", p.x, p.y);
 }

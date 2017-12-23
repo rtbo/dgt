@@ -5,6 +5,7 @@ import dgt.font.msdfgen.arithmetic;
 import dgt.font.msdfgen.edges;
 import dgt.font.msdfgen.shape;
 import dgt.font.msdfgen.sd;
+import dgt.font.typeface;
 import dgt.math.vec;
 
 import std.algorithm;
@@ -14,8 +15,46 @@ import std.parallelism;
 import std.range;
 import std.typecons;
 
+public import dgt.font.msdfgen.coloring : edgeColoringSimple;
+
+
+Shape buildShape(Typeface tf, GlyphId glyphId)
+{
+    static class OutlineAcc : OutlineAccumulator {
+        override void moveTo(in FVec2 to) {
+            if (contour.length) {
+                shape ~= contour;
+            }
+            contour = [];
+            pos = to;
+        }
+        override void lineTo(in FVec2 to) {
+            contour ~= Edge(new immutable LinearSegment(pos, to));
+            pos = to;
+        }
+        override void conicTo(in FVec2 control, in FVec2 to) {
+            contour ~= Edge(new immutable QuadraticSegment(pos, control, to));
+            pos = to;
+        }
+        override void cubicTo(in FVec2 control1, in FVec2 control2, in FVec2 to) {
+            contour ~= Edge(new immutable CubicSegment(pos, control1, control2, to));
+            pos = to;
+        }
+
+        Shape shape;
+        Contour contour;
+        FVec2 pos;
+    }
+
+    auto oa = new OutlineAcc;
+    tf.getOutline(glyphId, oa);
+    oa.shape ~= oa.contour;
+    return oa.shape;
+}
+
+
 void generateMSDF(Image output, const(Shape) shape, in float range, in FVec2 scale,
-                  in FVec2 translate, in float edgeThreshold=1.0001f)
+                  in FVec2 translate, in float edgeThreshold=1f)
 in {
     assert(output.format == ImageFormat.xrgb);
 }
@@ -28,9 +67,10 @@ body {
 
     auto contourSD = uninitializedArray!(MultiDistance[])(shape.length);
 
-    foreach (y; parallel(iota(h))) {
+    foreach (y; 0 .. h) {
 
-        auto line = output.line(y);
+        const row = h - y - 1;
+        auto line = output.line(row);
 
         foreach (x; 0 .. w) {
 
@@ -41,8 +81,8 @@ body {
             EdgePoint sb;
 
             float d = float.max;
-            float negDist = -float.max;
-            float posDist = float.max;
+            float negDist = float.max;
+            float posDist = -float.max;
             Winding winding = Winding.undetermined;
 
             foreach (i, contour; shape) {
@@ -54,28 +94,32 @@ body {
 
                     float param = void;
                     const distance = edge.seg.signedDistance(p, param);
+
                     if (edge.col & EdgeColor.red && distance < r.minDistance) {
                         r.minDistance = distance;
                         r.nearEdge = edge.seg;
                         r.nearParam = param;
                     }
-                    if (edge.col & EdgeColor.green && distance < r.minDistance) {
+                    if (edge.col & EdgeColor.green && distance < g.minDistance) {
                         g.minDistance = distance;
                         g.nearEdge = edge.seg;
                         g.nearParam = param;
                     }
-                    if (edge.col & EdgeColor.blue && distance < r.minDistance) {
+                    if (edge.col & EdgeColor.blue && distance < b.minDistance) {
                         b.minDistance = distance;
                         b.nearEdge = edge.seg;
                         b.nearParam = param;
                     }
                 }
-                if (r.minDistance < sr.minDistance)
+                if (r.minDistance < sr.minDistance) {
                     sr = r;
-                if (g.minDistance < sg.minDistance)
+                }
+                if (g.minDistance < sg.minDistance) {
                     sg = g;
-                if (b.minDistance < sb.minDistance)
+                }
+                if (b.minDistance < sb.minDistance) {
                     sb = b;
+                }
 
                 auto medMinDist = abs(median(r.minDistance.distance, g.minDistance.distance, b.minDistance.distance));
                 if (medMinDist < d) {
@@ -102,7 +146,7 @@ body {
                 if (windings[i].positive && medMinDist >= 0 && abs(medMinDist) < abs(posDist)) {
                     posDist = medMinDist;
                 }
-                if (windings[i].negative && medMinDist >= 0 && abs(medMinDist) < abs(negDist)) {
+                if (windings[i].negative && medMinDist <= 0 && abs(medMinDist) < abs(negDist)) {
                     negDist = medMinDist;
                 }
             }
@@ -120,7 +164,7 @@ body {
             MultiDistance msd;
 
             if (posDist >= 0 && abs(posDist) <= abs(negDist)) {
-                msd.med = float.max;
+                msd.med = -float.max;
                 winding = Winding.positive;
                 foreach (i; 0 .. shape.length) {
                     if (windings[i].positive && contourSD[i].med > msd.med && abs(contourSD[i].med) < abs(negDist)) {
@@ -129,7 +173,7 @@ body {
                 }
             }
             else if (negDist <= 0 && abs(negDist) <= abs(posDist)) {
-                msd.med = -float.max;
+                msd.med = float.max;
                 winding = Winding.negative;
                 foreach (i; 0 .. shape.length) {
                     if (windings[i].negative && contourSD[i].med < msd.med && abs(contourSD[i].med) < abs(posDist)) {
@@ -149,8 +193,15 @@ body {
                 msd.b = sb.minDistance.distance;
             }
 
+            float mapChannel(in float val) {
+                float res = val/range + 0.5f;
+                if (res < 0) res = 0;
+                if (res > 1) res = 1;
+                return res;
+            }
+
             import dgt.core.color : Color;
-            const rgb = Color(msd.r/range + 0.5f, msd.g/range + 0.5f, msd.b/range + 0.5f);
+            const rgb = Color(mapChannel(msd.r), mapChannel(msd.g), mapChannel(msd.b));
             line.setArgb(x, rgb.argb);
         }
     }
@@ -163,10 +214,10 @@ body {
 }
 
 private struct MultiDistance {
-    float r = float.max;
-    float g = float.max;
-    float b = float.max;
-    float med = float.max;
+    float r = -float.max;
+    float g = -float.max;
+    float b = -float.max;
+    float med = -float.max;
 }
 
 private struct EdgePoint {

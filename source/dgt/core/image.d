@@ -699,12 +699,18 @@ Nullable!ImageFileFormat checkImgSig(const(ubyte)[] data) pure
 
 private
 {
-
     import dgt.bindings.libpng;
     import dgt.bindings.turbojpeg;
     import std.path;
     import std.string;
     import std.uni : toLower;
+
+    shared static this() {
+        import dgt.bindings.libpng.load;
+        import dgt.bindings.turbojpeg.load;
+        loadLibPngSymbols();
+        loadTurboJpegSymbols();
+    }
 
     ImgIO imgIOFromFile (string filename)
     out (result) {
@@ -935,3 +941,4 @@ private
     }
 
 }
+

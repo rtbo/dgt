@@ -5,7 +5,7 @@ import dgt.font.msdfgen.edges;
 import dgt.font.msdfgen.shape;
 import dgt.math.vec : FVec2;
 
-void edgeColoringSimple(Shape shape, in float angleThreshold, ulong seed) {
+void edgeColoringSimple(Shape shape, in float angleThreshold, ulong seed=0) {
     import dgt.math.vec : normalize;
     import std.algorithm : each;
     import std.math : sin;

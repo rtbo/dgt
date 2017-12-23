@@ -143,3 +143,16 @@ void bounds(in Shape shape, ref float l, ref float b, ref float r, ref float t)
     import std.algorithm : each;
     shape.each!(c => c.bounds(l, b, r, t));
 }
+
+string asString(in Shape shape) {
+    import std.format : format;
+    string s;
+    foreach (c; shape) {
+        s ~= "[\n";
+        foreach (e; c) {
+            s ~= format("    col: %s %s\n", e.col, e.seg.asString());
+        }
+        s ~= "]\n";
+    }
+    return s;
+}

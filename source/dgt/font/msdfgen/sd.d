@@ -2,7 +2,7 @@
 module dgt.font.msdfgen.sd;
 
 struct SignedDistance {
-    float distance = float.max;
+    float distance = -float.max;
     float dot = 1;
 
     enum infinite = SignedDistance.init;
