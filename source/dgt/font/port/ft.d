@@ -6,6 +6,7 @@ import dgt : Subsystem;
 import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
+import dgt.math.vec : FVec2;
 
 import std.exception;
 import std.experimental.logger;
@@ -66,6 +67,15 @@ class FtTypeface : Typeface
         return [];
     }
 
+    override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
+        enforce(0 == FT_Load_Glyph(_face, glyphId, FT_LOAD_NO_BITMAP));
+        FT_Outline_Funcs funcs;
+        funcs.move_to = &dgt_ftOutlineMoveTo;
+        funcs.line_to = &dgt_ftOutlineLineTo;
+        funcs.conic_to = &dgt_ftOutlineConicTo;
+        funcs.cubic_to = &dgt_ftOutlineCubicTo;
+        enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa));
+    }
 
     /// Clone the typeface such as the size and glyph slot in the FT_Face
     /// can be manipulated independently by different scaling contexts
@@ -159,12 +169,12 @@ CodepointSet ftFaceToCoverage(FT_Face face) {
 
 private:
 
+__gshared FT_Library gFtLib = null;
+
 shared static this() {
     import dgt : registerSubsystem;
     registerSubsystem(new FtSubsystem);
 }
-
-__gshared FT_Library gFtLib = null;
 
 class FtSubsystem : Subsystem {
     override @property bool running() const {
@@ -177,5 +187,60 @@ class FtSubsystem : Subsystem {
     override void finalize() {
         FT_Done_FreeType(gFtLib);
         gFtLib = null;
+    }
+}
+
+FVec2 fromFtVec(const(FT_Vector)* vec) {
+    return FVec2(vec.x/64f, vec.y/64f);
+}
+
+extern(C) nothrow
+{
+    int dgt_ftOutlineMoveTo(const(FT_Vector)* to, void* user)
+    {
+        auto oa = cast(OutlineAccumulator) user;
+        try {
+            oa.moveTo(fromFtVec(to));
+        }
+        catch(Exception ex) {
+            return 1;
+        }
+        return 0;
+    }
+
+    int dgt_ftOutlineLineTo(const(FT_Vector)* to, void* user)
+    {
+        auto oa = cast(OutlineAccumulator) user;
+        try {
+            oa.lineTo(fromFtVec(to));
+        }
+        catch(Exception ex) {
+            return 1;
+        }
+        return 0;
+    }
+
+    int dgt_ftOutlineConicTo(const(FT_Vector)* control, const(FT_Vector)* to, void* user)
+    {
+        auto oa = cast(OutlineAccumulator) user;
+        try {
+            oa.conicTo(fromFtVec(control), fromFtVec(to));
+        }
+        catch(Exception ex) {
+            return 1;
+        }
+        return 0;
+    }
+
+    int dgt_ftOutlineCubicTo(const(FT_Vector)* control1, const(FT_Vector)* control2, const(FT_Vector)* to, void* user)
+    {
+        auto oa = cast(OutlineAccumulator) user;
+        try {
+            oa.cubicTo(fromFtVec(control1), fromFtVec(control2), fromFtVec(to));
+        }
+        catch(Exception ex) {
+            return 1;
+        }
+        return 0;
     }
 }
