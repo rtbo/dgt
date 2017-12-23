@@ -6,7 +6,6 @@ import dgt : Subsystem;
 import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
-import dgt.text.render;
 
 import std.exception;
 import std.experimental.logger;
@@ -67,9 +66,6 @@ class FtTypeface : Typeface
         return [];
     }
 
-    override ScalingContext makeScalingContext(int pixelSize) {
-        return null;
-    }
 
     /// Clone the typeface such as the size and glyph slot in the FT_Face
     /// can be manipulated independently by different scaling contexts
