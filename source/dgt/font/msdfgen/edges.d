@@ -373,7 +373,7 @@ private void pointBounds(in FVec2 p, ref float l, ref float b, ref float r, ref 
     if (p.x < l) l = p.x;
     if (p.y < b) b = p.y;
     if (p.x > r) r = p.x;
-    if (p.y > t) t = p.x;
+    if (p.y > t) t = p.y;
 }
 
 private string fvecStr(in FVec2 p) {
