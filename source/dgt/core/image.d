@@ -692,13 +692,6 @@ private
     import std.string;
     import std.uni : toLower;
 
-    shared static this() {
-        import dgt.bindings.libpng.load;
-        import dgt.bindings.turbojpeg.load;
-        loadLibPngSymbols();
-        loadTurboJpegSymbols();
-    }
-
     ImgIO imgIOFromFile (string filename)
     out (result) {
         assert(result !is null);

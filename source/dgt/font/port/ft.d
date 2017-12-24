@@ -177,7 +177,6 @@ class FtSubsystem : Subsystem {
         return gFtLib !is null;
     }
     override void initialize() {
-        DerelictFT.load();
         enforce(FT_Init_FreeType(&gFtLib) == 0);
     }
     override void finalize() {

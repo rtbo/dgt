@@ -33,14 +33,15 @@ void registerSubsystem(Subsystem ss) {
 
 void initializeSubsystems() {
     import std.algorithm : each, filter;
-    import derelict.opengl3.gl3 : DerelictGL3;
 
     gMut.lock();
     scope(exit) gMut.unlock();
 
+    trace("loading dynamic bindings");
+    loadBindings();
+
     trace("initializing subsystems");
 
-    DerelictGL3.load();
     gSubsystems.filter!(ss => !ss.running)
         .each!(ss => ss.initialize());
 }
@@ -66,3 +67,23 @@ shared static this() {
 
 __gshared Subsystem[] gSubsystems;
 __gshared Mutex gMut;
+
+void loadBindings()
+{
+    import derelict.opengl3.gl3 : DerelictGL3;
+    import derelict.freetype.ft : DerelictFT;
+    import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
+    import dgt.bindings.libpng.load : loadLibPngSymbols;
+    import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
+
+    DerelictGL3.load();
+    DerelictFT.load();
+    loadHarfbuzzSymbols();
+    loadLibPngSymbols();
+    loadTurboJpegSymbols();
+
+    version(linux) {
+        import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
+        loadFontconfigSymbols();
+    }
+}

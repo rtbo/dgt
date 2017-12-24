@@ -3,7 +3,6 @@ module dgt.font.port.fc;
 version(linux):
 
 import dgt.bindings.fontconfig;
-import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
 import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.port.ft;
@@ -118,9 +117,6 @@ class FcFontLibrary : FontLibrary
 
 private:
 
-shared static this() {
-    loadFontconfigSymbols();
-}
 
 @property bool isAccessible(FcPattern* pattern) {
     import std.file : exists;
