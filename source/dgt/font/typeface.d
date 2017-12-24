@@ -2,8 +2,9 @@ module dgt.font.typeface;
 
 import dgt.core.image;
 import dgt.core.rc;
-import dgt.math.vec : FVec2, IVec2;
 import dgt.font.style;
+import dgt.math.vec : FVec2, IVec2;
+import dgt.text.shaping;
 
 import std.uni;
 
@@ -25,6 +26,7 @@ abstract class Typeface : RefCounted {
 interface ScalingContext : RefCounted {
     @property Typeface typeface();
     @property int pixelSize();
+
     void getOutline(in GlyphId glyphId, OutlineAccumulator oa);
 
     /// Render the glyph into the given output with bottom left starting at offset.
@@ -43,6 +45,8 @@ interface ScalingContext : RefCounted {
     out(img) {
         assert(img.format == ImageFormat.a8);
     }
+
+    TextShapingContext makeTextShapingContext();
 }
 
 interface OutlineAccumulator {

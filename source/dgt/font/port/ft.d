@@ -9,6 +9,7 @@ import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
 import dgt.math.vec : FVec2, IVec2;
+import dgt.text.shaping;
 
 import std.exception;
 import std.experimental.logger;
@@ -243,6 +244,12 @@ final class FtScalingContext : ScalingContext
         else {
             return img.dup;
         }
+    }
+
+    TextShapingContext makeTextShapingContext() {
+        import dgt.text.port.hb : HbTextShapingContext;
+        ensureSize();
+        return new HbTextShapingContext(this, _tf._face);
     }
 
     /// Render and return an image referencing internal FT buffer.

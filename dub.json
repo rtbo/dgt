@@ -25,6 +25,7 @@
         "dgt:bindings":		"*",
         "dgt:libpng":		"*",
         "dgt:turbojpeg":	"*",
+        "dgt:harfbuzz":	    "*",
 
         "gfx-d": {
             "path": "gfx-d"
