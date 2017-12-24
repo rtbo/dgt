@@ -7,25 +7,14 @@ import dgt.font.typeface;
 
 /// system font library
 class FontLibrary : RefCounted {
-    mixin (rcCode);
 
-    static Rc!FontLibrary create() {
-        Rc!FontLibrary fl;
-        version(linux) {
-            import dgt.font.port.fc : FcFontLibrary;
-            fl = new FcFontLibrary;
-        }
-        else version(Windows) {
-            import dgt.font.port.gdi : GdiFontLibrary;
-            fl = new GdiFontLibrary;
-        }
-        else {
-            static assert(false, "unsupported platform");
-        }
-        return fl;
+    mixin(rcCode);
+
+    static FontLibrary get() {
+        return _instance;
     }
 
-    abstract void dispose();
+    override abstract void dispose();
 
     abstract @property size_t familyCount();
 
@@ -94,4 +83,39 @@ Typeface find (alias pred)(TypefaceCache tfCache) {
         if (pred(tf)) return tf;
     }
     return null;
+}
+
+private:
+
+import dgt : registerSubsystem, Subsystem;
+
+__gshared FontLibrary _instance;
+
+class FLSubsystem : Subsystem
+{
+    override @property bool running() const {
+        return _instance !is null;
+    }
+    override void initialize() {
+        version(linux) {
+            import dgt.font.port.fc : FcFontLibrary;
+            _instance = new FcFontLibrary;
+        }
+        else version(Windows) {
+            import dgt.font.port.gdi : GdiFontLibrary;
+            _instance = new GdiFontLibrary;
+        }
+        else {
+            static assert(false, "unsupported platform");
+        }
+        _instance.retain();
+    }
+    override void finalize() {
+        _instance.release();
+        _instance = null;
+    }
+}
+
+shared static this() {
+    registerSubsystem(new FLSubsystem);
 }

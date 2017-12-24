@@ -38,9 +38,7 @@ int main()
     scope(exit) timer.dispose();
 
     import dgt.font.library : FontLibrary;
-    import dgt.font.style : FontStyle;
-    auto fl = FontLibrary.create();
-    auto fs = fl.matchFamily("serif").rc;
+    auto fs = FontLibrary.get.matchFamily("serif").rc;
 
     auto tf = fs.createTypeface(0).rc;
     auto sc = tf.makeScalingContext(32).rc;
