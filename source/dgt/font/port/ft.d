@@ -3,10 +3,12 @@ module dgt.font.port.ft;
 import derelict.freetype.ft;
 
 import dgt : Subsystem;
+import dgt.core.geometry;
+import dgt.core.image;
 import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
-import dgt.math.vec : FVec2;
+import dgt.math.vec : FVec2, IVec2;
 
 import std.exception;
 import std.experimental.logger;
@@ -21,7 +23,6 @@ class FtTypeface : Typeface
     this(FT_Face face) {
         _face = face;
         // todo handle MS symbols
-        FT_Set_Pixel_Sizes(_face, 32, 0);
     }
 
     // version that keeps the font file data in memory (needed for cloning)
@@ -68,14 +69,8 @@ class FtTypeface : Typeface
         return [];
     }
 
-    override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
-        enforce(0 == FT_Load_Glyph(_face, glyphId, FT_LOAD_NO_BITMAP));
-        FT_Outline_Funcs funcs;
-        funcs.move_to = &dgt_ftOutlineMoveTo;
-        funcs.line_to = &dgt_ftOutlineLineTo;
-        funcs.conic_to = &dgt_ftOutlineConicTo;
-        funcs.cubic_to = &dgt_ftOutlineCubicTo;
-        enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa));
+    override ScalingContext makeScalingContext(in int pixelSize) {
+        return new FtScalingContext(this, pixelSize);
     }
 
     /// Clone the typeface such as the size and glyph slot in the FT_Face
@@ -190,6 +185,95 @@ class FtSubsystem : Subsystem {
         gFtLib = null;
     }
 }
+
+final class FtScalingContext : ScalingContext
+{
+    mixin(rcCode);
+
+    FtTypeface _tf;
+    int _pixelSize;
+
+    this (FtTypeface tf, int pixelSize) {
+        _tf = tf;
+        _tf.retain();
+        _pixelSize = pixelSize;
+    }
+
+    override void dispose() {
+        _tf.release();
+        _tf = null;
+    }
+
+    override @property Typeface typeface() {
+        return _tf;
+    }
+
+    override @property int pixelSize() {
+        return _pixelSize;
+    }
+
+    override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
+        ensureSize();
+        enforce(0 == FT_Load_Glyph(_tf._face, glyphId, FT_LOAD_NO_BITMAP));
+        FT_Outline_Funcs funcs;
+        funcs.move_to = &dgt_ftOutlineMoveTo;
+        funcs.line_to = &dgt_ftOutlineLineTo;
+        funcs.conic_to = &dgt_ftOutlineConicTo;
+        funcs.cubic_to = &dgt_ftOutlineCubicTo;
+        enforce(0 == FT_Outline_Decompose(&_tf._face.glyph.outline, &funcs, cast(void*)oa));
+    }
+
+    override void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing) {
+        ensureSize();
+        bool yReversed = void;
+        const img = renderGlyphPriv(glyphId, bearing, yReversed);
+
+        output.blitFrom(img, IPoint(0, 0), offset, img.size, yReversed);
+    }
+
+    override Image renderGlyph(in GlyphId glyphId, out IVec2 bearing) {
+        ensureSize();
+        bool yReversed = void;
+        const img = renderGlyphPriv(glyphId, bearing, yReversed);
+
+        if (yReversed) {
+            auto res = new Image(img.format, img.size, img.stride);
+            res.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
+            return res;
+        }
+        else {
+            return img.dup;
+        }
+    }
+
+    /// Render and return an image referencing internal FT buffer.
+    /// Will be invalidated at next call of renderGlyph or rasterize
+    private const(Image) renderGlyphPriv(in GlyphId glyphId, out IVec2 bearing, out bool yReversed)
+    {
+        import std.math : abs;
+
+        FT_Load_Glyph(_tf._face, cast(FT_UInt)glyphId, FT_LOAD_DEFAULT);
+        FT_Render_Glyph(_tf._face.glyph, FT_RENDER_MODE_NORMAL);
+        auto slot = _tf._face.glyph;
+        auto bitmap = slot.bitmap;
+
+        immutable stride = abs(bitmap.pitch);
+        if (stride == 0) return null; // whitespace
+
+        immutable width = bitmap.width;
+        immutable height = bitmap.rows;
+        auto data = bitmap.buffer[0 .. height*stride];
+
+        bearing = vec(slot.bitmap_left, slot.bitmap_top);
+        yReversed = bitmap.pitch < 0;
+        return new Image(data, ImageFormat.a8, width, stride);
+    }
+
+    void ensureSize() {
+        FT_Set_Pixel_Sizes(_tf._face, _pixelSize, _pixelSize);
+    }
+}
+
 
 FVec2 fromFtVec(const(FT_Vector)* vec) {
     return FVec2(vec.x/64f, vec.y/64f);

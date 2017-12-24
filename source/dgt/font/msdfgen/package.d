@@ -18,7 +18,7 @@ import std.typecons;
 public import dgt.font.msdfgen.coloring : edgeColoringSimple;
 
 
-Shape buildShape(Typeface tf, GlyphId glyphId)
+Shape buildShape(ScalingContext sc, GlyphId glyphId)
 {
     static class OutlineAcc : OutlineAccumulator {
         override void moveTo(in FVec2 to) {
@@ -47,7 +47,7 @@ Shape buildShape(Typeface tf, GlyphId glyphId)
     }
 
     auto oa = new OutlineAcc;
-    tf.getOutline(glyphId, oa);
+    sc.getOutline(glyphId, oa);
     oa.shape ~= oa.contour;
     return oa.shape;
 }
@@ -56,7 +56,7 @@ Shape buildShape(Typeface tf, GlyphId glyphId)
 void generateMSDF(Image output, const(Shape) shape, in float range, in FVec2 scale,
                   in FVec2 translate, in float edgeThreshold=1f)
 in {
-    assert(output.format == ImageFormat.xrgb);
+    assert(output.format == ImageFormat.xrgb || output.format == ImageFormat.argb);
 }
 body {
 

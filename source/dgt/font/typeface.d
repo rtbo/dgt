@@ -1,7 +1,8 @@
 module dgt.font.typeface;
 
+import dgt.core.image;
 import dgt.core.rc;
-import dgt.math.vec : FVec2;
+import dgt.math.vec : FVec2, IVec2;
 import dgt.font.style;
 
 import std.uni;
@@ -18,7 +19,29 @@ abstract class Typeface : RefCounted {
     abstract @property CodepointSet coverage();
     abstract GlyphId[] glyphsForString(in string text);
 
-    abstract void getOutline(in GlyphId glyphId, OutlineAccumulator oa);
+    abstract ScalingContext makeScalingContext(in int pixelSize);
+}
+
+interface ScalingContext : RefCounted {
+    @property Typeface typeface();
+    @property int pixelSize();
+    void getOutline(in GlyphId glyphId, OutlineAccumulator oa);
+
+    /// Render the glyph into the given output with bottom left starting at offset.
+    /// The bearing (relative to offset, not to bottom left of image) is returned as an output parameter.
+    void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing)
+    in {
+        assert(output.width >= pixelSize+offset.x);
+        assert(output.height >= pixelSize+offset.y);
+        assert(output.format == ImageFormat.a8);
+    }
+
+    /// Render the glyph in a new allocated image.
+    /// The bearing relative to bottom left of image is returned as an output parameter.
+    Image renderGlyph(in GlyphId glyphId, out IVec2 bearing)
+    out(img) {
+        assert(img.format == ImageFormat.a8);
+    }
 }
 
 interface OutlineAccumulator {
