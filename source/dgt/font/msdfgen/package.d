@@ -18,6 +18,38 @@ import std.typecons;
 public import dgt.font.msdfgen.coloring : edgeColoringSimple;
 
 
+Image renderGlyphMSDF(ScalingContext sc, in GlyphId glyphId, out IVec2 bearing, float range=2)
+{
+    import std.exception : enforce;
+    auto shape = buildShape(sc, glyphId);
+    enforce(shape.valid);
+    shape.normalize();
+    edgeColoringSimple(shape, 3f, 0);
+
+    float l = float.max;
+    float b = float.max;
+    float r = -float.max;
+    float t = -float.max;
+    shape.bounds(l, b, r, t);
+
+    const il = cast(int)floor(l);
+    const ib = cast(int)floor(b);
+    const ir = cast(int)ceil(r);
+    const it = cast(int)ceil(t);
+
+    const irange = cast(int)ceil(range);
+
+    import dgt.core.geometry : ISize;
+    const size = ISize(ir-il + 2*irange, it-ib + 2*irange);
+    bearing = IVec2(il + irange, it + irange);
+
+    auto img = new Image(ImageFormat.xrgb, size);
+    generateMSDF(img, shape, range, FVec2(1, 1), fvec(bearing.x, size.height - bearing.y), 1);
+
+    return img;
+}
+
+
 Shape buildShape(ScalingContext sc, GlyphId glyphId)
 {
     static class OutlineAcc : OutlineAccumulator {

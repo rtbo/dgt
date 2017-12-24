@@ -31,6 +31,7 @@ interface ScalingContext : RefCounted {
     /// The bearing (relative to offset, not to bottom left of image) is returned as an output parameter.
     void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing)
     in {
+        // FIXME assert with actual metrics
         assert(output.width >= pixelSize+offset.x);
         assert(output.height >= pixelSize+offset.y);
         assert(output.format == ImageFormat.a8);

@@ -47,41 +47,10 @@ int main()
 
     IVec2 bearing;
     auto gl = sc.renderGlyph(957, bearing);
-    writeln("bitmap size = ", gl.size);
-    writeln("bitmap bearing = ", bearing);
-
-    auto shape = buildShape(sc, 957);
-    enforce(shape.valid);
-    shape.normalize();
-    edgeColoringSimple(shape, 3f, 0);
-    writeln(shape.asString());
-
-    float l = float.max;
-    float b = float.max;
-    float r = -float.max;
-    float t = -float.max;
-    shape.bounds(l, b, r, t);
-    writefln("%s %s %s %s", l, b, r, t);
-
-    import std.math : ceil, floor;
-
-    const il = cast(int)floor(l);
-    const ib = cast(int)floor(b);
-    const ir = cast(int)ceil(r);
-    const it = cast(int)ceil(t);
-
-    enum range = 2;
-    const shSize = ISize(ir-il + 2*range, it-ib + 2*range);
-    const shBearing = IVec2(il + range, it + range);
-
-    auto img = new Image(ImageFormat.xrgb, shSize);
-    generateMSDF(img, shape, range, FVec2(1, 1), fvec(shBearing.x, shSize.height - shBearing.y), 1);
-
-    writeln("shape size = ", shSize);
-    writeln("shape bearing = ", shBearing);
+    auto msdf = sc.renderGlyphMSDF(957, bearing);
 
     gl.saveToFile("glyph.png");
-    img.saveToFile("msdf.png");
+    msdf.saveToFile("msdf.png");
 
     return app.loop();
 }
