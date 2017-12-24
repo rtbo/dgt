@@ -61,11 +61,11 @@ enum ImageFormat
 }
 
 /// Required bytes alignment for stride (one row of pixels) of an Image
-/// that can be used as vector graphics surface.
+/// that can be used as texture graphics surface.
 enum strideAlignment = 4;
 
 /// The minimum number of bytes an image must have for a row of pixels to be
-/// usable as a vector graphics surface.
+/// usable as a texture graphics surface.
 /// This gives number of bytes for a row of image including a 4 bytes alignment.
 size_t alignedStrideForWidth(in ImageFormat format, in size_t width) pure
 {
@@ -136,24 +136,17 @@ class Image
 
     /// Initialize an $(D Image) with existing $(D data) and $(D format),
     /// $(D width) and $(D stride).
-    /// Enforcements:
-    ///   - $(D stride >= format.minStrideForWidth(width))
     /// Notes:
     ///   - $(D data) is kept within the $(D Image) without any copy or relocation
-    ///   - the $(D height) is computed as $(D data.length / stride)
+    ///   - the $(D height) is computed as $(D data.length / stride). The data slice
+    ///     must be therefore adjusted to reflect the correct height;
     ///
     /// Stride can be used to pass in a slice of a bigger image.
     this(ubyte[] data, in ImageFormat fmt, in size_t width, in size_t stride)
     {
-        import std.format : format;
-        immutable minStride = fmt.alignedStrideForWidth(width);
         immutable height = data.length / stride;
-        enforce(
-            stride >= minStride,
-            format("provided stride is %s, minimum requested is %s",
-                stride, minStride)
-        );
-        enforce(isValidImageSize(size(this)));
+        enforce(data.length > stride && data.length % stride == 0);
+        enforce(isValidImageSize(ISize(cast(int)width, cast(int)height)));
 
         this(data, fmt, cast(ushort)width, cast(ushort)height, stride);
     }
@@ -161,15 +154,9 @@ class Image
     /// ditto
     immutable this(immutable(ubyte)[] data, in ImageFormat fmt, in size_t width, in size_t stride)
     {
-        import std.format : format;
-        immutable minStride = fmt.alignedStrideForWidth(width);
         immutable height = data.length / stride;
-        enforce(
-            stride >= minStride,
-            format("provided stride is %s, minimum requested is %s",
-                stride, minStride)
-        );
-        enforce(isValidImageSize(size(this)));
+        enforce(data.length > stride && data.length % stride == 0);
+        enforce(isValidImageSize(ISize(cast(int)width, cast(int)height)));
 
         this(data, fmt, cast(ushort)width, cast(ushort)height, stride);
     }
@@ -229,6 +216,12 @@ class Image
     @property ushort height() const
     {
         return _height;
+    }
+
+    /// The size of the image
+    @property ISize size() const
+    {
+        return ISize(_width, _height);
     }
 
     /// Get the number of bytes between two rows
@@ -497,12 +490,6 @@ if (is(typeof(convFn(uint.init)) == uint))
             setArgb(line, i, convFn(px));
         }
     }
-}
-
-/// The size of the image
-@property ISize size(const(Image) img)
-{
-    return ISize(img.width, img.height);
 }
 
 // pixel access helpers
