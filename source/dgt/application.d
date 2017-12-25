@@ -92,14 +92,13 @@ class Application : EventLoop, Disposable
         /// Get the Application singleton.
         @property Application instance()
         {
-            assert(_instance, "Attempt to get unintialized DGT Application");
             return _instance;
         }
         /// Get the Platform singleton.
         @property Platform platform()
         {
-            assert(_instance && _instance._platform, "Attempt to get unintialized DGT Platform");
-            return _instance._platform;
+            if (_instance) return _instance._platform;
+            else return null;
         }
 
         private Application _instance;
