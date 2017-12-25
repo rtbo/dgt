@@ -399,6 +399,63 @@ class Image
     }
 }
 
+/// Create a slice of the given image, referencing the same data.
+/// ImageFormat.a1 is not supported.
+Image slice(Image img, in IPoint offset, in ISize size)
+{
+    assert(img);
+    assert(img.format != ImageFormat.a1);
+    enforce(offset.x+size.width <= img.width);
+    enforce(offset.y+size.height <= img.height);
+
+    const bytesPerPix = img.format.bpp / 8;
+    const dataOffset = (offset.y*img.stride + offset.x) * bytesPerPix;
+    const dataLen = (size.height*img.stride + size.width) * bytesPerPix;
+
+    auto dataSlice = img.data[dataOffset .. dataOffset + dataLen];
+    return new Image (
+        dataSlice, img.format, cast(ushort)size.width, cast(ushort)size.height, img.stride
+    );
+}
+
+/// Create a slice of the given image, referencing the same data.
+/// ImageFormat.a1 is not supported.
+immutable(Image) slice(immutable(Image) img, in IPoint offset, in ISize size)
+{
+    assert(img);
+    assert(img.format != ImageFormat.a1);
+    enforce(offset.x+size.width <= img.width);
+    enforce(offset.y+size.height <= img.height);
+
+    const bytesPerPix = img.format.bpp / 8;
+    const dataOffset = (offset.y*img.stride + offset.x) * bytesPerPix;
+    const dataLen = (size.height*img.stride + size.width) * bytesPerPix;
+
+    immutable dataSlice = img.data[dataOffset .. dataOffset + dataLen];
+    return new immutable Image (
+        dataSlice, img.format, cast(ushort)size.width, cast(ushort)size.height, img.stride
+    );
+}
+
+unittest {
+    import std.algorithm : equal;
+    ubyte[] data = new ubyte[8*8];
+    foreach(i; 0 .. 8*8) {
+        data[i] = cast(ubyte)i;
+    }
+    //  0,  1,  2,  3,  4,  5 ...
+    //  8,  9,  10, 11, ...
+    //  16, 17, 23, ...
+    //  ...
+    auto big = new Image(data, ImageFormat.a8, 8, 8);
+    auto small = big.slice(IPoint(5, 4), ISize(3, 2));
+
+    assert(small.stride == big.stride);
+    assert(small.size == ISize(3, 2));
+    assert(small.line(0).equal([37, 38, 39]));
+    assert(small.line(1).equal([45, 46, 47]));
+}
+
 /// Assumes the image is unique and converts it into an immutable image
 immutable(Image) assumeUnique(ref Image img)
 {
