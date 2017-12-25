@@ -1,3 +1,4 @@
+/// Fontconfig font library implementation
 module dgt.font.port.fc;
 
 version(linux):

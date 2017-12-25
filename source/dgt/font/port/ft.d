@@ -1,3 +1,4 @@
+/// Freetype typeface implementation module
 module dgt.font.port.ft;
 
 import derelict.freetype.ft;
@@ -212,15 +213,31 @@ final class FtScalingContext : ScalingContext
         return _pixelSize;
     }
 
+    override GlyphMetrics glyphMetrics(in GlyphId glyph) {
+        ensureSize();
+        FT_Load_Glyph(ftFace, glyph, FT_LOAD_DEFAULT);
+
+        const gm = ftFace.glyph.metrics;
+        return GlyphMetrics(
+            fvec(gm.width/64f, gm.height/64f),
+
+            fvec(gm.horiBearingX/64f, gm.horiBearingY/64f),
+            gm.horiAdvance/64f,
+
+            fvec(gm.vertBearingX/64f, gm.vertBearingY/64f),
+            gm.vertAdvance/64f,
+        );
+    }
+
     override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
         ensureSize();
-        enforce(0 == FT_Load_Glyph(_tf._face, glyphId, FT_LOAD_NO_BITMAP));
+        enforce(0 == FT_Load_Glyph(ftFace, glyphId, FT_LOAD_NO_BITMAP));
         FT_Outline_Funcs funcs;
         funcs.move_to = &dgt_ftOutlineMoveTo;
         funcs.line_to = &dgt_ftOutlineLineTo;
         funcs.conic_to = &dgt_ftOutlineConicTo;
         funcs.cubic_to = &dgt_ftOutlineCubicTo;
-        enforce(0 == FT_Outline_Decompose(&_tf._face.glyph.outline, &funcs, cast(void*)oa));
+        enforce(0 == FT_Outline_Decompose(&ftFace.glyph.outline, &funcs, cast(void*)oa));
     }
 
     override void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing) {
@@ -252,6 +269,14 @@ final class FtScalingContext : ScalingContext
         return new HbTextShapingContext(this, _tf._face);
     }
 
+    private FT_Face ftFace() {
+        return _tf._face;
+    }
+
+    private void ensureSize() {
+        FT_Set_Pixel_Sizes(_tf._face, _pixelSize, _pixelSize);
+    }
+
     /// Render and return an image referencing internal FT buffer.
     /// Will be invalidated at next call of renderGlyph or rasterize
     private const(Image) renderGlyphPriv(in GlyphId glyphId, out IVec2 bearing, out bool yReversed)
@@ -273,10 +298,6 @@ final class FtScalingContext : ScalingContext
         bearing = vec(slot.bitmap_left, slot.bitmap_top);
         yReversed = bitmap.pitch < 0;
         return new Image(data, ImageFormat.a8, width, stride);
-    }
-
-    void ensureSize() {
-        FT_Set_Pixel_Sizes(_tf._face, _pixelSize, _pixelSize);
     }
 }
 

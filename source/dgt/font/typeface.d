@@ -41,6 +41,22 @@ abstract class Typeface : RefCounted {
     }
 }
 
+/// Glyph metrics (all in px).
+struct GlyphMetrics
+{
+    /// The size of the glyph
+    FVec2 size;
+    /// Bearing for horizontal layout
+    FVec2 horBearing;
+    /// Advance for horizontal layout
+    float horAdvance;
+    /// Bearing for vertical layout
+    FVec2 verBearing;
+    /// Advance for vertical layout
+    float verAdvance;
+}
+
+
 interface ScalingContext : RefCounted {
     @property Typeface typeface();
     @property int pixelSize();
@@ -63,6 +79,9 @@ interface ScalingContext : RefCounted {
     out(img) {
         assert(img.format == ImageFormat.a8);
     }
+
+    /// Compute the metrics of a glyph
+    GlyphMetrics glyphMetrics(in GlyphId glyph);
 
     TextShapingContext makeTextShapingContext();
 }
