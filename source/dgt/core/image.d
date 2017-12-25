@@ -193,10 +193,13 @@ class Image
     {
         assert(l < _height);
     }
+    out(line) {
+        assert(line.length == _width);
+    }
     body
     {
         immutable start = l * _stride;
-        immutable end = start + _stride;
+        immutable end = start + _width;
         return _data[start .. end];
     }
 
