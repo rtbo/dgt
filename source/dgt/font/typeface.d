@@ -12,7 +12,16 @@ alias GlyphId = ushort;
 
 abstract class Typeface : RefCounted {
     mixin(rcCode);
-    abstract void dispose();
+
+    this() {
+        _id = nextFontId();
+    }
+
+    abstract override void dispose();
+
+    final @property size_t id() {
+        return _id;
+    }
 
     abstract @property string family();
     abstract @property FontStyle style();
@@ -21,6 +30,15 @@ abstract class Typeface : RefCounted {
     abstract GlyphId[] glyphsForString(in string text);
 
     abstract ScalingContext makeScalingContext(in int pixelSize);
+
+    private size_t _id;
+
+    private static size_t nextFontId() {
+        import core.atomic : atomicOp;
+        static shared size_t fontId = 0;
+        immutable fid = atomicOp!"+="(fontId, 1);
+        return fid;
+    }
 }
 
 interface ScalingContext : RefCounted {
