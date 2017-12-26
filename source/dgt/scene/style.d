@@ -182,7 +182,7 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
     this()
     {
         super("font", true, [
-            cast(IStyleMetaProperty)FontStyleMetaProperty.instance,
+            cast(IStyleMetaProperty)FontSlantMetaProperty.instance,
             cast(IStyleMetaProperty)FontWeightMetaProperty.instance,
             cast(IStyleMetaProperty)FontSizeMetaProperty.instance,
             cast(IStyleMetaProperty)FontFamilyMetaProperty.instance,
@@ -191,7 +191,7 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
 
     override bool parseValueImpl(ref Token[] tokens, out ParsedFont font)
     {
-        if (!FontStyleMetaProperty.instance.parseValueImpl(tokens, font.fs)) {
+        if (!FontSlantMetaProperty.instance.parseValueImpl(tokens, font.fs)) {
         }
         if (!FontWeightMetaProperty.instance.parseValueImpl(tokens, font.pfw)) {
         }
@@ -206,7 +206,7 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
         auto pf = (cast(CSSValue)val).value;
 
         auto fsp = cast(StyleProperty!FontSlant)target.styleProperty("font-style");
-        fsp.setValue(FontStyleMetaProperty.instance.convert(pf.fs, target), origin);
+        fsp.setValue(FontSlantMetaProperty.instance.convert(pf.fs, target), origin);
 
         auto fwp = cast(StyleProperty!int)target.styleProperty("font-weight");
         fwp.setValue(FontWeightMetaProperty.instance.convert(pf.pfw, target), origin);
@@ -279,10 +279,14 @@ private struct ParsedFontWeight {
     }
     Type type;
     union {
-        int abs;
+        FontWeight abs;
         RelKwd rel;
     }
     this(int w) {
+        type = Type.absolute;
+        abs = cast(FontWeight)w;
+    }
+    this(FontWeight w) {
         type = Type.absolute;
         abs = w;
     }
@@ -292,11 +296,11 @@ private struct ParsedFontWeight {
     }
 }
 
-final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
+final class FontWeightMetaProperty : StyleMetaProperty!(FontWeight, ParsedFontWeight)
 {
     mixin StyleSingleton!(typeof(this));
 
-    enum initialFW = 400;
+    enum initialFW = FontWeight.normal;
 
     this() {
         super("font-weight", true, ParsedFontWeight(initialFW), false);
@@ -341,26 +345,26 @@ final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
         }
     }
 
-    override int convert(ParsedFontWeight fw, StyleElement target)
+    override FontWeight convert(ParsedFontWeight fw, StyleElement target)
     {
         if (fw.type == ParsedFontWeight.Type.absolute) {
             return fw.abs;
         }
         else {
             auto p = getProperty(target.parent);
-            immutable pfw = p ? p.value : initialFW;
+            immutable pfw = cast(int)(p ? p.value : initialFW);
 
             if (pfw >= 100 && pfw <= 300) {
-                return fw.rel == ParsedFontWeight.RelKwd.lighter ? 100 : 400;
+                return fw.rel == ParsedFontWeight.RelKwd.lighter ? FontWeight.thin : FontWeight.normal;
             }
             else if (pfw >= 301 && pfw <= 599) {
-                return fw.rel == ParsedFontWeight.RelKwd.lighter ? 100 : 700;
+                return fw.rel == ParsedFontWeight.RelKwd.lighter ? FontWeight.thin : FontWeight.bold;
             }
             else if (pfw >= 600 && pfw <= 799) {
-                return fw.rel == ParsedFontWeight.RelKwd.lighter ? 400 : 900;
+                return fw.rel == ParsedFontWeight.RelKwd.lighter ? FontWeight.normal : FontWeight.extraLarge;
             }
             else if (pfw >= 800 && pfw <= 900) {
-                return fw.rel == ParsedFontWeight.RelKwd.lighter ? 700 : 900;
+                return fw.rel == ParsedFontWeight.RelKwd.lighter ? FontWeight.bold : FontWeight.extraLarge;
             }
             else {
                 warningf("out of range font-weight: %s", pfw);
@@ -370,7 +374,7 @@ final class FontWeightMetaProperty : StyleMetaProperty!(int, ParsedFontWeight)
     }
 }
 
-final class FontStyleMetaProperty : StyleMetaProperty!FontSlant
+final class FontSlantMetaProperty : StyleMetaProperty!FontSlant
 {
     mixin StyleSingleton!(typeof(this));
 

@@ -37,7 +37,8 @@ enum FontWidth {
 
 struct FontStyle
 {
-    this(FontWeight weight, FontSlant slant, FontWidth width) {
+    this(in FontWeight weight, in FontSlant slant,
+         in FontWidth width=FontWidth.normal) {
         _weight = cast(ushort)weight;
         _slant = cast(ubyte)slant;
         _width = cast(ubyte)width;
