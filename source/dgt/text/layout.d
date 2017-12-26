@@ -9,6 +9,13 @@ import dgt.text.shaping : GlyphInfo;
 
 struct TextStyle
 {
+    this (float size, string family, FontStyle style, Paint fill) {
+        import std.typecons : rebindable;
+        this.size = size;
+        this.family = family;
+        this.style = style;
+        this.fill = rebindable(fill);
+    }
     float size;
     string family;
     FontStyle style;
@@ -68,6 +75,11 @@ class TextLayout
     }
     body {
         _items = null;
+    }
+
+    /// Checks whether the layout contains items
+    @property bool empty() const {
+        return _items.length == 0;
     }
 
     /// Add an item to the item list
