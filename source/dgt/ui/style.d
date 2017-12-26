@@ -1,10 +1,10 @@
 /// Module gathering CSS properties implemented by DGT for views
-module dgt.view.style;
+module dgt.ui.style;
 
 import dgt.css.style;
 import dgt.css.token;
-import dgt.view.layout;
-import dgt.view.view;
+import dgt.ui.layout;
+import dgt.ui.view;
 
 import std.range;
 

@@ -1,8 +1,8 @@
-module dgt.view.view;
+module dgt.ui.view;
 
 import dgt.core.geometry;
 import dgt.scene.node;
-import dgt.view.layout;
+import dgt.ui.layout;
 
 class View : Node {
 

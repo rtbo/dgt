@@ -5,7 +5,7 @@ import dgt.core.geometry;
 import dgt.css.om : Stylesheet;
 import dgt.render.framegraph;
 import dgt.scene.node : Node;
-import dgt.view.view : View;
+import dgt.ui.view : View;
 
 import gfx.foundation.typecons : option, Option;
 
@@ -82,7 +82,7 @@ class Scene {
         // at the moment the only supported layout mode is with view at the root
         auto v = cast(View) _root;
         if (!v) return;
-        import dgt.view.layout : MeasureSpec;
+        import dgt.ui.layout : MeasureSpec;
         auto fs = cast(FSize) _size;
         v.measure(
             MeasureSpec.makeAtMost(fs.width),
