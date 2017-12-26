@@ -5,7 +5,6 @@ import dgt.core.enums;
 import dgt.core.geometry;
 import dgt.css.style;
 import dgt.math;
-import dgt.scene.style;
 import dgt.ui.style;
 import dgt.ui.view;
 

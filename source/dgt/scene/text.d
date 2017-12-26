@@ -6,8 +6,8 @@ import dgt.core.paint;
 import dgt.css.style;
 import dgt.font.style;
 import dgt.scene.node;
-import dgt.scene.style;
 import dgt.text.layout;
+import dgt.ui.style;
 
 class TextNode : Node {
 

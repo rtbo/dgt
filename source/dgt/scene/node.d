@@ -650,8 +650,8 @@ class Node : StyleElement {
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
     // style properties
-    package(dgt.scene) IStyleMetaProperty[]        _styleMetaProperties;
-    package(dgt.scene) IStyleProperty[string]      _styleProperties;
+    package(dgt) IStyleMetaProperty[]        _styleMetaProperties;
+    package(dgt) IStyleProperty[string]      _styleProperties;
 
     // debug
     private string _name;
