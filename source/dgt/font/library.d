@@ -24,7 +24,8 @@ class FontLibrary : RefCounted {
 
     Typeface matchFamilyStyle(in string family, in FontStyle style)
     {
-        return matchFamily(family).matchStyle(style);
+        auto fss = matchFamily(family).rc;
+        return fss.matchStyle(style);
     }
 
     abstract Typeface createFromMemory(const(ubyte)[] data, int faceIndex=0);
