@@ -28,7 +28,7 @@ class HbTextShapingContext : TextShapingContext {
         return _sc;
     }
 
-    override TextShape shapeText(in string text) {
+    override immutable(GlyphInfo)[] shapeText(in string text) {
         auto hbb = hb_buffer_create();
         scope(exit) hb_buffer_destroy(hbb);
         hb_buffer_add_utf8(hbb, text.ptr, cast(int)text.length, 0, -1);

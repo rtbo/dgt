@@ -1,8 +1,11 @@
 module dgt.text.layout;
 
 import dgt.core.paint;
+import dgt.core.rc;
 import dgt.font.style;
-import dgt.math.vec : FVec2;
+import dgt.font.typeface;
+import dgt.math.vec : fvec, FVec2;
+import dgt.text.shaping : GlyphInfo;
 
 struct TextStyle
 {
@@ -51,20 +54,110 @@ struct TextMetrics
     }
 }
 
+struct TextShape {
+    TextStyle style;
+    immutable(GlyphInfo)[] glyphs;
+}
 
 class TextLayout
 {
-    void clear() {
-        _items = [];
+    /// clear the item list
+    void clearItems()
+    out {
+        assert(_items.length == 0);
+    }
+    body {
+        _items = null;
     }
 
+    /// Add an item to the item list
     void addItem(in TextItem item) {
         _items ~= item;
+        _layoutDirty = true;
     }
 
-    void layout() {
+    /// reset the item at index ind to the provided item
+    void resetItem(in TextItem item, size_t ind)
+    in {
+        assert(ind <= _items.length);
+    }
+    body {
+        _items[ind] = item;
+        _layoutDirty = true;
+    }
 
+    @property const(TextItem)[] items() const {
+        return _items;
+    }
+
+    /// Layout the different items into text shapes
+    void layout() {
+        if (!_layoutDirty) return;
+        _layoutDirty = false;
+        _shapes = [];
+        foreach (const ref item; _items) {
+            auto tf = getTypeface(item.style).rc;
+            auto sc = tf.makeScalingContext(item.style.size).rc;
+            auto shaper = sc.makeTextShapingContext().rc;
+            _shapes ~= TextShape(item.style, shaper.shapeText(item.text));
+        }
+    }
+
+    @property const(TextShape)[] shapes() const {
+        return _shapes;
+    }
+
+    @property TextMetrics metrics() {
+        import std.algorithm : min, max;
+        import std.math : round;
+
+        layout();
+
+        // FIXME: vertical
+        float bearingX;
+        float width;
+        float top = 0;
+        float bottom =0;
+        auto advance = fvec(0, 0);
+
+        foreach (TextShape ts; _shapes)
+        {
+            auto tf = getTypeface(ts.style).rc;
+            auto sc = tf.makeScalingContext(ts.style.size).rc;
+            foreach (i, GlyphInfo gi; ts.glyphs)
+            {
+                const gm = sc.glyphMetrics(gi.index);
+                if (i == 0)
+                {
+                    bearingX = -gm.horBearing.x;
+                    width = -gm.horBearing.x;
+                }
+                if (i == ts.glyphs.length-1)
+                {
+                    // width = total advance wo last char       +
+                    //         horizontal bearing of last char  +
+                    //         width of last char               -
+                    //         horizontal bearing of first char
+                    width += (advance.x + gm.horBearing.x + gm.size.x);
+                }
+                top = max(top, gm.horBearing.y);
+                bottom = min(bottom, gm.horBearing.y - gm.size.y);
+                advance += gi.advance;
+            }
+        }
+        return TextMetrics(
+            fvec(bearingX, top),
+            fvec(width, top-bottom),
+            advance
+        );
     }
 
     private TextItem[] _items;
+    private TextShape[] _shapes;
+    private bool _layoutDirty;
+}
+
+private Typeface getTypeface(in TextStyle style) {
+    import dgt.font.library : FontLibrary;
+    return FontLibrary.get.matchFamilyStyle(style.family, style.style);
 }

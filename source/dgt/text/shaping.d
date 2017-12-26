@@ -12,9 +12,7 @@ struct GlyphInfo
     IVec2 offset;
 }
 
-alias TextShape = immutable(GlyphInfo)[];
-
 interface TextShapingContext : RefCounted {
     @property ScalingContext scalingContext();
-    TextShape shapeText(in string text);
+    immutable(GlyphInfo)[] shapeText(in string text);
 }
