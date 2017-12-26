@@ -71,7 +71,7 @@ class FtTypeface : Typeface
         return [];
     }
 
-    override ScalingContext makeScalingContext(in int pixelSize) {
+    override ScalingContext makeScalingContext(in float pixelSize) {
         return new FtScalingContext(this, pixelSize);
     }
 
@@ -192,9 +192,9 @@ final class FtScalingContext : ScalingContext
     mixin(rcCode);
 
     FtTypeface _tf;
-    int _pixelSize;
+    float _pixelSize;
 
-    this (FtTypeface tf, int pixelSize) {
+    this (FtTypeface tf, float pixelSize) {
         _tf = tf;
         _tf.retain();
         _pixelSize = pixelSize;
@@ -209,7 +209,7 @@ final class FtScalingContext : ScalingContext
         return _tf;
     }
 
-    override @property int pixelSize() {
+    override @property float pixelSize() {
         return _pixelSize;
     }
 
@@ -274,7 +274,8 @@ final class FtScalingContext : ScalingContext
     }
 
     private void ensureSize() {
-        FT_Set_Pixel_Sizes(_tf._face, _pixelSize, _pixelSize);
+        import std.math : round;
+        FT_Set_Pixel_Sizes(_tf._face, 0, cast(FT_UInt)(round(_pixelSize)));
     }
 
     /// Render and return an image referencing internal FT buffer.

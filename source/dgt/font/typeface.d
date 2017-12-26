@@ -29,7 +29,7 @@ abstract class Typeface : RefCounted {
     abstract @property CodepointSet coverage();
     abstract GlyphId[] glyphsForString(in string text);
 
-    abstract ScalingContext makeScalingContext(in int pixelSize);
+    abstract ScalingContext makeScalingContext(in float pixelSize);
 
     private size_t _id;
 
@@ -59,7 +59,7 @@ struct GlyphMetrics
 
 interface ScalingContext : RefCounted {
     @property Typeface typeface();
-    @property int pixelSize();
+    @property float pixelSize();
 
     void getOutline(in GlyphId glyphId, OutlineAccumulator oa);
 
