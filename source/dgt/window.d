@@ -6,7 +6,7 @@ import dgt.core.geometry;
 import dgt.core.signal;
 import dgt.platform : PlatformWindow;
 import dgt.platform.event;
-import dgt.scene.scene : Scene;
+import dgt.ui : UserInterface;
 
 import std.exception;
 
@@ -213,12 +213,12 @@ class Window
         }
     }
 
-    @property Scene scene() {
-        return _scene;
+    @property UserInterface ui() {
+        return _ui;
     }
 
-    @property void scene(Scene scene) {
-        _scene = scene;
+    @property void ui(UserInterface ui) {
+        _ui = ui;
     }
 
     package(dgt)
@@ -334,5 +334,5 @@ class Window
     WindowEvent[] _events;
     Handler!CloseEvent _onClose = new Handler!CloseEvent;
 
-    private Scene _scene;
+    private UserInterface _ui;
 }

@@ -1,17 +1,15 @@
-module dgt.scene.scene;
+module dgt.ui;
 
 import dgt.core.color;
 import dgt.core.geometry;
 import dgt.css.om : Stylesheet;
 import dgt.render.framegraph;
-import dgt.scene.node : Node;
-import dgt.view.view : View;
+import dgt.ui.view : View;
 
 import gfx.foundation.typecons : option, Option;
 
-/// The Scene class represent the scene graph scene.
-/// It is a standalone representation of a scene graph.
-class Scene {
+/// The UserInterface class represent the top level of the GUI tree.
+class UserInterface {
 
     @property ISize size() {
         return _size;
@@ -26,39 +24,39 @@ class Scene {
         _clearColor = color;
     }
 
-    /// The scene graph root attached to this window
-    @property inout(Node) root() inout { return _root; }
+    /// The View root attached to this ui
+    @property inout(View) root() inout { return _root; }
     /// ditto
-    @property void root(Node root)
+    @property void root(View root)
     {
         if (_root) {
-            _root._scene = null;
+            _root._ui = null;
         }
         _root = root;
         if (_root) {
-            _root._scene = this;
+            _root._ui = this;
         }
     }
 
 
-    @property ScenePass dirtyPass() {
+    @property UIPass dirtyPass() {
         return _dirtyPass;
     }
 
-    void requestPass(in ScenePass pass) {
+    void requestPass(in UIPass pass) {
         _dirtyPass |= pass;
     }
 
     @property bool needStylePass() {
-        return (_dirtyPass & ScenePass.style) == ScenePass.style;
+        return (_dirtyPass & UIPass.style) == UIPass.style;
     }
 
     @property bool needLayoutPass() {
-        return (_dirtyPass & ScenePass.layout) == ScenePass.layout;
+        return (_dirtyPass & UIPass.layout) == UIPass.layout;
     }
 
     @property bool needRenderPass() {
-        return (_dirtyPass & ScenePass.render) == ScenePass.render;
+        return (_dirtyPass & UIPass.render) == UIPass.render;
     }
 
     void stylePass () {
@@ -72,8 +70,8 @@ class Scene {
             _dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
         }
         cssCascade(_root, _dgtCSS);
-        _root.recursClean(Node.Dirty.styleMask);
-        _dirtyPass &= ~ScenePass.style;
+        _root.recursClean(View.Dirty.styleMask);
+        _dirtyPass &= ~UIPass.style;
     }
 
     void layoutPass () {
@@ -82,20 +80,20 @@ class Scene {
         // at the moment the only supported layout mode is with view at the root
         auto v = cast(View) _root;
         if (!v) return;
-        import dgt.view.layout : MeasureSpec;
+        import dgt.ui.layout : MeasureSpec;
         auto fs = cast(FSize) _size;
         v.measure(
             MeasureSpec.makeAtMost(fs.width),
             MeasureSpec.makeAtMost(fs.height)
         );
         v.layout(FRect(0, 0, fs));
-        _dirtyPass &= ~ScenePass.layout;
+        _dirtyPass &= ~UIPass.layout;
     }
 
     immutable(FGFrame) frame(in size_t windowHandle) {
         import std.algorithm : map;
         scope(success) {
-            _dirtyPass &= ~ScenePass.render;
+            _dirtyPass &= ~UIPass.render;
         }
         return new immutable FGFrame (
             windowHandle, IRect(0, 0, _size),
@@ -103,28 +101,14 @@ class Scene {
         );
     }
 
-    private View[] getViewRoots() {
-        import std.algorithm : each;
-        View [] roots;
-        void collect(Node n) {
-            auto v = cast(View) n;
-            if (v) roots ~= v;
-            else {
-                n.children.each!(c => collect(c));
-            }
-        }
-        if (_root) collect(_root);
-        return roots;
-    }
-
     private ISize _size;
     private Option!Color _clearColor;
-    private Node _root;
-    private ScenePass _dirtyPass = ScenePass.all;
+    private View _root;
+    private UIPass _dirtyPass = UIPass.all;
     private Stylesheet _dgtCSS;
 }
 
-enum ScenePass {
+enum UIPass {
     none    = 0,
     style   = 1,
     layout  = 2,

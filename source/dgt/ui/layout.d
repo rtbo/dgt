@@ -1,13 +1,12 @@
 /// layout module
-module dgt.view.layout;
+module dgt.ui.layout;
 
 import dgt.core.enums;
 import dgt.core.geometry;
 import dgt.css.style;
 import dgt.math;
-import dgt.scene.style;
-import dgt.view.style;
-import dgt.view.view;
+import dgt.ui.style;
+import dgt.ui.view;
 
 import std.exception;
 import std.experimental.logger;

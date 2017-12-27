@@ -1,15 +1,15 @@
 /// Text node module
-module dgt.scene.text;
+module dgt.ui.text;
 
 import dgt.core.color;
 import dgt.core.paint;
 import dgt.css.style;
 import dgt.font.style;
-import dgt.scene.node;
-import dgt.scene.style;
 import dgt.text.layout;
+import dgt.ui.style;
+import dgt.ui.view;
 
-class TextNode : Node {
+class TextView : View {
 
     this() {
         _layout = new TextLayout;
