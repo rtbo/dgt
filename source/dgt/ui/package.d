@@ -77,16 +77,13 @@ class UserInterface {
     void layoutPass () {
         if (!_root) return;
 
-        // at the moment the only supported layout mode is with view at the root
-        auto v = cast(View) _root;
-        if (!v) return;
         import dgt.ui.layout : MeasureSpec;
         auto fs = cast(FSize) _size;
-        v.measure(
+        _root.measure(
             MeasureSpec.makeAtMost(fs.width),
             MeasureSpec.makeAtMost(fs.height)
         );
-        v.layout(FRect(0, 0, fs));
+        _root.layout(FRect(0, 0, fs));
         _dirtyPass &= ~UIPass.layout;
     }
 
