@@ -6,6 +6,7 @@ import dgt.core.geometry;
 import dgt.core.paint;
 import dgt.css.style;
 import dgt.font.style;
+import dgt.render.framegraph;
 import dgt.text.layout;
 import dgt.ui.layout;
 import dgt.ui.style;
@@ -96,6 +97,15 @@ class TextView : View {
         else {
             super.measure(widthSpec, heightSpec);
         }
+    }
+
+    override immutable(FGNode) render() {
+        ensureLayout();
+        return new immutable(FGTextNode) (
+            _layout.metrics.bearing,
+            _layout.shapes,
+            _color.asVec,
+        );
     }
 
     private void styleReset()

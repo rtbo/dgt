@@ -115,7 +115,7 @@ class TextLayout
         }
     }
 
-    @property const(TextShape)[] shapes() const {
+    @property immutable(TextShape)[] shapes() const {
         return _shapes;
     }
 
@@ -165,7 +165,7 @@ class TextLayout
     }
 
     private TextItem[] _items;
-    private TextShape[] _shapes;
+    private immutable(TextShape)[] _shapes;
     private bool _layoutDirty;
 }
 

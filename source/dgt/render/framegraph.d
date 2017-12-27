@@ -1,8 +1,12 @@
+/// The frame graph is an immutable tree structure whose purpose is to
+/// transfer rendering orders from the views to the renderer (possibly lying in
+/// a different thread than the views)
 module dgt.render.framegraph;
 
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.math.mat : FMat4;
+import dgt.text.layout : TextShape;
 
 import gfx.foundation.typecons : Option;
 import gfx.pipeline.draw;
@@ -87,7 +91,20 @@ abstract class FGRectNode : FGNode
     {
         super(Type.rect);
     }
+}
 
+class FGTextNode : FGNode
+{
+    FVec2 pos;
+    immutable(TextShape)[] shapes;
+    FVec4 color;
+
+    immutable this(in FVec2 pos, immutable(TextShape)[] shapes, in FVec4 color) {
+        this.pos = pos;
+        this.shapes = shapes;
+        this.color = color;
+        super(Type.text);
+    }
 }
 
 class FGImageNode : FGNode
@@ -339,7 +356,7 @@ version(unittest) {
                 new immutable(FGGroupNode)([
                     new immutable(FGTransformNode)(
                         FMat4.identity,
-                        new immutable(FGImageNode)(fvec(0, 0), null),
+                        new immutable(FGTextNode)(fvec(0, 0), null, fvec(0, 0, 0, 0)),
                     ),
                     new immutable(FGImageNode)(fvec(0, 0), null)
                 ])
@@ -362,7 +379,7 @@ unittest {
         FGNode.Type.transform,
         FGNode.Type.group,
         FGNode.Type.transform,
-        FGNode.Type.image,
+        FGNode.Type.text,
         FGNode.Type.image,
     ]));
 }
@@ -382,6 +399,6 @@ unittest {
         FGNode.Type.image,
         FGNode.Type.transform,
         FGNode.Type.image,
-        FGNode.Type.image,
+        FGNode.Type.text,
     ]));
 }
