@@ -16,12 +16,21 @@ class FontLibrary : RefCounted {
 
     override abstract void dispose();
 
+    /// Search and get the family installed on the system
     abstract @property size_t familyCount();
-
+    /// ditto
     abstract string family(in size_t index);
+    /// ditto
+    FamilyStyleSet createStyleSet(in size_t index) {
+        return matchFamily(family(index));
+    }
 
+    /// Returns a style set matching the given family.
+    /// If the family is not generic (see https://developer.mozilla.org/en-US/docs/Web/CSS/font-family),
+    /// and the font is not found, returns null.
     abstract FamilyStyleSet matchFamily(in string family);
 
+    /// Returns a typeface matching family and style
     Typeface matchFamilyStyle(in string family, in FontStyle style)
     {
         auto fss = matchFamily(family).rc;

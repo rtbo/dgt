@@ -40,10 +40,25 @@ class FcFontLibrary : FontLibrary
     }
 
     override FamilyStyleSet matchFamily(string family) {
+
+        // need to split 2 cases:
+        //  1. family is not generic: only return exact family name match (case insensitively)
+        //  2. family is generic: handle some corner cases and let fontconfig match the best it can
+
         auto pattern = FcPatternCreate();
         scope(exit) FcPatternDestroy(pattern);
 
-        FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
+        const isGeneric = isGenericFamily(family);
+
+        if (isGeneric && !sicmp(family, "system-ui")) {
+            // on my system, system-ui match to the default font, but I'm not sure how it is portable.
+            // likely empty font name is more robust to get the default family
+            FcPatternAddString(pattern, FC_FAMILY, null);
+        }
+        else {
+            FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
+        }
+
         FcConfigSubstitute(config, pattern, FcMatchPattern);
         FcDefaultSubstitute(pattern);
 
@@ -51,36 +66,88 @@ class FcFontLibrary : FontLibrary
         auto matches = FcFontSort(config, pattern, FcFalse, null, &res);
         scope(exit) FcFontSetDestroy(matches);
 
+        if (!matches.nfont) return null;
+
         auto fontSet = FcFontSetCreate();
+
+        // we return a style set of all fonts from the same family
+        // for generic, we simply take the family of the first entry
+        const matchedFamily = isGeneric ? getFcString(matches.fonts[0], FC_FAMILY, "") : family;
 
         import std.algorithm : each, filter, map;
         import std.range : iota;
+
         iota(matches.nfont)
             .map!(i => matches.fonts[i])
             .filter!(f => f.isAccessible)
-            .filter!(f => familyMatches(f, pattern))
+            // "_" is to avoid accidental match due to default values of getFcString
+            .filter!(f => sicmp(matchedFamily, getFcString(f, FC_FAMILY, "_")) == 0)
             .map!(f => FcFontRenderPrepare(config, pattern, f))
             .each!(f => FcFontSetAdd(fontSet, f));
 
-        return new FcFamilyStyleSet(this, family, fontSet);
+        if (!fontSet.nfont) {
+            FcFontSetDestroy(fontSet);
+            return null;
+        }
+        else {
+            return new FcFamilyStyleSet(this, family, fontSet);
+        }
     }
 
     override Typeface matchFamilyStyle(string family, in FontStyle style) {
+        // same as above, we have to check that the family is either a generic or a perfect match
+        // so the code is the same except that we add the style in the search pattern
+        // and that we return the best matching typeface, instead of a set
+
         auto pattern = FcPatternCreate();
         scope(exit) FcPatternDestroy(pattern);
 
-        FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
-        addFontStyleToFcPattern(style, pattern);
+        const isGeneric = isGenericFamily(family);
+
+        if (isGeneric && !sicmp(family, "system-ui")) {
+            // on my system, system-ui match to the default font, but I'm not sure how it is portable.
+            // likely empty font name is more robust to get the default family
+            FcPatternAddString(pattern, FC_FAMILY, null);
+        }
+        else {
+            FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
+        }
+
         FcConfigSubstitute(config, pattern, FcMatchPattern);
         FcDefaultSubstitute(pattern);
 
         FcResult res;
-        auto font = FcFontMatch(config, pattern, &res);
-        if (!font) return null;
-        scope(exit) FcPatternDestroy(font);
-        if (!font.isAccessible) return null;
+        auto matches = FcFontSort(config, pattern, FcFalse, null, &res);
+        scope(exit) FcFontSetDestroy(matches);
 
-        return typefaceFromPattern(font);
+        if (!matches.nfont) return null;
+
+        auto fontSet = FcFontSetCreate();
+        scope(exit) FcFontSetDestroy(fontSet);
+
+        // we return a style set of all fonts from the same family
+        // for generic, we simply take the family of the first entry
+        const matchedFamily = isGeneric ? getFcString(matches.fonts[0], FC_FAMILY, "") : family;
+
+        import std.algorithm : each, filter, map;
+        import std.range : iota, takeOne;
+        import std.stdio;
+
+        iota(matches.nfont)
+            .map!(i => matches.fonts[i])
+            .filter!(f => f.isAccessible)
+            // "_" is to avoid accidental match due to default values of getFcString
+            .filter!(f => sicmp(matchedFamily, getFcString(f, FC_FAMILY, "_")) == 0)
+            .map!(f => FcFontRenderPrepare(config, pattern, f))
+            .takeOne
+            .each!(f => FcFontSetAdd(fontSet, f));
+
+        if (!fontSet.nfont) {
+            return null;
+        }
+        else {
+            return typefaceFromPattern(fontSet.fonts[0]);
+        }
     }
 
     override Typeface createFromMemory(const(ubyte)[] data, int faceIndex)
@@ -118,6 +185,15 @@ class FcFontLibrary : FontLibrary
 
 private:
 
+bool isGenericFamily(in string family) {
+    if (!sicmp(family, "system-ui")) return true;
+    if (!sicmp(family, "sans-serif")) return true;
+    if (!sicmp(family, "serif")) return true;
+    if (!sicmp(family, "monospace")) return true;
+    if (!sicmp(family, "cursive")) return true;
+    if (!sicmp(family, "fantasy")) return true;
+    return false;
+}
 
 @property bool isAccessible(FcPattern* pattern) {
     import std.file : exists;
@@ -236,33 +312,6 @@ class FcTypeface : FtTypeface
             return CodepointSet.init;
         }
     }
-}
-
-bool familyMatches(FcPattern* font, FcPattern* pattern) {
-    import std.uni : sicmp;
-    foreach (const pi; 0 .. 16) {
-        FcChar8* val;
-        const pres = FcPatternGetString(pattern, FC_FAMILY, pi, &val);
-        if (pres == FcResultNoId) {
-            break;
-        }
-        if (pres == FcResultNoMatch) {
-            continue;
-        }
-        const pf = fromStringz(val).idup;
-        foreach (const fi; 0 .. 16) {
-            const fres = FcPatternGetString(font, FC_FAMILY, fi, &val);
-            if (fres == FcResultNoId) {
-                break;
-            }
-            if (fres == FcResultNoMatch) {
-                continue;
-            }
-            const ff = fromStringz(val).idup;
-            if (sicmp(pf, ff) == 0) return true;
-        }
-    }
-    return false;
 }
 
 bool getFcBool(FcPattern *pattern, in string key, in bool defVal) {
