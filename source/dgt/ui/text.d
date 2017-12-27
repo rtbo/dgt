@@ -2,10 +2,12 @@
 module dgt.ui.text;
 
 import dgt.core.color;
+import dgt.core.geometry;
 import dgt.core.paint;
 import dgt.css.style;
 import dgt.font.style;
 import dgt.text.layout;
+import dgt.ui.layout;
 import dgt.ui.style;
 import dgt.ui.view;
 
@@ -20,17 +22,17 @@ class TextView : View {
         _fontSlant = addStyleSupport(this, FontSlantMetaProperty.instance);
         _fontSize = addStyleSupport(this, FontSizeMetaProperty.instance);
 
-        _fontFamily.onChange += &resetStyle;
-        _fontWeight.onChange += &resetStyle;
-        _fontSlant.onChange += &resetStyle;
-        _fontSize.onChange += &resetStyle;
+        _fontFamily.onChange += &styleReset;
+        _fontWeight.onChange += &styleReset;
+        _fontSlant.onChange += &styleReset;
+        _fontSize.onChange += &styleReset;
     }
 
     @property string text () const { return _text; }
     @property void text (string text)
     {
         _text = text;
-        _layout.clearItems();
+        _layoutDirty = true;
     }
 
     @property Color color() const { return _color; }
@@ -38,6 +40,13 @@ class TextView : View {
     {
         _color = color;
     }
+
+    @property TextMetrics metrics()
+    {
+        ensureLayout();
+        return _metrics;
+    }
+
     override @property string cssType()
     {
         return "text";
@@ -79,26 +88,38 @@ class TextView : View {
         return _fontSize;
     }
 
-
-    private void resetStyle()
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        _layout.clearItems();
+        if (_text.length) {
+            measurement = FSize(cast(FVec2)metrics.size);
+        }
+        else {
+            super.measure(widthSpec, heightSpec);
+        }
+    }
+
+    private void styleReset()
+    {
+        _layoutDirty = true;
         invalidate();
     }
 
     private void ensureLayout()
     {
-        if (_layout.empty && _text.length) {
+        if (_layoutDirty && _text.length) {
             immutable p = new ColorPaint(_color);
             const fs = FontStyle(cast(FontWeight)fontWeight, fontSlant);
             const ts = TextStyle(fontSize, fontFamily[0], fs, p); // fixme family fallback
 
+            _layout.clearItems();
+            // only single item supported at this point
             _layout.addItem(TextItem(_text, ts));
             _layout.layout();
             _metrics = _layout.metrics;
+            _layoutDirty = false;
         }
         else if (!_text.length) {
-            _layout.clearItems();
+            _layoutDirty = true;
         }
     }
 
@@ -106,6 +127,7 @@ class TextView : View {
     private Color _color;
     private TextLayout _layout;
     private TextMetrics _metrics;
+    private bool _layoutDirty;
     private StyleProperty!(string[])    _fontFamily;
     private StyleProperty!FontWeight    _fontWeight;
     private StyleProperty!FontSlant     _fontSlant;
