@@ -213,7 +213,7 @@ class View : StyleElement {
             parent.clean(Dirty.childrenRender);
         }
     }
-    package(dgt) void recursClean(in Dirty flags)
+    package(dgt.ui) void recursClean(in Dirty flags)
     {
         _dirtyState &= ~flags;
         import std.algorithm : each;
@@ -731,8 +731,8 @@ class View : StyleElement {
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
     // style properties
-    package(dgt) IStyleMetaProperty[]        _styleMetaProperties;
-    package(dgt) IStyleProperty[string]      _styleProperties;
+    package(dgt.ui) IStyleMetaProperty[]        _styleMetaProperties;
+    package(dgt.ui) IStyleProperty[string]      _styleProperties;
 
     // debug
     private string _name;
