@@ -21,16 +21,16 @@ class EventLoop
         // initialize style and layout such as first event handlers has the
         // right state
         windows
-            .filter!(w => w.scene && w.scene.needStylePass)
-            .each!(w => w.scene.stylePass());
+            .filter!(w => w.ui && w.ui.needStylePass)
+            .each!(w => w.ui.stylePass());
         windows
-            .filter!(w => w.scene && w.scene.needLayoutPass)
-            .each!(w => w.scene.layoutPass());
+            .filter!(w => w.ui && w.ui.needLayoutPass)
+            .each!(w => w.ui.layoutPass());
 
         while (true) {
             // the loop is as follow:
             //  - collect all events from platform
-            //  - deliver events to scene(s)
+            //  - deliver events to ui(s)
             //  - style pass
             //  - layout pass
             //  - collect frame and send it to renderer
@@ -42,14 +42,14 @@ class EventLoop
                 break;
             }
             windows
-                .filter!(w => w.scene && w.scene.needStylePass)
-                .each!(w => w.scene.stylePass());
+                .filter!(w => w.ui && w.ui.needStylePass)
+                .each!(w => w.ui.stylePass());
             windows
-                .filter!(w => w.scene && w.scene.needLayoutPass)
-                .each!(w => w.scene.layoutPass());
+                .filter!(w => w.ui && w.ui.needLayoutPass)
+                .each!(w => w.ui.layoutPass());
             immutable frames = windows
-                .filter!(w => w.scene && w.scene.needRenderPass)
-                .map!(w => w.scene.frame(w.nativeHandle))
+                .filter!(w => w.ui && w.ui.needRenderPass)
+                .map!(w => w.ui.frame(w.nativeHandle))
                 .array;
             if (frames.length) {
                 RenderQueue.instance.postFrames(frames);
@@ -126,9 +126,9 @@ class EventLoop
                 // windows has modal resize and move envents
                 if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
                     wEv.window.handleEvent(wEv);
-                    if (wEv.window.scene && RenderQueue.instance.numWaitingFrames <= 1) {
+                    if (wEv.window.ui && RenderQueue.instance.numWaitingFrames <= 1) {
                         immutable frames = [
-                            wEv.window.scene.frame(wEv.window.nativeHandle)
+                            wEv.window.ui.frame(wEv.window.nativeHandle)
                         ];
                         RenderQueue.instance.postFrames(frames);
                     }

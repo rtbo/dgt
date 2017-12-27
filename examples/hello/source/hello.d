@@ -9,7 +9,7 @@ import dgt.core.image;
 import dgt.core.rc : rc;
 import dgt.font.msdfgen;
 import dgt.font.msdfgen.shape;
-import dgt.scene.scene : Scene;
+import dgt.ui : UserInterface;
 import dgt.window;
 
 import gfx.foundation.typecons : some;
@@ -24,11 +24,11 @@ int main()
     auto app = new Application();
     scope(exit) app.dispose();
 
-    auto scene = new Scene;
-    scene.clearColor = some(Color.blue);
+    auto ui = new UserInterface;
+    ui.clearColor = some(Color.blue);
 
     auto win = new Window("Hello DGT");
-    win.scene = scene;
+    win.ui = ui;
     win.show();
 
     auto timer = Application.platform.createTimer();

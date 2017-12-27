@@ -7,7 +7,6 @@ import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
 import dgt.font.style;
-import dgt.scene.node;
 import dgt.ui.layout;
 import dgt.ui.view;
 
@@ -17,20 +16,20 @@ import std.typecons : rebindable;
 
 
 /// give support to a style instance to a view
-auto addStyleSupport(SMP)(Node node, SMP metaProp)
+auto addStyleSupport(SMP)(View view, SMP metaProp)
 if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
 {
-    auto sp = new SMP.Property(node, metaProp);
-    node._styleProperties[metaProp.name] = sp;
-    if (!metaProp.hasShorthand) node._styleMetaProperties ~= metaProp;
+    auto sp = new SMP.Property(view, metaProp);
+    view._styleProperties[metaProp.name] = sp;
+    if (!metaProp.hasShorthand) view._styleMetaProperties ~= metaProp;
     return sp;
 }
 
 /// give support to a shorthand style instance to a view
-void addShorthandStyleSupport(SMP)(Node node, SMP metaProp)
+void addShorthandStyleSupport(SMP)(View view, SMP metaProp)
 if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
 {
-    node._styleMetaProperties ~= metaProp;
+    view._styleMetaProperties ~= metaProp;
 }
 
 final class BackgroundMetaProperty : StyleMetaProperty!(RPaint)
