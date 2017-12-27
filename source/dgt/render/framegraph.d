@@ -199,3 +199,199 @@ unittest {
         assert(aa[arr[i]] == format("%s", arr[i].payload));
     }
 }
+
+/// Returns: a depth first forward range starting on the given root
+@property auto depthFirst(immutable(FGNode) root) {
+    return FgDepthFirstRange(root);
+}
+
+/// Returns: a breadth first forward range starting on the given root
+@property auto breadthFirst(immutable(FGNode) root) {
+    return FgBreadthFirstRange(root);
+}
+
+private:
+
+struct FgDepthFirstRange
+{
+    static struct Stage {
+        immutable(FGNode)[] nodes;
+        size_t ind;
+    }
+
+    Stage[] stack;
+
+    this(immutable(FGNode) root) {
+        stack = [ Stage ([ root ], 0) ];
+    }
+    this(Stage[] stack) {
+        this.stack = stack;
+    }
+
+    @property bool empty() {
+        return stack.length == 0;
+    }
+
+    @property immutable(FGNode) front() {
+        Stage stage = stack[$-1];
+        return stage.nodes[stage.ind];
+    }
+
+    void popFront() {
+        Stage stage = stack[$-1];
+        immutable node = stage.nodes[stage.ind];
+
+        // getting deeper if possible
+        switch (node.type) {
+        case FGNode.Type.group:
+            immutable gnode = cast(immutable(FGGroupNode))node;
+            stack ~= Stage (gnode.children, 0);
+            return;
+        case FGNode.Type.transform:
+            immutable tnode = cast(immutable(FGTransformNode))node;
+            stack ~= Stage ([ tnode.child ], 0);
+            return;
+        default:
+            break;
+        }
+
+        // otherwise going to sibling
+        stack[$-1].ind += 1;
+        // unstack while sibling are invalid
+        while (stack[$-1].ind == stack[$-1].nodes.length) {
+            stack = stack[0 .. $-1];
+            if (!stack.length) return;
+            else stack[$-1].ind += 1;
+        }
+    }
+
+    @property FgDepthFirstRange save() {
+        // The stack is mutable through Stage.ind.
+        // Duplication is necessary.
+        return FgDepthFirstRange(stack.dup);
+    }
+}
+
+struct FgBreadthFirstRange
+{
+    // algo is simple, filling next level as we iterate on the current one,
+    // then swap when level is exhausted
+    immutable(FGNode)[] thisLevel;
+    immutable(FGNode)[] nextLevel;
+
+    this(immutable(FGNode) root) {
+        thisLevel = [ root ];
+    }
+    this(immutable(FGNode)[] thisLevel, immutable(FGNode)[] nextLevel) {
+        this.thisLevel = thisLevel;
+        this.nextLevel = nextLevel;
+    }
+
+    @property bool empty() {
+        return thisLevel.length == 0;
+    }
+
+    @property immutable(FGNode) front() {
+        return thisLevel[0];
+    }
+
+    void popFront() {
+        immutable node = thisLevel[0];
+
+        // filling next level
+        switch (node.type) {
+        case FGNode.Type.group:
+            immutable gnode = cast(immutable(FGGroupNode))node;
+            nextLevel ~= gnode.children;
+            break;
+        case FGNode.Type.transform:
+            immutable tnode = cast(immutable(FGTransformNode))node;
+            nextLevel ~= tnode.child;
+            break;
+        default:
+            break;
+        }
+
+        // pop current level front and swap to next level if exhausted
+        thisLevel = thisLevel[1 .. $];
+        if (!thisLevel.length) {
+            import std.algorithm : swap;
+            swap(thisLevel, nextLevel);
+        }
+    }
+
+    @property FgBreadthFirstRange save() {
+        // slices to immutable data: no need to duplicate
+        return FgBreadthFirstRange(thisLevel, nextLevel);
+    }
+}
+
+version(unittest) {
+
+    import std.range.primitives : isForwardRange;
+
+    static assert(isForwardRange!FgDepthFirstRange);
+    static assert(isForwardRange!FgBreadthFirstRange);
+
+    immutable(FGNode) makeTestFG() {
+        return new immutable(FGGroupNode) ([
+            new immutable(FGTransformNode)(
+                FMat4.identity,
+                new immutable(FGGroupNode)( [
+                    new immutable(FGImageNode)(fvec(0, 0), null),
+                    new immutable(FGImageNode)(fvec(0, 0), null),
+                    new immutable(FGImageNode)(fvec(0, 0), null),
+                    new immutable(FGImageNode)(fvec(0, 0), null),
+                ])
+            ),
+            new immutable(FGTransformNode)(
+                FMat4.identity,
+                new immutable(FGGroupNode)([
+                    new immutable(FGTransformNode)(
+                        FMat4.identity,
+                        new immutable(FGImageNode)(fvec(0, 0), null),
+                    ),
+                    new immutable(FGImageNode)(fvec(0, 0), null)
+                ])
+            )
+        ]);
+    }
+}
+
+unittest {
+    import std.algorithm : equal, map;
+    immutable fg = makeTestFG();
+    assert(fg.depthFirst.map!(n => n.type).equal([
+        FGNode.Type.group,
+        FGNode.Type.transform,
+        FGNode.Type.group,
+        FGNode.Type.image,
+        FGNode.Type.image,
+        FGNode.Type.image,
+        FGNode.Type.image,
+        FGNode.Type.transform,
+        FGNode.Type.group,
+        FGNode.Type.transform,
+        FGNode.Type.image,
+        FGNode.Type.image,
+    ]));
+}
+
+unittest {
+    import std.algorithm : equal, map;
+    immutable fg = makeTestFG();
+    assert(fg.breadthFirst.map!(n => n.type).equal([
+        FGNode.Type.group,
+        FGNode.Type.transform,
+        FGNode.Type.transform,
+        FGNode.Type.group,
+        FGNode.Type.group,
+        FGNode.Type.image,
+        FGNode.Type.image,
+        FGNode.Type.image,
+        FGNode.Type.image,
+        FGNode.Type.transform,
+        FGNode.Type.image,
+        FGNode.Type.image,
+    ]));
+}
