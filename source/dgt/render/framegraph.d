@@ -46,71 +46,61 @@ abstract class FGNode
         text,
     }
 
-    private Type _type;
+    Type type;
 
     immutable this(in Type type)
     {
-        _type = type;
+        this.type = type;
     }
-
-    @property Type type() const { return _type; }
-
 }
 
 class FGGroupNode : FGNode
 {
-    private immutable(FGNode)[] _children;
+    private immutable(FGNode)[] children;
 
     immutable this(immutable(FGNode)[] children)
     {
-        _children = children;
+        this.children = children;
         super(Type.group);
     }
-
-    @property immutable(FGNode)[] children() const { return _children; }
 }
 
 class FGTransformNode : FGNode
 {
-    private FMat4 _transform;
-    private immutable(FGNode) _child;
+    FMat4 transform;
+    immutable(FGNode) child;
 
     immutable this(in FMat4 transform, immutable(FGNode) child)
     {
-        _transform = transform;
-        _child = child;
+        this.transform = transform;
+        this.child = child;
         super(Type.transform);
     }
-
-    @property FMat4 transform() const { return _transform; }
-    @property immutable(FGNode) child() const { return _child; }
 }
 
 
 abstract class FGRectNode : FGNode
 {
+    FRect rect;
+
     immutable this()
     {
         super(Type.rect);
     }
 
-    FRect _rect;
 }
 
 class FGImageNode : FGNode
 {
-    private immutable(Image) _img;
-    private CacheCookie _cookie;
+    immutable(Image) image;
+    CacheCookie cookie;
 
     immutable this (in FPoint topLeft, immutable(Image) img, in CacheCookie cookie=nullCookie)
     {
-        _img = img;
-        _cookie = cookie;
+        this.image = img;
+        this.cookie = cookie;
         super(Type.image);
     }
-
-    @property immutable(Image) image() const { return _img; }
-    @property CacheCookie cookie() const { return _cookie; }
 }
 
 
