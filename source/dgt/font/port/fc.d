@@ -17,6 +17,12 @@ import std.uni;
 class FcFontLibrary : FontLibrary
 {
     this() {
+        // fontconfig is thread safe since 2.10.91. That is Jan 2013.
+        // As of today (nearly 2018), even debian oldstable has > 2.10.91.
+        // Only enforcing that we are on a supported version.
+        import std.exception : enforce;
+        enforce(FcGetVersion() >= 21091, "unsupported fontconfig version");
+
         config = FcInitLoadConfigAndFonts();
         tfCache = new TypefaceCache;
         families = getFamilies(config);
