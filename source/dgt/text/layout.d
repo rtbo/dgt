@@ -2,6 +2,7 @@ module dgt.text.layout;
 
 import dgt.core.paint;
 import dgt.core.rc;
+import dgt.core.sync;
 import dgt.font.style;
 import dgt.font.typeface;
 import dgt.math.vec : fvec, FVec2;
@@ -108,13 +109,12 @@ class TextLayout
         _layoutDirty = false;
         _shapes = [];
         foreach (const ref item; _items) {
-            auto stf = getTypeface(item.style).rc;
-            synchronized(stf.obj) {
-                auto tf = cast(Typeface)stf.obj;
+            auto tf = getTypeface(item.style).rc;
+            tf.synchronize!(tf => {
                 auto sc = tf.makeScalingContext(item.style.size).rc;
                 auto shaper = sc.makeTextShapingContext().rc;
                 _shapes ~= TextShape(item.style, shaper.shapeText(item.text));
-            }
+            });
         }
     }
 
@@ -137,9 +137,8 @@ class TextLayout
 
         foreach (TextShape ts; _shapes)
         {
-            auto stf = getTypeface(ts.style).rc;
-            synchronized(stf.obj) {
-                auto tf = cast(Typeface)stf.obj;
+            auto tf = getTypeface(ts.style).rc;
+            tf.synchronize!(tf => {
                 auto sc = tf.makeScalingContext(ts.style.size).rc;
                 foreach (i, GlyphInfo gi; ts.glyphs)
                 {
@@ -161,7 +160,7 @@ class TextLayout
                     bottom = min(bottom, gm.horBearing.y - gm.size.y);
                     advance += gi.advance;
                 }
-            }
+            });
         }
         return TextMetrics(
             fvec(bearingX, top),
