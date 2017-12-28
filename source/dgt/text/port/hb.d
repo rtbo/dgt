@@ -11,21 +11,13 @@ import dgt.text.shaping;
 class HbTextShapingContext : TextShapingContext {
     mixin(rcCode);
 
-    this (ScalingContext sc, FT_Face face) {
-        _sc = sc;
-        _sc.retain();
+    this (FT_Face face) {
         _font = hb_ft_font_create(face, null);
     }
 
     override void dispose() {
         hb_font_destroy(_font);
         _font = null;
-        _sc.release();
-        _sc = null;
-    }
-
-    override @property ScalingContext scalingContext() {
-        return _sc;
     }
 
     override immutable(GlyphInfo)[] shapeText(in string text) {
@@ -50,6 +42,5 @@ class HbTextShapingContext : TextShapingContext {
         return assumeUnique(glyphs);
     }
 
-    private ScalingContext _sc;
     private hb_font_t* _font;
 }

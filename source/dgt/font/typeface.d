@@ -11,7 +11,7 @@ import std.uni;
 alias GlyphId = ushort;
 
 abstract class Typeface : RefCounted {
-    mixin(rcCode);
+    mixin(atomicRcCode);
 
     this() {
         _id = nextFontId();
@@ -58,7 +58,7 @@ struct GlyphMetrics
 
 
 interface ScalingContext : RefCounted {
-    @property Typeface typeface();
+
     @property float pixelSize();
 
     void getOutline(in GlyphId glyphId, OutlineAccumulator oa);

@@ -158,12 +158,14 @@ class FcFontLibrary : FontLibrary
 
     override Typeface createFromMemory(const(ubyte)[] data, int faceIndex)
     {
+        // do we need to cache this? likely not
         auto face = openFaceFromMemory(data, faceIndex);
         return new FtTypeface(face);
     }
 
     override Typeface createFromFile(in string path, int faceIndex)
     {
+        // do we need to cache this? likely not
         auto face = openFaceFromFile(path, faceIndex);
         return new FtTypeface(face);
     }

@@ -13,6 +13,5 @@ struct GlyphInfo
 }
 
 interface TextShapingContext : RefCounted {
-    @property ScalingContext scalingContext();
     immutable(GlyphInfo)[] shapeText(in string text);
 }

@@ -45,7 +45,12 @@ class FtTypeface : Typeface
     }
 
     override void dispose() {
+        foreach(sc; _scs) {
+            sc.release();
+        }
+        _scs = null;
         FT_Done_Face(_face);
+        _face = null;
     }
 
     override @property string family() {
@@ -57,12 +62,13 @@ class FtTypeface : Typeface
         const flags = _face.style_flags;
         const slant = flags & FT_STYLE_FLAG_ITALIC ? FontSlant.italic : FontSlant.normal;
         const weight = flags & FT_STYLE_FLAG_BOLD ? FontWeight.bold : FontWeight.normal;
+        // font width?
         return FontStyle(weight, slant, FontWidth.normal);
     }
 
     final override @property CodepointSet coverage() {
         if (_coverage.isNull) {
-            _coverage = ftFaceToCoverage(_face);
+            _coverage = buildCoverage();
         }
         return _coverage;
     }
@@ -72,11 +78,21 @@ class FtTypeface : Typeface
     }
 
     override ScalingContext makeScalingContext(in float pixelSize) {
-        return new FtScalingContext(this, pixelSize);
+        foreach (sc; _scs) {
+            if (sc._pixelSize == pixelSize) {
+                return sc;
+            }
+        }
+
+        auto sc = new FtScalingContext(_face, pixelSize);
+        sc.retain();
+        _scs ~= sc;
+        return sc;
     }
 
     /// Clone the typeface such as the size and glyph slot in the FT_Face
     /// can be manipulated independently by different scaling contexts
+    // not actually used
     FtTypeface clone() {
         if (!_blob.length) {
             _blob = fetchBlob();
@@ -110,7 +126,8 @@ class FtTypeface : Typeface
 
     private FT_Face _face;
     private const(ubyte)[] _blob;
-    protected Nullable!CodepointSet _coverage;
+    private Nullable!CodepointSet _coverage;
+    private FtScalingContext[] _scs;
 }
 
 /// data must be alive until FT_Done_Face is called
@@ -189,24 +206,25 @@ class FtSubsystem : Subsystem {
 
 final class FtScalingContext : ScalingContext
 {
-    mixin(rcCode);
+    mixin(atomicRcCode);
 
-    FtTypeface _tf;
+    FT_Face _face;
     float _pixelSize;
+    TextShapingContext _textShaper;
 
-    this (FtTypeface tf, float pixelSize) {
-        _tf = tf;
-        _tf.retain();
+    this (FT_Face face, float pixelSize) {
+        _face = face;
+        FT_Reference_Face(face);
         _pixelSize = pixelSize;
     }
 
     override void dispose() {
-        _tf.release();
-        _tf = null;
-    }
-
-    override @property Typeface typeface() {
-        return _tf;
+        if (_textShaper) {
+            _textShaper.release();
+            _textShaper = null;
+        }
+        FT_Done_Face(_face);
+        _face = null;
     }
 
     override @property float pixelSize() {
@@ -215,9 +233,9 @@ final class FtScalingContext : ScalingContext
 
     override GlyphMetrics glyphMetrics(in GlyphId glyph) {
         ensureSize();
-        FT_Load_Glyph(ftFace, glyph, FT_LOAD_DEFAULT);
+        FT_Load_Glyph(_face, glyph, FT_LOAD_DEFAULT);
 
-        const gm = ftFace.glyph.metrics;
+        const gm = _face.glyph.metrics;
         return GlyphMetrics(
             fvec(gm.width/64f, gm.height/64f),
 
@@ -231,13 +249,13 @@ final class FtScalingContext : ScalingContext
 
     override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
         ensureSize();
-        enforce(0 == FT_Load_Glyph(ftFace, glyphId, FT_LOAD_NO_BITMAP));
+        enforce(0 == FT_Load_Glyph(_face, glyphId, FT_LOAD_NO_BITMAP));
         FT_Outline_Funcs funcs;
         funcs.move_to = &dgt_ftOutlineMoveTo;
         funcs.line_to = &dgt_ftOutlineLineTo;
         funcs.conic_to = &dgt_ftOutlineConicTo;
         funcs.cubic_to = &dgt_ftOutlineCubicTo;
-        enforce(0 == FT_Outline_Decompose(&ftFace.glyph.outline, &funcs, cast(void*)oa));
+        enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa));
     }
 
     override void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing) {
@@ -264,18 +282,18 @@ final class FtScalingContext : ScalingContext
     }
 
     TextShapingContext makeTextShapingContext() {
-        import dgt.text.port.hb : HbTextShapingContext;
-        ensureSize();
-        return new HbTextShapingContext(this, _tf._face);
-    }
-
-    private FT_Face ftFace() {
-        return _tf._face;
+        if (!_textShaper) {
+            import dgt.text.port.hb : HbTextShapingContext;
+            ensureSize();
+            _textShaper = new HbTextShapingContext(_face);
+            _textShaper.retain();
+        }
+        return _textShaper;
     }
 
     private void ensureSize() {
         import std.math : round;
-        FT_Set_Pixel_Sizes(_tf._face, 0, cast(FT_UInt)(round(_pixelSize)));
+        FT_Set_Pixel_Sizes(_face, 0, cast(FT_UInt)(round(_pixelSize)));
     }
 
     /// Render and return an image referencing internal FT buffer.
@@ -284,9 +302,9 @@ final class FtScalingContext : ScalingContext
     {
         import std.math : abs;
 
-        FT_Load_Glyph(_tf._face, cast(FT_UInt)glyphId, FT_LOAD_DEFAULT);
-        FT_Render_Glyph(_tf._face.glyph, FT_RENDER_MODE_NORMAL);
-        auto slot = _tf._face.glyph;
+        FT_Load_Glyph(_face, cast(FT_UInt)glyphId, FT_LOAD_DEFAULT);
+        FT_Render_Glyph(_face.glyph, FT_RENDER_MODE_NORMAL);
+        auto slot = _face.glyph;
         auto bitmap = slot.bitmap;
 
         immutable stride = abs(bitmap.pitch);
