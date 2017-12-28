@@ -108,10 +108,13 @@ class TextLayout
         _layoutDirty = false;
         _shapes = [];
         foreach (const ref item; _items) {
-            auto tf = getTypeface(item.style).rc;
-            auto sc = tf.makeScalingContext(item.style.size).rc;
-            auto shaper = sc.makeTextShapingContext().rc;
-            _shapes ~= TextShape(item.style, shaper.shapeText(item.text));
+            auto stf = getTypeface(item.style).rc;
+            synchronized(stf.obj) {
+                auto tf = cast(Typeface)stf.obj;
+                auto sc = tf.makeScalingContext(item.style.size).rc;
+                auto shaper = sc.makeTextShapingContext().rc;
+                _shapes ~= TextShape(item.style, shaper.shapeText(item.text));
+            }
         }
     }
 
@@ -134,27 +137,30 @@ class TextLayout
 
         foreach (TextShape ts; _shapes)
         {
-            auto tf = getTypeface(ts.style).rc;
-            auto sc = tf.makeScalingContext(ts.style.size).rc;
-            foreach (i, GlyphInfo gi; ts.glyphs)
-            {
-                const gm = sc.glyphMetrics(gi.index);
-                if (i == 0)
+            auto stf = getTypeface(ts.style).rc;
+            synchronized(stf.obj) {
+                auto tf = cast(Typeface)stf.obj;
+                auto sc = tf.makeScalingContext(ts.style.size).rc;
+                foreach (i, GlyphInfo gi; ts.glyphs)
                 {
-                    bearingX = -gm.horBearing.x;
-                    width = -gm.horBearing.x;
+                    const gm = sc.glyphMetrics(gi.index);
+                    if (i == 0)
+                    {
+                        bearingX = -gm.horBearing.x;
+                        width = -gm.horBearing.x;
+                    }
+                    if (i == ts.glyphs.length-1)
+                    {
+                        // width = total advance wo last char       +
+                        //         horizontal bearing of last char  +
+                        //         width of last char               -
+                        //         horizontal bearing of first char
+                        width += (advance.x + gm.horBearing.x + gm.size.x);
+                    }
+                    top = max(top, gm.horBearing.y);
+                    bottom = min(bottom, gm.horBearing.y - gm.size.y);
+                    advance += gi.advance;
                 }
-                if (i == ts.glyphs.length-1)
-                {
-                    // width = total advance wo last char       +
-                    //         horizontal bearing of last char  +
-                    //         width of last char               -
-                    //         horizontal bearing of first char
-                    width += (advance.x + gm.horBearing.x + gm.size.x);
-                }
-                top = max(top, gm.horBearing.y);
-                bottom = min(bottom, gm.horBearing.y - gm.size.y);
-                advance += gi.advance;
             }
         }
         return TextMetrics(
@@ -169,7 +175,7 @@ class TextLayout
     private bool _layoutDirty;
 }
 
-private Typeface getTypeface(in TextStyle style) {
+private shared(Typeface) getTypeface(in TextStyle style) {
     import dgt.font.library : FontLibrary;
     return FontLibrary.get.matchFamilyStyle(style.family, style.style);
 }

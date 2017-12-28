@@ -10,7 +10,7 @@ import std.uni;
 
 alias GlyphId = ushort;
 
-abstract class Typeface : RefCounted {
+abstract class Typeface : AtomicRefCounted {
     mixin(atomicRcCode);
 
     this() {
@@ -57,7 +57,7 @@ struct GlyphMetrics
 }
 
 
-interface ScalingContext : RefCounted {
+interface ScalingContext : AtomicRefCounted {
 
     @property float pixelSize();
 

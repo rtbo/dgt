@@ -6,9 +6,9 @@ import dgt.font.typeface;
 
 
 /// system font library
-class FontLibrary : RefCounted {
+class FontLibrary : AtomicRefCounted {
 
-    mixin(rcCode);
+    mixin(atomicRcCode);
 
     static FontLibrary get() {
         return _instance;
@@ -31,7 +31,7 @@ class FontLibrary : RefCounted {
     abstract FamilyStyleSet matchFamily(in string family);
 
     /// Returns a typeface matching family and style
-    Typeface matchFamilyStyle(in string family, in FontStyle style)
+    shared(Typeface) matchFamilyStyle(in string family, in FontStyle style)
     {
         auto fss = matchFamily(family).rc;
         return fss.matchStyle(style);
@@ -42,8 +42,8 @@ class FontLibrary : RefCounted {
 }
 
 /// a collection of font style for a given family
-abstract class FamilyStyleSet : RefCounted {
-    mixin(rcCode);
+abstract class FamilyStyleSet : AtomicRefCounted {
+    mixin(atomicRcCode);
 
     abstract void dispose();
 
@@ -51,13 +51,13 @@ abstract class FamilyStyleSet : RefCounted {
 
     abstract FontStyle style(in size_t index);
 
-    abstract Typeface createTypeface(in size_t index);
+    abstract shared(Typeface) createTypeface(in size_t index);
 
-    abstract Typeface matchStyle(in FontStyle style);
+    abstract shared(Typeface) matchStyle(in FontStyle style);
 
 protected:
 
-    Typeface matchStyleCSS3(in FontStyle style) {
+    shared(Typeface) matchStyleCSS3(in FontStyle style) {
         import std.algorithm : map, maxIndex;
         import std.range : iota;
 
@@ -71,29 +71,6 @@ protected:
     }
 }
 
-
-class TypefaceCache : Disposable {
-
-    this() {}
-
-    override void dispose() {
-        release(_typefaces);
-    }
-
-    void add(Typeface tf) {
-        tf.retain();
-        _typefaces ~= tf;
-    }
-
-    private Typeface[] _typefaces;
-}
-
-Typeface find (alias pred)(TypefaceCache tfCache) {
-    foreach(tf; tfCache._typefaces) {
-        if (pred(tf)) return tf;
-    }
-    return null;
-}
 
 private:
 

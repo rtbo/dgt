@@ -100,7 +100,7 @@ class FcFontLibrary : FontLibrary
         }
     }
 
-    override Typeface matchFamilyStyle(string family, in FontStyle style) {
+    override shared(Typeface) matchFamilyStyle(string family, in FontStyle style) {
         // same as above, we have to check that the family is either a generic or a perfect match
         // so the code is the same except that we add the style in the search pattern
         // and that we return the best matching typeface, instead of a set
@@ -170,20 +170,22 @@ class FcFontLibrary : FontLibrary
         return new FtTypeface(face);
     }
 
-    private Typeface typefaceFromPattern(FcPattern* font) {
-        auto tf = tfCache.find!((Typeface tf) {
-            auto fcTf = cast(FcTypeface)tf;
-            return FcPatternEqual(font, fcTf._font) == FcTrue;
-        });
-        if (!tf) {
-            assert(font.isAccessible);
-            const fname = getFcString(font, FC_FILE, "");
-            const index = getFcInt(font, FC_INDEX, 0);
-            auto face = openFaceFromFile(fname, index);
-            tf = new FcTypeface(face, font);
-            tfCache.add(tf);
+    private shared(Typeface) typefaceFromPattern(FcPattern* font) {
+        synchronized(this) {
+            auto tf = tfCache.find!((Typeface tf) {
+                auto fcTf = cast(FcTypeface)tf;
+                return FcPatternEqual(font, fcTf._font) == FcTrue;
+            });
+            if (!tf) {
+                assert(font.isAccessible);
+                const fname = getFcString(font, FC_FILE, "");
+                const index = getFcInt(font, FC_INDEX, 0);
+                auto face = openFaceFromFile(fname, index);
+                tf = new FcTypeface(face, font);
+                tfCache.add(tf);
+            }
+            return cast(shared(Typeface))tf;
         }
-        return tf;
     }
 
     private FcConfig *config;
@@ -192,6 +194,29 @@ class FcFontLibrary : FontLibrary
 }
 
 private:
+
+class TypefaceCache : Disposable {
+
+    this() {}
+
+    override void dispose() {
+        release(_typefaces);
+    }
+
+    void add(Typeface tf) {
+        tf.retain();
+        _typefaces ~= tf;
+    }
+
+    private Typeface[] _typefaces;
+}
+
+Typeface find (alias pred)(TypefaceCache tfCache) {
+    foreach(tf; tfCache._typefaces) {
+        if (pred(tf)) return tf;
+    }
+    return null;
+}
 
 bool isGenericFamily(in string family) {
     if (!sicmp(family, "system-ui")) return true;
@@ -268,11 +293,11 @@ class FcFamilyStyleSet : FamilyStyleSet
         return fcPatternToFontStyle(pattern);
     }
 
-    override Typeface createTypeface(in size_t index) {
+    override shared(Typeface) createTypeface(in size_t index) {
         return fl.typefaceFromPattern(fs.fonts[index]);
     }
 
-    override Typeface matchStyle(in FontStyle style) {
+    override shared(Typeface) matchStyle(in FontStyle style) {
         auto pattern = FcPatternCreate();
         addFontStyleToFcPattern(style, pattern);
         FcConfigSubstitute(fl.config, pattern, FcMatchPattern);
