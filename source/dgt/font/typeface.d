@@ -56,6 +56,38 @@ struct GlyphMetrics
     float verAdvance;
 }
 
+final class Glyph {
+
+    this (GlyphId glyphId) {
+        _glyphId = glyphId;
+    }
+
+    @property GlyphId glyphId() {
+        return _glyphId;
+    }
+
+    @property Image img() {
+        return _img;
+    }
+
+    @property FVec2 bearing() {
+        return _bearing;
+    }
+
+    @property GlyphMetrics metrics() {
+        // scalers are responsible to ensure metrics is set before
+        // exposing any glyph out
+        return _metrics;
+    }
+
+    import std.typecons : Nullable;
+
+    private GlyphId _glyphId;
+    package(dgt.font) Image _img;
+    package(dgt.font) FVec2 _bearing;
+    package(dgt.font) Nullable!GlyphMetrics _metrics;
+    // TODO: store outline here
+}
 
 interface ScalingContext : AtomicRefCounted {
 
@@ -63,9 +95,7 @@ interface ScalingContext : AtomicRefCounted {
 
     void getOutline(in GlyphId glyphId, OutlineAccumulator oa);
 
-    /// Render the glyph into the given output with bottom left starting at offset.
-    /// The bearing (relative to offset, not to bottom left of image) is returned as an output parameter.
-    void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing)
+    deprecated void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing)
     in {
         // FIXME assert with actual metrics
         assert(output.width >= pixelSize+offset.x);
@@ -73,12 +103,7 @@ interface ScalingContext : AtomicRefCounted {
         assert(output.format == ImageFormat.a8);
     }
 
-    /// Render the glyph in a new allocated image.
-    /// The bearing relative to bottom left of image is returned as an output parameter.
-    Image renderGlyph(in GlyphId glyphId, out IVec2 bearing)
-    out(img) {
-        assert(img.format == ImageFormat.a8);
-    }
+    Glyph renderGlyph(in GlyphId glyphId);
 
     /// Compute the metrics of a glyph
     GlyphMetrics glyphMetrics(in GlyphId glyph);

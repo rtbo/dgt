@@ -211,6 +211,7 @@ final class FtScalingContext : ScalingContext
     FT_Face _face;
     float _pixelSize;
     TextShapingContext _textShaper;
+    Glyph[GlyphId] _glyphs;
 
     this (FT_Face face, float pixelSize) {
         _face = face;
@@ -231,20 +232,27 @@ final class FtScalingContext : ScalingContext
         return _pixelSize;
     }
 
-    override GlyphMetrics glyphMetrics(in GlyphId glyph) {
+    override GlyphMetrics glyphMetrics(in GlyphId glyphId) {
+        Glyph* glp = glyphId in _glyphs;
+        if (glp && !glp._metrics.isNull) {
+            return glp._metrics;
+        }
+
         ensureSize();
-        FT_Load_Glyph(_face, glyph, FT_LOAD_DEFAULT);
+        FT_Load_Glyph(_face, glyphId, FT_LOAD_DEFAULT);
 
-        const gm = _face.glyph.metrics;
-        return GlyphMetrics(
-            fvec(gm.width/64f, gm.height/64f),
+        const metrics = metricsFromFace();
 
-            fvec(gm.horiBearingX/64f, gm.horiBearingY/64f),
-            gm.horiAdvance/64f,
+        if (glp) {
+            glp._metrics = metrics;
+        }
+        else {
+            auto gl = new Glyph(glyphId);
+            gl._metrics = metrics;
+            _glyphs[glyphId] = gl;
+        }
 
-            fvec(gm.vertBearingX/64f, gm.vertBearingY/64f),
-            gm.vertAdvance/64f,
-        );
+        return metrics;
     }
 
     override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
@@ -266,19 +274,38 @@ final class FtScalingContext : ScalingContext
         output.blitFrom(img, IPoint(0, 0), offset, img.size, yReversed);
     }
 
-    override Image renderGlyph(in GlyphId glyphId, out IVec2 bearing) {
+    override Glyph renderGlyph(in GlyphId glyphId) {
+
+        Glyph* glp = glyphId in _glyphs;
+        if (glp && glp.img) {
+            return *glp;
+        }
+
         ensureSize();
         bool yReversed = void;
+        IVec2 bearing;
         const img = renderGlyphPriv(glyphId, bearing, yReversed);
 
+        Image glImg;
         if (yReversed) {
-            auto res = new Image(img.format, img.size, img.stride);
-            res.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
-            return res;
+            glImg = new Image(img.format, img.size, img.stride);
+            glImg.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
         }
         else {
-            return img.dup;
+            glImg = img.dup;
         }
+
+        Glyph gl = glp ? *glp : new Glyph(glyphId);
+        gl._img = glImg;
+        gl._bearing = cast(FVec2)bearing;
+        if (gl._metrics.isNull) {
+            gl._metrics = metricsFromFace();
+        }
+
+        if (!glp) {
+            _glyphs[glyphId] = gl;
+        }
+        return gl;
     }
 
     TextShapingContext makeTextShapingContext() {
@@ -317,6 +344,20 @@ final class FtScalingContext : ScalingContext
         bearing = vec(slot.bitmap_left, slot.bitmap_top);
         yReversed = bitmap.pitch < 0;
         return new Image(data, ImageFormat.a8, width, stride);
+    }
+
+    private GlyphMetrics metricsFromFace()
+    {
+        const gm = _face.glyph.metrics;
+        return GlyphMetrics(
+            fvec(gm.width/64f, gm.height/64f),
+
+            fvec(gm.horiBearingX/64f, gm.horiBearingY/64f),
+            gm.horiAdvance/64f,
+
+            fvec(gm.vertBearingX/64f, gm.vertBearingY/64f),
+            gm.vertAdvance/64f,
+        );
     }
 }
 
