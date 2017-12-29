@@ -63,8 +63,15 @@ struct TextMetrics
 }
 
 struct TextShape {
+    size_t id;
     TextStyle style;
     immutable(GlyphInfo)[] glyphs;
+
+    static size_t nextId() {
+        import core.atomic : atomicOp;
+        static shared size_t cur=0;
+        return atomicOp!"+="(cur, 1);
+    }
 }
 
 class TextLayout
@@ -113,7 +120,7 @@ class TextLayout
             tf.synchronize!(tf => {
                 auto sc = tf.makeScalingContext(item.style.size).rc;
                 auto shaper = sc.makeTextShapingContext().rc;
-                _shapes ~= TextShape(item.style, shaper.shapeText(item.text));
+                _shapes ~= TextShape(TextShape.nextId(), item.style, shaper.shapeText(item.text));
             });
         }
     }
