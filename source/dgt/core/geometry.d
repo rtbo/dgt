@@ -49,6 +49,10 @@ struct Size(T) if (isNumeric!T)
     {
         return Size!V(cast(V) width, cast(V) height);
     }
+
+    Vec2!T asVec() const {
+        return Vec2!T(width, height);
+    }
 }
 
 unittest
