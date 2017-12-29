@@ -245,8 +245,8 @@ class Image
         enforce(this.height >= destOrig.y+size.height);
         assert(format != ImageFormat.a1);
 
-        immutable copyStride = format.alignedStrideForWidth(size.width);
         immutable pixelStride = bpp(format)/8;
+        immutable copyStride = pixelStride * size.width;
 
         foreach(l; 0 .. size.height) {
             immutable srcL = yReversed ? (size.height-(l+srcOrig.y)-1) : (l+srcOrig.y);
