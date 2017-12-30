@@ -32,10 +32,11 @@ int main()
         string css;
     }
     Proverb[] proverbs = [
+        // Proverb("A", "font: 1in serif"),
         Proverb("Assiduity makes all things easy.",             "font: 1in serif"),
-        Proverb("Le visage est le miroir du coeur.",            "font: italic 14px serif" ),
-        Proverb("Früh steh auf, wer ein Meister werden will",   "font: italic 1cm serif" ),
-        Proverb("لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي",        "font: 12px serif"),
+        // Proverb("Le visage est le miroir du coeur.",            "font: italic 14px serif" ),
+        // Proverb("Früh steh auf, wer ein Meister werden will",   "font: italic 1cm serif" ),
+        // Proverb("لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي",        "font: 12px serif"),
         // Proverb("花开堪折直需折",                                  "font: 12px serif" ),
         // Proverb("あつささむさもひがんまで",                         "font: 12px serif" ),
     ];
@@ -57,7 +58,7 @@ int main()
     win.show();
 
     auto timer = Application.platform.createTimer();
-    timer.duration = dur!"seconds"(1);
+    timer.duration = dur!"seconds"(10);
     timer.handler = &win.close;
     timer.start();
     scope(exit) timer.dispose();

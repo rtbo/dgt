@@ -2,19 +2,70 @@ module dgt.render.renderer;
 
 import dgt.core.geometry;
 import dgt.core.rc;
-import dgt.core.sync;
-import dgt.font.library;
-import dgt.font.typeface;
-import dgt.render.atlas;
-import dgt.render.defs;
+import dgt.math : FMat4;
 import dgt.render.framegraph;
-import dgt.text.layout;
-import dgt.text.shaping;
+import dgt.render.text;
 import gfx.device;
 import gfx.pipeline;
 
 struct RenderOptions {
     int samples;
+}
+
+class RenderContext : Disposable {
+
+    override void dispose() {
+        disposeGarbage();
+        _renderTarget.unload();
+    }
+
+    /// The view - projection transform matrix
+    @property FMat4 viewProj()
+    {
+        return _viewProj;
+    }
+    /// ditto
+    @property void viewProj(in FMat4 proj)
+    {
+        _viewProj = proj;
+    }
+
+    /// The current render target
+    @property RenderTargetView!Rgba8 renderTarget()
+    {
+        return _renderTarget;
+    }
+    /// ditto
+    @property void renderTarget(RenderTargetView!Rgba8 rtv)
+    {
+        _renderTarget = rtv;
+    }
+    /// Collect some resource to be disposed.
+    /// Resource will be retained and finally disposed when a context is current
+    void collectGarbage(Disposable res)
+    {
+        _garbageD ~= res;
+    }
+
+    /// ditto
+    void collectGarbage(RefCounted res)
+    {
+        res.retain();
+        _garbageRC ~= res;
+    }
+
+    /// Called when the context is current
+    void disposeGarbage()
+    {
+        disposeArray(_garbageD);
+        releaseArray(_garbageRC);
+    }
+
+    FMat4 _viewProj;
+    Rc!(RenderTargetView!Rgba8) _renderTarget;
+    Disposable[] _garbageD;
+    RefCounted[] _garbageRC;
+
 }
 
 class Renderer : Disposable {
@@ -24,9 +75,11 @@ class Renderer : Disposable {
         _options = options;
     }
 
-    void dispose() {
-        releaseArray(_glyphRuns);
-        releaseArray(_atlases);
+    override void dispose() {
+        if (_textRenderer) {
+            _textRenderer.dispose();
+            _textRenderer = null;
+        }
         _rtv.unload();
         _surf.unload();
         _cmdBuf.unload();
@@ -41,6 +94,7 @@ class Renderer : Disposable {
             _device.builtinSurface, 1, 1, cast(ubyte)_options.samples
         );
         _rtv = _surf.viewAsRenderTarget();
+        _textRenderer = new TextRenderer;
     }
 
     void renderFrame(immutable(FGFrame) frame) {
@@ -48,104 +102,49 @@ class Renderer : Disposable {
             initialize();
         }
 
-        immutable vp = cast(Rect!ushort)frame.viewport;
+        // candidate to parallelisation
+        _textRenderer.framePreprocess(frame);
+
+        const vpf = cast(FRect)frame.viewport;
+        const vps = cast(Rect!ushort)frame.viewport;
         auto encoder = Encoder(_cmdBuf);
-        encoder.setViewport(vp.x, vp.y, vp.width, vp.height);
+        encoder.setViewport(vps.x, vps.y, vps.width, vps.height);
 
         import std.algorithm : each;
         frame.clearColor.each!(
             c => encoder.clear!Rgba8(_rtv, [c.r, c.g, c.b, c.a])
         );
 
-        foreach(immutable n; breadthFirst(frame.root)) {
-            if (n.type == FGNode.Type.text) {
-                immutable tn = cast(immutable(FGTextNode)) n;
-                foreach (s; tn.shapes) {
-                    feedGlyphRun(s);
-                }
-            }
-        }
-
-        foreach (atlas; _atlases) {
-            atlas.realize();
+        if (frame.root) {
+            auto ctx = new RenderContext;
+            scope(exit) ctx.dispose();
+            ctx.viewProj = orthoProj(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
+            ctx.renderTarget = _rtv;
+            renderNode(frame.root, ctx, FMat4.identity);
         }
 
 
         encoder.flush(_device);
     }
 
-    private void feedGlyphRun(in TextShape shape) {
-
-        if (shape.id in _glyphRuns) return;
-
-        GlyphRun.Part[] parts;
-
-        auto tf = FontLibrary.get.matchFamilyStyle(shape.style.family, shape.style.style);
-        tf.synchronize!((Typeface tf) {
-            ScalingContext sc = tf.makeScalingContext(shape.style.size).rc;
-            foreach (const GlyphInfo gi; shape.glyphs) {
-                import std.algorithm : find;
-                import std.exception : enforce;
-                Glyph glyph = sc.renderGlyph(gi.index);
-                if (!glyph || !glyph.img) continue;
-
-                AtlasNode node = cast(AtlasNode)glyph.rendererData;
-
-                if (!node) {
-                    // this glyph is not yet in an atlas, let's pack it
-                    const size = glyph.img.size.asVec;
-                    auto atlasF = _atlases.find!(a => a.couldPack(size));
-                    if (atlasF.length) {
-                        node = atlasF[0].pack(size, glyph);
-                    }
-                    if (!node) {
-                        // could not find an atlas with room left, or did not create atlas at all yet
-                        auto atlas = new GlyphAtlas(ivec(128, 128), ivec(512, 512), 1);
-                        atlas.retain();
-                        _atlases ~= atlas;
-                        node = enforce(atlas.pack(size, glyph),
-                                "could not pack a glyph into a new atlas. What size is this glyph??");
-                    }
-                    glyph.rendererData = node;
-                }
-
-                auto atlas = node.atlas.lock();
-                assert(atlas);
-
-                if (!parts.length || atlas !is parts[$-1].atlas) {
-                    // starting a new part
-                    parts ~= GlyphRun.Part(atlas, [ node ]);
-                }
-                else {
-                    // continue the previous one
-                    parts[$-1].nodes ~= node;
-                }
-            }
-        });
-
-        if (parts.length) {
-            auto run = new GlyphRun;
-            run.parts = parts;
-            run.retain();
-            _glyphRuns[shape.id] = run;
-        }
-    }
-
-    class GlyphRun : RefCounted {
-        mixin(rcCode);
-
-        // most runs will have a single part, but if there are a lot of glyphs with
-        // big size, it can happen that we come to an atlas boundary and then the
-        // end of the run arrives on a second atlas
-        struct Part {
-            Rc!GlyphAtlas atlas;
-            AtlasNode[] nodes; // ordered array - each node contains a glyph
-        }
-
-        Part[] parts;
-
-        override void dispose() {
-            reinitArray(parts);
+    void renderNode(immutable(FGNode) node, RenderContext ctx, in FMat4 model)
+    {
+        switch(node.type)
+        {
+        case FGNode.Type.group:
+            import std.algorithm : each;
+            immutable gn = cast(immutable(FGGroupNode))node;
+            gn.children.each!(n => renderNode(n, ctx, model));
+            break;
+        case FGNode.Type.transform:
+            immutable tn = cast(immutable(FGTransformNode))node;
+            renderNode(tn.child, ctx, model*tn.transform);
+            break;
+        case FGNode.Type.text:
+            _textRenderer.render(cast(immutable(FGTextNode))node, ctx, model, _cmdBuf);
+            break;
+        default:
+            break;
         }
     }
 
@@ -155,6 +154,17 @@ class Renderer : Disposable {
     private Rc!(BuiltinSurface!Rgba8) _surf;
     private Rc!(RenderTargetView!Rgba8) _rtv;
 
-    private GlyphAtlas[] _atlases;
-    private GlyphRun[size_t] _glyphRuns;
+    private TextRenderer _textRenderer;
+}
+
+private:
+
+FMat4 orthoProj(in float l, in float r, in float b, in float t, in float n, in float f) pure
+{
+    return FMat4(
+        2f/(r-l), 0, 0, -(r+l)/(r-l),
+        0, 2f/(t-b), 0, -(t+b)/(t-b),
+        0, 0, -2f/(f-n), -(f+n)/(f-n),
+        0, 0, 0, 1
+    );
 }

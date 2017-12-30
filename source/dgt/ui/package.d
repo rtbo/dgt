@@ -11,6 +11,11 @@ import gfx.foundation.typecons : option, Option;
 /// The UserInterface class represent the top level of the GUI tree.
 class UserInterface {
 
+    this() {
+        // temporary hack
+        _size = ISize(640, 480);
+    }
+
     @property ISize size() {
         return _size;
     }

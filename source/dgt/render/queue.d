@@ -137,30 +137,40 @@ class RenderThread {
     }
 
     void frames(immutable(FGFrame)[] frames) {
-        if (_fstFrame) {
-            import core.thread : Thread;
-            import core.time : dur;
-            enum fstFrameLatMs = 10;
-            Thread.sleep(dur!"msecs"(fstFrameLatMs));
-            _fstFrame = false;
+        try {
+            if (_fstFrame) {
+                import core.thread : Thread;
+                import core.time : dur;
+                enum fstFrameLatMs = 10;
+                Thread.sleep(dur!"msecs"(fstFrameLatMs));
+                _fstFrame = false;
+            }
+
+            foreach (i, f; frames) {
+                if (!_context.makeCurrent(f.windowHandle)) {
+                    error("could not make rendering context current!");
+                    return;
+                }
+                scope(exit) _context.doneCurrent();
+
+                _context.swapInterval = ((i+1) == frames.length) ? 1 : 0;
+
+                if (!_renderer) {
+                    _renderer = new Renderer(createGlDevice(), RenderOptions(_context.attribs.samples));
+                }
+
+                _renderer.renderFrame(f);
+
+                _context.swapBuffers(f.windowHandle);
+            }
         }
-
-        foreach (i, f; frames) {
-            if (!_context.makeCurrent(f.windowHandle)) {
-                error("could not make rendering context current!");
-                return;
-            }
-            scope(exit) _context.doneCurrent();
-
-            _context.swapInterval = ((i+1) == frames.length) ? 1 : 0;
-
-            if (!_renderer) {
-                _renderer = new Renderer(createGlDevice(), RenderOptions(_context.attribs.samples));
-            }
-
-            _renderer.renderFrame(f);
-
-            _context.swapBuffers(f.windowHandle);
+        catch (Exception ex) {
+            import std.stdio : stderr;
+            stderr.writefln("Exception in render thread: %s", ex.msg);
+        }
+        catch (Throwable th) {
+            import std.stdio : stderr;
+            stderr.writefln("Unrecoverable error in render thread : %s", th.msg);
         }
     }
 }

@@ -60,7 +60,7 @@ abstract class FGNode
 
 class FGGroupNode : FGNode
 {
-    private immutable(FGNode)[] children;
+    immutable(FGNode)[] children;
 
     immutable this(immutable(FGNode)[] children)
     {
@@ -95,12 +95,12 @@ abstract class FGRectNode : FGNode
 
 class FGTextNode : FGNode
 {
-    FVec2 pos;
+    FVec2 bearing;
     immutable(TextShape)[] shapes;
     FVec4 color;
 
-    immutable this(in FVec2 pos, immutable(TextShape)[] shapes, in FVec4 color) {
-        this.pos = pos;
+    immutable this(in FVec2 bearing, immutable(TextShape)[] shapes, in FVec4 color) {
+        this.bearing = bearing;
         this.shapes = shapes;
         this.color = color;
         super(Type.text);

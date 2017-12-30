@@ -44,24 +44,36 @@ final class GlyphAtlas : RefCounted
     mixin(rcCode);
 
     this (in IVec2 startSize, in IVec2 maxSize, in int margin=0) {
-        this.textureSize = startSize;
-        this.maxSize = maxSize;
-        this.margin = margin;
+        _textureSize = startSize;
+        _maxSize = maxSize;
+        _margin = margin;
         root = new AtlasNode(this, IVec2(margin, margin), maxSize - 2*IVec2(margin, margin));
     }
 
     override void dispose() {
-        tex.unload();
-        srv.unload();
+        _srv.unload();
+        _sampler.unload();
         root = null;
+    }
+
+    @property IVec2 textureSize() {
+        return _textureSize;
+    }
+
+    @property Sampler sampler() {
+        return _sampler.obj;
+    }
+
+    @property ShaderResourceView!Alpha8 srv() {
+        return _srv.obj;
     }
 
     AtlasNode pack(in IVec2 size, Glyph glyph) {
         auto node = pack(root, size);
-        while (!node && (textureSize.x < maxSize.x || textureSize.y < maxSize.y)) {
+        while (!node && (_textureSize.x < _maxSize.x || _textureSize.y < _maxSize.y)) {
             import std.algorithm : min;
-            textureSize.x = min(textureSize.x*2, maxSize.x);
-            textureSize.y = min(textureSize.y*2, maxSize.y);
+            _textureSize.x = min(_textureSize.x*2, _maxSize.x);
+            _textureSize.y = min(_textureSize.y*2, _maxSize.y);
             node = pack(root, size);
         }
         if (node) {
@@ -86,8 +98,8 @@ final class GlyphAtlas : RefCounted
 
         scope(success) _realized = false;
 
-        auto img = new Image(ImageFormat.a8, ISize(textureSize.x, textureSize.y),
-                    alignedStrideForWidth(ImageFormat.a8, textureSize.x));
+        auto img = new Image(ImageFormat.a8, ISize(_textureSize.x, _textureSize.y),
+                    alignedStrideForWidth(ImageFormat.a8, _textureSize.x));
 
         void browse(AtlasNode node) {
             if (node.glyph) {
@@ -106,13 +118,25 @@ final class GlyphAtlas : RefCounted
         import std.format;
         static int num = 1;
         img.saveToFile(format("atlas%s.png", num++));
+
+        const pixels = img.data;
+        TexUsageFlags usage = TextureUsage.shaderResource;
+        auto tex = new Texture2D!Alpha8(
+            usage, 1, cast(ushort)img.width, cast(ushort)img.height, [pixels]
+        ).rc();
+        _srv = tex.viewAsShaderResource(0, 0, newSwizzle());
+        // FilterMethod.scale maps to GL_NEAREST
+        // no need to filter what is already filtered
+        _sampler = new Sampler(
+            srv, SamplerInfo(FilterMethod.scale, WrapMode.init)
+        );
     }
 
     /// Recursively scan the tree from node to find a space for the given size.
     /// Returns: a new node if space was found, null otherwise.
     private AtlasNode pack (AtlasNode node, in IVec2 size)
     in {
-        assert(node);
+        assert(node, "Node is null");
     }
     body {
         if (node.glyph) {
@@ -130,11 +154,11 @@ final class GlyphAtlas : RefCounted
         else {
             // this is an unfilled leaf. let's see if it can be filled.
             auto realSize = node.size;
-            if (node.origin.x + node.size.x == maxSize.x - margin) {
-                realSize.x = textureSize.x - node.origin.x - margin;
+            if (node.origin.x + node.size.x == _maxSize.x - _margin) {
+                realSize.x = _textureSize.x - node.origin.x - _margin;
             }
-            if (node.origin.y + node.size.y == maxSize.y - margin) {
-                realSize.y = textureSize.y - node.origin.y - margin;
+            if (node.origin.y + node.size.y == _maxSize.y - _margin) {
+                realSize.y = _textureSize.y - node.origin.y - _margin;
             }
 
             if (node.size.x == size.x && node.size.y == size.y) {
@@ -171,11 +195,11 @@ final class GlyphAtlas : RefCounted
     }
 
     private AtlasNode root;
-    private IVec2 textureSize;
-    private IVec2 maxSize;
-    private int margin;
-    private Rc!(Texture2D!Alpha8) tex;
-    private Rc!(ShaderResourceView!Alpha8) srv;
+    private IVec2 _textureSize;
+    private IVec2 _maxSize;
+    private int _margin;
+    private Rc!(ShaderResourceView!Alpha8) _srv;
+    private Rc!Sampler _sampler;
     private IVec2 lastFailedSize=IVec2(int.max, int.max);
     private size_t numNodes;
     private bool _realized;

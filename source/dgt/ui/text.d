@@ -134,7 +134,7 @@ class TextView : View {
     }
 
     private string _text;
-    private Color _color;
+    private Color _color = Color.black;
     private TextLayout _layout;
     private TextMetrics _metrics;
     private bool _layoutDirty;
