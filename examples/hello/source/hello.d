@@ -34,7 +34,7 @@ int main()
     Proverb[] proverbs = [
         // Proverb("A", "font: 1in serif"),
         Proverb("Assiduity makes all things easy.",             "font: 1in serif"),
-        // Proverb("Le visage est le miroir du coeur.",            "font: italic 14px serif" ),
+        Proverb("Le visage est le miroir du coeur.",            "font: italic 14px serif" ),
         // Proverb("Früh steh auf, wer ein Meister werden will",   "font: italic 1cm serif" ),
         // Proverb("لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي",        "font: 12px serif"),
         // Proverb("花开堪折直需折",                                  "font: 12px serif" ),
@@ -45,6 +45,8 @@ int main()
     ui.clearColor = some(Color.blue);
     auto layout = new LinearLayout;
     layout.setVertical();
+    layout.gravity = Gravity.center;
+
     foreach (p; proverbs) {
         auto view = new TextView;
         view.text = p.text;
@@ -57,11 +59,11 @@ int main()
     win.ui = ui;
     win.show();
 
-    auto timer = Application.platform.createTimer();
-    timer.duration = dur!"seconds"(10);
-    timer.handler = &win.close;
-    timer.start();
-    scope(exit) timer.dispose();
+    // auto timer = Application.platform.createTimer();
+    // timer.duration = dur!"seconds"(10);
+    // timer.handler = &win.close;
+    // timer.start();
+    // scope(exit) timer.dispose();
 
     return app.loop();
 }
