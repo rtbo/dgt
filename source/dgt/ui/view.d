@@ -378,6 +378,7 @@ class View : StyleElement {
     }
 
     /// Transform that maps view coordinates to parent coordinates
+    /// This includes the layout positioning within the parent and the animation transform.
     final @property FMat4 transformToParent()
     {
         if (isDirty(Dirty.transformToParent)) {
@@ -636,9 +637,9 @@ class View : StyleElement {
     }
 
     final immutable(FGNode) transformRender() {
-        return hasTransform ?
-            new immutable FGTransformNode(transform, render()) :
-            render();
+        return new immutable FGTransformNode(
+            transformToParent, render()
+        );
     }
 
     /// Get the name of this view, or its id if name is not set.
