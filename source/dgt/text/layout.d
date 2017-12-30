@@ -117,7 +117,7 @@ class TextLayout
         _shapes = [];
         foreach (const ref item; _items) {
             auto tf = getTypeface(item.style).rc;
-            tf.synchronize!(tf => {
+            tf.synchronize!((Typeface tf) {
                 auto sc = tf.makeScalingContext(item.style.size).rc;
                 auto shaper = sc.makeTextShapingContext().rc;
                 _shapes ~= TextShape(TextShape.nextId(), item.style, shaper.shapeText(item.text));
@@ -145,7 +145,7 @@ class TextLayout
         foreach (TextShape ts; _shapes)
         {
             auto tf = getTypeface(ts.style).rc;
-            tf.synchronize!(tf => {
+            tf.synchronize!((Typeface tf) {
                 auto sc = tf.makeScalingContext(ts.style.size).rc;
                 foreach (i, GlyphInfo gi; ts.glyphs)
                 {
