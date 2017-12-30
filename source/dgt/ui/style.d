@@ -211,7 +211,7 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
         auto fsp = cast(StyleProperty!FontSlant)target.styleProperty("font-style");
         fsp.setValue(FontSlantMetaProperty.instance.convert(pf.fs, target), origin);
 
-        auto fwp = cast(StyleProperty!int)target.styleProperty("font-weight");
+        auto fwp = cast(StyleProperty!FontWeight)target.styleProperty("font-weight");
         fwp.setValue(FontWeightMetaProperty.instance.convert(pf.pfw, target), origin);
 
         auto fszp = cast(StyleProperty!int)target.styleProperty("font-size");

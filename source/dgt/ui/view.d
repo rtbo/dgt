@@ -170,6 +170,18 @@ class View : StyleElement {
         dirty(Dirty.render);
     }
 
+    /// Request a layout pass
+    final void requestLayoutPass()
+    {
+        dirty(Dirty.layout);
+    }
+
+    /// Request a style pass
+    final void requestStylePass()
+    {
+        dirty(Dirty.style);
+    }
+
     /// The dirtyState of this view.
     final @property Dirty dirtyState()
     {
@@ -522,6 +534,7 @@ class View : StyleElement {
     {
         if (css != _inlineCSS) {
             _inlineCSS = css;
+            requestStylePass();
         }
     }
 
@@ -537,6 +550,7 @@ class View : StyleElement {
         }
         if (css != _css) {
             _css = css;
+            requestStylePass();
         }
     }
 
@@ -553,6 +567,7 @@ class View : StyleElement {
     {
         if (id != _id) {
             _id = id;
+            requestStylePass();
         }
     }
 
@@ -564,6 +579,7 @@ class View : StyleElement {
     {
         if (cssClass != _cssClass) {
             _cssClass = cssClass;
+            requestStylePass();
         }
     }
 
@@ -580,11 +596,13 @@ class View : StyleElement {
     final void addPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState | flags;
+        // requestStylePass(); ??
     }
     /// ditto
     final void remPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState & (~flags);
+        // requestStylePass(); ??
     }
 
     /// Flag that causes PseudoState.hover to be set when the cursor hovers the view
@@ -594,6 +612,7 @@ class View : StyleElement {
     {
         if (!_hoverSensitive == hs) {
             _hoverSensitive = hs;
+            // requestStylePass(); ??
         }
     }
 
@@ -708,7 +727,7 @@ class View : StyleElement {
     private size_t _childCount;
 
     // dirty state
-    private Dirty _dirtyState;
+    private Dirty _dirtyState = Dirty.layoutMask | Dirty.styleMask | Dirty.renderMask;
 
     // layout
     private FPadding        _padding;
