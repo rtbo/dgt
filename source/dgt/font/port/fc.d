@@ -137,7 +137,6 @@ class FcFontLibrary : FontLibrary
 
         import std.algorithm : each, filter, map;
         import std.range : iota, takeOne;
-        import std.stdio;
 
         iota(matches.nfont)
             .map!(i => matches.fonts[i])
