@@ -199,7 +199,7 @@ class TypefaceCache : Disposable {
     this() {}
 
     override void dispose() {
-        release(_typefaces);
+        releaseArray(_typefaces);
     }
 
     void add(Typeface tf) {

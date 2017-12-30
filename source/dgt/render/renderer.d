@@ -134,7 +134,7 @@ class Renderer : Disposable {
         Part[] parts;
 
         override void dispose() {
-            reinit(parts);
+            reinitArray(parts);
         }
     }
 
