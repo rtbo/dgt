@@ -25,11 +25,11 @@ class Renderer : Disposable {
     }
 
     void dispose() {
-        if (_cmdBuf.loaded) {
-            _rtv.unload();
-            _surf.unload();
-            _cmdBuf.unload();
-        }
+        releaseArray(_glyphRuns);
+        releaseArray(_atlases);
+        _rtv.unload();
+        _surf.unload();
+        _cmdBuf.unload();
         _device.unload();
     }
 
@@ -88,25 +88,33 @@ class Renderer : Disposable {
                 import std.exception : enforce;
                 Glyph glyph = sc.renderGlyph(gi.index);
                 if (!glyph || !glyph.img) continue;
-                const size = glyph.img.size.asVec;
-                auto atlasF = _atlases.find!(a => a.couldPack(size));
-                GlyphAtlas atlas;
-                AtlasNode node;
-                if (atlasF.length) {
-                    atlas = atlasF[0];
-                    node = atlas.pack(size, glyph);
-                }
+
+                AtlasNode node = cast(AtlasNode)glyph.rendererData;
+
                 if (!node) {
-                    // could not find an atlas with room left, or did not create atlas at all yet
-                    atlas = new GlyphAtlas(ivec(128, 128), ivec(512, 512), 1);
-                    atlas.retain();
-                    _atlases ~= atlas;
-                    node = enforce(atlas.pack(size, glyph),
-                            "could not pack a glyph into a new atlas. What size is this glyph??");
+                    // this glyph is not yet in an atlas, let's pack it
+                    const size = glyph.img.size.asVec;
+                    auto atlasF = _atlases.find!(a => a.couldPack(size));
+                    if (atlasF.length) {
+                        node = atlasF[0].pack(size, glyph);
+                    }
+                    if (!node) {
+                        // could not find an atlas with room left, or did not create atlas at all yet
+                        auto atlas = new GlyphAtlas(ivec(128, 128), ivec(512, 512), 1);
+                        atlas.retain();
+                        _atlases ~= atlas;
+                        node = enforce(atlas.pack(size, glyph),
+                                "could not pack a glyph into a new atlas. What size is this glyph??");
+                    }
+                    glyph.rendererData = node;
                 }
+
+                auto atlas = node.atlas.lock();
+                assert(atlas);
+
                 if (!parts.length || atlas !is parts[$-1].atlas) {
                     // starting a new part
-                    parts ~= GlyphRun.Part(atlas.rc, [ node ]);
+                    parts ~= GlyphRun.Part(atlas, [ node ]);
                 }
                 else {
                     // continue the previous one
@@ -126,6 +134,9 @@ class Renderer : Disposable {
     class GlyphRun : RefCounted {
         mixin(rcCode);
 
+        // most runs will have a single part, but if there are a lot of glyphs with
+        // big size, it can happen that we come to an atlas boundary and then the
+        // end of the run arrives on a second atlas
         struct Part {
             Rc!GlyphAtlas atlas;
             AtlasNode[] nodes; // ordered array - each node contains a glyph

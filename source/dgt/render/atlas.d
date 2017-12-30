@@ -13,8 +13,10 @@ import gfx.pipeline;
 
 // binary tree representation of a texture space
 
-final class AtlasNode {
-    this (in IVec2 origin, in IVec2 size) {
+final class AtlasNode
+{
+    this (GlyphAtlas atlas, in IVec2 origin, in IVec2 size) {
+        this.atlas = atlas;
         _origin = origin;
         _size = size;
     }
@@ -26,6 +28,8 @@ final class AtlasNode {
     @property IVec2 size() const {
         return _size;
     }
+
+    Weak!GlyphAtlas atlas;
 
     Glyph glyph;
 
@@ -43,7 +47,7 @@ final class GlyphAtlas : RefCounted
         this.textureSize = startSize;
         this.maxSize = maxSize;
         this.margin = margin;
-        root = new AtlasNode(IVec2(margin, margin), maxSize - 2*IVec2(margin, margin));
+        root = new AtlasNode(this, IVec2(margin, margin), maxSize - 2*IVec2(margin, margin));
     }
 
     override void dispose() {
@@ -152,13 +156,13 @@ final class GlyphAtlas : RefCounted
                 }
                 assert(!node.left && !node.right, "always assign both left and right together");
                 if (vertical) {
-                    node.left = new AtlasNode(node.origin, IVec2(node.size.x, size.y));
-                    node.right = new AtlasNode(IVec2(node.origin.x, node.origin.y+size.y),
+                    node.left = new AtlasNode(this, node.origin, IVec2(node.size.x, size.y));
+                    node.right = new AtlasNode(this, IVec2(node.origin.x, node.origin.y+size.y),
                                                IVec2(node.size.x, node.size.y-size.y));
                 }
                 else {
-                    node.left = new AtlasNode(node.origin, IVec2(size.x, node.size.y));
-                    node.right = new AtlasNode(IVec2(node.origin.x+size.x, node.origin.y),
+                    node.left = new AtlasNode(this, node.origin, IVec2(size.x, node.size.y));
+                    node.right = new AtlasNode(this, IVec2(node.origin.x+size.x, node.origin.y),
                                                IVec2(node.size.x-size.x, node.size.y));
                 }
                 return pack(node.left, size);

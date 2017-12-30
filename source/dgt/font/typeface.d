@@ -92,6 +92,8 @@ final class Glyph {
     package(dgt.font) Nullable!GlyphMetrics _metrics;
     package(dgt.font) bool _isWhitespace;
     // TODO: store outline here
+
+    package(dgt) Object rendererData;
 }
 
 interface ScalingContext : AtomicRefCounted {
