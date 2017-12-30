@@ -80,12 +80,17 @@ final class Glyph {
         return _metrics;
     }
 
+    @property bool isWhitespace() {
+        return _isWhitespace;
+    }
+
     import std.typecons : Nullable;
 
     private GlyphId _glyphId;
     package(dgt.font) Image _img;
     package(dgt.font) FVec2 _bearing;
     package(dgt.font) Nullable!GlyphMetrics _metrics;
+    package(dgt.font) bool _isWhitespace;
     // TODO: store outline here
 }
 
@@ -95,14 +100,12 @@ interface ScalingContext : AtomicRefCounted {
 
     void getOutline(in GlyphId glyphId, OutlineAccumulator oa);
 
-    deprecated void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing)
-    in {
-        // FIXME assert with actual metrics
-        assert(output.width >= pixelSize+offset.x);
-        assert(output.height >= pixelSize+offset.y);
-        assert(output.format == ImageFormat.a8);
-    }
-
+    /// Render the glyph corresponding of the glyphId and returns it in a Glyph object.
+    /// Returns
+    ///  - null if the glyph is not found.
+    ///  - a valid Glyph with null img member if the glyph is found but is a whitespace.
+    ///    Glyph.isWhitespace returns true in such case.
+    ///  - a valid Glyph rasterized in the img member otherwise.
     Glyph renderGlyph(in GlyphId glyphId);
 
     /// Compute the metrics of a glyph

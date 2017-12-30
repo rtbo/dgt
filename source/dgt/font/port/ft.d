@@ -266,38 +266,31 @@ final class FtScalingContext : ScalingContext
         enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa));
     }
 
-    override void renderGlyph(in GlyphId glyphId, Image output, in IVec2 offset, out IVec2 bearing) {
-        ensureSize();
-        bool yReversed = void;
-        const img = renderGlyphPriv(glyphId, bearing, yReversed);
-
-        output.blitFrom(img, IPoint(0, 0), offset, img.size, yReversed);
-    }
-
     override Glyph renderGlyph(in GlyphId glyphId) {
 
         Glyph* glp = glyphId in _glyphs;
-        if (glp && glp.img) {
+        if (glp && (glp.img || glp._isWhitespace)) {
             return *glp;
         }
 
         ensureSize();
         bool yReversed = void;
-        IVec2 bearing;
+        IVec2 bearing = IVec2(0, 0);
         const img = renderGlyphPriv(glyphId, bearing, yReversed);
 
         Image glImg;
-        if (yReversed) {
+        if (img && yReversed) {
             glImg = new Image(img.format, img.size, img.stride);
             glImg.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
         }
-        else {
+        else if (img) {
             glImg = img.dup;
         }
 
         Glyph gl = glp ? *glp : new Glyph(glyphId);
         gl._img = glImg;
         gl._bearing = cast(FVec2)bearing;
+        gl._isWhitespace = glImg is null;
         if (gl._metrics.isNull) {
             gl._metrics = metricsFromFace();
         }
@@ -325,7 +318,7 @@ final class FtScalingContext : ScalingContext
 
     /// Render and return an image referencing internal FT buffer.
     /// Will be invalidated at next call of renderGlyph or rasterize
-    private const(Image) renderGlyphPriv(in GlyphId glyphId, out IVec2 bearing, out bool yReversed)
+    private const(Image) renderGlyphPriv(in GlyphId glyphId, ref IVec2 bearing, out bool yReversed)
     {
         import std.math : abs;
 
