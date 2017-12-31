@@ -77,7 +77,7 @@ class FtTypeface : Typeface
         return [];
     }
 
-    override ScalingContext makeScalingContext(in float pixelSize) {
+    override ScalingContext getScalingContext(in float pixelSize) {
         foreach (sc; _scs) {
             if (sc._pixelSize == pixelSize) {
                 return sc;
@@ -301,7 +301,7 @@ final class FtScalingContext : ScalingContext
         return gl;
     }
 
-    TextShapingContext makeTextShapingContext() {
+    override TextShapingContext getTextShapingContext() {
         if (!_textShaper) {
             import dgt.text.port.hb : HbTextShapingContext;
             ensureSize();

@@ -10,6 +10,11 @@ import std.uni;
 
 alias GlyphId = ushort;
 
+/// A font typeface.
+/// Typefaces are not scaled to any particular size. To actually have some scaling
+/// and rendering done, a ScalingContext must be obtained.
+/// Typefaces are obtained from the FontLibrary instance as shared objects.
+/// They must be locked (synchronized) during use.
 abstract class Typeface : AtomicRefCounted {
     mixin(atomicRcCode);
 
@@ -27,9 +32,10 @@ abstract class Typeface : AtomicRefCounted {
     abstract @property FontStyle style();
 
     abstract @property CodepointSet coverage();
-    abstract GlyphId[] glyphsForString(in string text);
+    deprecated abstract GlyphId[] glyphsForString(in string text);
 
-    abstract ScalingContext makeScalingContext(in float pixelSize);
+    /// Get a scaling context from the cache, or create it if not available
+    abstract ScalingContext getScalingContext(in float pixelSize);
 
     private size_t _id;
 
@@ -96,6 +102,9 @@ final class Glyph {
     package(dgt) Object rendererData;
 }
 
+/// A scaling context is the facility that will scale and render glyphs to a
+/// requested size. They generally share some data with the parent typeface
+/// and therefore should be used while the typeface is locked.
 interface ScalingContext : AtomicRefCounted {
 
     @property float pixelSize();
@@ -113,7 +122,7 @@ interface ScalingContext : AtomicRefCounted {
     /// Compute the metrics of a glyph
     GlyphMetrics glyphMetrics(in GlyphId glyph);
 
-    TextShapingContext makeTextShapingContext();
+    TextShapingContext getTextShapingContext();
 }
 
 interface OutlineAccumulator {

@@ -126,7 +126,7 @@ class TextRenderer : Disposable
 
         auto tf = FontLibrary.get.matchFamilyStyle(shape.style.family, shape.style.style);
         tf.synchronize!((Typeface tf) {
-            ScalingContext sc = tf.makeScalingContext(shape.style.size).rc;
+            ScalingContext sc = tf.getScalingContext(shape.style.size).rc;
             foreach (const GlyphInfo gi; shape.glyphs) {
                 import std.algorithm : find;
                 import std.exception : enforce;
