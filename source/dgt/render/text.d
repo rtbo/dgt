@@ -284,6 +284,8 @@ enum textFShader = `
 
     void main() {
         vec4 sample = texture(t_Sampler, v_Tex);
-        o_Color = sample.r * u_Color;
+        const float gamma = 1.8;
+        o_Color = pow(sample.r, gamma) * u_Color;
+        // o_Color = sample.r * u_Color;
     }
 `;

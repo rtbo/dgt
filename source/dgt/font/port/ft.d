@@ -239,7 +239,7 @@ final class FtScalingContext : ScalingContext
         }
 
         ensureSize();
-        FT_Load_Glyph(_face, glyphId, FT_LOAD_DEFAULT);
+        FT_Load_Glyph(_face, glyphId, loadFlags);
 
         const metrics = metricsFromFace();
 
@@ -320,13 +320,12 @@ final class FtScalingContext : ScalingContext
     /// Will be invalidated at next call of renderGlyph or rasterize
     private const(Image) renderGlyphPriv(in GlyphId glyphId, ref IVec2 bearing, out bool yReversed)
     {
-        import std.math : abs;
-
-        FT_Load_Glyph(_face, cast(FT_UInt)glyphId, FT_LOAD_DEFAULT);
-        FT_Render_Glyph(_face.glyph, FT_RENDER_MODE_NORMAL);
+        FT_Load_Glyph(_face, cast(FT_UInt)glyphId, loadFlags);
+        FT_Render_Glyph(_face.glyph, renderMode);
         auto slot = _face.glyph;
         auto bitmap = slot.bitmap;
 
+        import std.math : abs;
         immutable stride = abs(bitmap.pitch);
         if (stride == 0) return null; // whitespace
 
@@ -352,6 +351,9 @@ final class FtScalingContext : ScalingContext
             gm.vertAdvance/64f,
         );
     }
+
+    private enum loadFlags = FT_LOAD_TARGET_LIGHT;
+    private enum renderMode = FT_RENDER_MODE_LIGHT;
 }
 
 
