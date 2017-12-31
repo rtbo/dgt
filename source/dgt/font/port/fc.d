@@ -12,6 +12,7 @@ import dgt.font.typeface;
 
 import std.experimental.logger;
 import std.string;
+import std.typecons : Nullable;
 import std.uni;
 
 class FcFontLibrary : FontLibrary
@@ -47,29 +48,10 @@ class FcFontLibrary : FontLibrary
 
     override FamilyStyleSet matchFamily(string family) {
 
-        // need to split 2 cases:
-        //  1. family is not generic: only return exact family name match (case insensitively)
-        //  2. family is generic: handle some corner cases and let fontconfig match the best it can
-
         auto pattern = FcPatternCreate();
         scope(exit) FcPatternDestroy(pattern);
 
-        const isGeneric = isGenericFamily(family);
-
-        if (isGeneric && !sicmp(family, "system-ui")) {
-            // on my system, system-ui match to the default font, but I'm not sure how it is portable.
-            // likely empty font name is more robust to get the default family
-            FcPatternAddString(pattern, FC_FAMILY, null);
-        }
-        else {
-            FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
-        }
-
-        FcConfigSubstitute(config, pattern, FcMatchPattern);
-        FcDefaultSubstitute(pattern);
-
-        FcResult res;
-        auto matches = FcFontSort(config, pattern, FcFalse, null, &res);
+        auto matches = getSortedMatch(pattern, family, Nullable!FontStyle.init, null);
         scope(exit) FcFontSetDestroy(matches);
 
         if (!matches.nfont) return null;
@@ -78,7 +60,7 @@ class FcFontLibrary : FontLibrary
 
         // we return a style set of all fonts from the same family
         // for generic, we simply take the family of the first entry
-        const matchedFamily = isGeneric ? getFcString(matches.fonts[0], FC_FAMILY, "") : family;
+        const matchedFamily = isGenericFamily(family) ? getFcString(matches.fonts[0], FC_FAMILY, "") : family;
 
         import std.algorithm : each, filter, map;
         import std.range : iota;
@@ -104,26 +86,10 @@ class FcFontLibrary : FontLibrary
         // same as above, we have to check that the family is either a generic or a perfect match
         // so the code is the same except that we add the style in the search pattern
         // and that we return the best matching typeface, instead of a set
-
         auto pattern = FcPatternCreate();
         scope(exit) FcPatternDestroy(pattern);
 
-        const isGeneric = isGenericFamily(family);
-
-        if (isGeneric && !sicmp(family, "system-ui")) {
-            // on my system, system-ui match to the default font, but I'm not sure how it is portable.
-            // likely empty font name is more robust to get the default family
-            FcPatternAddString(pattern, FC_FAMILY, null);
-        }
-        else {
-            FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
-        }
-
-        FcConfigSubstitute(config, pattern, FcMatchPattern);
-        FcDefaultSubstitute(pattern);
-
-        FcResult res;
-        auto matches = FcFontSort(config, pattern, FcFalse, null, &res);
+        auto matches = getSortedMatch(pattern, family, Nullable!FontStyle(style), null);
         scope(exit) FcFontSetDestroy(matches);
 
         if (!matches.nfont) return null;
@@ -133,7 +99,7 @@ class FcFontLibrary : FontLibrary
 
         // we return a style set of all fonts from the same family
         // for generic, we simply take the family of the first entry
-        const matchedFamily = isGeneric ? getFcString(matches.fonts[0], FC_FAMILY, "") : family;
+        const matchedFamily = isGenericFamily(family) ? getFcString(matches.fonts[0], FC_FAMILY, "") : family;
 
         import std.algorithm : each, filter, map;
         import std.range : iota, takeOne;
@@ -167,6 +133,32 @@ class FcFontLibrary : FontLibrary
         // do we need to cache this? likely not
         auto face = openFaceFromFile(path, faceIndex);
         return new FtTypeface(face);
+    }
+
+    private FcFontSet* getSortedMatch(FcPattern* pattern, in string family, in Nullable!FontStyle style, FcCharSet* charSet) {
+        // need to split 2 cases:
+        //  1. family is not generic: only return exact family name match (case insensitively)
+        //  2. family is generic: handle some corner cases and let fontconfig match the best it can
+
+        if (family != "system-ui") {
+            // on my system, system-ui match to the default font, but I'm not sure how it is portable.
+            // likely not specifying font name is more robust to get the default family
+            FcPatternAddString(pattern, FC_FAMILY, toStringz(family));
+        }
+
+        if (!style.isNull) {
+            addFontStyleToFcPattern(style, pattern);
+        }
+
+        if (charSet) {
+            FcPatternAddCharSet(pattern, FC_CHARSET, charSet);
+        }
+
+        FcConfigSubstitute(config, pattern, FcMatchPattern);
+        FcDefaultSubstitute(pattern);
+
+        FcResult res;
+        return FcFontSort(config, pattern, FcFalse, null, &res);
     }
 
     private shared(Typeface) typefaceFromPattern(FcPattern* font) {
