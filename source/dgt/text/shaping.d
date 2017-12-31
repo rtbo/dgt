@@ -9,7 +9,7 @@ struct GlyphInfo
 {
     GlyphId index;
     FVec2 advance;
-    IVec2 offset;
+    FVec2 offset;
 }
 
 interface TextShapingContext : RefCounted {

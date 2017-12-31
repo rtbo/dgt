@@ -35,7 +35,7 @@ class HbTextShapingContext : TextShapingContext {
             glyphs[i] = GlyphInfo(
                 cast(GlyphId)glyphInfos[i].codepoint,
                 fvec(glyphPos[i].x_advance/64, glyphPos[i].y_advance/64),
-                ivec(glyphPos[i].x_offset/64, -glyphPos[i].y_offset/64),
+                fvec(glyphPos[i].x_offset/64, -glyphPos[i].y_offset/64),
             );
         }
         import std.exception : assumeUnique;

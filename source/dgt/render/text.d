@@ -97,7 +97,7 @@ class TextRenderer : Disposable
                         FSize(txRect.width / textureSize.x, txRect.height / textureSize.y)
                     );
                     immutable vertRect = FRect(
-                        cast(FVec2)gl.position, txRect.size
+                        gl.position, txRect.size
                     );
                     auto quadVerts = [
                         P2T2Vertex([vertRect.left+bearing.x, vertRect.top+bearing.y], [normRect.left, normRect.top]),
@@ -137,11 +137,10 @@ class TextRenderer : Disposable
                     continue;
                 }
 
-                import std.math : floor;
                 const metrics = glyph.metrics;
-                const position = gi.offset +
-                        ivec(metrics.horBearing.x, -metrics.horBearing.y) +
-                        ivec(floor(advance.x), floor(advance.y));
+                const position = gi.offset + advance +
+                        fvec(metrics.horBearing.x, -metrics.horBearing.y);
+
                 advance += gi.advance;
 
                 AtlasNode node = cast(AtlasNode)glyph.rendererData;
@@ -218,7 +217,7 @@ class GlyphRun : RefCounted {
 }
 
 struct GRGlyph {
-    IVec2 position;
+    FVec2 position;
     AtlasNode node;
 }
 
@@ -268,7 +267,7 @@ enum textVShader = `
     void main() {
         v_Tex = a_Tex;
         vec4 worldPos = u_modelMat * vec4(a_Pos, 0, 1);
-        gl_Position = u_viewProjMat * vec4(round(worldPos.x), round(worldPos.y), 0, 1);
+        gl_Position = u_viewProjMat * vec4(worldPos.xy, 0, 1);
     }
 `;
 enum textFShader = `
