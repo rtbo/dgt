@@ -196,7 +196,7 @@ class FtSubsystem : Subsystem {
         return gFtLib !is null;
     }
     override void initialize() {
-        enforce(FT_Init_FreeType(&gFtLib) == 0);
+        enforce(FT_Init_FreeType(&gFtLib) == 0, "Could not initialize freetype");
     }
     override void finalize() {
         FT_Done_FreeType(gFtLib);
@@ -257,13 +257,13 @@ final class FtScalingContext : ScalingContext
 
     override void getOutline(in GlyphId glyphId, OutlineAccumulator oa) {
         ensureSize();
-        enforce(0 == FT_Load_Glyph(_face, glyphId, FT_LOAD_NO_BITMAP));
+        enforce(0 == FT_Load_Glyph(_face, glyphId, FT_LOAD_NO_BITMAP), "Could not load glyph for outline");
         FT_Outline_Funcs funcs;
         funcs.move_to = &dgt_ftOutlineMoveTo;
         funcs.line_to = &dgt_ftOutlineLineTo;
         funcs.conic_to = &dgt_ftOutlineConicTo;
         funcs.cubic_to = &dgt_ftOutlineCubicTo;
-        enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa));
+        enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa), "Could not decompose outline");
     }
 
     override Glyph renderGlyph(in GlyphId glyphId) {

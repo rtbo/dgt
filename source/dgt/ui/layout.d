@@ -598,7 +598,8 @@ public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in float removed,
     if (childLayoutSize >= 0f) {
         return MeasureSpec.makeExactly(childLayoutSize);
     }
-    enforce(childLayoutSize == wrapContent || childLayoutSize == matchParent);
+    enforce(childLayoutSize == wrapContent || childLayoutSize == matchParent,
+            "childMeasureSpec: invalid childLayoutSize");
 
     immutable size = max(0f, parentSpec.size - removed);
 

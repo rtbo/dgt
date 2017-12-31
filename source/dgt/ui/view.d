@@ -82,7 +82,7 @@ class View : StyleElement {
     /// Appends the given view to this view children list.
     protected void appendChild(View view)
     {
-        enforce(view && !view._parent);
+        enforce(view && !view._parent, "View.appendChild: invalid child or child already parented");
         view._parent = this;
 
         if (!hasChildren) {
@@ -100,7 +100,7 @@ class View : StyleElement {
     /// Prepend the given view to this view children list.
     protected void prependChild(View view)
     {
-        enforce(view && !view._parent);
+        enforce(view && !view._parent, "View.appendChild: invalid child or child already parented");
         view._parent = this;
 
         if (!hasChildren) {
@@ -119,7 +119,8 @@ class View : StyleElement {
     /// child.
     protected void insertChildBefore(View view, View child)
     {
-        enforce(view && !view._parent && child._parent is this);
+        enforce(view && !view._parent && child._parent is this,
+                "View.insertChildBefore: invalid view or child");
         view._parent = this;
 
         if (child is _firstChild) {
@@ -138,7 +139,7 @@ class View : StyleElement {
     /// Removes the given view from this view children list.
     protected void removeChild(View child)
     {
-        enforce(child && child._parent is this);
+        enforce(child && child._parent is this, "View.removeChild: invalid child");
 
         child._parent = null;
 
