@@ -145,7 +145,7 @@ class Image
     this(ubyte[] data, in ImageFormat fmt, in size_t width, in size_t stride)
     {
         immutable height = data.length / stride;
-        enforce(data.length > stride && data.length % stride == 0);
+        enforce(data.length >= stride && data.length % stride == 0);
         enforce(isValidImageSize(ISize(cast(int)width, cast(int)height)));
 
         this(data, fmt, cast(ushort)width, cast(ushort)height, stride);
