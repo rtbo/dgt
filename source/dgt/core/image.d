@@ -145,7 +145,10 @@ class Image
     this(ubyte[] data, in ImageFormat fmt, in size_t width, in size_t stride)
     {
         immutable height = data.length / stride;
+        immutable bytesPerPx = fmt.bpp / 8;
+
         enforce(data.length >= stride && data.length % stride == 0);
+        enforce(width <= stride/bytesPerPx, "image from data: invalid width (bigger than stride)");
         enforce(isValidImageSize(ISize(cast(int)width, cast(int)height)));
 
         this(data, fmt, cast(ushort)width, cast(ushort)height, stride);
@@ -238,8 +241,8 @@ class Image
     /// Unimplemented for ImageFormat.a1.
     void blitFrom(const(Image) src, in IPoint srcOrig, in IPoint destOrig, in ISize size, in bool yReversed=false)
     {
-        enforce(format == src.format);
-        enforce(src.width >= srcOrig.x+size.width);
+        enforce(format == src.format, "image blit: format mismatch");
+        enforce(src.width >= srcOrig.x+size.width, "image blit: src.width too small");
         enforce(src.height >= srcOrig.y+size.height);
         enforce(this.width >= destOrig.x+size.width);
         enforce(this.height >= destOrig.y+size.height);
