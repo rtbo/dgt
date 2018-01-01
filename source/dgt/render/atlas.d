@@ -96,7 +96,7 @@ final class GlyphAtlas : RefCounted
     void realize() {
         if (_realized) return;
 
-        scope(success) _realized = false;
+        scope(success) _realized = true;
 
         auto img = new Image(ImageFormat.a8, ISize(_textureSize.x, _textureSize.y),
                     alignedStrideForWidth(ImageFormat.a8, _textureSize.x));
