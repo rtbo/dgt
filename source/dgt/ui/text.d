@@ -119,11 +119,10 @@ class TextView : View {
         if (_layoutDirty && _text.length) {
             immutable p = new ColorPaint(_color);
             const fs = FontStyle(cast(FontWeight)fontWeight, fontSlant);
-            const ts = TextStyle(fontSize, fontFamily[0], fs, p); // fixme family fallback
 
             _layout.clearItems();
             // only single item supported at this point
-            _layout.addItem(TextItem(_text, ts));
+            _layout.addItem(TextItem(_text, fontFamily, fs, fontSize, p));
             _layout.layout();
             _metrics = _layout.metrics;
             _layoutDirty = false;

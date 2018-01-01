@@ -8,25 +8,15 @@ import dgt.font.typeface;
 import dgt.math.vec : fvec, FVec2;
 import dgt.text.shaping : GlyphInfo;
 
-struct TextStyle
-{
-    this (float size, string family, FontStyle style, Paint fill) {
-        import std.typecons : rebindable;
-        this.size = size;
-        this.family = family;
-        this.style = style;
-        this.fill = rebindable(fill);
-    }
-    float size;
-    string family;
-    FontStyle style;
-    RPaint fill;
-}
+import std.exception : enforce;
 
 struct TextItem
 {
     string text;
-    TextStyle style;
+    string[] families;
+    FontStyle style;
+    float size;
+    Paint fill;
 }
 
 /// Metrics of text drawn to screen
@@ -62,14 +52,17 @@ struct TextMetrics
     }
 }
 
+alias ShapeId = uint;
+
 struct TextShape {
-    size_t id;
-    TextStyle style;
+    ShapeId id;
+    FontId fontId;
+    float size;
     immutable(GlyphInfo)[] glyphs;
 
-    static size_t nextId() {
+    static ShapeId nextId() {
         import core.atomic : atomicOp;
-        static shared size_t cur=0;
+        static shared ShapeId cur=0;
         return atomicOp!"+="(cur, 1);
     }
 }
@@ -91,18 +84,8 @@ class TextLayout
     }
 
     /// Add an item to the item list
-    void addItem(in TextItem item) {
+    void addItem(TextItem item) {
         _items ~= item;
-        _layoutDirty = true;
-    }
-
-    /// reset the item at index ind to the provided item
-    void resetItem(in TextItem item, size_t ind)
-    in {
-        assert(ind <= _items.length);
-    }
-    body {
-        _items[ind] = item;
         _layoutDirty = true;
     }
 
@@ -116,11 +99,14 @@ class TextLayout
         _layoutDirty = false;
         _shapes = [];
         foreach (const ref item; _items) {
-            auto tf = getTypeface(item.style).rc;
+            import dgt.font.library : FontLibrary;
+            import std.format : format;
+            auto tf = FontLibrary.get.css3FontMatch(item.families, item.style, item.text);
+            enforce(tf, format("could not match any font for [%s, %s, %s]", item.families, item.style, item.text));
             tf.synchronize!((Typeface tf) {
-                auto sc = tf.getScalingContext(item.style.size).rc;
+                auto sc = tf.getScalingContext(item.size).rc;
                 auto shaper = sc.getTextShapingContext().rc;
-                _shapes ~= TextShape(TextShape.nextId(), item.style, shaper.shapeText(item.text));
+                _shapes ~= TextShape(TextShape.nextId(), tf.id, item.size, shaper.shapeText(item.text));
             });
         }
     }
@@ -144,9 +130,11 @@ class TextLayout
 
         foreach (TextShape ts; _shapes)
         {
-            auto tf = getTypeface(ts.style).rc;
+            import dgt.font.library : FontLibrary;
+            auto tf = FontLibrary.get.getById(ts.fontId);
+            assert(tf);
             tf.synchronize!((Typeface tf) {
-                auto sc = tf.getScalingContext(ts.style.size).rc;
+                auto sc = tf.getScalingContext(ts.size).rc;
                 foreach (i, GlyphInfo gi; ts.glyphs)
                 {
                     const gm = sc.glyphMetrics(gi.index);
@@ -179,9 +167,4 @@ class TextLayout
     private TextItem[] _items;
     private immutable(TextShape)[] _shapes;
     private bool _layoutDirty;
-}
-
-private shared(Typeface) getTypeface(in TextStyle style) {
-    import dgt.font.library : FontLibrary;
-    return FontLibrary.get.matchFamilyStyle(style.family, style.style);
 }
