@@ -16,6 +16,10 @@ class FontLibrary : AtomicRefCounted {
 
     override abstract void dispose();
 
+    abstract shared(Typeface) getById(in FontId fontId);
+
+    abstract shared(Typeface) css3FontMatch(in string[] families, in FontStyle style, in string text);
+
     /// Search and get the family installed on the system
     abstract @property size_t familyCount();
     /// ditto
