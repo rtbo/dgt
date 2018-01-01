@@ -7,6 +7,7 @@ import dgt.math.mat;
 import dgt.math.transform;
 import dgt.render.framegraph;
 import dgt.ui;
+import dgt.ui.event;
 import dgt.ui.layout;
 
 import std.exception;
@@ -527,6 +528,129 @@ class View : StyleElement {
         );
     }
 
+    /// Give possibility to filter any event passing by
+    /// To effectively filter an event, the filter delegate must consume it.
+    /// Params:
+    ///     filter  =   a filter delegate
+    ///     mask    =   a bitwise mask that will be used to test if a filter
+    ///                 applies to a given event type
+    /// Returns: the filter given as parameter. Can be used for later uninstall.
+    final EventFilter addEventFilter(EventFilter filter, EventType mask=EventType.allMask)
+    {
+        _evFilters ~= MaskedFilter(filter, mask);
+        return filter;
+    }
+
+    /// Remove an installed event filter.
+    final void removeEventFilter(EventFilter filter)
+    {
+        import std.algorithm : remove;
+        _evFilters = _evFilters.remove!(f => f.filter is filter);
+    }
+
+    /// Remove installed event filters whose mask have an intersection with given mask.
+    final void removeEventFilters(EventType mask)
+    {
+        import std.algorithm : remove;
+        _evFilters = _evFilters.remove!(f => (f.mask & cast(uint)mask) != 0);
+    }
+
+    /// Called when mouse interacts with this view.
+    protected void mouseDownEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseUpEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseDragEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseEnterEvent(MouseEvent ev)
+    {
+        if (_hoverSensitive) {
+            addPseudoState(PseudoState.hover);
+        }
+    }
+    /// ditto
+    protected void mouseLeaveEvent(MouseEvent ev)
+    {
+        if (_hoverSensitive) {
+            remPseudoState(PseudoState.hover);
+        }
+    }
+    /// ditto
+    protected void mouseMoveEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseClickEvent(MouseEvent ev) {}
+    /// ditto
+    protected void mouseDblClickEvent(MouseEvent ev) {}
+
+    /// Chain an event until its final target, giving each parent in the chain
+    /// the opportunity to filter it, or to handle it after its children if
+    /// the event hasn't been consumed by any of them.
+    /// Returns: the view that has consumed the event, or null.
+    final View chainEvent(Event event)
+    {
+        // fiter phase
+        if (filterEvent(event)) return this;
+
+        // chaining phase
+        if (event.viewChain.length) {
+            auto res = event.chainToNext();
+            if (res) return res;
+        }
+
+        // bubbling phase
+        if (handleEvent(event)) return this;
+        else return null;
+    }
+
+    final protected bool filterEvent(Event event)
+    {
+        immutable type = event.type;
+        foreach (ref f; _evFilters) {
+            if (f.mask & type) {
+                f.filter(event);
+                if (event.consumed) return true;
+            }
+        }
+        return false;
+    }
+
+    final protected bool handleEvent(Event event)
+    {
+        immutable et = event.type;
+        if (et & EventType.mouseMask) {
+            auto mev = cast(MouseEvent)event;
+            switch (et) {
+            case EventType.mouseDown:
+                mouseDownEvent(mev);
+                break;
+            case EventType.mouseUp:
+                mouseUpEvent(mev);
+                break;
+            case EventType.mouseDrag:
+                mouseDragEvent(mev);
+                break;
+            case EventType.mouseMove:
+                mouseMoveEvent(mev);
+                break;
+            case EventType.mouseEnter:
+                mouseEnterEvent(mev);
+                break;
+            case EventType.mouseLeave:
+                mouseLeaveEvent(mev);
+                break;
+            case EventType.mouseClick:
+                mouseClickEvent(mev);
+                break;
+            case EventType.mouseDblClick:
+                mouseDblClickEvent(mev);
+                break;
+            default:
+                break;
+            }
+        }
+        return event.consumed;
+    }
+
 
 
     override @property string inlineCSS() { return _inlineCSS; }
@@ -674,7 +798,6 @@ class View : StyleElement {
         _name = value;
     }
 
-
     /// Bit flags that describe what in a view needs update
     enum Dirty
     {
@@ -718,6 +841,32 @@ class View : StyleElement {
         all                 = styleMask | renderMask | transformMask | layoutMask
     }
 
+    private static struct MaskedFilter
+    {
+        EventFilter filter;
+        uint mask;
+    }
+
+
+    invariant()
+    {
+        assert(!_firstChild || _firstChild._parent is this);
+        assert(!_lastChild || _lastChild._parent is this);
+        assert(!_firstChild || _firstChild._prevSibling is null);
+        assert(!_lastChild || _lastChild._nextSibling is null);
+
+        assert(_childCount != 0 || (_firstChild is null && _lastChild is null));
+        assert(_childCount == 0 || (_firstChild !is null && _lastChild !is null));
+        assert(_childCount != 1 || (_firstChild is _lastChild));
+        assert((_firstChild is null) == (_lastChild is null));
+
+        assert(!_prevSibling || _prevSibling._nextSibling is this);
+        assert(!_nextSibling || _nextSibling._prevSibling is this);
+
+        assert(!(_parent && _ui)); // only root can hold the ui ref
+    }
+
+
     // ui
     package(dgt.ui) UserInterface _ui;
     private View _parent;
@@ -754,6 +903,9 @@ class View : StyleElement {
     // style properties
     package(dgt.ui) IStyleMetaProperty[]        _styleMetaProperties;
     package(dgt.ui) IStyleProperty[string]      _styleProperties;
+
+    // events
+    private MaskedFilter[] _evFilters;
 
     // debug
     private string _name;
