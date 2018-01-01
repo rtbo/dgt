@@ -119,7 +119,7 @@ class EventLoop
 
     private void compressEvent(PlEvent ev)
     {
-        auto wEv = cast(WindowEvent)ev;
+        auto wEv = cast(PlWindowEvent)ev;
         if (wEv) {
             assert(hasWindow(wEv.window));
             version(Windows) {
@@ -143,7 +143,7 @@ class EventLoop
         }
         else {
             if (ev.type == PlEventType.timer) {
-                _timerEvents ~= cast(TimerEvent)ev;
+                _timerEvents ~= cast(PlTimerEvent)ev;
             }
         }
     }
@@ -159,5 +159,5 @@ class EventLoop
     private bool _exitFlag;
     private int _exitCode;
     private Window[] _windows;
-    private TimerEvent[] _timerEvents;
+    private PlTimerEvent[] _timerEvents;
 }

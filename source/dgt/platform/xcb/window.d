@@ -367,12 +367,12 @@ class XcbWindow : PlatformWindow
             if (e.x != _rect.x || e.y != _rect.y)
             {
                 _rect.point = IPoint(e.x, e.y);
-                collector(new MoveEvent(_win, _rect.point));
+                collector(new PlMoveEvent(_win, _rect.point));
             }
             if (e.width != _rect.width || e.height != _rect.height)
             {
                 _rect.size = ISize(e.width, e.height);
-                collector(new ResizeEvent(_win, _rect.size));
+                collector(new PlResizeEvent(_win, _rect.size));
             }
         }
 
@@ -384,7 +384,7 @@ class XcbWindow : PlatformWindow
         body
         {
             _mapped = false;
-            auto ev = new HideEvent(_win);
+            auto ev = new PlHideEvent(_win);
             collector(ev);
         }
 
@@ -396,7 +396,7 @@ class XcbWindow : PlatformWindow
         body
         {
             _mapped = true;
-            auto ev = new ShowEvent(_win);
+            auto ev = new PlShowEvent(_win);
             collector(ev);
         }
 
@@ -414,7 +414,7 @@ class XcbWindow : PlatformWindow
                 if (ws != _lastKnownState)
                 {
                     _lastKnownState = ws;
-                    collector(new StateChangeEvent(_win, ws));
+                    collector(new PlStateChangeEvent(_win, ws));
                 }
             }
         }
@@ -426,7 +426,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = new ExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
+            auto ev = new PlExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
             collector(ev);
         }
     }

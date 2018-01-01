@@ -152,7 +152,7 @@ class Win32Window : PlatformWindow
 
         bool handleClose(void delegate(PlEvent) collector)
         {
-            auto ev = new CloseEvent(_win);
+            auto ev = new PlCloseRequestEvent(_win);
             collector(ev);
             return true;
         }
@@ -168,7 +168,7 @@ class Win32Window : PlatformWindow
 
             immutable r = IRect(0, 0, this.rect.size);
 
-			auto ev = new ExposeEvent(_win, r);
+			auto ev = new PlExposeEvent(_win, r);
 			collector(ev);
 
             immutable wr = rectToWin32(r);
@@ -217,12 +217,12 @@ class Win32Window : PlatformWindow
             _rect = g;
 
             if (g.size != oldG.size) {
-                auto ev = new ResizeEvent(_win, g.size);
+                auto ev = new PlResizeEvent(_win, g.size);
                 collector(ev);
                 _sentFstResize = true;
             }
             if (g.point != oldG.point) {
-                auto ev = new MoveEvent(_win, g.point);
+                auto ev = new PlMoveEvent(_win, g.point);
                 collector(ev);
             }
 
@@ -234,12 +234,12 @@ class Win32Window : PlatformWindow
             if (lParam) return false; // only handle calls subsequent to ShowWindow
 
             if (wParam) {
-                auto ev = new ShowEvent(_win);
+                auto ev = new PlShowEvent(_win);
                 collector(ev);
                 _sentFstShow = true;
             }
             else {
-                auto ev = new HideEvent(_win);
+                auto ev = new PlHideEvent(_win);
                 collector(ev);
             }
             return true;
@@ -374,7 +374,7 @@ class Win32Window : PlatformWindow
 
         void handleWindowStateChange(WindowState ws, void delegate(PlEvent) collector)
         {
-            auto ev = new StateChangeEvent(_win, ws);
+            auto ev = new PlStateChangeEvent(_win, ws);
             collector(ev);
         }
     }
@@ -462,7 +462,7 @@ class Win32Window : PlatformWindow
             immutable rectCond = rect.area != 0;
 
             if (!_sentFstShow && stateCond) {
-                auto ev = new ShowEvent(_win);
+                auto ev = new PlShowEvent(_win);
                 collector(ev);
             }
             if (!_sentFstResize && rectCond) {

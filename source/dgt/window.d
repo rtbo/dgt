@@ -26,6 +26,22 @@ enum WindowFlags
     dummy = 1,
 }
 
+final class CloseEvent
+{
+    void decline() {
+        _declined = true;
+    }
+
+    @property bool declined() const {
+        return _declined;
+    }
+
+    @property void declined(in bool value) {
+        _declined = value;
+    }
+
+    private bool _declined = false;
+}
 
 class Window
 {
@@ -199,10 +215,10 @@ class Window
         return _platformWindow.nativeHandle;
     }
 
-    void handleEvent(WindowEvent ev) {
+    void handleEvent(PlWindowEvent ev) {
         switch (ev.type) {
-        case PlEventType.close:
-            auto cev = cast(CloseEvent)ev;
+        case PlEventType.closeRequest:
+            auto cev = new CloseEvent;
             _onClose.fire(cev);
             if (!cev.declined) {
                 close();
@@ -238,12 +254,12 @@ class Window
             return _platformWindow.created;
         }
 
-        void compressEvent(WindowEvent ev)
+        void compressEvent(PlWindowEvent ev)
         {
             if (ev.type == PlEventType.move) {
                 if (_evCompress & EvCompress.move) {
-                    auto prev = getEvent!MoveEvent(PlEventType.move);
-                    auto cur = cast(MoveEvent)ev;
+                    auto prev = getEvent!PlMoveEvent(PlEventType.move);
+                    auto cur = cast(PlMoveEvent)ev;
                     prev.point = cur.point;
                 }
                 else {
@@ -253,8 +269,8 @@ class Window
             }
             else if (ev.type == PlEventType.resize) {
                 if (_evCompress & EvCompress.resize) {
-                    auto prev = getEvent!ResizeEvent(PlEventType.resize);
-                    auto cur = cast(ResizeEvent)ev;
+                    auto prev = getEvent!PlResizeEvent(PlEventType.resize);
+                    auto cur = cast(PlResizeEvent)ev;
                     prev.size = cur.size;
                 }
                 else {
@@ -289,10 +305,10 @@ class Window
         {
             if (_evCompress & EvCompress.fstFrame) {
                 if (!(_evCompress & EvCompress.show)) {
-                    handleEvent(new ShowEvent(this));
+                    handleEvent(new PlShowEvent(this));
                 }
                 if (!(_evCompress & EvCompress.resize)) {
-                    handleEvent(new ResizeEvent(this, size));
+                    handleEvent(new PlResizeEvent(this, size));
                 }
             }
             foreach(ev; _events) {
@@ -331,7 +347,7 @@ class Window
     private GlAttribs _attribs;
 
     EvCompress _evCompress = EvCompress.fstFrame;
-    WindowEvent[] _events;
+    PlWindowEvent[] _events;
     Handler!CloseEvent _onClose = new Handler!CloseEvent;
 
     private UserInterface _ui;

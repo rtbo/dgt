@@ -210,7 +210,7 @@ class XcbPlatform : Platform
                 auto fd = _pollFds[i+1];
                 if (fd.revents & POLLIN) {
                     res |= Wait.timer;
-                    _events ~= new TimerEvent(t.handler);
+                    _events ~= new PlTimerEvent(t.handler);
                     t.notifyShot();
                 }
             }
@@ -474,7 +474,7 @@ class XcbPlatform : Platform
             if (xcbEv.data.data32[0] == atom(Atom.WM_DELETE_WINDOW))
             {
                 auto w = window(xcbEv.window);
-                collector(new CloseEvent(w));
+                collector(new PlCloseRequestEvent(w));
             }
         }
     }

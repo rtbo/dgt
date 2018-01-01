@@ -140,7 +140,7 @@ class Win32Platform : Platform
             wait |= Wait.timer;
 
             void addTimerEvent(Win32Timer timer) {
-                _timerEvents ~= new TimerEvent(timer.handler);
+                _timerEvents ~= new PlTimerEvent(timer.handler);
             }
 
             addTimerEvent(_timers[first]);
