@@ -4,8 +4,7 @@ module dgt.platform.event;
 import dgt.core.enums;
 import dgt.core.geometry;
 import dgt.core.signal;
-import dgt.input.keys;
-import dgt.input.mouse;
+import dgt.input;
 import dgt.window;
 
 enum PlEventType

@@ -41,10 +41,3 @@ enum Alignment
 
     center      = centerH | centerV,
 }
-
-enum FocusMethod
-{
-    program,
-    mouse,
-    keyboard
-}

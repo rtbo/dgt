@@ -731,4 +731,3 @@ enum KeySym : uint
     oyayubiLeft,
     oyayubiRight,
 }
-
