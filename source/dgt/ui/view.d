@@ -11,6 +11,7 @@ import dgt.ui.event;
 import dgt.ui.layout;
 
 import std.exception;
+import std.experimental.logger;
 
 /// Base class for all views in the user interface
 class View : StyleElement {
@@ -528,6 +529,34 @@ class View : StyleElement {
         );
     }
 
+    /// Get a view at position given by pos.
+    View viewAtPos(in FVec2 pos)
+    {
+        if (localRect.contains(pos)) {
+            foreach (c; children) {
+                immutable cp = c.mapFromParent(pos);
+                auto res = c.viewAtPos(cp);
+                if (res) return res;
+            }
+            return this;
+        }
+        else {
+            return null;
+        }
+    }
+
+    /// Recursively append views that are located at pos from root to end target.
+    void viewsAtPos(in FVec2 pos, ref View[] nodes)
+    {
+        if (localRect.contains(pos)) {
+            nodes ~= this;
+            foreach (c; children) {
+                immutable cp = c.mapFromParent(pos);
+                c.viewsAtPos(cp, nodes);
+            }
+        }
+    }
+
     /// Give possibility to filter any event passing by
     /// To effectively filter an event, the filter delegate must consume it.
     /// Params:
@@ -576,7 +605,9 @@ class View : StyleElement {
         }
     }
     /// ditto
-    protected void mouseMoveEvent(MouseEvent ev) {}
+    protected void mouseMoveEvent(MouseEvent ev) {
+
+    }
     /// ditto
     protected void mouseClickEvent(MouseEvent ev) {}
     /// ditto

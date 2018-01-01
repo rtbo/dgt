@@ -209,22 +209,41 @@ class Window
         // _onClosed.fire(this);
     }
 
+    @property void onStateChange(Slot!WindowState slot)
+    {
+        _onStateChange.set(slot);
+    }
+
     @property size_t nativeHandle() const
     {
         enforce(_platformWindow.created);
         return _platformWindow.nativeHandle;
     }
 
-    void handleEvent(PlWindowEvent ev) {
-        switch (ev.type) {
+    void handleEvent(PlWindowEvent wEv) {
+        assert(wEv.window is this);
+        switch (wEv.type)
+        {
+        case PlEventType.move:
+            auto mEv = cast(PlMoveEvent) wEv;
+            _position = mEv.point;
+            break;
+        case PlEventType.resize:
+            auto rEv = cast(PlResizeEvent)wEv;
+            _size = rEv.size;
+            if (_ui) _ui.handleEvent(wEv);
+            break;
+        case PlEventType.stateChange:
+            auto scEv = cast(PlStateChangeEvent)wEv;
+            _onStateChange.fire(scEv.state);
+            break;
         case PlEventType.closeRequest:
             auto cev = new CloseEvent;
             _onClose.fire(cev);
-            if (!cev.declined) {
-                close();
-            }
+            if (!cev.declined) close();
             break;
         default:
+            if (_ui) _ui.handleEvent(wEv);
             break;
         }
     }
@@ -235,6 +254,9 @@ class Window
 
     @property void ui(UserInterface ui) {
         _ui = ui;
+        if (_ui && size.area) {
+            _ui.handleEvent(new PlResizeEvent(this, size));
+        }
     }
 
     package(dgt)
@@ -346,9 +368,10 @@ class Window
     private ISize _size;
     private GlAttribs _attribs;
 
-    EvCompress _evCompress = EvCompress.fstFrame;
-    PlWindowEvent[] _events;
-    Handler!CloseEvent _onClose = new Handler!CloseEvent;
+    private EvCompress _evCompress = EvCompress.fstFrame;
+    private PlWindowEvent[] _events;
+    private Handler!CloseEvent _onClose = new Handler!CloseEvent;
+    private Handler!WindowState _onStateChange = new Handler!WindowState;
 
     private UserInterface _ui;
 }
