@@ -62,18 +62,26 @@ class FcFontLibrary : FontLibrary
             }
         }
 
-        foreach (family; families) {
-
+        shared(Typeface) testFamily(in string family) {
             auto pattern = FcPatternCreate();
             scope(exit) FcPatternDestroy(pattern);
 
             auto matches = getSortedMatches(pattern, family, Nullable!FontStyle(style), charSet);
             scope(exit) FcFontSetDestroy(matches);
 
-            auto tf = selectBestFont(matches, pattern, family);
+            return selectBestFont(matches, pattern, family);
+        }
+
+        foreach (family; families) {
+            auto tf = testFamily(family);
             if (tf) return tf;
         }
-        return null;
+        if (!families.length || sicmp(families[$-1], "system-ui") != 0) {
+            return testFamily("system-ui");
+        }
+        else {
+            return null;
+        }
     }
 
     override @property size_t familyCount() {
