@@ -32,25 +32,35 @@ int main()
         string css;
     }
     Proverb[] proverbs = [
-        // Proverb("A", "font: 1in serif"),
-        Proverb("Assiduity makes all things easy.",             "font: 1in serif"),
-        Proverb("Le visage est le miroir du coeur.",            "font: italic 14px serif" ),
-        // Proverb("Früh steh auf, wer ein Meister werden will",   "font: italic 1cm serif" ),
-        // Proverb("لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي",        "font: 12px serif"),
-        // Proverb("花开堪折直需折",                                  "font: 12px serif" ),
-        // Proverb("あつささむさもひがんまで",                         "font: 12px serif" ),
+        Proverb(`Assiduity makes all things easy.`,
+                `font: 26px serif`),
+        Proverb(`Le visage est le miroir du cœur.`,
+                `font: italic 0.8cm serif`),
+        Proverb(`Früh steh auf, wer ein Meister werden will.`,
+                `font: italic 1.5em serif`),
+        Proverb("لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي",
+                `font: 30px "Droid Arabic Naskh", serif`),
+        Proverb(`花开堪折直需折`,
+                `font: 0.5in sans-serif`),
+        Proverb(`あつささむさもひがんまで`,
+                `font: 0.4in sans-serif` ),
     ];
 
     auto ui = new UserInterface;
-    ui.clearColor = some(Color.blue);
+    ui.clearColor = some(Color.black);
     auto layout = new LinearLayout;
+    layout.id = "layout";
     layout.setVertical();
     layout.gravity = Gravity.center;
+    layout.spacing = 20;
 
-    foreach (p; proverbs) {
+    foreach (i, p; proverbs) {
+        import std.format : format;
         auto view = new TextView;
+        view.id = format("text%s", i+1);
         view.text = p.text;
         view.inlineCSS = p.css;
+        view.color = Color.white;
         layout.appendView(view);
     }
     ui.root = layout;
