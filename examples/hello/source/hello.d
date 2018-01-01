@@ -35,15 +35,15 @@ int main()
         Proverb(`Assiduity makes all things easy.`,
                 `font: 26px serif`),
         Proverb(`Le visage est le miroir du cœur.`,
-                `font: italic 0.8cm serif`),
+                `font: italic 0.8cm "Times New Roman", "Nimbus Roman", serif`),
         Proverb(`Früh steh auf, wer ein Meister werden will.`,
                 `font: italic 1.5em serif`),
-        Proverb("لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي",
-                `font: 30px "Droid Arabic Naskh", serif`),
+        Proverb(`لاتنفق كلمتين اذا كفتك كلمة ـ مثل عربي`,
+                `font: 30px "Droid Arabic Naskh"`), // try a specific font, if not present fallback to default
         Proverb(`花开堪折直需折`,
-                `font: 0.5in sans-serif`),
+                `font: 0.5in`),         // default family for chinese text
         Proverb(`あつささむさもひがんまで`,
-                `font: 0.4in sans-serif` ),
+                `font: 0.4in` ),        // default family for japanese text
     ];
 
     auto ui = new UserInterface;
