@@ -10,6 +10,7 @@ import dgt.core.rc : rc;
 import dgt.font.library;
 import dgt.font.style;
 import dgt.font.typeface;
+import dgt.platform;
 import dgt.ui : UserInterface;
 import dgt.ui.layout;
 import dgt.ui.text;
@@ -54,6 +55,8 @@ int main()
     layout.gravity = Gravity.center;
     layout.spacing = 20;
 
+    TextView french;
+
     foreach (i, p; proverbs) {
         import std.format : format;
         auto view = new TextView;
@@ -62,18 +65,37 @@ int main()
         view.inlineCSS = p.css;
         view.color = Color.white;
         layout.appendView(view);
+        if (i==1) french = view;
     }
     ui.root = layout;
+
+
+    import dgt.ui.animation;
+    auto anim = new SmoothTransitionAnimation(ui, dur!"seconds"(3));
+    anim.onTick = (float phase) {
+        import dgt.math.transform : rotation, scale, translation;
+        import std.math : PI, sin;
+        const size = french.size.asVec;
+        const center = fvec(size/2, 0);
+        const factor = 1 + cast(float)sin(phase*PI);
+        const transform =
+                translation!float(center) *
+                rotation(phase*2*PI, fvec(0, 0, 1)) *
+                scale(factor, factor, 1) *
+                translation!float(-center);
+        french.transform = transform;
+    };
 
     auto win = new Window("Hello DGT");
     win.ui = ui;
     win.show();
 
-    // auto timer = Application.platform.createTimer();
-    // timer.duration = dur!"seconds"(10);
-    // timer.handler = &win.close;
-    // timer.start();
-    // scope(exit) timer.dispose();
+    auto timer = Application.platform.createTimer();
+    timer.duration = dur!"seconds"(2);
+    timer.mode = PlatformTimer.Mode.singleShot;
+    timer.handler = &anim.start;
+    timer.start();
+    scope(exit) timer.dispose();
 
     return app.loop();
 }

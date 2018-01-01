@@ -5,6 +5,7 @@ import dgt.core.geometry;
 import dgt.css.om : Stylesheet;
 import dgt.platform.event;
 import dgt.render.framegraph;
+import dgt.ui.animation;
 import dgt.ui.event;
 import dgt.ui.view : View;
 
@@ -139,6 +140,18 @@ class UserInterface {
             windowHandle, IRect(0, 0, _size),
             option(_clearColor.map!(c => c.asVec)), _root ? _root.transformRender() : null
         );
+    }
+
+    package(dgt) {
+        @property AnimationManager animManager() {
+            return _animManager;
+        }
+        @property bool hasAnimations() {
+            return _animManager.hasAnimations;
+        }
+        void tickAnimations() {
+            _animManager.tick();
+        }
     }
 
     private
@@ -337,6 +350,7 @@ class UserInterface {
     private View[] _tempViews;
     private UIPass _dirtyPass = UIPass.all;
     private Stylesheet _dgtCSS;
+    private AnimationManager _animManager = new AnimationManager;
 }
 
 enum UIPass {

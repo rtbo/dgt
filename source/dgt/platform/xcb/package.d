@@ -171,6 +171,7 @@ class XcbPlatform : Platform
             handleEvent(e, collector);
         }
         _events.each!(collector);
+        _events = [];
         xcb_flush(g_connection);
     }
 

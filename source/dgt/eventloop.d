@@ -33,9 +33,10 @@ class EventLoop
             //  - deliver events to ui(s)
             //  - style pass
             //  - layout pass
+            //  - animations
             //  - collect frame and send it to renderer
             //  - wait that at most one frame is in the render queue
-            //  - wait that at least one event is in the event queue
+            //  - if no animation is running, wait that at least one event is in the event queue
             Application.platform.collectEvents(&compressEvent);
             deliverEvents();
             if (_exitFlag) {
@@ -47,6 +48,9 @@ class EventLoop
             windows
                 .filter!(w => w.ui && w.ui.needLayoutPass)
                 .each!(w => w.ui.layoutPass());
+            windows
+                .filter!(w => w.ui && w.ui.hasAnimations)
+                .each!(w => w.ui.tickAnimations());
             immutable frames = windows
                 .filter!(w => w.ui && w.ui.needRenderPass)
                 .map!(w => w.ui.frame(w.nativeHandle))
@@ -57,7 +61,12 @@ class EventLoop
                 // in process
                 RenderQueue.instance.waitAtMostFrames(1);
             }
-            Application.platform.wait(Wait.input | Wait.timer);
+            import std.algorithm : any;
+            const hasAnim = windows
+                    .filter!(w => w.ui)
+                    .map!(w => w.ui)
+                    .any!(ui => ui.hasAnimations);
+            if (!hasAnim) Application.platform.wait(Wait.input | Wait.timer);
         }
 
         // Window.close removes itself from _windows, so we need to dup.
