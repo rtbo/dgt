@@ -8,6 +8,7 @@ import dgt.text.shaping;
 
 import std.uni;
 
+alias FontId = ushort;
 alias GlyphId = ushort;
 
 /// A font typeface.
@@ -24,7 +25,11 @@ abstract class Typeface : AtomicRefCounted {
 
     abstract override void dispose();
 
-    final @property size_t id() {
+    final @property FontId id() const {
+        return _id;
+    }
+
+    final @property FontId id() shared {
         return _id;
     }
 
@@ -37,11 +42,11 @@ abstract class Typeface : AtomicRefCounted {
     /// Get a scaling context from the cache, or create it if not available
     abstract ScalingContext getScalingContext(in float pixelSize);
 
-    private size_t _id;
+    private immutable FontId _id;
 
-    private static size_t nextFontId() {
+    private static FontId nextFontId() {
         import core.atomic : atomicOp;
-        static shared size_t fontId = 0;
+        static shared FontId fontId = 0;
         immutable fid = atomicOp!"+="(fontId, 1);
         return fid;
     }
