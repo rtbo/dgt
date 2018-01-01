@@ -228,7 +228,7 @@ final class FontFamilyMetaProperty : StyleMetaProperty!(string[])
 
     this()
     {
-        super("font-family", true, ["sans-serif"], false);
+        super("font-family", true, ["system-ui"], false);
     }
 
     override bool parseValueImpl(ref Token[] tokens, out string[] families)
