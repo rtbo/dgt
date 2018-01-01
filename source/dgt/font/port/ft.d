@@ -274,18 +274,28 @@ final class FtScalingContext : ScalingContext
         }
 
         ensureSize();
-        bool yReversed = void;
         IVec2 bearing = IVec2(0, 0);
-        const img = renderGlyphPriv(glyphId, bearing, yReversed);
+        bool yReversed;
+        bool ownedByFT;
+        auto img = renderGlyphPriv(glyphId, bearing, yReversed, ownedByFT);
 
         Image glImg;
         if (img && yReversed) {
             glImg = new Image(img.format, img.size, img.stride);
             glImg.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
         }
-        else if (img) {
+        else if (img && ownedByFT) {
             glImg = img.dup;
         }
+        else if (img) {
+            glImg = img;
+        }
+
+        // if (glImg) {
+        //     import std.format;
+        //     static int num;
+        //     glImg.saveToFile(format("glyph%s.png", num++));
+        // }
 
         Glyph gl = glp ? *glp : new Glyph(glyphId);
         gl._img = glImg;
@@ -318,23 +328,49 @@ final class FtScalingContext : ScalingContext
 
     /// Render and return an image referencing internal FT buffer.
     /// Will be invalidated at next call of renderGlyph or rasterize
-    private const(Image) renderGlyphPriv(in GlyphId glyphId, ref IVec2 bearing, out bool yReversed)
+    private Image renderGlyphPriv(in GlyphId glyphId, ref IVec2 bearing, out bool yReversed, out bool ownedByFT)
     {
+        // FT_Load_Char(_face, 0x82b1, loadFlags);
         FT_Load_Glyph(_face, cast(FT_UInt)glyphId, loadFlags);
         FT_Render_Glyph(_face.glyph, renderMode);
         auto slot = _face.glyph;
-        auto bitmap = slot.bitmap;
+
+        immutable width = slot.bitmap.width;
+        immutable height = slot.bitmap.rows;
+        yReversed = slot.bitmap.pitch < 0;
 
         import std.math : abs;
-        immutable stride = abs(bitmap.pitch);
+        auto stride = abs(slot.bitmap.pitch);
         if (stride == 0) return null; // whitespace
 
-        immutable width = bitmap.width;
-        immutable height = bitmap.rows;
-        auto data = bitmap.buffer[0 .. height*stride];
+        auto data = slot.bitmap.buffer[0 .. height*stride];
+        ownedByFT = true;
+
+        if (slot.bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
+            // convert to gray scale into a temp bitmap and copy in GC memory
+            const expandOnes = slot.bitmap.pixel_mode == FT_PIXEL_MODE_MONO;
+            ownedByFT = false;
+            FT_Bitmap bitmap;
+            FT_Bitmap_Init(&bitmap);
+            FT_Bitmap_Convert(gFtLib, &slot.bitmap, &bitmap, 1);
+            stride = abs(bitmap.pitch);
+            yReversed = bitmap.pitch < 0;
+            data = bitmap.buffer[0 .. height*stride].dup;
+            if (expandOnes) {
+                // It happens with small size font with many details
+                // (typically asian) that freetype renders in mono.
+                // FT_Bitmap_Convert expands to 8bpp depth, but keeps ones and zeros
+                // (which would result invisible on a scale from 0 to 255).
+                // We expand the ones to an alpha value that look similar to other shaded fonts.
+                enum expandedValue = 212;
+                foreach (ref b; data) {
+                    if (b != 0) b = expandedValue;
+                }
+            }
+            FT_Bitmap_Done(gFtLib, &bitmap);
+        }
 
         bearing = vec(slot.bitmap_left, slot.bitmap_top);
-        yReversed = bitmap.pitch < 0;
         return new Image(data, ImageFormat.a8, width, stride);
     }
 
