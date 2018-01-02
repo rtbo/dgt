@@ -811,10 +811,31 @@ class View : StyleElement {
         );
     }
 
-    final immutable(FGNode) transformRender(FrameContext fc) {
-        return new immutable FGTransformNode(
+    version(dgtActivateWireframe) {
+        import dgt.core.color : Color;
+        /// the wireframe color to use if version(dgtActivateWireframe) is applied.
+        static Color wireframeColor = Color.black;
+    }
+
+    final immutable(FGNode) transformRender(FrameContext fc)
+    {
+        immutable transformed = new immutable FGTransformNode(
             transformToParent, render(fc)
         );
+
+        version(dgtActivateWireframe) {
+            import dgt.core.color : Color;
+            import dgt.core.paint : ColorPaint;
+            import gfx.foundation.typecons : some;
+
+            immutable wireframe = new immutable FGRectNode(
+                rect, 0, null, some(RectBorder(wireframeColor.asVec, 1))
+            );
+            return new immutable FGGroupNode([ transformed, wireframe ]);
+        }
+        else {
+            return transformed;
+        }
     }
 
     /// Get the name of this view, or its id if name is not set.
