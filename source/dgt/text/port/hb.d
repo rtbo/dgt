@@ -11,8 +11,9 @@ import dgt.text.shaping;
 class HbTextShapingContext : TextShapingContext {
     mixin(rcCode);
 
-    this (FT_Face face) {
+    this (FT_Face face, uint ftLoadFlags) {
         _font = hb_ft_font_create(face, null);
+        hb_ft_font_set_load_flags(_font, ftLoadFlags);
     }
 
     override void dispose() {

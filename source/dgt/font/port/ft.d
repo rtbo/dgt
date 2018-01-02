@@ -315,7 +315,7 @@ final class FtScalingContext : ScalingContext
         if (!_textShaper) {
             import dgt.text.port.hb : HbTextShapingContext;
             ensureSize();
-            _textShaper = new HbTextShapingContext(_face);
+            _textShaper = new HbTextShapingContext(_face, loadFlags);
             _textShaper.retain();
         }
         return _textShaper;
