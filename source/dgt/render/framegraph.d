@@ -83,7 +83,7 @@ abstract class FGNode
     }
 }
 
-class FGGroupNode : FGNode
+final class FGGroupNode : FGNode
 {
     immutable(FGNode)[] children;
 
@@ -94,7 +94,7 @@ class FGGroupNode : FGNode
     }
 }
 
-class FGTransformNode : FGNode
+final class FGTransformNode : FGNode
 {
     FMat4 transform;
     immutable(FGNode) child;
@@ -112,7 +112,7 @@ struct RectBorder {
     float width;
 }
 
-abstract class FGRectNode : FGNode
+final class FGRectNode : FGNode
 {
     private FRect _rect;
     private float _radius;
@@ -142,7 +142,7 @@ abstract class FGRectNode : FGNode
     }
 }
 
-class FGTextNode : FGNode
+final class FGTextNode : FGNode
 {
     FVec2 bearing;
     immutable(TextShape)[] shapes;
@@ -156,7 +156,7 @@ class FGTextNode : FGNode
     }
 }
 
-class FGImageNode : FGNode
+final class FGImageNode : FGNode
 {
     immutable(Image) image;
     CacheCookie cookie;
