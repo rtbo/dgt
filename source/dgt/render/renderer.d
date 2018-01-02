@@ -3,6 +3,7 @@ module dgt.render.renderer;
 import dgt.core.geometry;
 import dgt.core.rc;
 import dgt.math : FMat4;
+import dgt.render.cache;
 import dgt.render.framegraph;
 import dgt.render.text;
 import gfx.device;
@@ -14,9 +15,17 @@ struct RenderOptions {
 
 class RenderContext : Disposable {
 
+    this(RenderCache cache) {
+        _cache = cache;
+    }
+
     override void dispose() {
-        disposeGarbage();
         _renderTarget.unload();
+    }
+
+    /// Get the render cache
+    @property RenderCache cache() {
+        return _cache;
     }
 
     /// The view - projection transform matrix
@@ -40,32 +49,10 @@ class RenderContext : Disposable {
     {
         _renderTarget = rtv;
     }
-    /// Collect some resource to be disposed.
-    /// Resource will be retained and finally disposed when a context is current
-    void collectGarbage(Disposable res)
-    {
-        _garbageD ~= res;
-    }
 
-    /// ditto
-    void collectGarbage(RefCounted res)
-    {
-        res.retain();
-        _garbageRC ~= res;
-    }
-
-    /// Called when the context is current
-    void disposeGarbage()
-    {
-        disposeArray(_garbageD);
-        releaseArray(_garbageRC);
-    }
-
+    RenderCache _cache;
     FMat4 _viewProj;
     Rc!(RenderTargetView!Rgba8) _renderTarget;
-    Disposable[] _garbageD;
-    RefCounted[] _garbageRC;
-
 }
 
 class Renderer : Disposable {
@@ -73,6 +60,7 @@ class Renderer : Disposable {
     this(Device device, RenderOptions options) {
         _device = device;
         _options = options;
+        _cache = new RenderCache;
     }
 
     override void dispose() {
@@ -80,6 +68,8 @@ class Renderer : Disposable {
             _textRenderer.dispose();
             _textRenderer = null;
         }
+        _cache.dispose();
+        _cache = null;
         _rtv.unload();
         _surf.unload();
         _cmdBuf.unload();
@@ -116,13 +106,12 @@ class Renderer : Disposable {
         );
 
         if (frame.root) {
-            auto ctx = new RenderContext;
+            auto ctx = new RenderContext(_cache);
             scope(exit) ctx.dispose();
             ctx.viewProj = orthoProj(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
             ctx.renderTarget = _rtv;
             renderNode(frame.root, ctx, FMat4.identity);
         }
-
 
         encoder.flush(_device);
     }
@@ -150,6 +139,8 @@ class Renderer : Disposable {
 
     private Rc!Device _device;
     private RenderOptions _options;
+    private RenderCache _cache;
+
     private Rc!CommandBuffer _cmdBuf;
     private Rc!(BuiltinSurface!Rgba8) _surf;
     private Rc!(RenderTargetView!Rgba8) _rtv;
