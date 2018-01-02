@@ -1,6 +1,7 @@
-/// Standard definitions
+/// Common definitions for the rendering backend
 module dgt.render.defs;
 
+import dgt.math.mat : FMat4;
 import gfx.pipeline.format : R8, Unorm;
 import gfx.pipeline.pso.meta : GfxName;
 
@@ -10,6 +11,15 @@ import std.typecons : Tuple;
 
 /// 8bits alpha mask gfx format
 alias Alpha8 = Tuple!(R8, Unorm);
+
+// common uniforms
+
+/// MVP transform
+struct MVP
+{
+    FMat4 model;
+    FMat4 viewProj;
+}
 
 
 // vertex types

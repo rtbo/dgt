@@ -222,12 +222,6 @@ struct GRGlyph {
     AtlasNode node;
 }
 
-
-struct MVP {
-    FMat4 model;
-    FMat4 viewProj;
-}
-
 struct Color {
     FVec4 color;
 }
