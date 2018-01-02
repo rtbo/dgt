@@ -238,13 +238,14 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
         assert(winning);
     }
     body {
-        CSSValueBase winningVal;
+        CSSValueBase winningVal = winning.value;
         if (!winningVal) {
             winningVal = parseValue(winning.valueTokens);
             winning.value = winningVal;
             if (!winningVal) {
                 warningf("could not parse winning declaration "~winning.property);
                 applyInitial(target, winning.origin);
+                return;
             }
         }
         if (winningVal.inherit) {

@@ -12,7 +12,7 @@ import dgt.ui.view;
 
 import std.experimental.logger;
 import std.range;
-import std.typecons : rebindable;
+import std.typecons : rebindable, Nullable;
 
 
 /// give support to a style instance to a view
@@ -172,12 +172,15 @@ final class BorderRadiusMetaProperty : StyleMetaProperty!float
 
 private struct ParsedFont
 {
-    FontSlant fs;
-    ParsedFontWeight pfw;
-    ParsedFontSize pfs;
+    Nullable!FontSlant slant;
+    Nullable!ParsedFontWeight parsedWeight;
+    ParsedFontSize parsedSize;
     string[] families;
 }
 
+/// Font shorthand meta property. Same as CSS3 font shorthand property.
+/// Unlike the CSS standard, it is allowed here to not specify the family, in
+/// such case it falls back to system-ui. (only the font size is mandatory)
 final class FontMetaProperty : StyleShorthandProperty!ParsedFont
 {
     mixin StyleSingleton!(typeof(this));
@@ -194,13 +197,20 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
 
     override bool parseValueImpl(ref Token[] tokens, out ParsedFont font)
     {
-        if (!FontSlantMetaProperty.instance.parseValueImpl(tokens, font.fs)) {
+        FontSlant slant;
+        ParsedFontWeight parsedWeight;
+        string[] families;
+        if (FontSlantMetaProperty.instance.parseValueImpl(tokens, slant)) {
+            font.slant = slant;
         }
-        if (!FontWeightMetaProperty.instance.parseValueImpl(tokens, font.pfw)) {
+        if (FontWeightMetaProperty.instance.parseValueImpl(tokens, parsedWeight)) {
+            font.parsedWeight = parsedWeight;
         }
-        if (!FontSizeMetaProperty.instance.parseValueImpl(tokens, font.pfs)) {
+        if (!FontSizeMetaProperty.instance.parseValueImpl(tokens, font.parsedSize)) {
+            return false;
         }
-        if (!FontFamilyMetaProperty.instance.parseValueImpl(tokens, font.families)) {
+        if (FontFamilyMetaProperty.instance.parseValueImpl(tokens, families)) {
+            font.families = families;
         }
         return true;
     }
@@ -209,16 +219,19 @@ final class FontMetaProperty : StyleShorthandProperty!ParsedFont
         auto pf = (cast(CSSValue)val).value;
 
         auto fsp = cast(StyleProperty!FontSlant)target.styleProperty("font-style");
-        fsp.setValue(FontSlantMetaProperty.instance.convert(pf.fs, target), origin);
+        fsp.setValue(FontSlantMetaProperty.instance.convert(
+            pf.slant.isNull ? FontSlantMetaProperty.instance.initialVal : pf.slant, target), origin);
 
         auto fwp = cast(StyleProperty!FontWeight)target.styleProperty("font-weight");
-        fwp.setValue(FontWeightMetaProperty.instance.convert(pf.pfw, target), origin);
+        fwp.setValue(FontWeightMetaProperty.instance.convert(
+            pf.parsedWeight.isNull ? FontWeightMetaProperty.instance.initialVal : pf.parsedWeight, target), origin);
 
         auto fszp = cast(StyleProperty!int)target.styleProperty("font-size");
-        fszp.setValue(FontSizeMetaProperty.instance.convert(pf.pfs, target), origin);
+        fszp.setValue(FontSizeMetaProperty.instance.convert(pf.parsedSize, target), origin);
 
         auto ffp = cast(StyleProperty!(string[]))target.styleProperty("font-family");
-        ffp.setValue(FontFamilyMetaProperty.instance.convert(pf.families, target), origin);
+        ffp.setValue(FontFamilyMetaProperty.instance.convert(
+            pf.families.length ? pf.families : FontFamilyMetaProperty.instance.initialVal, target), origin);
     }
 }
 
@@ -268,7 +281,7 @@ final class FontFamilyMetaProperty : StyleMetaProperty!(string[])
                 break;
             }
         }
-        return true;
+        return families.length != 0;
     }
 }
 
