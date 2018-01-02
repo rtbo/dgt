@@ -47,6 +47,10 @@ class RectRenderer : Disposable
     void render(immutable(FGRectNode) node, RenderContext ctx,
                 in FMat4 model, CommandBuffer cmdBuf)
     {
+        if (!node.paint) {
+            renderCol(node, ctx, model, cmdBuf);
+            return;
+        }
         switch (node.paint.type) {
         case PaintType.color:
         case PaintType.linearGradient:
@@ -83,24 +87,30 @@ class RectRenderer : Disposable
             fs.strokeWidth = b.width;
         });
 
-        switch (node.paint.type) {
-        case PaintType.color:
-            immutable cp = cast(immutable(ColorPaint))node.paint;
+        if (!node.paint) {
             fs.numStops = 1;
-            encoder.updateConstBuffer(csBlk, [ColorStop(cp.color.asVec, 0f)]);
-            break;
-        case PaintType.linearGradient:
-            enum maxStops = 8;
-            immutable lgp = cast(immutable(LinearGradientPaint))node.paint;
-            fs.numStops = min(lgp.stops.length, maxStops);
-            const stops = lgp.stops
-                        .take(maxStops)
-                        .map!(s => ColorStop(s.color.asVec, s.position))
-                        .array;
-            encoder.updateConstBuffer(csBlk, stops);
-            break;
-        default:
-            assert(false);
+            encoder.updateConstBuffer(csBlk, [ColorStop(fvec(0, 0, 0, 0), 0f)]);
+        }
+        else {
+            switch (node.paint.type) {
+            case PaintType.color:
+                immutable cp = cast(immutable(ColorPaint))node.paint;
+                fs.numStops = 1;
+                encoder.updateConstBuffer(csBlk, [ColorStop(cp.color.asVec, 0f)]);
+                break;
+            case PaintType.linearGradient:
+                enum maxStops = 8;
+                immutable lgp = cast(immutable(LinearGradientPaint))node.paint;
+                fs.numStops = min(lgp.stops.length, maxStops);
+                const stops = lgp.stops
+                            .take(maxStops)
+                            .map!(s => ColorStop(s.color.asVec, s.position))
+                            .array;
+                encoder.updateConstBuffer(csBlk, stops);
+                break;
+            default:
+                assert(false);
+            }
         }
 
         encoder.updateConstBuffer(fsBlk, fs);
