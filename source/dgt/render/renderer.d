@@ -95,6 +95,10 @@ class Renderer : Disposable {
         // candidate to parallelisation
         _textRenderer.framePreprocess(frame);
 
+        foreach(const c; frame.prune) {
+            _cache.prune(c);
+        }
+
         const vpf = cast(FRect)frame.viewport;
         const vps = cast(Rect!ushort)frame.viewport;
         auto encoder = Encoder(_cmdBuf);

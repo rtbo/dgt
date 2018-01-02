@@ -11,26 +11,50 @@ import dgt.text.layout : TextShape;
 import gfx.foundation.typecons : Option;
 import gfx.pipeline.draw;
 
+class FrameContext {
+    void prune(in CacheCookie cookie) {
+        _prune ~= cookie;
+    }
+    CacheCookie[] _prune;
+}
+
 class FGFrame
 {
-    IRect _viewport;
-    size_t _windowHandle;
-    Option!FVec4 _clearColor;
-    immutable(FGNode) _root=null;
+    private IRect _viewport;
+    private size_t _windowHandle;
+    private Option!FVec4 _clearColor;
+    private immutable(FGNode) _root;
+    private immutable(CacheCookie)[] _prune;
 
-    immutable this(size_t windowHandle, IRect viewport, Option!FVec4 clearColor, immutable(FGNode) root)
+    immutable this(size_t windowHandle, IRect viewport, Option!FVec4 clearColor,
+                   immutable(FGNode) root, immutable(CacheCookie)[] prune)
     {
         _windowHandle = windowHandle;
         _viewport = viewport;
         _clearColor = clearColor;
         _root = root;
+        _prune = prune;
     }
 
-    @property size_t windowHandle() const { return _windowHandle; }
-    @property IRect viewport() const { return _viewport; }
+    @property IRect viewport() immutable {
+        return _viewport;
+    }
 
-    @property Option!FVec4 clearColor() const { return _clearColor; }
-    @property immutable(FGNode) root() const { return _root; }
+    @property size_t windowHandle() immutable {
+        return _windowHandle;
+    }
+
+    @property Option!FVec4 clearColor() immutable {
+        return _clearColor;
+    }
+
+    @property immutable(FGNode) root() immutable {
+        return _root;
+    }
+
+    @property immutable(CacheCookie)[] prune() immutable {
+        return _prune;
+    }
 }
 
 

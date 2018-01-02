@@ -131,14 +131,22 @@ class UserInterface {
         _dirtyPass &= ~UIPass.layout;
     }
 
+    void pruneCachedResource(in CacheCookie cookie) {
+
+    }
+
     immutable(FGFrame) frame(in size_t windowHandle) {
         import std.algorithm : map;
-        scope(success) {
-            _dirtyPass &= ~UIPass.render;
-        }
+        import std.exception : assumeUnique;
+
+        auto fc = new FrameContext;
+        immutable rootNode = _root ? _root.transformRender(fc) : null;
+        _dirtyPass &= ~UIPass.render;
+
         return new immutable FGFrame (
             windowHandle, IRect(0, 0, _size),
-            option(_clearColor.map!(c => c.asVec)), _root ? _root.transformRender() : null
+            option(_clearColor.map!(c => c.asVec)), rootNode,
+            assumeUnique(fc._prune)
         );
     }
 

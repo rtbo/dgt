@@ -37,7 +37,7 @@ class RenderCache : Disposable
     }
 
     /// Release a resource from the cache.
-    void remove(in CacheCookie cookie) {
+    void prune(in CacheCookie cookie) {
         auto rcp = cookie in _cache;
         if (rcp) {
             rcp.release();

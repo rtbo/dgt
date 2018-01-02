@@ -803,17 +803,17 @@ class View : StyleElement {
     }
 
 
-    immutable(FGNode) render() {
+    immutable(FGNode) render(FrameContext fc) {
         import std.algorithm : map;
         import std.array : array;
         return new immutable FGGroupNode (
-            children.map!(c => c.transformRender()).array
+            children.map!(c => c.transformRender(fc)).array
         );
     }
 
-    final immutable(FGNode) transformRender() {
+    final immutable(FGNode) transformRender(FrameContext fc) {
         return new immutable FGTransformNode(
-            transformToParent, render()
+            transformToParent, render(fc)
         );
     }
 
