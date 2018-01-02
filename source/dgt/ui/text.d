@@ -117,7 +117,7 @@ class TextView : View {
     private void ensureLayout()
     {
         if (_layoutDirty && _text.length) {
-            immutable p = new ColorPaint(_color);
+            immutable p = new immutable ColorPaint(_color);
             const fs = FontStyle(cast(FontWeight)fontWeight, fontSlant);
 
             _layout.clearItems();

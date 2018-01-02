@@ -16,7 +16,7 @@ struct TextItem
     string[] families;
     FontStyle style;
     float size;
-    Paint fill;
+    immutable(Paint) fill;
 }
 
 /// Metrics of text drawn to screen

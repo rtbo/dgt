@@ -49,11 +49,9 @@ enum SpreadMode
 /// It can hold one of the different paint types.
 /// While Paint are mutable references, they only have immutable members.
 /// They can therefore safely be sent as-is to the rendering thread.
-alias Paint = immutable(_Paint);
+alias RPaint = Rebindable!(immutable(Paint));
 /// ditto
-alias RPaint = Rebindable!Paint;
-/// ditto
-abstract immutable class _Paint
+abstract immutable class Paint
 {
     private immutable this (PaintType type)
     {
@@ -71,11 +69,9 @@ abstract immutable class _Paint
 
 /// A solid paint color.
 /// The color is represented with sRGBA float channels.
-alias ColorPaint = immutable(_ColorPaint);
+alias RColorPaint = Rebindable!(immutable(ColorPaint));
 /// ditto
-alias RColorPaint = Rebindable!ColorPaint;
-/// ditto
-immutable class _ColorPaint : _Paint
+immutable class ColorPaint : Paint
 {
     /// Initialize with color
     immutable this (in Color color)
@@ -100,11 +96,9 @@ immutable class _ColorPaint : _Paint
 }
 
 /// Abstract base for gradient paints.
-alias GradientPaint = immutable(_GradientPaint);
+alias RGradientPaint = Rebindable!(immutable(GradientPaint));
 /// ditto
-alias RGradientPaint = Rebindable!GradientPaint;
-/// ditto
-abstract immutable class _GradientPaint : _Paint
+abstract immutable class GradientPaint : Paint
 {
     private immutable this(PaintType type, immutable GradientStop[] stops) {
         super(type);
@@ -123,11 +117,9 @@ abstract immutable class _GradientPaint : _Paint
 /// Gradient that interpolate colors in a linear way between two points.
 /// The color on each point on the line from start to end is projected
 /// orthogonally on both sides of the line.
-alias LinearGradientPaint = immutable(_LinearGradientPaint);
+alias RLinearGradientPaint = Rebindable!(immutable(LinearGradientPaint));
 /// ditto
-alias RLinearGradientPaint = Rebindable!LinearGradientPaint;
-/// ditto
-immutable class _LinearGradientPaint : _GradientPaint
+immutable class LinearGradientPaint : GradientPaint
 {
     /// gradient line direction
     enum Direction
@@ -226,11 +218,9 @@ immutable class _LinearGradientPaint : _GradientPaint
 /// Gradient paint that interpolates the color defined in stops between a focal
 /// point and a circle.
 /// Not supported yet.
-alias RadialGradientPaint = immutable(_RadialGradientPaint);
+alias RRadialGradientPaint = Rebindable!(immutable(RadialGradientPaint));
 /// ditto
-alias RRadialGradientPaint = Rebindable!RadialGradientPaint;
-/// ditto
-immutable class _RadialGradientPaint : _GradientPaint
+immutable class RadialGradientPaint : GradientPaint
 {
     this (in FVec2 focal, in FVec2 center, in float radius, immutable GradientStop[] stops)
     {
@@ -260,11 +250,9 @@ immutable class _RadialGradientPaint : _GradientPaint
 
 /// A Paint that will paint image data
 /// Not supported yet.
-alias ImagePaint = immutable(_ImagePaint);
+alias RImagePaint = Rebindable!(immutable(ImagePaint));
 /// ditto
-alias RImagePaint = Rebindable!ImagePaint;
-/// ditto
-immutable class _ImagePaint : _Paint
+immutable class ImagePaint : Paint
 {
     this(immutable(Image) image)
     {
@@ -284,7 +272,7 @@ import dgt.css.token;
 import std.range;
 
 /// parse CSS token into a paint.
-Paint parsePaint(Tokens)(ref Tokens tokens)
+immutable(Paint) parsePaint(Tokens)(ref Tokens tokens)
 if (isInputRange!Tokens && is(ElementType!Tokens == Token))
 {
     tokens.popSpaces();
@@ -304,7 +292,7 @@ if (isInputRange!Tokens && is(ElementType!Tokens == Token))
     return null;
 }
 /// ditto
-Paint parsePaint(string css)
+immutable(Paint) parsePaint(string css)
 {
     import std.utf : byDchar;
     auto tokens = makeTokenInput(byDchar(css), null);
@@ -360,7 +348,7 @@ unittest
 
 private:
 
-LinearGradientPaint parseLinearGradientPaint(Tokens)(ref Tokens tokens)
+immutable(LinearGradientPaint) parseLinearGradientPaint(Tokens)(ref Tokens tokens)
 {
     tokens.popSpaces();
     if (tokens.empty) return null;
@@ -422,7 +410,7 @@ LinearGradientPaint parseLinearGradientPaint(Tokens)(ref Tokens tokens)
     immutable stops = parseColorStops(tokens);
     if (stops.empty) return null;
 
-    return new LinearGradientPaint(dir, angle, stops);
+    return new immutable LinearGradientPaint(dir, angle, stops);
 }
 
 immutable(GradientStop)[] parseColorStops(Tokens)(ref Tokens tokens)

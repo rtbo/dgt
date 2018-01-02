@@ -38,7 +38,7 @@ final class BackgroundMetaProperty : StyleMetaProperty!(RPaint)
 
     this()
     {
-        super("background", false, RPaint(new ColorPaint(Color.transparent)), false);
+        super("background", false, RPaint(new immutable ColorPaint(Color.transparent)), false);
     }
 
     override bool parseValueImpl(ref Token[] tokens, out RPaint paint)
