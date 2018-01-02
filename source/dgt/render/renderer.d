@@ -5,6 +5,7 @@ import dgt.core.rc;
 import dgt.math : FMat4;
 import dgt.render.cache;
 import dgt.render.framegraph;
+import dgt.render.rect;
 import dgt.render.text;
 import gfx.device;
 import gfx.pipeline;
@@ -64,6 +65,10 @@ class Renderer : Disposable {
     }
 
     override void dispose() {
+        if (_rectRenderer) {
+            _rectRenderer.dispose();
+            _rectRenderer = null;
+        }
         if (_textRenderer) {
             _textRenderer.dispose();
             _textRenderer = null;
@@ -84,6 +89,7 @@ class Renderer : Disposable {
             _device.builtinSurface, 1, 1, cast(ubyte)_options.samples
         );
         _rtv = _surf.viewAsRenderTarget();
+        _rectRenderer = new RectRenderer;
         _textRenderer = new TextRenderer;
     }
 
@@ -133,6 +139,9 @@ class Renderer : Disposable {
             immutable tn = cast(immutable(FGTransformNode))node;
             renderNode(tn.child, ctx, model*tn.transform);
             break;
+        case FGNode.Type.rect:
+            _rectRenderer.render(cast(immutable(FGRectNode))node, ctx, model, _cmdBuf);
+            break;
         case FGNode.Type.text:
             _textRenderer.render(cast(immutable(FGTextNode))node, ctx, model, _cmdBuf);
             break;
@@ -149,6 +158,7 @@ class Renderer : Disposable {
     private Rc!(BuiltinSurface!Rgba8) _surf;
     private Rc!(RenderTargetView!Rgba8) _rtv;
 
+    private RectRenderer _rectRenderer;
     private TextRenderer _textRenderer;
 }
 

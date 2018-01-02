@@ -5,6 +5,7 @@ module dgt.render.framegraph;
 
 import dgt.core.geometry;
 import dgt.core.image;
+import dgt.core.paint;
 import dgt.math.mat : FMat4;
 import dgt.text.layout : TextShape;
 
@@ -106,14 +107,38 @@ class FGTransformNode : FGNode
     }
 }
 
+struct RectBorder {
+    FVec4 color;
+    float width;
+}
 
 abstract class FGRectNode : FGNode
 {
-    FRect rect;
+    private FRect _rect;
+    private float _radius;
+    private Paint _paint;
+    private Option!RectBorder _border;
 
-    immutable this()
+    immutable this(in FRect rect, in float radius, immutable Paint paint, in Option!RectBorder border)
     {
         super(Type.rect);
+        _rect = rect;
+        _radius = radius;
+        _paint = paint;
+        _border = border;
+    }
+
+    @property FRect rect() immutable {
+        return _rect;
+    }
+    @property float radius() immutable {
+        return _radius;
+    }
+    @property immutable(Paint) paint() immutable {
+        return _paint;
+    }
+    @property Option!RectBorder border() immutable {
+        return _border;
     }
 }
 

@@ -9,6 +9,11 @@
 
     "buildRequirements": [ "disallowDeprecations" ],
 
+    "stringImportPaths": [
+        "views",
+        "source/dgt/render/shaders"
+    ],
+
     "subPackages": [
         "./bindings",
         "./bindings/cairo",
