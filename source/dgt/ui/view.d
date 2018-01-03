@@ -804,10 +804,13 @@ class View : StyleElement {
 
 
     immutable(FGNode) render(FrameContext fc) {
-        import std.algorithm : map;
+        import std.algorithm : filter, map;
         import std.array : array;
         return new immutable FGGroupNode (
-            children.map!(c => c.transformRender(fc)).array
+            children
+                .map!(c => c.transformRender(fc))
+                .filter!(n => n !is null)
+                .array
         );
     }
 
@@ -834,7 +837,12 @@ class View : StyleElement {
             immutable wireframe = new immutable FGRectNode(
                 wr, 0, null, some(RectBorder(wireframeColor.asVec, 1))
             );
-            return new immutable FGGroupNode([ transformed, wireframe ]);
+            if (transformed) {
+                return new immutable FGGroupNode([ transformed, wireframe ]);
+            }
+            else {
+                return wireframe;
+            }
         }
         else {
             return transformed;
