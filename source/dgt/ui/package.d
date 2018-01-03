@@ -3,6 +3,7 @@ module dgt.ui;
 import dgt.core.color;
 import dgt.core.geometry;
 import dgt.css.om : Stylesheet;
+import dgt.css.style;
 import dgt.platform.event;
 import dgt.render.framegraph;
 import dgt.ui.animation;
@@ -14,7 +15,7 @@ import gfx.foundation.typecons : option, Option;
 import std.experimental.logger;
 
 /// The UserInterface class represent the top level of the GUI tree.
-class UserInterface {
+final class UserInterface : StyleElement {
 
     this() {}
 
@@ -102,7 +103,6 @@ class UserInterface {
     }
 
     void stylePass () {
-        if (!_root) return;
         if (!_size.area) return;
 
         import dgt.css.cascade : cssCascade;
@@ -112,7 +112,7 @@ class UserInterface {
         if (!_dgtCSS) {
             _dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
         }
-        cssCascade(_root, _dgtCSS);
+        cssCascade(this, _dgtCSS);
         _root.recursClean(View.Dirty.styleMask);
         _dirtyPass &= ~UIPass.style;
     }
@@ -149,6 +149,118 @@ class UserInterface {
             assumeUnique(fc._prune)
         );
     }
+
+    // impl of style element
+
+    final override @property StyleElement styleParent() {
+        return null;
+    }
+
+    final override @property StyleElement styleRoot() {
+        return this;
+    }
+
+    final override @property StyleElement stylePrevSibling() {
+        return null;
+    }
+
+    final override @property StyleElement styleNextSibling() {
+        return null;
+    }
+
+    final override @property StyleElement styleFirstChild() {
+        return _root;
+    }
+
+    final override @property StyleElement styleLastChild() {
+        return _root;
+    }
+
+    final override @property string inlineCSS() { return _inlineCSS; }
+    /// Set the inline CSS
+    final @property void inlineCSS(string css)
+    {
+        if (css != _inlineCSS) {
+            _inlineCSS = css;
+            requestPass(UIPass.style);
+        }
+    }
+
+    final override @property string css() { return _css; }
+    /// Set the CSS stylesheet.
+    /// Can be set without surrounding rules, in such case, the declarations
+    /// are surrdounding by a universal selector.
+    final @property void css(string css)
+    {
+        import std.algorithm : canFind;
+        if (!css.canFind('{')) {
+            css = "*{"~css~"}";
+        }
+        if (css != _css) {
+            _css = css;
+            requestPass(UIPass.style);
+        }
+    }
+
+    /// The type used in css type selector.
+    /// e.g. in the following style rule, "label" is the CSS type:
+    /// `label { font-family: serif; }`
+    override @property string cssType() { return "ui"; }
+
+    /// The id of this view.
+    /// Used in CSS '#' selector, and for debug printing if name is not set.
+    override @property string id() { return _id; }
+    /// ditto
+    @property void id(in string id)
+    {
+        if (id != _id) {
+            _id = id;
+            requestPass(UIPass.style);
+        }
+    }
+
+    /// The CSS class of this view.
+    /// Used in CSS '.' selector.
+    override @property string cssClass() { return _cssClass; }
+    /// ditto
+    @property void cssClass(in string cssClass)
+    {
+        if (cssClass != _cssClass) {
+            _cssClass = cssClass;
+            requestPass(UIPass.style);
+        }
+    }
+
+    /// A pseudo state of the view.
+    override @property PseudoState pseudoState() { return _pseudoState; }
+
+
+    override @property IStyleMetaProperty[] styleMetaProperties() {
+        return _styleMetaProperties;
+    }
+
+    override @property IStyleProperty styleProperty(string name) {
+        auto sp = name in _styleProperties;
+        return sp ? *sp : null;
+    }
+
+    override @property FSize viewportSize() {
+        return cast(FSize)_size;
+    }
+
+    override @property float dpi() {
+        return 96f; // FIXME: get actual screen DPI
+    }
+
+    override @property bool isStyleDirty() {
+        return needStylePass;
+    }
+
+    override @property bool hasChildrenStyleDirty() {
+        if (!_root) return false;
+        return (_root.dirtyState & View.Dirty.styleMask) != View.Dirty.clean;
+    }
+
 
     package(dgt) {
         @property AnimationManager animManager() {
@@ -348,6 +460,24 @@ class UserInterface {
             }
         }
 
+
+        /// give support to a style instance to a view
+        private auto addStyleSupport(SMP)(SMP metaProp)
+        if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
+        {
+            auto sp = new SMP.Property(view, metaProp);
+            _styleProperties[metaProp.name] = sp;
+            if (!metaProp.hasShorthand) view._styleMetaProperties ~= metaProp;
+            return sp;
+        }
+
+        /// give support to a shorthand style instance to a view
+        void addShorthandStyleSupport(SMP)(SMP metaProp)
+        if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
+        {
+            _styleMetaProperties ~= metaProp;
+        }
+
     }
 
     private ISize _size;
@@ -357,8 +487,21 @@ class UserInterface {
     private View[] _mouseViews;
     private View[] _tempViews;
     private UIPass _dirtyPass = UIPass.all;
-    private Stylesheet _dgtCSS;
     private AnimationManager _animManager = new AnimationManager;
+
+    // style
+    private string _css;
+    private string _inlineCSS;
+    private string _id;
+    private string _cssClass;
+    private PseudoState _pseudoState;
+    private bool _hoverSensitive;
+    // style properties
+    package(dgt) IStyleMetaProperty[]        _styleMetaProperties;
+    package(dgt) IStyleProperty[string]      _styleProperties;
+    // UA stylesheet
+    private Stylesheet _dgtCSS;
+
 }
 
 enum UIPass {

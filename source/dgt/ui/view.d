@@ -685,10 +685,10 @@ class View : StyleElement {
     // StyleElement implementation
 
     final override @property StyleElement styleParent() {
-        return _parent;
+        return _parent ? cast(StyleElement)_parent : cast(StyleElement)_ui;
     }
     final override @property StyleElement styleRoot() {
-        return root;
+        return ui;
     }
     final override @property StyleElement stylePrevSibling() {
         return _prevSibling;
