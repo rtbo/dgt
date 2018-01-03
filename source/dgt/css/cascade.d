@@ -12,7 +12,7 @@ import std.range : retro;
 /// of each view
 void cssCascade(StyleElement root, Stylesheet dgtCSS)
 in {
-    assert(root.isRoot);
+    assert(root.isStyleRoot);
 }
 body {
     auto ctx = new CascadeContext;
@@ -42,7 +42,7 @@ final class CascadeContext
 
         if (el.hasChildrenStyleDirty) {
             import std.algorithm : each, filter;
-            treeChildren(el)
+            styleChildren(el)
                 .filter!(c => c.isStyleDirty || c.hasChildrenStyleDirty)
                 .each!(c => cascade(c, css));
         }

@@ -3,7 +3,6 @@ module dgt.css.style;
 
 import dgt.core.geometry;
 import dgt.core.signal;
-import dgt.core.tree;
 import dgt.css.om;
 import dgt.css.token;
 import dgt.css.value;
@@ -38,8 +37,25 @@ enum PseudoState
 
 
 /// StyleElement must be implemented by a tree structure that can receive css style properties
-interface StyleElement : TreeNode!StyleElement
+interface StyleElement
 {
+    /// The parent of this style element, or null if this element is the root.
+    @property StyleElement styleParent();
+    /// Whether this element is the root of the tree.
+    final @property bool isStyleRoot() {
+        return styleParent is null;
+    }
+    /// The root of the tree
+    @property StyleElement styleRoot();
+    /// Get the next sibling of this element.
+    @property StyleElement stylePrevSibling();
+    /// Get the previous sibling of this element.
+    @property StyleElement styleNextSibling();
+    /// Get the first child of this element.
+    @property StyleElement styleFirstChild();
+    /// Get the last child of this element.
+    @property StyleElement styleLastChild();
+
     /// The inline css of this element.
     /// That is, style that apply to this node, but not to its children.
     /// It must be specified as standalone declarations (without surrounding rules).
@@ -75,6 +91,24 @@ interface StyleElement : TreeNode!StyleElement
     @property bool isStyleDirty();
     /// Check whether one descendant of this element need a style pass
     @property bool hasChildrenStyleDirty();
+}
+
+
+/// Returns a bidirectional range over the children of a style element
+auto styleChildren(StyleElement se) {
+    return styleSiblingRange(se.styleFirstChild, se.styleLastChild);
+}
+
+/// Returns a bidirectional range that iterates from sibling to sibling, from first until last.
+auto styleSiblingRange(StyleElement first, StyleElement last)
+in {
+    assert(
+        (!first && !last) ||
+        (first && last && first.styleParent is last.styleParent)
+    );
+}
+body {
+    return StyleSiblingRange(first, last);
 }
 
 /// A CSS property value
@@ -218,7 +252,7 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
 
     final protected StyleElement fstSupportingParent(StyleElement style)
     {
-        auto p = style.parent;
+        auto p = style.styleParent;
         if (p && appliesTo(p)) return p;
         else if (p) return fstSupportingParent(p);
         else return null;
@@ -494,4 +528,48 @@ unittest
         Origin.code,
         Origin.dgt
     ]));
+}
+
+
+private:
+
+/// Bidirectional range that traverses a sibling node list
+struct StyleSiblingRange
+{
+    StyleElement _first;
+    StyleElement _last;
+
+    this (StyleElement first, StyleElement last)
+    {
+        _first = first;
+        _last = last;
+    }
+
+    @property bool empty() { return _first is null; }
+    @property auto front() { return _first; }
+    void popFront() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _first = _first.styleNextSibling;
+        }
+    }
+
+    @property auto save()
+    {
+        return StyleSiblingRange(_first, _last);
+    }
+
+    @property auto back() { return _last; }
+    void popBack() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _last = _last.stylePrevSibling;
+        }
+    }
 }

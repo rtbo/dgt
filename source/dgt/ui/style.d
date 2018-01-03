@@ -12,16 +12,36 @@ import dgt.ui.view;
 
 import std.experimental.logger;
 import std.range;
-import std.typecons : rebindable, Nullable;
+import std.typecons : rebindable, Nullable, Flag, No;
 
 
-/// give support to a style instance to a view
-auto addStyleSupport(SMP)(View view, SMP metaProp)
+/// Give support to a style instance to a view.
+/// Params:
+///     - view:             the view that supports the CSS property
+///     - metaProp:         the meta property instance of the supported CSS property
+///     - ignoresShorthand  if the meta property has shorthand and the flag is not set, it is assumed
+///                         that addShorthandStyleSupport is called for this very view and shorthand.
+auto addStyleSupport(SMP)(View view, SMP metaProp, in Flag!"ignoresShorthand" ignoresShorthand = No.ignoresShorthand)
 if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
 {
     auto sp = new SMP.Property(view, metaProp);
     view._styleProperties[metaProp.name] = sp;
-    if (!metaProp.hasShorthand) view._styleMetaProperties ~= metaProp;
+
+    // the cascade algorithm visits recursively the meta props of each node to check for matching declarations
+    // when it sees a shorthand meta prop, it will automatically check for the subproperties of this shorthand.
+    // Thus, if a prop has a shorthand, it does not need to be listed in the meta props.
+    // However, some views may prefer to ignore the shorthand and only support a subset of the sub properties.
+    // In such case the ignoresShorthand flag is passed and the property is listed in the meta props regardless
+    // of its shorthand.
+
+    //    hasShorthand      ignoresShorthand     shouldVisit
+    //          0                   0               1
+    //          0                   1               1
+    //          1                   0               0
+    //          1                   1               1
+
+    if (!metaProp.hasShorthand || ignoresShorthand) view._styleMetaProperties ~= metaProp;
+
     return sp;
 }
 
@@ -367,7 +387,7 @@ final class FontWeightMetaProperty : StyleMetaProperty!(FontWeight, ParsedFontWe
             return fw.abs;
         }
         else {
-            auto p = getProperty(target.parent);
+            auto p = getProperty(target.styleParent);
             immutable pfw = cast(int)(p ? p.value : initialFW);
 
             if (pfw >= 100 && pfw <= 300) {
@@ -592,7 +612,7 @@ final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
         case ParsedFontSize.Type.absolute:
             return cast(int)fs.abs;
         case ParsedFontSize.Type.relative:
-            immutable pfs = fontSizeOrInitial(target.parent);
+            immutable pfs = fontSizeOrInitial(target.styleParent);
             const pfsRel = pfs in relativeMap;
             if (pfsRel) {
                 return fs.rel == ParsedFontSize.RelKwd.smaller ?
@@ -606,21 +626,21 @@ final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
                 ));
             }
         case ParsedFontSize.Type.percent:
-            immutable pfs = fontSizeOrInitial(target.parent);
+            immutable pfs = fontSizeOrInitial(target.styleParent);
             return cast(int)round(0.01f * pfs * fs.per);
         case ParsedFontSize.Type.length:
             immutable lenVal = fs.len.val;
             final switch (fs.len.unit) {
             case Length.Unit.em:
-                immutable pfs = fontSizeOrInitial(target.parent);
+                immutable pfs = fontSizeOrInitial(target.styleParent);
                 return cast(int)round(lenVal * pfs);
             case Length.Unit.ex:
             case Length.Unit.ch:
                 // assuming 0.5em
-                immutable pfs = fontSizeOrInitial(target.parent);
+                immutable pfs = fontSizeOrInitial(target.styleParent);
                 return cast(int)round(0.5 * lenVal * pfs);
             case Length.Unit.rem:
-                immutable rfs = fontSizeOrInitial(target.root);
+                immutable rfs = fontSizeOrInitial(target.styleRoot);
                 return cast(int)round(lenVal * rfs);
             case Length.Unit.vw:
                 immutable width = target.viewportSize.width;

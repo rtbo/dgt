@@ -25,7 +25,7 @@ class View : StyleElement {
     }
 
     /// The root of this user interface
-    override @property View root()
+    @property View root()
     {
         if (!_parent) return this;
         View p = _parent;
@@ -34,55 +34,55 @@ class View : StyleElement {
     }
 
     /// This view's parent.
-    override @property View parent()
+    final @property View parent()
     {
         return _parent;
     }
 
     /// This view's previous sibling.
-    override @property View prevSibling()
+    final @property View prevSibling()
     {
         return _prevSibling;
     }
 
     /// This view's next sibling.
-    override @property View nextSibling()
+    final @property View nextSibling()
     {
         return _nextSibling;
     }
 
     /// Whether this view has children.
-    @property bool hasChildren() const
+    final @property bool hasChildren() const
     {
         return _firstChild !is null;
     }
 
     /// The number of children this view has.
-    @property size_t childCount() const
+    final @property size_t childCount() const
     {
         return _childCount;
     }
 
     /// This view's first child.
-    override @property View firstChild()
+    final @property View firstChild()
     {
         return _firstChild;
     }
 
     /// This view's last child.
-    override @property View lastChild()
+    final @property View lastChild()
     {
         return _lastChild;
     }
 
     /// A bidirectional range of this view's children
-    @property auto children()
+    final @property auto children()
     {
         return siblingRange!View(_firstChild, _lastChild);
     }
 
     /// Appends the given view to this view children list.
-    protected void appendChild(View view)
+    final protected void appendChild(View view)
     {
         enforce(view && !view._parent, "View.appendChild: invalid child or child already parented");
         view._parent = this;
@@ -100,7 +100,7 @@ class View : StyleElement {
     }
 
     /// Prepend the given view to this view children list.
-    protected void prependChild(View view)
+    final protected void prependChild(View view)
     {
         enforce(view && !view._parent, "View.appendChild: invalid child or child already parented");
         view._parent = this;
@@ -119,7 +119,7 @@ class View : StyleElement {
 
     /// Insert the given view in this view children list, just before the given
     /// child.
-    protected void insertChildBefore(View view, View child)
+    final protected void insertChildBefore(View view, View child)
     {
         enforce(view && !view._parent && child._parent is this,
                 "View.insertChildBefore: invalid view or child");
@@ -139,7 +139,7 @@ class View : StyleElement {
     }
 
     /// Removes the given view from this view children list.
-    protected void removeChild(View child)
+    final protected void removeChild(View child)
     {
         enforce(child && child._parent is this, "View.removeChild: invalid child");
 
@@ -682,6 +682,26 @@ class View : StyleElement {
         return event.consumed;
     }
 
+    // StyleElement implementation
+
+    final override @property StyleElement styleParent() {
+        return _parent;
+    }
+    final override @property StyleElement styleRoot() {
+        return root;
+    }
+    final override @property StyleElement stylePrevSibling() {
+        return _prevSibling;
+    }
+    final override @property StyleElement styleNextSibling() {
+        return _nextSibling;
+    }
+    final override @property StyleElement styleFirstChild() {
+        return _firstChild;
+    }
+    final override @property StyleElement styleLastChild() {
+        return _lastChild;
+    }
 
 
     override @property string inlineCSS() { return _inlineCSS; }
