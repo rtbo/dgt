@@ -71,7 +71,6 @@ abstract class FGNode
         group,
         transform,
         rect,
-        image,
         text,
     }
 
@@ -160,20 +159,6 @@ final class FGTextNode : FGNode
         super(Type.text);
     }
 }
-
-final class FGImageNode : FGNode
-{
-    immutable(Image) image;
-    CacheCookie cookie;
-
-    immutable this (in FPoint topLeft, immutable(Image) img, in CacheCookie cookie=nullCookie)
-    {
-        this.image = img;
-        this.cookie = cookie;
-        super(Type.image);
-    }
-}
-
 
 /// Cookie to be used as a key in a cache.
 struct CacheCookie
