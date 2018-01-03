@@ -14,7 +14,7 @@ import gfx.pipeline.draw;
 
 class FrameContext {
     void prune(in CacheCookie cookie) {
-        _prune ~= cookie;
+        if (cookie) _prune ~= cookie;
     }
     CacheCookie[] _prune;
 }
