@@ -1,35 +1,40 @@
 module dgt.ui;
 
-import dgt.core.color;
 import dgt.core.geometry;
+import dgt.core.color;
+import dgt.core.paint;
 import dgt.css.om : Stylesheet;
 import dgt.css.style;
 import dgt.platform.event;
 import dgt.render.framegraph;
 import dgt.ui.animation;
 import dgt.ui.event;
+import dgt.ui.style;
 import dgt.ui.view : View;
 
-import gfx.foundation.typecons : option, Option;
+import gfx.foundation.typecons : option, Option, none;
 
 import std.experimental.logger;
+import std.typecons : rebindable, Rebindable;
 
 /// The UserInterface class represent the top level of the GUI tree.
 final class UserInterface : StyleElement {
 
-    this() {}
+    this() {
+        _backgroundProperty = addStyleSupport(BackgroundMetaProperty.instance);
+        _backgroundProperty.onChange += { _bgDirty = true; };
+    }
 
     @property ISize size() {
         return _size;
     }
 
-    @property Option!Color clearColor()
-    {
-        return _clearColor;
+    @property immutable(Paint) background() {
+        return _backgroundProperty.value;
     }
-    @property void clearColor(in Option!Color color)
-    {
-        _clearColor = color;
+
+    @property void background(immutable(Paint) value) {
+        _backgroundProperty.setValue(rebindable(value));
     }
 
     /// The View root attached to this ui
@@ -136,7 +141,45 @@ final class UserInterface : StyleElement {
         import std.exception : assumeUnique;
 
         auto fc = new FrameContext;
-        immutable rootNode = _root ? _root.transformRender(fc) : null;
+
+        if (_bgDirty) {
+            immutable bg = background;
+            if (_bgNode) {
+                // release resource held by previous node
+                fc.prune(_bgNode.cookie);
+                _bgNode = null;
+            }
+
+            if (bg) {
+                switch (bg.type) {
+                case PaintType.color:
+                    immutable cp = cast(immutable(ColorPaint))bg;
+                    _clearColor = cp.color;
+                    break;
+                default:
+                    _clearColor.setNone();
+                    _bgNode = new immutable FGRectNode(
+                        FRect(0, 0, cast(FSize)size), 0f,
+                        bg, none!RectBorder, CacheCookie.next()
+                    );
+                }
+            }
+            else {
+                _clearColor = Color.transparent;
+            }
+
+            _bgDirty = false;
+        }
+
+        Rebindable!(immutable(FGNode)) rootNode = _root ? _root.transformRender(fc) : null;
+
+        if (_bgNode) {
+            immutable viewNode = rootNode.get;
+            rootNode = new immutable FGGroupNode([
+                _bgNode.get, viewNode,
+            ]);
+        }
+
         _dirtyPass &= ~UIPass.render;
 
         return new immutable FGFrame (
@@ -461,9 +504,9 @@ final class UserInterface : StyleElement {
         private auto addStyleSupport(SMP)(SMP metaProp)
         if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
         {
-            auto sp = new SMP.Property(view, metaProp);
+            auto sp = new SMP.Property(this, metaProp);
             _styleProperties[metaProp.name] = sp;
-            if (!metaProp.hasShorthand) view._styleMetaProperties ~= metaProp;
+            if (!metaProp.hasShorthand) _styleMetaProperties ~= metaProp;
             return sp;
         }
 
@@ -477,7 +520,6 @@ final class UserInterface : StyleElement {
     }
 
     private ISize _size;
-    private Option!Color _clearColor;
     private View _root;
     private View[] _dragChain;
     private View[] _mouseViews;
@@ -493,10 +535,15 @@ final class UserInterface : StyleElement {
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
     // style properties
-    package(dgt) IStyleMetaProperty[]        _styleMetaProperties;
-    package(dgt) IStyleProperty[string]      _styleProperties;
+    private IStyleMetaProperty[]    _styleMetaProperties;
+    private IStyleProperty[string]  _styleProperties;
+    private StyleProperty!RPaint    _backgroundProperty;
     // UA stylesheet
     private Stylesheet _dgtCSS;
+    // caching background
+    private Rebindable!(immutable(FGRectNode)) _bgNode;
+    private Option!Color _clearColor;
+    private bool _bgDirty;
 
 }
 

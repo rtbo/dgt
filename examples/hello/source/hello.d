@@ -26,7 +26,6 @@ int main()
     scope(exit) app.dispose();
 
     auto ui = new UserInterface;
-    ui.clearColor = some(Color.white);
 
     immutable logoImg = assumeUnique (
         Image.loadFromView!"dlang_logo.png"(ImageFormat.argb)
@@ -61,11 +60,11 @@ int main()
     win.show();
 
     auto timer = Application.platform.createTimer();
-    timer.duration = dur!"seconds"(2);
+    scope(exit) timer.dispose();
+    timer.duration = dur!"seconds"(1);
     timer.mode = PlatformTimer.Mode.singleShot;
     timer.handler = &anim.start;
     timer.start();
-    scope(exit) timer.dispose();
 
     return app.loop();
 }

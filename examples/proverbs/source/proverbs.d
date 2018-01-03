@@ -44,7 +44,7 @@ int main()
     ];
 
     auto ui = new UserInterface;
-    ui.clearColor = some(Color.black);
+    ui.inlineCSS = "background: black";
     version(dgtActivateWireframe) {
         import dgt.ui.view : View;
         View.wireframeColor = Color.red;
