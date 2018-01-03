@@ -828,8 +828,11 @@ class View : StyleElement {
             import dgt.core.paint : ColorPaint;
             import gfx.foundation.typecons : some;
 
+            const r = rect;
+            const wr = FRect(r.left-0.5, r.top-0.5, r.width+1, r.height+1);
+
             immutable wireframe = new immutable FGRectNode(
-                rect, 0, null, some(RectBorder(wireframeColor.asVec, 1))
+                wr, 0, null, some(RectBorder(wireframeColor.asVec, 1))
             );
             return new immutable FGGroupNode([ transformed, wireframe ]);
         }
