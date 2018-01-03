@@ -36,10 +36,10 @@ abstract class Animation
     final void start()
     {
         if (_running) {
-            warning("try to start a running animation");
+            warning("try to start a running animation: %s", name);
             return;
         }
-        trace("starting animation");
+        tracef("starting animation %s", name);
         _running = true;
         _startTime = MonoTime.currTime;
         _lastTick = MonoTime.zero;
@@ -51,10 +51,10 @@ abstract class Animation
     final void stop()
     {
         if (!_running) {
-            warning("try to stop a non-running animation");
+            warning("try to stop a non-running animation: ", name);
             return;
         }
-        trace("stopping animation");
+        tracef("stopping animation %s", name);
         _running = false;
         _ui.animManager.unregister(this);
         if (_onStop) _onStop.fire();
@@ -80,6 +80,13 @@ abstract class Animation
 
     abstract void tick(in Duration sinceStart);
 
+    @property string name() const {
+        return _name;
+    }
+    @property void name(in string value) {
+        _name = value;
+    }
+
 private:
     UserInterface _ui;
     Duration _duration;
@@ -88,6 +95,7 @@ private:
     FireableSignal!() _onStart;
     FireableSignal!() _onStop;
     bool _running;
+    string _name;
 }
 
 class TransitionAnimation : Animation
@@ -125,7 +133,7 @@ class TransitionAnimation : Animation
 
     final @property void onTick(Slot!float handler) {
         if (_tickHandler.engaged) {
-            warningf("overriding animation tick handler");
+            warningf("overriding animation tick handler: %s", name);
         }
         _tickHandler = handler;
     }
