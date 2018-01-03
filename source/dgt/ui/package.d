@@ -131,10 +131,6 @@ final class UserInterface : StyleElement {
         _dirtyPass &= ~UIPass.layout;
     }
 
-    void pruneCachedResource(in CacheCookie cookie) {
-
-    }
-
     immutable(FGFrame) frame(in size_t windowHandle) {
         import std.algorithm : map;
         import std.exception : assumeUnique;
