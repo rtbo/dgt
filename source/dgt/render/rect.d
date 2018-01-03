@@ -4,12 +4,14 @@
 module dgt.render.rect;
 
 import dgt.core.geometry;
+import dgt.core.image;
 import dgt.core.rc;
 import dgt.core.paint;
 import dgt.math;
 import dgt.render.defs;
 import dgt.render.framegraph;
 import dgt.render.renderer;
+import gfx.foundation.typecons : some;
 import gfx.pipeline;
 
 import std.experimental.logger;
@@ -27,12 +29,25 @@ class RectRenderer : Disposable
             )),
             Primitive.triangles, Rasterizer.fill.withSamples()
         );
-        imgPipe = new ImgPipe(
-            new Program(ShaderSet.vertexPixel(
-                import("rect_img_vx.glsl"), import("rect_img_px.glsl")
-            )),
-            Primitive.triangles, Rasterizer.fill.withSamples()
-        );
+
+        auto prog = makeRc!Program(ShaderSet.vertexPixel(
+            import("rect_img_vx.glsl"), import("rect_img_px.glsl")
+        ));
+        imgPipeXRGB = new ImgPipe(prog, Primitive.triangles, Rasterizer.fill.withSamples());
+
+        imgPipeARGB = new ImgPipe(prog, Primitive.triangles, Rasterizer.fill.withSamples());
+        imgPipeARGB.outColor.info.blend = some(Blend(
+            Equation.add,
+            Factor.zeroPlusSrcAlpha,
+            Factor.oneMinusSrcAlpha
+        ));
+
+        imgPipeARGBPremult = new ImgPipe(prog, Primitive.triangles, Rasterizer.fill.withSamples());
+        imgPipeARGBPremult.outColor.info.blend = some(Blend(
+            Equation.add,
+            Factor.one,
+            Factor.oneMinusSrcAlpha
+        ));
     }
 
     override void dispose() {
@@ -40,7 +55,9 @@ class RectRenderer : Disposable
         sharpIndBuf.unload();
         roundedIndBuf.unload();
         colPipe.unload();
-        imgPipe.unload();
+        imgPipeXRGB.unload();
+        imgPipeARGB.unload();
+        imgPipeARGBPremult.unload();
     }
 
 
@@ -149,6 +166,13 @@ class RectRenderer : Disposable
     private void renderImg(immutable(FGRectNode) node, RenderContext ctx,
                    in FMat4 model, CommandBuffer cmdBuf)
     {
+        immutable ip = cast(immutable(ImagePaint))node.paint;
+        assert(ip);
+        immutable img = ip.image;
+
+        auto pipe = selectImgPipe(img.format);
+        if (!pipe) return;
+
         auto encoder = Encoder(cmdBuf);
 
         Rc!(VertexBuffer!ImgVertex)     vbuf;
@@ -182,10 +206,6 @@ class RectRenderer : Disposable
             sBlk = makeRc!(ConstBuffer!Stroke)(1);
             encoder.updateConstBuffer(sBlk, s);
 
-            immutable ip = cast(immutable(ImagePaint))node.paint;
-            assert(ip);
-            immutable img = ip.image;
-
             auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
             TexUsageFlags usage = TextureUsage.shaderResource;
             auto tex = makeRc!(Texture2D!Rgba8)(
@@ -210,7 +230,7 @@ class RectRenderer : Disposable
 
         auto ibuf = node.radius > 0 ? roundedIndBuf : sharpIndBuf;
 
-        encoder.draw!ImgPipeMeta(VertexBufferSlice(ibuf), imgPipe, ImgPipe.Data(
+        encoder.draw!ImgPipeMeta(VertexBufferSlice(ibuf), pipe, ImgPipe.Data(
             vbuf, mvpBlk, sBlk, srv, sampler, ctx.renderTarget.rc
         ));
     }
@@ -403,6 +423,19 @@ class RectRenderer : Disposable
         }
     }
 
+    private ImgPipe selectImgPipe(in ImageFormat format) {
+        switch(format) {
+        case ImageFormat.xrgb:
+            return imgPipeXRGB;
+        case ImageFormat.argb:
+            return imgPipeARGB;
+        case ImageFormat.argbPremult:
+            return imgPipeARGBPremult;
+        default:
+            warningf("ImgRenderer: %s image format is not supported");
+            return null;
+        }
+    }
 
 
 
@@ -410,7 +443,9 @@ class RectRenderer : Disposable
     private Rc!(IndexBuffer!ushort) roundedIndBuf;
     private Rc!(IndexBuffer!ushort) sharpIndBuf;
     private Rc!ColPipe colPipe;
-    private Rc!ImgPipe imgPipe;
+    private Rc!ImgPipe imgPipeXRGB;
+    private Rc!ImgPipe imgPipeARGB;
+    private Rc!ImgPipe imgPipeARGBPremult;
 
 }
 
@@ -570,8 +605,7 @@ struct ImgPipeMeta
     ResourceSampler             sampler;
 
     @GfxName("o_Color")
-    @GfxBlend(Blend( Equation.add, Factor.one, Factor.oneMinusSrcAlpha ))
-    BlendOutput!Rgba8           outColor;
+    ColorOutput!Rgba8           outColor; // blend will be set dynamically for different image formats
 }
 
 alias ImgPipe = PipelineState!ImgPipeMeta;
