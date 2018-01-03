@@ -236,6 +236,10 @@ class Layout : View
 
         child.measure(ws, hs);
     }
+
+    override @property string cssType() {
+        return "layout";
+    }
 }
 
 
@@ -280,6 +284,10 @@ class LinearLayout : Layout
 
     /// Build a new linear layout
     this() {}
+
+    override @property string cssType() {
+        return "linear-layout";
+    }
 
     override protected void ensureLayout(View view) {
         auto llp = cast(Params)view.layoutParams;
