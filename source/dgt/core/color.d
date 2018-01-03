@@ -201,6 +201,21 @@ struct Color
     private uint _argb;
 }
 
+/// Whether color is fully transparent
+@property bool isTransparent(in Color color) {
+    return (color._argb & 0xff00_0000) == 0;
+}
+
+/// Whether color is fully opaque
+@property bool isOpaque(in Color color) {
+    return (color._argb & 0xff00_0000) == 0xff00_0000;
+}
+
+/// Whether color is neither fully transparent nor fully opaque
+@property bool isTransluscent(in Color color) {
+    return !color.isTransparent && !color.isOpaque;
+}
+
 
 /// Standards: https://www.w3.org/TR/css3-color/#svg-color
 enum ColorName
