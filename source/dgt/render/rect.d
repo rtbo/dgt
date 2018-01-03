@@ -204,7 +204,7 @@ class RectRenderer : Disposable
         const r = node.rect;
         const radius = node.radius;
         const hm = min(r.width, r.height) / 2; // half min
-        const hw = node.border.isSome ? node.border.get.width : 0;
+        const hw = node.border.isSome ? node.border.get.width / 2 : 0;
 
         // inner rect
         const ir = r - FPadding(hm);
