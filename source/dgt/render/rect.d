@@ -70,50 +70,73 @@ class RectRenderer : Disposable
     {
         auto encoder = Encoder(cmdBuf);
 
-        auto verts = buildVertices!ColVertex(node);
-        setGPos(verts, node);
-        auto vbuf = makeRc!(VertexBuffer!ColVertex)(verts);
+        Rc!(VertexBuffer!ColVertex) vbuf;
+        Rc!(ConstBuffer!FillStroke) fsBlk;
+        Rc!(ConstBuffer!ColorStop) csBlk;
 
-        auto csBlk = makeRc!(ConstBuffer!ColorStop)(8);
-        auto fsBlk = makeRc!(ConstBuffer!FillStroke)(1);
-
-        import std.algorithm : each, map, min;
-        import std.array : array;
-        import std.range : take;
-
-        FillStroke fs;
-        node.border.each!((RectBorder b) {
-            fs.stroke = b.color;
-            fs.strokeWidth = b.width;
-        });
-
-        if (!node.paint) {
-            fs.numStops = 1;
-            encoder.updateConstBuffer(csBlk, [ColorStop(fvec(0, 0, 0, 0), 0f)]);
+        if (node.cookie) {
+            auto ds = cast(ColDataSet)ctx.cache.resource(node.cookie);
+            if (ds) {
+                vbuf = ds.vbuf;
+                fsBlk = ds.fsBlk;
+                csBlk = ds.csBlk;
+            }
         }
-        else {
-            switch (node.paint.type) {
-            case PaintType.color:
-                immutable cp = cast(immutable(ColorPaint))node.paint;
+        if (!vbuf) {
+            auto verts = buildVertices!ColVertex(node);
+            setGPos(verts, node);
+            vbuf = makeRc!(VertexBuffer!ColVertex)(verts);
+
+            csBlk = makeRc!(ConstBuffer!ColorStop)(8);
+            fsBlk = makeRc!(ConstBuffer!FillStroke)(1);
+
+            import std.algorithm : each, map, min;
+            import std.array : array;
+            import std.range : take;
+
+            FillStroke fs;
+            node.border.each!((RectBorder b) {
+                fs.stroke = b.color;
+                fs.strokeWidth = b.width;
+            });
+
+            if (!node.paint) {
                 fs.numStops = 1;
-                encoder.updateConstBuffer(csBlk, [ColorStop(cp.color.asVec, 0f)]);
-                break;
-            case PaintType.linearGradient:
-                enum maxStops = 8;
-                immutable lgp = cast(immutable(LinearGradientPaint))node.paint;
-                fs.numStops = min(lgp.stops.length, maxStops);
-                const stops = lgp.stops
-                            .take(maxStops)
-                            .map!(s => ColorStop(s.color.asVec, s.position))
-                            .array;
-                encoder.updateConstBuffer(csBlk, stops);
-                break;
-            default:
-                assert(false);
+                encoder.updateConstBuffer(csBlk, [ColorStop(fvec(0, 0, 0, 0), 0f)]);
+            }
+            else {
+                switch (node.paint.type) {
+                case PaintType.color:
+                    immutable cp = cast(immutable(ColorPaint))node.paint;
+                    fs.numStops = 1;
+                    encoder.updateConstBuffer(csBlk, [ColorStop(cp.color.asVec, 0f)]);
+                    break;
+                case PaintType.linearGradient:
+                    enum maxStops = 8;
+                    immutable lgp = cast(immutable(LinearGradientPaint))node.paint;
+                    fs.numStops = min(lgp.stops.length, maxStops);
+                    const stops = lgp.stops
+                                .take(maxStops)
+                                .map!(s => ColorStop(s.color.asVec, s.position))
+                                .array;
+                    encoder.updateConstBuffer(csBlk, stops);
+                    break;
+                default:
+                    assert(false);
+                }
+            }
+
+            encoder.updateConstBuffer(fsBlk, fs);
+
+            if (node.cookie) {
+                auto ds = new ColDataSet;
+                ds.vbuf = vbuf;
+                ds.fsBlk = fsBlk;
+                ds.csBlk = csBlk;
+                ctx.cache.cache(node.cookie, ds);
             }
         }
 
-        encoder.updateConstBuffer(fsBlk, fs);
         encoder.updateConstBuffer(mvpBlk, MVP(transpose(model), transpose(ctx.viewProj)));
 
         auto ibuf = node.radius > 0 ? roundedIndBuf : sharpIndBuf;
@@ -128,34 +151,60 @@ class RectRenderer : Disposable
     {
         auto encoder = Encoder(cmdBuf);
 
-        auto verts = buildVertices!ImgVertex(node);
-        setTexCoords(verts, node);
-        auto vbuf = makeRc!(VertexBuffer!ImgVertex)(verts);
+        Rc!(VertexBuffer!ImgVertex)     vbuf;
+        Rc!(ConstBuffer!Stroke)         sBlk;
+        Rc!(ShaderResourceView!Rgba8)   srv;
+        Rc!Sampler                      sampler;
 
-        import gfx.foundation.util : retypeSlice;
-        import std.algorithm : each;
+        if (node.cookie) {
+            auto ds = cast(ImgDataSet)ctx.cache.resource(node.cookie);
+            if (ds) {
+                vbuf    = ds.vbuf;
+                sBlk    = ds.sBlk;
+                srv     = ds.srv;
+                sampler = ds.sampler;
+            }
+        }
+        if (!vbuf) {
 
-        Stroke s;
-        node.border.each!((RectBorder b) {
-            s.stroke = b.color;
-            s.strokeWidth = b.width;
-        });
-        auto sBlk = makeRc!(ConstBuffer!Stroke)(1);
-        encoder.updateConstBuffer(sBlk, s);
+            auto verts = buildVertices!ImgVertex(node);
+            setTexCoords(verts, node);
+            vbuf = makeRc!(VertexBuffer!ImgVertex)(verts);
 
-        immutable ip = cast(immutable(ImagePaint))node.paint;
-        assert(ip);
-        immutable img = ip.image;
+            import gfx.foundation.util : retypeSlice;
+            import std.algorithm : each;
 
-        auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
-        TexUsageFlags usage = TextureUsage.shaderResource;
-        auto tex = makeRc!(Texture2D!Rgba8)(
-            usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
-        );
-        auto srv = tex.viewAsShaderResource(0, 0, newSwizzle()).rc;
-        auto sampler = makeRc!Sampler(
-            srv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
-        );
+            Stroke s;
+            node.border.each!((RectBorder b) {
+                s.stroke = b.color;
+                s.strokeWidth = b.width;
+            });
+            sBlk = makeRc!(ConstBuffer!Stroke)(1);
+            encoder.updateConstBuffer(sBlk, s);
+
+            immutable ip = cast(immutable(ImagePaint))node.paint;
+            assert(ip);
+            immutable img = ip.image;
+
+            auto pixels = retypeSlice!(const(ubyte[4]))(img.data);
+            TexUsageFlags usage = TextureUsage.shaderResource;
+            auto tex = makeRc!(Texture2D!Rgba8)(
+                usage, ubyte(1), cast(ushort)img.width, cast(ushort)img.height, [pixels]
+            );
+            srv = tex.viewAsShaderResource(0, 0, newSwizzle()).rc;
+            sampler = makeRc!Sampler(
+                srv, SamplerInfo(FilterMethod.anisotropic, WrapMode.init)
+            );
+
+            if (node.cookie) {
+                auto ds = new ImgDataSet;
+                ds.vbuf = vbuf;
+                ds.sBlk = sBlk;
+                ds.srv = srv;
+                ds.sampler = sampler;
+                ctx.cache.cache(node.cookie, ds);
+            }
+        }
 
         encoder.updateConstBuffer(mvpBlk, MVP(transpose(model), transpose(ctx.viewProj)));
 
@@ -369,8 +418,10 @@ private:
 
 // cached data set
 
-class ColDataSet : Disposable
+class ColDataSet : RefCounted
 {
+    mixin(rcCode);
+
     Rc!(VertexBuffer!ColVertex) vbuf;
     Rc!(ConstBuffer!FillStroke) fsBlk;
     Rc!(ConstBuffer!ColorStop)  csBlk;
@@ -382,8 +433,10 @@ class ColDataSet : Disposable
     }
 }
 
-class ImgDataSet : Disposable
+class ImgDataSet : RefCounted
 {
+    mixin(rcCode);
+
     Rc!(VertexBuffer!ImgVertex)     vbuf;
     Rc!(ConstBuffer!Stroke)         sBlk;
     Rc!(ShaderResourceView!Rgba8)   srv;

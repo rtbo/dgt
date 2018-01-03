@@ -118,8 +118,10 @@ final class FGRectNode : FGNode
     private float _radius;
     private Paint _paint;
     private Option!RectBorder _border;
+    private CacheCookie _cookie;
 
-    immutable this(in FRect rect, in float radius, immutable Paint paint, in Option!RectBorder border)
+    immutable this(in FRect rect, in float radius, immutable Paint paint,
+                   in Option!RectBorder border, in CacheCookie=nullCookie)
     {
         super(Type.rect);
         _rect = rect;
@@ -139,6 +141,9 @@ final class FGRectNode : FGNode
     }
     @property Option!RectBorder border() immutable {
         return _border;
+    }
+    @property CacheCookie cookie() immutable {
+        return _cookie;
     }
 }
 
@@ -183,6 +188,10 @@ struct CacheCookie
     }
     bool valid() const @safe pure nothrow {
         return payload != 0;
+    }
+    bool opCast(T)() const @safe pure nothrow
+    if(is(T == bool)) {
+        return valid;
     }
 
     /// Each call to next() yield a different and unique cookie
