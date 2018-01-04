@@ -10,6 +10,8 @@ import dgt.ui.layout;
 import dgt.ui.text;
 import dgt.ui.view;
 
+import std.experimental.logger;
+
 /// Label is a widget to display a line of text and/or an icon
 class Label : View
 {
@@ -75,26 +77,13 @@ class Label : View
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        float width = 0;
-        float height = 0;
-        if (text.length) {
-            width += _textNode.metrics.size.x;
-            height += _textNode.metrics.size.y;
-        }
-        if (icon) {
-            import std.algorithm : max;
-            width += icon.width;
-            height = max(icon.height, height);
-            if (text.length) {
-                width += spacing;
-            }
-        }
-        measurement = FSize(width+padding.horizontal, height+padding.vertical);
+        measurement = computeMeasurement();
     }
 
     override void layout(in FRect rect)
     {
-        immutable mes = measurement;
+        // might differ from actual measurement because subclass have larger content
+        immutable mes = computeMeasurement();
 
         // mes includes padding
         float left;
@@ -134,6 +123,25 @@ class Label : View
             _textNode.rect = FRect(left, top, ms.x, ms.y);
         }
         this.rect = rect;
+    }
+
+    private FSize computeMeasurement()
+    {
+        float width = 0;
+        float height = 0;
+        if (text.length) {
+            width += _textNode.metrics.size.x;
+            height += _textNode.metrics.size.y;
+        }
+        if (icon) {
+            import std.algorithm : max;
+            width += icon.width;
+            height = max(icon.height, height);
+            if (text.length) {
+                width += spacing;
+            }
+        }
+        return FSize(width+padding.horizontal, height+padding.vertical);
     }
 
     private Alignment _alignment = Alignment.top | Alignment.left;
