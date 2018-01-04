@@ -99,6 +99,27 @@ struct Registry {
 
         throw new UnavailableResourceException("dr://"~name);
     }
+
+    /// Retrieve a resource from the registry.
+    /// Returns: the resource, or null if it couldn't be fetched.
+    static Resource tryGet (string name) {
+        mutex.lock();
+        scope(exit) mutex.unlock();
+
+        auto rp = name in registry;
+        if (rp) return *rp;
+
+        return null;
+    }
+
+    /// Remove a resource from the registry.
+    /// Returns: whether a resource was removed or not.
+    static bool prune (string name) {
+        mutex.lock();
+        scope(exit) mutex.unlock();
+
+        return registry.remove(name);
+    }
 }
 
 /// Retrieve a resource specified by uri.
