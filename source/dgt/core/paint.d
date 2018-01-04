@@ -307,7 +307,7 @@ unittest
 
     auto p1 = parsePaint("linear-gradient(yellow, blue 20%, #0f0)");
     assert(p1.type == PaintType.linearGradient);
-    auto lg1 = cast(LinearGradientPaint)p1;
+    immutable lg1 = cast(immutable(LinearGradientPaint))p1;
     assert(lg1.direction == Direction.S);
     immutable stops1 = lg1.stops;
     assert(stops1.length == 3);
@@ -320,7 +320,7 @@ unittest
 
     auto p2 = parsePaint("linear-gradient(to top right, red, white, blue)");
     assert(p2.type == PaintType.linearGradient);
-    auto lg2 = cast(LinearGradientPaint)p2;
+    immutable lg2 = cast(immutable(LinearGradientPaint))p2;
     assert(lg2.direction == Direction.NE);
     immutable stops2 = lg2.stops;
     assert(stops2.length == 3);
@@ -333,7 +333,7 @@ unittest
 
     auto p3 = parsePaint("linear-gradient(45deg, red, white, rgb(0, 255, 0))");
     assert(p3.type == PaintType.linearGradient);
-    auto lg3 = cast(LinearGradientPaint)p3;
+    immutable lg3 = cast(immutable(LinearGradientPaint))p3;
     assert(lg3.direction == Direction.angle);
     assert(lg3.angle.approxUlp(45));
     immutable stops3 = lg3.stops;
