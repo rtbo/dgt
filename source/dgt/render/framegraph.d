@@ -386,19 +386,19 @@ struct FgBreadthFirstRange
 version(unittest) {
 
     import std.range.primitives : isForwardRange;
+    import gfx.foundation.typecons : none;
 
     static assert(isForwardRange!FgDepthFirstRange);
     static assert(isForwardRange!FgBreadthFirstRange);
+
+    immutable rect = new immutable FGRectNode(FRect.init, 0, null, none!RectBorder);
 
     immutable(FGNode) makeTestFG() {
         return new immutable(FGGroupNode) ([
             new immutable(FGTransformNode)(
                 FMat4.identity,
                 new immutable(FGGroupNode)( [
-                    new immutable(FGImageNode)(fvec(0, 0), null),
-                    new immutable(FGImageNode)(fvec(0, 0), null),
-                    new immutable(FGImageNode)(fvec(0, 0), null),
-                    new immutable(FGImageNode)(fvec(0, 0), null),
+                    rect, rect, rect, rect
                 ])
             ),
             new immutable(FGTransformNode)(
@@ -406,9 +406,11 @@ version(unittest) {
                 new immutable(FGGroupNode)([
                     new immutable(FGTransformNode)(
                         FMat4.identity,
-                        new immutable(FGTextNode)(fvec(0, 0), null, fvec(0, 0, 0, 0)),
+                        new immutable(FGTextNode)(
+                            fvec(0, 0), null, fvec(0, 0, 0, 0)
+                        ),
                     ),
-                    new immutable(FGImageNode)(fvec(0, 0), null)
+                    rect
                 ])
             )
         ]);
@@ -422,15 +424,15 @@ unittest {
         FGNode.Type.group,
         FGNode.Type.transform,
         FGNode.Type.group,
-        FGNode.Type.image,
-        FGNode.Type.image,
-        FGNode.Type.image,
-        FGNode.Type.image,
+        FGNode.Type.rect,
+        FGNode.Type.rect,
+        FGNode.Type.rect,
+        FGNode.Type.rect,
         FGNode.Type.transform,
         FGNode.Type.group,
         FGNode.Type.transform,
         FGNode.Type.text,
-        FGNode.Type.image,
+        FGNode.Type.rect,
     ]));
 }
 
@@ -443,12 +445,12 @@ unittest {
         FGNode.Type.transform,
         FGNode.Type.group,
         FGNode.Type.group,
-        FGNode.Type.image,
-        FGNode.Type.image,
-        FGNode.Type.image,
-        FGNode.Type.image,
+        FGNode.Type.rect,
+        FGNode.Type.rect,
+        FGNode.Type.rect,
+        FGNode.Type.rect,
         FGNode.Type.transform,
-        FGNode.Type.image,
+        FGNode.Type.rect,
         FGNode.Type.text,
     ]));
 }
