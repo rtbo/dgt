@@ -15,6 +15,7 @@ import dgt.ui.stylesupport;
 
 import gfx.foundation.typecons : Option, some;
 
+import std.experimental.logger;
 import std.typecons : Rebindable, rebindable;
 
 class Button : Label
@@ -69,6 +70,21 @@ class Button : Label
         }
         else {
             remPseudoState(PseudoState.active);
+        }
+    }
+
+    override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
+    {
+        Label.measure(widthSpec, heightSpec);
+
+        immutable bg = _backgroundProperty.value.get;
+        if (bg && bg.type == PaintType.image) {
+            import std.algorithm : max;
+            immutable ip = cast(immutable(ImagePaint))bg;
+            immutable img = ip.image;
+            auto m = measurement;
+            m = FSize(max(m.width, img.width), max(m.height, img.height));
+            measurement = m;
         }
     }
 
