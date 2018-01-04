@@ -1,5 +1,6 @@
 module dgt.ui.stylesupport;
 
+import dgt.core.color;
 import dgt.css.style;
 import dgt.ui.style;
 import dgt.ui.view;
@@ -43,6 +44,18 @@ if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
     view._styleMetaProperties ~= metaProp;
 }
 
+struct BorderStyleSupport
+{
+    StyleProperty!Color borderColor;
+    StyleProperty!int   borderWidth;
+    StyleProperty!float borderRadius;
+
+    void initialize(View view) {
+        borderColor = addStyleSupport(view, BorderColorMetaProperty.instance);
+        borderWidth = addStyleSupport(view, BorderWidthMetaProperty.instance);
+        borderRadius = addStyleSupport(view, BorderRadiusMetaProperty.instance);
+    }
+}
 
 struct FontStyleSupport
 {
