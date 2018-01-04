@@ -10,7 +10,9 @@ import dgt.core.image;
 import dgt.core.rc : rc;
 import dgt.platform;
 import dgt.ui : UserInterface;
+import dgt.ui.button;
 import dgt.ui.label;
+import dgt.ui.layout;
 import dgt.window;
 
 import gfx.foundation.typecons;
@@ -36,7 +38,21 @@ int main()
     label.alignment = Alignment.center;
     label.id = "label";
 
-    ui.root = label;
+    auto btn = new Button;
+    btn.text = "Exit";
+    btn.alignment = Alignment.center;
+    btn.id = "button";
+    btn.onClick += {
+        app.exit(0);
+    };
+
+    auto layout = new LinearLayout;
+    layout.setVertical();
+    layout.appendView(label);
+    layout.appendView(btn);
+    layout.gravity = Gravity.center;
+
+    ui.root = layout;
 
     import dgt.ui.animation : SmoothTransitionAnimation;
     auto anim = new SmoothTransitionAnimation(ui, dur!"seconds"(3));
