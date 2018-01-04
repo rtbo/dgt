@@ -133,11 +133,11 @@ struct Registry {
 /// passed to this function should not be encoded.
 Resource retrieveResource(in string uri)
 {
-    const regex = ctRegex!(uriRegex);
+    auto regex = ctRegex!(uriRegex);
     const m = matchFirst(uri, regex);
 
-    auto protocol = "file";
-    auto resId = uri;
+    string protocol = "file";
+    string resId = uri;
 
     if (m.length >= 3) {
         protocol = m[1];
@@ -155,10 +155,9 @@ Resource retrieveResource(in string uri)
     case "dr":
         return Registry.get(resId);
     default:
-        break;
+        throw new UnsupportedProtocolException(protocol, uri);
     }
 
-    throw new UnsupportedProtocolException(protocol, uri);
 }
 
 
