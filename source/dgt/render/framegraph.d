@@ -87,7 +87,11 @@ final class FGGroupNode : FGNode
     immutable(FGNode)[] children;
 
     immutable this(immutable(FGNode)[] children)
-    {
+    in {
+        import std.algorithm : all;
+        assert(children.all!(c => c !is null));
+    }
+    body {
         this.children = children;
         super(Type.group);
     }
@@ -99,7 +103,10 @@ final class FGTransformNode : FGNode
     immutable(FGNode) child;
 
     immutable this(in FMat4 transform, immutable(FGNode) child)
-    {
+    in {
+        assert(child !is null);
+    }
+    body {
         this.transform = transform;
         this.child = child;
         super(Type.transform);
