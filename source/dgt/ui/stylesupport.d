@@ -12,7 +12,7 @@ import std.typecons : Flag, Yes, No;
 ///     - metaProp:         the meta property instance of the supported CSS property
 ///     - ignoresShorthand  if the meta property has shorthand and the flag is not set, it is assumed
 ///                         that addShorthandStyleSupport is called for this very view and shorthand.
-auto addStyleSupport(SMP)(View view, SMP metaProp, in Flag!"ignoresShorthand" ignoresShorthand = No.ignoresShorthand)
+auto addStyleSupport(SMP)(View view, SMP metaProp, in Flag!"ignoresShorthand" ignoresShorthand = Yes.ignoresShorthand)
 if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
 {
     auto sp = new SMP.Property(view, metaProp);
@@ -56,9 +56,9 @@ struct FontStyleSupport
     void initialize(View view)
     {
         addShorthandStyleSupport(view, FontMetaProperty.instance);
-        fontFamily = addStyleSupport(view, FontFamilyMetaProperty.instance);
-        fontWeight = addStyleSupport(view, FontWeightMetaProperty.instance);
-        fontSlant = addStyleSupport(view, FontSlantMetaProperty.instance);
-        fontSize = addStyleSupport(view, FontSizeMetaProperty.instance);
+        fontFamily = addStyleSupport(view, FontFamilyMetaProperty.instance, No.ignoresShorthand);
+        fontWeight = addStyleSupport(view, FontWeightMetaProperty.instance, No.ignoresShorthand);
+        fontSlant = addStyleSupport(view, FontSlantMetaProperty.instance, No.ignoresShorthand);
+        fontSize = addStyleSupport(view, FontSizeMetaProperty.instance, No.ignoresShorthand);
     }
 }
