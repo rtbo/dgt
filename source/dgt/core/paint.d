@@ -6,6 +6,7 @@ import dgt.core.geometry;
 import dgt.core.image;
 import dgt.math.vec;
 
+import std.experimental.logger;
 import std.typecons : Rebindable;
 
 /// The type of a paint.
@@ -283,6 +284,9 @@ if (isInputRange!Tokens && is(ElementType!Tokens == Token))
         tokens.popFront();
         return parseLinearGradientPaint(tokens);
     }
+    else if (tok.tok == Tok.url) {
+        return parseImageFromUri(tok.str);
+    }
     else {
         Color c;
         if (parseColor(tokens, c)) {
@@ -477,4 +481,35 @@ immutable(GradientStop)[] parseColorStops(Tokens)(ref Tokens tokens)
 
     import std.exception : assumeUnique;
     return assumeUnique(stops);
+}
+
+immutable(Paint) parseImageFromUri(in string uri)
+{
+    try {
+        import dgt.core.resource : Registry, Resource, retrieveResource;
+        import std.algorithm : startsWith;
+
+        const network = (uri.startsWith("http") || uri.startsWith("ftp"));
+
+        Rebindable!Resource data;
+        if (network) {
+            data = Registry.tryGet(uri);
+        }
+        if (!data) {
+            data = retrieveResource(uri);
+            if (network) {
+                Registry.register(uri, data);
+            }
+        }
+
+        tracef(`decoding image from "%s"`, uri);
+        immutable img = assumeUnique(
+            Image.loadFromMemory(data, ImageFormat.argbPremult)
+        );
+        return new immutable ImagePaint(img);
+    }
+    catch(Exception ex) {
+        errorf("could not get paint image from url %s\nError msg:%s", uri, ex.msg);
+        return null;
+    }
 }
