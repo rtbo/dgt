@@ -14,7 +14,8 @@ import std.exception;
 import std.experimental.logger;
 
 /// Base class for all views in the user interface
-class View : StyleElement {
+class View : StyleElement, TreeNode!View
+{
 
     this() { }
 
@@ -25,7 +26,7 @@ class View : StyleElement {
     }
 
     /// The root of this user interface
-    @property View root()
+    final override @property View root()
     {
         if (!_parent) return this;
         View p = _parent;
@@ -34,19 +35,19 @@ class View : StyleElement {
     }
 
     /// This view's parent.
-    final @property View parent()
+    final override @property View parent()
     {
         return _parent;
     }
 
     /// This view's previous sibling.
-    final @property View prevSibling()
+    final override @property View prevSibling()
     {
         return _prevSibling;
     }
 
     /// This view's next sibling.
-    final @property View nextSibling()
+    final override @property View nextSibling()
     {
         return _nextSibling;
     }
@@ -64,13 +65,13 @@ class View : StyleElement {
     }
 
     /// This view's first child.
-    final @property View firstChild()
+    final override @property View firstChild()
     {
         return _firstChild;
     }
 
     /// This view's last child.
-    final @property View lastChild()
+    final override @property View lastChild()
     {
         return _lastChild;
     }

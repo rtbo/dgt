@@ -1,6 +1,5 @@
 module dgt.css.cascade;
 
-import dgt.core.tree;
 import dgt.css.om;
 import dgt.css.parse;
 import dgt.css.style;
