@@ -12,45 +12,7 @@ import dgt.ui.view;
 
 import std.experimental.logger;
 import std.range;
-import std.typecons : rebindable, Nullable, Flag, No;
-
-
-/// Give support to a style instance to a view.
-/// Params:
-///     - view:             the view that supports the CSS property
-///     - metaProp:         the meta property instance of the supported CSS property
-///     - ignoresShorthand  if the meta property has shorthand and the flag is not set, it is assumed
-///                         that addShorthandStyleSupport is called for this very view and shorthand.
-auto addStyleSupport(SMP)(View view, SMP metaProp, in Flag!"ignoresShorthand" ignoresShorthand = No.ignoresShorthand)
-if (is(SMP : IStyleMetaProperty) && !SMP.isShorthand)
-{
-    auto sp = new SMP.Property(view, metaProp);
-    view._styleProperties[metaProp.name] = sp;
-
-    // the cascade algorithm visits recursively the meta props of each node to check for matching declarations
-    // when it sees a shorthand meta prop, it will automatically check for the subproperties of this shorthand.
-    // Thus, if a prop has a shorthand, it does not need to be listed in the meta props.
-    // However, some views may prefer to ignore the shorthand and only support a subset of the sub properties.
-    // In such case the ignoresShorthand flag is passed and the property is listed in the meta props regardless
-    // of its shorthand.
-
-    //    hasShorthand      ignoresShorthand     shouldVisit
-    //          0                   0               1
-    //          0                   1               1
-    //          1                   0               0
-    //          1                   1               1
-
-    if (!metaProp.hasShorthand || ignoresShorthand) view._styleMetaProperties ~= metaProp;
-
-    return sp;
-}
-
-/// give support to a shorthand style instance to a view
-void addShorthandStyleSupport(SMP)(View view, SMP metaProp)
-if (is(SMP : IStyleMetaProperty) && SMP.isShorthand)
-{
-    view._styleMetaProperties ~= metaProp;
-}
+import std.typecons : rebindable, Nullable;
 
 final class BackgroundMetaProperty : StyleMetaProperty!(RPaint)
 {

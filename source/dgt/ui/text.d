@@ -9,7 +9,7 @@ import dgt.font.style;
 import dgt.render.framegraph;
 import dgt.text.layout;
 import dgt.ui.layout;
-import dgt.ui.style;
+import dgt.ui.stylesupport;
 import dgt.ui.view;
 
 class TextView : View {
@@ -17,16 +17,11 @@ class TextView : View {
     this() {
         _layout = new TextLayout;
 
-        addShorthandStyleSupport(this, FontMetaProperty.instance);
-        _fontFamily = addStyleSupport(this, FontFamilyMetaProperty.instance);
-        _fontWeight = addStyleSupport(this, FontWeightMetaProperty.instance);
-        _fontSlant = addStyleSupport(this, FontSlantMetaProperty.instance);
-        _fontSize = addStyleSupport(this, FontSizeMetaProperty.instance);
-
-        _fontFamily.onChange += &styleReset;
-        _fontWeight.onChange += &styleReset;
-        _fontSlant.onChange += &styleReset;
-        _fontSize.onChange += &styleReset;
+        fss.initialize(this);
+        fss.fontFamily.onChange += &styleReset;
+        fss.fontWeight.onChange += &styleReset;
+        fss.fontSlant.onChange += &styleReset;
+        fss.fontSize.onChange += &styleReset;
     }
 
     @property string text () const { return _text; }
@@ -55,38 +50,38 @@ class TextView : View {
 
     @property string[] fontFamily()
     {
-        return _fontFamily.value;
+        return fss.fontFamily.value;
     }
     @property StyleProperty!(string[]) fontFamilyProperty()
     {
-        return _fontFamily;
+        return fss.fontFamily;
     }
 
     @property FontWeight fontWeight()
     {
-        return _fontWeight.value;
+        return fss.fontWeight.value;
     }
     @property StyleProperty!FontWeight fontWeightProperty()
     {
-        return _fontWeight;
+        return fss.fontWeight;
     }
 
     @property FontSlant fontSlant()
     {
-        return _fontSlant.value;
+        return fss.fontSlant.value;
     }
     @property StyleProperty!FontSlant fontSlantProperty()
     {
-        return _fontSlant;
+        return fss.fontSlant;
     }
 
     @property int fontSize()
     {
-        return _fontSize.value;
+        return fss.fontSize.value;
     }
     @property StyleProperty!int fontSizeProperty()
     {
-        return _fontSize;
+        return fss.fontSize;
     }
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
@@ -137,8 +132,5 @@ class TextView : View {
     private TextLayout _layout;
     private TextMetrics _metrics;
     private bool _layoutDirty;
-    private StyleProperty!(string[])    _fontFamily;
-    private StyleProperty!FontWeight    _fontWeight;
-    private StyleProperty!FontSlant     _fontSlant;
-    private StyleProperty!int           _fontSize;
+    private FontStyleSupport fss;
 }
