@@ -842,9 +842,11 @@ class View : StyleElement {
 
     final immutable(FGNode) transformRender(FrameContext fc)
     {
-        immutable transformed = new immutable FGTransformNode(
-            transformToParent, render(fc)
-        );
+        immutable fgn = render(fc);
+        immutable transformed = fgn ?
+            new immutable FGTransformNode( transformToParent, fgn ) :
+            null;
+
 
         version(dgtActivateWireframe) {
             import dgt.core.color : Color;
