@@ -242,28 +242,6 @@ class FcFontLibrary : FontLibrary
 
 private:
 
-class TypefaceCache : Disposable {
-
-    this() {}
-
-    override void dispose() {
-        releaseArray(_typefaces);
-    }
-
-    void add(Typeface tf) {
-        tf.retain();
-        _typefaces ~= tf;
-    }
-
-    private Typeface[] _typefaces;
-}
-
-Typeface find (alias pred)(TypefaceCache tfCache) {
-    foreach(tf; tfCache._typefaces) {
-        if (pred(tf)) return tf;
-    }
-    return null;
-}
 
 bool isGenericFamily(in string family) {
     if (!sicmp(family, "system-ui")) return true;

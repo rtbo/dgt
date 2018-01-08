@@ -28,7 +28,7 @@ class FtTypeface : Typeface
     }
 
     // version that keeps the font file data in memory (needed for cloning)
-    private this (FT_Face face, const(ubyte)[] blob)
+    package this (FT_Face face, const(ubyte)[] blob)
     {
         this(face);
         _blob = blob;
@@ -135,7 +135,7 @@ FT_Face openFaceFromMemory(const(ubyte)[] data, int faceIndex) {
     FT_Open_Args args;
     args.flags = FT_OPEN_MEMORY;
     args.memory_base = data.ptr;
-    args.memory_size = data.length;
+    args.memory_size = cast(FT_Long)data.length;
     FT_Face face;
     enforce(FT_Open_Face(gFtLib, &args, faceIndex, &face) == 0,
             "Freetype cannot open font from memorty");
