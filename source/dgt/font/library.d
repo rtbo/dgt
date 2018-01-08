@@ -75,6 +75,29 @@ protected:
     }
 }
 
+class TypefaceCache : Disposable {
+
+    this() {}
+
+    override void dispose() {
+        releaseArr(_typefaces);
+    }
+
+    void add(Typeface tf) {
+        tf.retain();
+        _typefaces ~= tf;
+    }
+
+    private Typeface[] _typefaces;
+}
+
+Typeface find (alias pred)(TypefaceCache tfCache) {
+    foreach(tf; tfCache._typefaces) {
+        if (pred(tf)) return tf;
+    }
+    return null;
+}
+
 
 private:
 
