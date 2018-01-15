@@ -12,6 +12,7 @@ import dgt.font.style;
 import dgt.font.typeface;
 
 import std.exception;
+import std.experimental.logger;
 import std.string;
 import std.stdio;
 
@@ -97,6 +98,40 @@ class GdiFontLibrary : FontLibrary
         }
     }
 
+    private shared(Typeface) createTypefaceLogFont(const(ENUMLOGFONTEX)* lf) {
+        synchronized(this) {
+            auto tf = tfCache.find!((Typeface tf) {
+                auto gdiTf = cast(GdiTypeface)tf;
+                if (!gdiTf) return false;
+                return gdiTf.gdiFullName == lf.elfFullName;
+            });
+            if (tf) return cast(shared(Typeface))tf;
+        }
+
+        auto dc = CreateCompatibleDC(null);
+        scope(exit) DeleteDC(dc);
+
+        auto font = enforce(CreateFontIndirect(&lf.elfLogFont),
+                "DGT: Could not create GDI font");
+
+        auto previous = SelectObject(dc, font);
+        scope(exit) SelectObject(dc, previous);
+
+        const len = GetFontData(dc, 0, 0, null, 0);
+        enforce(len != GDI_ERROR, "Could not get font data");
+
+        auto buf = new ubyte[len];
+        GetFontData(dc, 0, 0, cast(LPVOID)buf.ptr, len);
+
+        auto ftFace = openFaceFromMemory(buf, 0);
+
+        auto tf = new GdiTypeface(font, ftFace, buf, lf);
+        synchronized(this) {
+            tfCache.add(tf);
+        }
+        return cast(shared)tf;
+    }
+
     private void initGenericFamilies() {
 
         void doFam(ref string font, immutable(string[]) fonts, ref int score, string fam) {
@@ -180,29 +215,14 @@ FontStyle logFontToStyle(const(LOGFONT)* lf) {
     );
 }
 
-private Typeface createTypefaceLogFont(const(ENUMLOGFONTEX)* lf) {
-    auto dc = CreateCompatibleDC(null);
-    scope(exit) DeleteDC(dc);
-
-    auto font = CreateFontIndirectEx(cast(const(ENUMLOGFONTEXDV)*)lf);
-
-    auto previous = SelectObject(dc, font);
-    scope(exit) SelectObject(dc, previous);
-
-    const len = GetFontData(dc, 0, 0, null, 0);
-    auto buf = new ubyte[len];
-    GetFontData(dc, 0, 0, cast(LPVOID)buf.ptr, len);
-
-    auto ftFace = openFaceFromMemory(buf, 0);
-
-    return new GdiTypeface(font, ftFace, buf);
-}
 
 private class GdiTypeface : FtTypeface
 {
-    this(HFONT hf, FT_Face ftFace, const(ubyte)[] faceData) {
+    this(HFONT hf, FT_Face ftFace, const(ubyte)[] faceData, const(ENUMLOGFONTEX)* lf) {
         super(ftFace, faceData);
         this.hf = hf;
+        import std.conv : to;
+        gdiFullName[] = lf.elfFullName[];
     }
 
     override void dispose() {
@@ -211,6 +231,7 @@ private class GdiTypeface : FtTypeface
     }
 
     HFONT hf;
+    WCHAR[LF_FULLFACESIZE] gdiFullName;
 }
 
 class GdiFamilyStyleSet : FamilyStyleSet {
@@ -240,7 +261,7 @@ class GdiFamilyStyleSet : FamilyStyleSet {
     }
 
     override shared(Typeface) createTypeface(in size_t index) {
-        return cast(shared(Typeface))createTypefaceLogFont(&fonts[index]);
+        return (cast(GdiFontLibrary)FontLibrary.get).createTypefaceLogFont(&fonts[index]);
     }
 
     override shared(Typeface) matchStyle(in FontStyle style) {
