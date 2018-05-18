@@ -37,7 +37,6 @@ abstract class Typeface : AtomicRefCounted {
     abstract @property FontStyle style();
 
     abstract @property CodepointSet coverage();
-    deprecated abstract GlyphId[] glyphsForString(in string text);
 
     /// Get a scaling context from the cache, or create it if not available
     abstract ScalingContext getScalingContext(in float pixelSize);

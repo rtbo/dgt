@@ -73,10 +73,6 @@ class FtTypeface : Typeface
         return _coverage;
     }
 
-    override GlyphId[] glyphsForString(in string text) {
-        return [];
-    }
-
     override ScalingContext getScalingContext(in float pixelSize) {
         foreach (sc; _scs) {
             if (sc._pixelSize == pixelSize) {
