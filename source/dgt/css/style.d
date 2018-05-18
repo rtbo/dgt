@@ -1,11 +1,11 @@
 /// Module that contains main style related interfaces and base classes
 module dgt.css.style;
 
+import dgt.core.geometry;
+import dgt.core.signal;
 import dgt.css.om;
 import dgt.css.token;
 import dgt.css.value;
-import dgt.event.handler;
-import dgt.geometry;
 
 import std.experimental.logger;
 import std.range;
@@ -39,16 +39,22 @@ enum PseudoState
 /// StyleElement must be implemented by a tree structure that can receive css style properties
 interface StyleElement
 {
-    /// The parent of this style, or null if this style is the root.
-    @property StyleElement parent();
-    /// Whether this style is the root of the style tree.
-    @property bool isRoot();
-    /// The root of the style tree
-    @property StyleElement root();
-    /// Get the next sibling of this style. Used in sibling selectors.
-    @property StyleElement prevSibling();
-    /// Get the previous sibling of this style. Used in sibling selectors.
-    @property StyleElement nextSibling();
+    /// The parent of this style element, or null if this element is the root.
+    @property StyleElement styleParent();
+    /// Whether this element is the root of the tree.
+    final @property bool isStyleRoot() {
+        return styleParent is null;
+    }
+    /// The root of the tree
+    @property StyleElement styleRoot();
+    /// Get the next sibling of this element.
+    @property StyleElement stylePrevSibling();
+    /// Get the previous sibling of this element.
+    @property StyleElement styleNextSibling();
+    /// Get the first child of this element.
+    @property StyleElement styleFirstChild();
+    /// Get the last child of this element.
+    @property StyleElement styleLastChild();
 
     /// The inline css of this element.
     /// That is, style that apply to this node, but not to its children.
@@ -80,27 +86,29 @@ interface StyleElement
     @property IStyleMetaProperty[] styleMetaProperties();
     /// Get the property object by name. (e.g. "background-color")
     IStyleProperty styleProperty(string name);
+
+    /// Check whether the style of this element was modified and needs a pass
+    @property bool isStyleDirty();
+    /// Check whether one descendant of this element need a style pass
+    @property bool hasChildrenStyleDirty();
 }
 
-/// Font style as defined by the CSS specification
-enum FontSlant
-{
-    normal,
-    italic,
-    oblique,
+
+/// Returns a bidirectional range over the children of a style element
+auto styleChildren(StyleElement se) {
+    return styleSiblingRange(se.styleFirstChild, se.styleLastChild);
 }
 
-/// Implemented by elements that must style some text.
-interface FontStyle
-{
-    /// The FontSlant is what is assigned by the 'font-style' property
-    @property FontSlant fontSlant();
-    /// The font weight (from 100 to 900)
-    @property int fontWeight();
-    /// The font size, expressed in pixels / EM-square
-    @property int fontSize();
-    /// The font families used to select the font.
-    @property string[] fontFamily();
+/// Returns a bidirectional range that iterates from sibling to sibling, from first until last.
+auto styleSiblingRange(StyleElement first, StyleElement last)
+in {
+    assert(
+        (!first && !last) ||
+        (first && last && first.styleParent is last.styleParent)
+    );
+}
+body {
+    return StyleSiblingRange(first, last);
 }
 
 /// A CSS property value
@@ -244,7 +252,7 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
 
     final protected StyleElement fstSupportingParent(StyleElement style)
     {
-        auto p = style.parent;
+        auto p = style.styleParent;
         if (p && appliesTo(p)) return p;
         else if (p) return fstSupportingParent(p);
         else return null;
@@ -264,13 +272,14 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
         assert(winning);
     }
     body {
-        CSSValueBase winningVal;
+        CSSValueBase winningVal = winning.value;
         if (!winningVal) {
             winningVal = parseValue(winning.valueTokens);
             winning.value = winningVal;
             if (!winningVal) {
                 warningf("could not parse winning declaration "~winning.property);
                 applyInitial(target, winning.origin);
+                return;
             }
         }
         if (winningVal.inherit) {
@@ -519,4 +528,48 @@ unittest
         Origin.code,
         Origin.dgt
     ]));
+}
+
+
+private:
+
+/// Bidirectional range that traverses a sibling node list
+struct StyleSiblingRange
+{
+    StyleElement _first;
+    StyleElement _last;
+
+    this (StyleElement first, StyleElement last)
+    {
+        _first = first;
+        _last = last;
+    }
+
+    @property bool empty() { return _first is null; }
+    @property auto front() { return _first; }
+    void popFront() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _first = _first.styleNextSibling;
+        }
+    }
+
+    @property auto save()
+    {
+        return StyleSiblingRange(_first, _last);
+    }
+
+    @property auto back() { return _last; }
+    void popBack() {
+        if (_first is _last) {
+            _first = null;
+            _last = null;
+        }
+        else {
+            _last = _last.stylePrevSibling;
+        }
+    }
 }

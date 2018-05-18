@@ -1,17 +1,19 @@
 /// Events delivered by the operating system to DGT.
 module dgt.platform.event;
 
-import dgt.enums;
-import dgt.geometry;
-import dgt.keys;
+import dgt.core.enums;
+import dgt.core.geometry;
+import dgt.core.signal;
+import dgt.input;
 import dgt.window;
 
 enum PlEventType
 {
+    timer,
     // events delivered to windows
     show, hide,
     expose, resize, move,
-    close, stateChange,
+    closeRequest, stateChange,
     focusIn, focusOut,
     mouseDown, mouseUp, mouseMove, mouseWheel,
     mouseEnter, mouseLeave,
@@ -51,7 +53,22 @@ abstract class PlEvent
     private bool _consumed;
 }
 
-abstract class WindowEvent : PlEvent
+class PlTimerEvent : PlEvent
+{
+    this(void delegate() handler)
+    {
+        super(PlEventType.timer);
+        _handler = handler;
+    }
+
+    void handle() {
+        _handler();
+    }
+
+    private Slot!() _handler;
+}
+
+abstract class PlWindowEvent : PlEvent
 {
     this(PlEventType type, Window window)
     {
@@ -67,7 +84,7 @@ abstract class WindowEvent : PlEvent
     private Window _window;
 }
 
-class ShowEvent : WindowEvent
+class PlShowEvent : PlWindowEvent
 {
     this(Window window)
     {
@@ -75,7 +92,7 @@ class ShowEvent : WindowEvent
     }
 }
 
-class HideEvent : WindowEvent
+class PlHideEvent : PlWindowEvent
 {
     this(Window window)
     {
@@ -83,7 +100,7 @@ class HideEvent : WindowEvent
     }
 }
 
-class ExposeEvent : WindowEvent
+class PlExposeEvent : PlWindowEvent
 {
     this(Window window, IRect exposedArea)
     {
@@ -99,7 +116,7 @@ class ExposeEvent : WindowEvent
     private IRect _exposedArea;
 }
 
-class ResizeEvent : WindowEvent
+class PlResizeEvent : PlWindowEvent
 {
     this(Window window, ISize size)
     {
@@ -120,7 +137,7 @@ class ResizeEvent : WindowEvent
     private ISize _size;
 }
 
-class MoveEvent : WindowEvent
+class PlMoveEvent : PlWindowEvent
 {
     this(Window window, IPoint point)
     {
@@ -140,27 +157,15 @@ class MoveEvent : WindowEvent
     private IPoint _point;
 }
 
-class CloseEvent : WindowEvent
+class PlCloseRequestEvent : PlWindowEvent
 {
     this(Window window)
     {
-        super(PlEventType.close, window);
+        super(PlEventType.closeRequest, window);
     }
-
-    @property bool declined() const
-    {
-        return _declined;
-    }
-
-    void decline()
-    {
-        _declined = true;
-    }
-
-    private bool _declined;
 }
 
-class StateChangeEvent : WindowEvent
+class PlStateChangeEvent : PlWindowEvent
 {
     this(Window window, WindowState state)
     {
@@ -176,7 +181,7 @@ class StateChangeEvent : WindowEvent
     private WindowState _state;
 }
 
-class PlFocusEvent : WindowEvent
+class PlFocusEvent : PlWindowEvent
 {
     this(PlEventType type, Window window, FocusMethod method)
     in
@@ -197,7 +202,7 @@ class PlFocusEvent : WindowEvent
     private FocusMethod _method;
 }
 
-class PlMouseEvent : WindowEvent
+class PlMouseEvent : PlWindowEvent
 {
     this(PlEventType type, Window window, IPoint point, MouseButton button,
             MouseState state, KeyMods modifiers)
@@ -254,7 +259,7 @@ class PlMouseEvent : WindowEvent
     }
 }
 
-class PlKeyEvent : WindowEvent
+class PlKeyEvent : PlWindowEvent
 {
     this(PlEventType type, Window window, KeySym sym, KeyCode code,
             KeyMods modifiers, string text, uint nativeCode, uint nativeSymbol,

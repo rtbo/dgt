@@ -3,18 +3,15 @@ module dgt.platform.xcb.window;
 version(linux):
 
 import dgt.context;
-import dgt.enums;
-import dgt.geometry;
+import dgt.core.geometry;
+import dgt.core.rc;
+import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.xcb;
-import dgt.platform.xcb.buffer;
 import dgt.platform.xcb.context;
 import dgt.screen;
-import dgt.vg;
 import dgt.window;
-
-import gfx.foundation.rc;
 
 import xcb.xcb;
 import xcb.xcb_icccm;
@@ -108,7 +105,7 @@ class XcbWindow : PlatformWindow
             throw new Exception(format("DGT-XCB: could not create window: %s", err.error_code));
         }
 
-        this.title = _win.title;
+        setTitle(_win.title);
 
         prepareEvents();
         prepareGc();
@@ -147,7 +144,7 @@ class XcbWindow : PlatformWindow
         return cast(string)(xcb_get_property_value(r)[0 .. len].idup);
     }
 
-    override @property void title(string title)
+    override void setTitle(in string title)
     {
         xcb_change_property(g_connection, cast(ubyte) XCB_PROP_MODE_REPLACE, _xcbWin,
                 cast(xcb_atom_t) XCB_ATOM_WM_NAME, cast(xcb_atom_t) XCB_ATOM_STRING,
@@ -190,7 +187,7 @@ class XcbWindow : PlatformWindow
         return WindowState.normal;
     }
 
-    override @property void state(WindowState ws)
+    override void setState(in WindowState ws)
     {
         if (_lastKnownState == ws)
             return;
@@ -251,12 +248,12 @@ class XcbWindow : PlatformWindow
         xcb_flush(g_connection);
     }
 
-    override @property IRect geometry() const
+    override @property IRect rect() const
     {
         return _rect;
     }
 
-    private @property IRect sysGeometry() const
+    private @property IRect sysRect() const
     {
         assert(created);
         auto c = xcb_get_geometry(g_connection, _xcbWin);
@@ -273,7 +270,7 @@ class XcbWindow : PlatformWindow
         return res;
     }
 
-    override @property void geometry(IRect rect)
+    override void setRect(in IRect rect)
     {
         if (rect.area == 0)
             return;
@@ -288,11 +285,6 @@ class XcbWindow : PlatformWindow
             free(err);
         }
         xcb_flush(g_connection);
-    }
-
-    override PlatformWindowBuffer makeBuffer(in ISize size)
-    {
-        return new XcbWindowBuffer(this, size);
     }
 
     package
@@ -375,12 +367,12 @@ class XcbWindow : PlatformWindow
             if (e.x != _rect.x || e.y != _rect.y)
             {
                 _rect.point = IPoint(e.x, e.y);
-                collector(new MoveEvent(_win, _rect.point));
+                collector(new PlMoveEvent(_win, _rect.point));
             }
             if (e.width != _rect.width || e.height != _rect.height)
             {
                 _rect.size = ISize(e.width, e.height);
-                collector(new ResizeEvent(_win, _rect.size));
+                collector(new PlResizeEvent(_win, _rect.size));
             }
         }
 
@@ -392,7 +384,7 @@ class XcbWindow : PlatformWindow
         body
         {
             _mapped = false;
-            auto ev = new HideEvent(_win);
+            auto ev = new PlHideEvent(_win);
             collector(ev);
         }
 
@@ -404,7 +396,7 @@ class XcbWindow : PlatformWindow
         body
         {
             _mapped = true;
-            auto ev = new ShowEvent(_win);
+            auto ev = new PlShowEvent(_win);
             collector(ev);
         }
 
@@ -422,7 +414,7 @@ class XcbWindow : PlatformWindow
                 if (ws != _lastKnownState)
                 {
                     _lastKnownState = ws;
-                    collector(new StateChangeEvent(_win, ws));
+                    collector(new PlStateChangeEvent(_win, ws));
                 }
             }
         }
@@ -434,7 +426,7 @@ class XcbWindow : PlatformWindow
         }
         body
         {
-            auto ev = new ExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
+            auto ev = new PlExposeEvent(_win, IRect(e.x, e.y, e.width, e.height));
             collector(ev);
         }
     }

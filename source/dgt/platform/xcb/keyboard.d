@@ -2,7 +2,7 @@ module dgt.platform.xcb.keyboard;
 
 version(linux):
 
-import dgt.keys;
+import dgt.input.keys;
 import dgt.platform.event;
 import dgt.platform.xcb : xcbEventType;
 import dgt.window;

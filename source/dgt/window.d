@@ -1,28 +1,15 @@
-/// Window creation and manipulation
 module dgt.window;
 
-import dgt.application;
-import dgt.color;
-import dgt.context;
-import dgt.event;
-import dgt.geometry;
-import dgt.image;
-import dgt.math;
-import dgt.platform;
+import dgt.application : Application;
+import dgt.context : GlAttribs;
+import dgt.core.geometry;
+import dgt.core.signal;
+import dgt.platform : PlatformWindow;
 import dgt.platform.event;
-import dgt.region;
-import dgt.screen;
-import dgt.util;
-import dgt.view.animation;
-import dgt.view.view;
-
-import gfx.foundation.rc;
+import dgt.ui : UserInterface;
 
 import std.exception;
-import std.experimental.logger;
-import std.typecons : Rebindable;
 
-alias GfxDevice = gfx.device.Device;
 
 enum WindowState
 {
@@ -39,6 +26,22 @@ enum WindowFlags
     dummy = 1,
 }
 
+final class CloseEvent
+{
+    void decline() {
+        _declined = true;
+    }
+
+    @property bool declined() const {
+        return _declined;
+    }
+
+    @property void declined(in bool value) {
+        _declined = value;
+    }
+
+    private bool _declined = false;
+}
 
 class Window
 {
@@ -71,54 +74,54 @@ class Window
             _title = title;
             if (_platformWindow.created)
             {
-                _platformWindow.title = title;
+                _platformWindow.setTitle(title);
             }
         }
     }
 
     @property IPoint position() const
     {
-        return geometry.topLeft;
+        return rect.topLeft;
     }
 
     @property void position(in IPoint position)
     {
         if (position != this.position)
         {
-            geometry = IRect(position, size);
+            rect = IRect(position, size);
         }
     }
 
     @property ISize size() const
     {
-        return geometry.size;
+        return rect.size;
     }
 
     @property void size(in ISize size)
     {
         if (size != this.size)
         {
-            geometry = IRect(position, size);
+            rect = IRect(position, size);
         }
     }
 
-    @property IRect geometry() const
+    @property IRect rect() const
     {
         if (_platformWindow.created) {
-            return _platformWindow.geometry;
+            return _platformWindow.rect;
         }
         else {
             return IRect(_position, _size);
         }
     }
 
-    @property void geometry(in IRect rect)
+    @property void rect(in IRect rect)
     {
-        if (rect != geometry)
+        if (rect != rect)
         {
             if (_platformWindow.created)
             {
-                _platformWindow.geometry = rect;
+                _platformWindow.setRect(rect);
             }
             else
             {
@@ -130,11 +133,11 @@ class Window
 
     @property int width() const
     {
-        return geometry.width;
+        return rect.width;
     }
     @property int height() const
     {
-        return geometry.height;
+        return rect.height;
     }
 
     @property GlAttribs attribs() const
@@ -159,24 +162,6 @@ class Window
     body
     {
         _flags = flags;
-    }
-
-    @property Color clearColor()
-    {
-        return _clearColor;
-    }
-    @property void clearColor(in Color color)
-    {
-        _clearColor = color;
-        _hasClearColor = true;
-    }
-    @property bool hasClearColor()
-    {
-        return _hasClearColor;
-    }
-    @property void hasClearColor(bool has)
-    {
-        _hasClearColor = has;
     }
 
     void showMaximized()
@@ -210,10 +195,10 @@ class Window
             if (_size.area == 0) _size = ISize(640, 480);
             _platformWindow.create();
             if (!dummy) Application.instance.registerWindow(this);
-            invalidate();
+            // invalidate();
         }
 
-        if (!dummy) _platformWindow.state = state;
+        if (!dummy) _platformWindow.setState(state);
     }
 
     void close()
@@ -221,7 +206,12 @@ class Window
         enforce(_platformWindow.created, "attempt to close a non-created window");
         if (!dummy) Application.instance.unregisterWindow(this);
         _platformWindow.close();
-        _onClosed.fire(this);
+        // _onClosed.fire(this);
+    }
+
+    @property void onStateChange(Slot!WindowState slot)
+    {
+        _onStateChange.set(slot);
     }
 
     @property size_t nativeHandle() const
@@ -230,224 +220,42 @@ class Window
         return _platformWindow.nativeHandle;
     }
 
-    @property Signal!string onTitleChange()
-    {
-        return _onTitleChange;
-    }
-
-    @property void onShow(Slot!ShowEvent slot)
-    {
-        _onShow.set(slot);
-    }
-
-    @property void onHide(Slot!HideEvent slot)
-    {
-        _onHide.set(slot);
-    }
-
-    @property void onMove(Slot!MoveEvent slot)
-    {
-        _onMove.set(slot);
-    }
-
-    @property void onResize(Slot!ResizeEvent slot)
-    {
-        _onResize.set(slot);
-    }
-
-    @property void onMouse(Slot!PlMouseEvent slot)
-    {
-        _onMouse.set(slot);
-    }
-    @property void onMouseDown(Slot!PlMouseEvent slot)
-    {
-        _onMouseDown.set(slot);
-    }
-    @property void onMouseUp(Slot!PlMouseEvent slot)
-    {
-        _onMouseUp.set(slot);
-    }
-
-    @property void onKey(Slot!PlKeyEvent slot)
-    {
-        _onKey.set(slot);
-    }
-    @property void onKeyDown(Slot!PlKeyEvent slot)
-    {
-        _onKeyDown.set(slot);
-    }
-    @property void onKeyUp(Slot!PlKeyEvent slot)
-    {
-        _onKeyUp.set(slot);
-    }
-
-    @property void onStateChange(Slot!StateChangeEvent slot)
-    {
-        _onStateChange.set(slot);
-    }
-
-    @property void onClose(Slot!CloseEvent slot)
-    {
-        _onClose.set(slot);
-    }
-
-    @property Signal!Window onClosed()
-    {
-        return _onClosed;
-    }
-
-    /// The scene graph root attached to this window
-    @property inout(View) root() inout { return _root; }
-    /// ditto
-    @property void root(View root)
-    {
-        if (_root) {
-            _root._window = null;
-        }
-        _root = root;
-        if (_root) {
-            _root._window = this;
-        }
-    }
-
-    /// The screen this window is on. If the window overlaps more than one screen,
-    /// the screen with biggest overlap is returned.
-    /// If for some reason the window is not overlapping any screen, the main monitor is returned.
-    @property Screen screen() const
-    {
-        int overlap=-1;
-        size_t ind = size_t.max;
-        auto screens = Application.platform.screens;
-        immutable rect = geometry;
-        foreach (i, s; screens) {
-            immutable sr = s.rect;
-            if (sr.overlaps(rect)) {
-                immutable ol = intersection(sr, rect).area;
-                if (ol > overlap) {
-                    overlap = ol;
-                    ind = i;
-                }
-            }
-        }
-        return ind != size_t.max ? screens[ind] : screens[0];
-    }
-
-    /// Whether the window need to be rendered
-    @property bool dirtyContent()
-    {
-        return _dirtyContent;
-    }
-
-    /// notify that rendering occured
-    package(dgt) void cleanContent()
-    {
-        _dirtyContent = false;
-    }
-
-    /// The region that needs update
-    @property Region dirtyRegion() const
-    {
-        return _dirtyReg;
-    }
-
-    /// Reset the invalidate region to empty
-    void cleanRegion()
-    out {
-        assert(_dirtyReg.empty);
-    }
-    body {
-        _dirtyReg = new Region;
-    }
-
-    void invalidate(in IRect rect)
-    {
-        _dirtyReg = unite(_dirtyReg, new Region(rect));
-        _dirtyContent = true;
-    }
-
-    /// Invalidate the whole window
-    void invalidate()
-    {
-        _dirtyReg = new Region(IRect(0, 0, size));
-        _dirtyContent = true;
-    }
-
-    /// request a layout pass
-    void requestLayout()
-    {
-        _dirtyLayout = true;
-    }
-
-    /// request a style pass
-    void requestStylePass()
-    {
-        _dirtyStyle = true;
-    }
-
-    void handleEvent(WindowEvent wEv)
-    {
+    void handleEvent(PlWindowEvent wEv) {
         assert(wEv.window is this);
         switch (wEv.type)
         {
-        case PlEventType.expose:
-            handleExpose(cast(ExposeEvent)wEv);
-            break;
-        case PlEventType.show:
-            _onShow.fire(cast(ShowEvent)wEv);
-            break;
-        case PlEventType.hide:
-            _onHide.fire(cast(HideEvent)wEv);
-            break;
         case PlEventType.move:
-            auto wmEv = cast(MoveEvent) wEv;
-            _position = wmEv.point;
-            _onMove.fire(cast(MoveEvent) wEv);
+            auto mEv = cast(PlMoveEvent) wEv;
+            _position = mEv.point;
             break;
         case PlEventType.resize:
-            handleResize(cast(ResizeEvent) wEv);
-            break;
-        case PlEventType.mouseDown:
-            handleMouseDown(cast(PlMouseEvent) wEv);
-            break;
-        case PlEventType.mouseUp:
-            handleMouseUp(cast(PlMouseEvent) wEv);
-            break;
-        case PlEventType.mouseMove:
-            handleMouseMove(cast(PlMouseEvent) wEv);
-            break;
-        case PlEventType.mouseEnter:
-            handleMouseEnter(cast(PlMouseEvent) wEv);
-            break;
-        case PlEventType.mouseLeave:
-            handleMouseLeave(cast(PlMouseEvent) wEv);
-            break;
-        case PlEventType.keyDown:
-            auto kEv = cast(PlKeyEvent) wEv;
-            _onKey.fire(kEv);
-            if (!kEv.consumed)
-            {
-                _onKeyDown.fire(kEv);
-            }
-            break;
-        case PlEventType.keyUp:
-            auto kEv = cast(PlKeyEvent) wEv;
-            _onKey.fire(kEv);
-            if (!kEv.consumed)
-            {
-                _onKeyUp.fire(kEv);
-            }
+            auto rEv = cast(PlResizeEvent)wEv;
+            _size = rEv.size;
+            if (_ui) _ui.handleEvent(wEv);
             break;
         case PlEventType.stateChange:
-            _onStateChange.fire(cast(StateChangeEvent) wEv);
+            auto scEv = cast(PlStateChangeEvent)wEv;
+            _onStateChange.fire(scEv.state);
             break;
-        case PlEventType.close:
-            auto cev = cast(CloseEvent) wEv;
+        case PlEventType.closeRequest:
+            auto cev = new CloseEvent;
             _onClose.fire(cev);
-            if (!cev.declined)
-                close();
+            if (!cev.declined) close();
             break;
         default:
+            if (_ui) _ui.handleEvent(wEv);
             break;
+        }
+    }
+
+    @property UserInterface ui() {
+        return _ui;
+    }
+
+    @property void ui(UserInterface ui) {
+        _ui = ui;
+        if (_ui && size.area) {
+            _ui.handleEvent(new PlResizeEvent(this, size));
         }
     }
 
@@ -468,17 +276,12 @@ class Window
             return _platformWindow.created;
         }
 
-        @property AnimationManager animManager()
-        {
-            return _animManager;
-        }
-
-        void compressEvent(WindowEvent ev)
+        void compressEvent(PlWindowEvent ev)
         {
             if (ev.type == PlEventType.move) {
                 if (_evCompress & EvCompress.move) {
-                    auto prev = getEvent!MoveEvent(PlEventType.move);
-                    auto cur = cast(MoveEvent)ev;
+                    auto prev = getEvent!PlMoveEvent(PlEventType.move);
+                    auto cur = cast(PlMoveEvent)ev;
                     prev.point = cur.point;
                 }
                 else {
@@ -488,8 +291,8 @@ class Window
             }
             else if (ev.type == PlEventType.resize) {
                 if (_evCompress & EvCompress.resize) {
-                    auto prev = getEvent!ResizeEvent(PlEventType.resize);
-                    auto cur = cast(ResizeEvent)ev;
+                    auto prev = getEvent!PlResizeEvent(PlEventType.resize);
+                    auto cur = cast(PlResizeEvent)ev;
                     prev.size = cur.size;
                 }
                 else {
@@ -524,10 +327,10 @@ class Window
         {
             if (_evCompress & EvCompress.fstFrame) {
                 if (!(_evCompress & EvCompress.show)) {
-                    handleEvent(new ShowEvent(this));
+                    handleEvent(new PlShowEvent(this));
                 }
                 if (!(_evCompress & EvCompress.resize)) {
-                    handleEvent(new ResizeEvent(this, size));
+                    handleEvent(new PlResizeEvent(this, size));
                 }
             }
             foreach(ev; _events) {
@@ -535,238 +338,6 @@ class Window
             }
             _events = [];
             _evCompress = EvCompress.none;
-        }
-
-        @property bool hasAnimations()
-        {
-            return _animManager.hasAnimations;
-        }
-
-        void playAnimations()
-        {
-            _animManager.tick();
-        }
-
-        void styleAndLayout()
-        {
-            if (!_root) return;
-
-            if (_dirtyStyle) {
-                import dgt.css.cascade : cssCascade;
-                cssCascade(_root);
-                _dirtyStyle = false;
-                _root.recursClean(Dirty.styleMask);
-            }
-
-            if (_dirtyLayout) {
-                import dgt.view.layout : MeasureSpec;
-                immutable fs = cast(FSize)size;
-                _root.measure(
-                    MeasureSpec.makeAtMost(fs.width),
-                    MeasureSpec.makeAtMost(fs.height)
-                );
-                _root.layout(FRect(0, 0, fs));
-                _dirtyLayout = false;
-            }
-        }
-    }
-
-    private
-    {
-        void handleResize(ResizeEvent ev)
-        {
-            immutable newSize = ev.size;
-            _size = newSize;
-            _onResize.fire(ev);
-            requestLayout();
-            invalidate();
-        }
-
-        void handleExpose(ExposeEvent ev)
-        {
-            invalidate();
-        }
-
-        void handleMouseDown(PlMouseEvent ev)
-        {
-            assert(ev.type == PlEventType.mouseDown);
-            _onMouse.fire(ev);
-            if (!ev.consumed) _onMouseDown.fire(ev);
-            if (!ev.consumed && _root) {
-                import std.typecons : scoped;
-
-                immutable pos = cast(FVec2)ev.point;
-
-                if (!_mouseViews.length) {
-                    errorf("mouse down without prior move");
-                    _root.viewsAtPos(pos, _mouseViews);
-                }
-                _dragChain = _mouseViews;
-
-                if (!_mouseViews.length) {
-                    error("No View under mouse?");
-                    return;
-                }
-
-                auto sceneEv = scoped!MouseEvent(
-                    EventType.mouseDown, _dragChain, pos, pos, ev.button, ev.state, ev.modifiers
-                );
-                auto consumer = sceneEv.chainToNext();
-                if (consumer) {
-                    // if a view has explicitely consumed the event, we trim
-                    // the chain after it, such as its children won't receive
-                    // the drag event.
-                    import std.algorithm : countUntil;
-                    auto ind = _dragChain.countUntil!"a is b"(consumer);
-                    _dragChain = _dragChain[0 .. ind+1];
-                }
-            }
-        }
-
-        void handleMouseMove(PlMouseEvent ev)
-        {
-            assert(ev.type == PlEventType.mouseMove);
-            _onMouse.fire(ev);
-            if (!ev.consumed) _onMouseUp.fire(ev);
-            if (!ev.consumed && _root) {
-                import std.algorithm : swap;
-                import std.typecons : scoped;
-
-                immutable pos = cast(FPoint)ev.point;
-
-                assert(!_tempViews.length);
-                _root.viewsAtPos(pos, _tempViews);
-                checkEnterLeave(_mouseViews, _tempViews, ev);
-
-                swap(_mouseViews, _tempViews);
-                _tempViews.length = 0;
-
-                if (!_mouseViews.length) {
-                    error("No View under mouse?");
-                    return;
-                }
-
-                if (_dragChain.length) {
-                    auto dragEv = scoped!MouseEvent(
-                        EventType.mouseDrag, _dragChain, pos, pos,
-                        ev.button, ev.state, ev.modifiers
-                    );
-                    dragEv.chainToNext();
-                }
-                else {
-                    auto moveEv = scoped!MouseEvent(
-                        EventType.mouseMove, _mouseViews, pos, pos,
-                        ev.button, ev.state, ev.modifiers
-                    );
-                    moveEv.chainToNext();
-                }
-            }
-        }
-
-        void handleMouseUp(PlMouseEvent ev)
-        {
-            assert(ev.type == PlEventType.mouseUp);
-            _onMouse.fire(ev);
-            if (!ev.consumed) _onMouseUp.fire(ev);
-            if (!ev.consumed && _root) {
-                import std.typecons : scoped;
-
-                immutable pos = cast(FVec2)ev.point;
-
-                if (_dragChain.length) {
-                    auto upEv = scoped!MouseEvent(
-                        EventType.mouseUp, _dragChain, pos, pos,
-                        ev.button, ev.state, ev.modifiers
-                    );
-                    upEv.chainToNext();
-
-                    if (_mouseViews.length >= _dragChain.length &&
-                        _dragChain[$-1] is _mouseViews[_dragChain.length-1])
-                    {
-                        // still on same view => trigger click
-                        auto clickEv = scoped!MouseEvent(
-                            EventType.mouseClick, _dragChain, pos, pos,
-                            ev.button, ev.state, ev.modifiers
-                        );
-                        clickEv.chainToNext();
-                    }
-
-                    _dragChain.length = 0;
-                }
-                else {
-                    // should not happen
-                    warning("mouse up without drag?");
-                    if (!_mouseViews.length) {
-                        error("No View under mouse?");
-                        return;
-                    }
-                    auto upEv = scoped!MouseEvent(
-                        EventType.mouseUp, _mouseViews, pos, pos,
-                        ev.button, ev.state, ev.modifiers
-                    );
-                    upEv.chainToNext();
-                }
-
-                _mouseViews.length = 0;
-            }
-        }
-
-        void handleMouseEnter(PlMouseEvent ev)
-        {
-            if (_root) {
-                import std.algorithm : swap;
-                immutable pos = cast(FPoint)ev.point;
-
-                if (_mouseViews.length) {
-                    errorf("Enter window while having already nodes under mouse??");
-                    _mouseViews.length = 0;
-                }
-                assert(!_tempViews.length);
-                _root.viewsAtPos(pos, _mouseViews);
-                checkEnterLeave(_tempViews, _mouseViews, ev);
-            }
-        }
-
-        void handleMouseLeave(PlMouseEvent ev)
-        {
-            if (_root) {
-                import std.algorithm : swap;
-                immutable pos = cast(FPoint)ev.point;
-
-                assert(!_tempViews.length);
-                checkEnterLeave(_mouseViews, _tempViews, ev);
-
-                swap(_mouseViews, _tempViews);
-                _tempViews.length = 0;
-            }
-        }
-
-        static void emitEnterLeave(View view, EventType type, PlMouseEvent src)
-        {
-            import std.typecons : scoped;
-            immutable scPos = cast(FPoint)src.point;
-            auto ev = scoped!MouseEvent(
-                type, [view], scPos - view.scenePos, scPos, src.button, src.state, src.modifiers
-            );
-            ev.chainToNext();
-        }
-
-        static checkEnterLeave(View[] was, View[] now, PlMouseEvent src)
-        {
-            import std.algorithm : min;
-            immutable common = min(was.length, now.length);
-            foreach (i; 0 .. common) {
-                if (was[i] !is now[i]) {
-                    emitEnterLeave(was[i], EventType.mouseLeave, src);
-                    emitEnterLeave(now[i], EventType.mouseEnter, src);
-                }
-            }
-            foreach (n; was[common .. $]) {
-                emitEnterLeave(n, EventType.mouseLeave, src);
-            }
-            foreach (n; now[common .. $]) {
-                emitEnterLeave(n, EventType.mouseEnter, src);
-            }
         }
 
         EvT getEvent(EvT)(PlEventType type)
@@ -788,48 +359,19 @@ class Window
             show        = 32,
         }
 
-        WindowFlags _flags;
-        PlatformWindow _platformWindow;
-        string _title;
-        IPoint _position = IPoint(-1, -1);
-        ISize _size;
-        GlAttribs _attribs;
-        Color _clearColor;
-        bool _hasClearColor;
-
-        View _root;
-        View[] _dragChain;
-        View[] _mouseViews;
-        View[] _tempViews;
-        AnimationManager _animManager = new AnimationManager;
-
-        EvCompress _evCompress = EvCompress.fstFrame;
-        WindowEvent[] _events;
-
-        Rebindable!Region _dirtyReg = new Region;
-        bool _dirtyStyle    = true;
-        bool _dirtyLayout   = true;
-        bool _dirtyContent  = true;
-
-        FireableSignal!string    _onTitleChange = new FireableSignal!string;
-        Handler!ShowEvent        _onShow        = new Handler!ShowEvent;
-        Handler!HideEvent        _onHide        = new Handler!HideEvent;
-        Handler!MoveEvent        _onMove        = new Handler!MoveEvent;
-        Handler!ResizeEvent      _onResize      = new Handler!ResizeEvent;
-        Handler!PlMouseEvent       _onMouse       = new Handler!PlMouseEvent;
-        Handler!PlMouseEvent       _onMouseDown   = new Handler!PlMouseEvent;
-        Handler!PlMouseEvent       _onMouseUp     = new Handler!PlMouseEvent;
-        Handler!PlKeyEvent         _onKey         = new Handler!PlKeyEvent;
-        Handler!PlKeyEvent         _onKeyDown     = new Handler!PlKeyEvent;
-        Handler!PlKeyEvent         _onKeyUp       = new Handler!PlKeyEvent;
-        Handler!StateChangeEvent _onStateChange = new Handler!StateChangeEvent;
-        Handler!CloseEvent       _onClose       = new Handler!CloseEvent;
-        FireableSignal!Window    _onClosed      = new FireableSignal!Window;
     }
 
-    // scene graph reserved fields and methods
-package(dgt):
+    private WindowFlags _flags;
+    private PlatformWindow _platformWindow;
+    private string _title;
+    private IPoint _position = IPoint(-1, -1);
+    private ISize _size;
+    private GlAttribs _attribs;
 
-    Object sgData;
+    private EvCompress _evCompress = EvCompress.fstFrame;
+    private PlWindowEvent[] _events;
+    private Handler!CloseEvent _onClose = new Handler!CloseEvent;
+    private Handler!WindowState _onStateChange = new Handler!WindowState;
 
+    private UserInterface _ui;
 }

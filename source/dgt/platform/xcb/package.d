@@ -2,16 +2,19 @@ module dgt.platform.xcb;
 
 version(linux):
 
+import core.stdc.stdlib : free;
+import core.sys.posix.poll : pollfd;
+
 import dgt.context;
-import dgt.enums;
-import dgt.geometry;
-import dgt.image;
-import dgt.keys;
+import dgt.core.geometry;
+import dgt.input.keys;
+import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.xcb.context;
 import dgt.platform.xcb.keyboard;
 import dgt.platform.xcb.screen;
+import dgt.platform.xcb.timer;
 import dgt.platform.xcb.window;
 import dgt.screen;
 import dgt.window;
@@ -24,12 +27,12 @@ import xcb.xkb;
 import X11.Xlib_xcb;
 import X11.Xlib;
 
+import std.container : DList;
 import std.exception : enforce;
+import std.experimental.logger;
+import std.stdio;
 import std.string : toStringz;
 import std.typecons : scoped;
-import std.experimental.logger;
-import core.stdc.stdlib : free;
-import std.stdio;
 
 alias Window = dgt.window.Window;
 alias Screen = dgt.screen.Screen;
@@ -88,8 +91,10 @@ class XcbPlatform : Platform
         XcbScreen[] _xcbScreens;
         XcbWindow[xcb_window_t] _windows;
         int _xcbFd;
-        int _vsyncReadFd;
-        int _vsyncWriteFd;
+        pollfd[] _pollFds;
+
+        LinuxFdTimer[] _timers;
+        PlEvent[]  _events;
     }
 
     /// Builds an XcbPlatform
@@ -114,19 +119,8 @@ class XcbPlatform : Platform
         initializeScreens();
         _kbd = new XcbKeyboard(g_connection, _xkbFirstEv);
         initializeDRI();
-        initializeVG();
 
         _xcbFd = xcb_get_file_descriptor(g_connection);
-
-        import core.sys.posix.unistd : pipe;
-        int[2] pipeFds;
-        enforce(pipe(pipeFds) ==0, "could not create pipe");
-        _vsyncReadFd = pipeFds[0];
-        _vsyncWriteFd = pipeFds[1];
-
-        import core.sys.posix.fcntl : fcntl, F_GETFL, F_SETFL, O_NONBLOCK;
-        immutable flags = fcntl(_vsyncWriteFd, F_GETFL, 0);
-        fcntl(_vsyncWriteFd, F_SETFL, flags | O_NONBLOCK);
     }
 
     override void dispose()
@@ -148,6 +142,10 @@ class XcbPlatform : Platform
         return createXcbGlContext(attribs, window, sharedCtx, screen);
     }
 
+    override PlatformTimer createTimer() {
+        return new LinuxFdTimer;
+    }
+
     override @property inout(Screen) defaultScreen() inout
     {
         return _screens[_defaultScreen];
@@ -165,42 +163,35 @@ class XcbPlatform : Platform
 
     override void collectEvents(void delegate(PlEvent) collector)
     {
+        import std.algorithm : each;
         while(true) {
             xcb_generic_event_t* e = xcb_poll_for_event(g_connection);
             if (!e) break;
             scope(exit) free(e);
             handleEvent(e, collector);
         }
+        _events.each!(collector);
+        _events = [];
         xcb_flush(g_connection);
     }
 
-    override void processEvents()
+    override Wait wait(in Wait flags)
     {
-        xcb_generic_event_t* e = xcb_wait_for_event(g_connection);
-        scope(exit) {
-            free(e);
-            xcb_flush(g_connection);
-        }
-        handleEvent(e, (PlEvent ev) {
-            auto wEv = cast(WindowEvent)ev;
-            if (wEv) {
-                wEv.window.handleEvent(wEv);
+        import core.sys.posix.poll : poll, POLLIN;
+
+        _pollFds.length = _timers.length + 1;
+        _pollFds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
+        _pollFds[0].events = POLLIN;
+        if (flags & Wait.timer) {
+            foreach (i, t; _timers) {
+                _pollFds[i+1].fd = t.fd;
+                _pollFds[i+1].events = POLLIN;
             }
-        });
-    }
-
-    override Wait waitFor(Wait flags)
-    {
-        import core.sys.posix.poll : poll, pollfd, POLLIN;
-
-        pollfd[2] fds;
-        fds[0].fd = (flags & Wait.input) ? _xcbFd : -1;
-        fds[0].events = POLLIN;
-        fds[1].fd = (flags & Wait.vsync) ? _vsyncReadFd : -1;
-        fds[1].events = POLLIN;
+        }
+        immutable numFds = 1 + ((flags & Wait.timer) ? _timers.length : 0);
 
         while(true) {
-            immutable rc = poll(fds.ptr, 2, -1);
+            immutable rc = poll(_pollFds.ptr, numFds, -1);
             if (rc == -1) {
                 import core.stdc.errno : EINTR, errno;
                 import core.stdc.string : strerror;
@@ -212,23 +203,28 @@ class XcbPlatform : Platform
         }
 
         Wait res = Wait.none;
-        if (fds[0].revents & POLLIN) {
+        if (_pollFds[0].revents & POLLIN) {
             res |= Wait.input;
         }
-        if (fds[1].revents & POLLIN) {
-            res |= Wait.vsync;
-            import core.sys.posix.unistd : read;
-            ubyte[8] buf;
-            read(_vsyncReadFd, cast(void*)buf.ptr, 8);
+        if (flags & Wait.timer) {
+            foreach (i, t; _timers) {
+                auto fd = _pollFds[i+1];
+                if (fd.revents & POLLIN) {
+                    res |= Wait.timer;
+                    _events ~= new PlTimerEvent(t.handler);
+                    t.notifyShot();
+                }
+            }
         }
         return res;
     }
 
-    override void vsync()
-    {
-        import core.sys.posix.unistd : write;
-        ubyte[4] buf;
-        write(_vsyncWriteFd, cast(const(void*))buf.ptr, 4);
+    package void registerTimer(LinuxFdTimer timer) {
+        _timers ~= timer;
+    }
+    package void unregisterTimer(LinuxFdTimer timer) {
+        import std.algorithm : remove;
+        _timers = _timers.remove!(t => t is timer);
     }
 
     private void handleEvent(xcb_generic_event_t* e, void delegate(PlEvent) collector)
@@ -458,17 +454,6 @@ class XcbPlatform : Platform
             }
         }
 
-        void initializeVG()
-        {
-            import xcb.shm : xcb_shm_id;
-            {
-                xcb_prefetch_extension_data(g_connection, &xcb_shm_id);
-
-                const reply = xcb_get_extension_data(g_connection, &xcb_shm_id);
-                enforce(reply && reply.present, "XCB-SHM extension is not found");
-            }
-        }
-
         void processWindowEvent(SpecializedEvent, string processingMethod, string seField = "event")(
                 xcb_generic_event_t* xcbEv, void delegate(PlEvent) collector)
         {
@@ -490,7 +475,7 @@ class XcbPlatform : Platform
             if (xcbEv.data.data32[0] == atom(Atom.WM_DELETE_WINDOW))
             {
                 auto w = window(xcbEv.window);
-                collector(new CloseEvent(w));
+                collector(new PlCloseRequestEvent(w));
             }
         }
     }
@@ -537,29 +522,6 @@ MouseButton dgtMouseButton(in xcb_button_t xcbBut) pure @nogc @safe nothrow
     }
 }
 
-ImageFormat dgtImageFormat(in xcb_format_t* fmt)
-{
-    switch (fmt.bits_per_pixel)
-    {
-    case 1:
-        return ImageFormat.a1;
-    case 8:
-        return ImageFormat.a8;
-    case 32:
-        if (fmt.depth == 24)
-        {
-            return ImageFormat.xrgb;
-        }
-        else if (fmt.depth == 32)
-        {
-            return ImageFormat.argbPremult;
-        }
-        break;
-    default:
-        break;
-    }
-    throw new Exception("DGT-XCB - Unsupported image format");
-}
 
 private
 {

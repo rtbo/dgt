@@ -1,15 +1,10 @@
-/// OpenGL context creation and manipulation.
 module dgt.context;
 
-import dgt.platform;
-import dgt.util : ValueProperty;
-import dgt.geometry : ISize;
+import dgt.core.geometry : ISize;
+import dgt.core.rc;
+import dgt.core.util : ValueProperty;
 import dgt.screen;
 import dgt.window;
-
-import gfx.foundation.rc;
-
-import derelict.opengl3.gl3;
 
 import std.exception;
 import std.experimental.logger;

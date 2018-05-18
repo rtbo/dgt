@@ -2,25 +2,18 @@ module dgt.css.cascade;
 
 import dgt.css.om;
 import dgt.css.parse;
-import dgt.css.selector;
 import dgt.css.style;
-import dgt.css.token;
-import dgt.css.value;
-import dgt.view.view;
 
-import std.experimental.logger;
-import std.range;
+import std.range : retro;
 
 /// Entry point of the Style pass before rendering
 /// This function interates over the whole tree and assign each style property
 /// of each view
-void cssCascade(View root)
+void cssCascade(StyleElement root, Stylesheet dgtCSS)
 in {
-    assert(root.isRoot);
+    assert(root.isStyleRoot);
 }
 body {
-    // TODO: provide mechanism to allow lo-cost styling when only one view need update
-    auto dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
     auto ctx = new CascadeContext;
     ctx.cascade(root, [dgtCSS]);
 }
@@ -29,40 +22,39 @@ private:
 
 final class CascadeContext
 {
-    void cascade(View view, Stylesheet[] css)
+    void cascade(StyleElement el, Stylesheet[] css)
     {
-        if (view.css.length) {
-            css ~= parseCSS(view.css, null, Origin.author);
+        if (el.css.length) {
+            css ~= parseCSS(el.css, null, Origin.author);
         }
 
-        if (view.isDirty(Dirty.style)) {
-            if (view.inlineCSS.length) {
-                auto cssStr = "*{"~view.inlineCSS~"}";
+        if (el.isStyleDirty) {
+            if (el.inlineCSS.length) {
+                auto cssStr = "*{"~el.inlineCSS~"}";
                 auto inlineCSS = parseCSS(cssStr, null, Origin.author);
-                doView(view, css ~ inlineCSS);
+                doElement(el, css ~ inlineCSS);
             }
             else {
-                doView(view, css);
+                doElement(el, css);
             }
-            view.clean(Dirty.style);
         }
 
-        if (view.isDirty(Dirty.childrenStyle)) {
+        if (el.hasChildrenStyleDirty) {
             import std.algorithm : each, filter;
-            view.children
-                .filter!(c => c.isDirty(Dirty.styleMask))
+            styleChildren(el)
+                .filter!(c => c.isStyleDirty || c.hasChildrenStyleDirty)
                 .each!(c => cascade(c, css));
         }
     }
 
-    void doView(View view, Stylesheet[] css)
+    void doElement(StyleElement el, Stylesheet[] css)
     {
         import std.algorithm : cmp, filter, sort, SwapStrategy;
 
         Decl[] collectedDecls;
         // retro is used such as to have inner scope before outer scope
         foreach(s; retro(css)) {
-            foreach(r; s.rules.filter!(r => r.selector.matches(view))) {
+            foreach(r; s.rules.filter!(r => r.selector.matches(el))) {
                 collectedDecls ~= r.decls;
             }
         }
@@ -81,8 +73,8 @@ final class CascadeContext
         }
         collectedDecls.sort!(declCmp, SwapStrategy.stable);
 
-        foreach (smp; view.styleMetaProperties) {
-            smp.applyCascade(view, collectedDecls);
+        foreach (smp; el.styleMetaProperties) {
+            smp.applyCascade(el, collectedDecls);
         }
     }
 }

@@ -2,17 +2,14 @@ module dgt.platform.win32.window;
 
 version(Windows):
 
-import dgt.enums;
-import dgt.geometry;
-import dgt.keys;
+import dgt.core.geometry;
+import dgt.core.rc;
+import dgt.input.keys;
+import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32;
-import dgt.platform.win32.buffer;
-import dgt.vg;
 import dgt.window;
-
-import gfx.foundation.rc;
 
 import core.sys.windows.windows;
 import std.exception : enforce;
@@ -56,7 +53,7 @@ class Win32Window : PlatformWindow
         wstring clsName = Win32Platform.instance.registerWindowClass(_win);
 		HINSTANCE hInstance = GetModuleHandle(null);
 
-		auto g = _win.geometry;
+		auto g = _win.rect;
 		immutable useG = (g.area != 0);
 
 		_hWnd = CreateWindowEx(
@@ -98,7 +95,7 @@ class Win32Window : PlatformWindow
         return buf[0 .. len].to!string;
     }
 
-    override @property void title(string title)
+    override void setTitle(in string title)
     {
         SetWindowText(_hWnd, title.toUTF16z);
     }
@@ -108,7 +105,7 @@ class Win32Window : PlatformWindow
         return _state;
     }
 
-    override @property void state(WindowState state)
+    override void setState(in WindowState state)
     {
         if (_win.flags & WindowFlags.dummy) return;
 
@@ -132,22 +129,17 @@ class Win32Window : PlatformWindow
         _shownOnce = true;
     }
 
-    override @property IRect geometry() const
+    override @property IRect rect() const
     {
         return _rect;
     }
 
-    override @property void geometry(IRect rect)
+    override void setRect(in IRect rect)
     {
 		RECT r = rectToWin32(rect);
 		AdjustWindowRectEx(&r, style, false, exStyle);
 
 		MoveWindow(_hWnd, r.left, r.top, r.right-r.left, r.bottom-r.top, true);
-    }
-
-    override PlatformWindowBuffer makeBuffer(in ISize size)
-    {
-        return new Win32WindowBuffer(this, size);
     }
 
     package
@@ -160,7 +152,7 @@ class Win32Window : PlatformWindow
 
         bool handleClose(void delegate(PlEvent) collector)
         {
-            auto ev = new CloseEvent(_win);
+            auto ev = new PlCloseRequestEvent(_win);
             collector(ev);
             return true;
         }
@@ -172,11 +164,11 @@ class Win32Window : PlatformWindow
             }
 			if (!GetUpdateRect(_hWnd, null, false)) return false;
             if (msg == WM_ERASEBKGND) return true;
-            if (geometry.area == 0) return true;
+            if (this.rect.area == 0) return true;
 
-            immutable r = IRect(0, 0, geometry.size);
+            immutable r = IRect(0, 0, this.rect.size);
 
-			auto ev = new ExposeEvent(_win, r);
+			auto ev = new PlExposeEvent(_win, r);
 			collector(ev);
 
             immutable wr = rectToWin32(r);
@@ -219,18 +211,18 @@ class Win32Window : PlatformWindow
 
         void handleGeometryChange(void delegate(PlEvent) collector)
         {
-            immutable oldG = geometry;
-            immutable g = sysGeometry;
+            immutable oldG = rect;
+            immutable g = sysRect;
 
             _rect = g;
 
             if (g.size != oldG.size) {
-                auto ev = new ResizeEvent(_win, g.size);
+                auto ev = new PlResizeEvent(_win, g.size);
                 collector(ev);
                 _sentFstResize = true;
             }
             if (g.point != oldG.point) {
-                auto ev = new MoveEvent(_win, g.point);
+                auto ev = new PlMoveEvent(_win, g.point);
                 collector(ev);
             }
 
@@ -242,12 +234,12 @@ class Win32Window : PlatformWindow
             if (lParam) return false; // only handle calls subsequent to ShowWindow
 
             if (wParam) {
-                auto ev = new ShowEvent(_win);
+                auto ev = new PlShowEvent(_win);
                 collector(ev);
                 _sentFstShow = true;
             }
             else {
-                auto ev = new HideEvent(_win);
+                auto ev = new PlHideEvent(_win);
                 collector(ev);
             }
             return true;
@@ -382,7 +374,7 @@ class Win32Window : PlatformWindow
 
         void handleWindowStateChange(WindowState ws, void delegate(PlEvent) collector)
         {
-            auto ev = new StateChangeEvent(_win, ws);
+            auto ev = new PlStateChangeEvent(_win, ws);
             collector(ev);
         }
     }
@@ -431,7 +423,7 @@ class Win32Window : PlatformWindow
             return WindowState.normal;
         }
 
-        @property IRect sysGeometry()
+        @property IRect sysRect()
         {
             auto wr = RECT(0, 0, 0, 0);
             GetWindowRect(_hWnd, &wr);
@@ -455,7 +447,8 @@ class Win32Window : PlatformWindow
                 immutable auto count = msg.lParam & repeatCountMask;
                 auto str = new wchar[count];
                 str[] = cast(wchar)msg.wParam;
-                return str.idup;
+                import std.exception : assumeUnique;
+                return assumeUnique(str);
             }
             return "";
         }
@@ -463,20 +456,20 @@ class Win32Window : PlatformWindow
         void handlePaintEvPackage(void delegate(PlEvent) collector)
         {
             immutable state = sysState;
-            immutable geom = sysGeometry;
+            immutable rect = sysRect;
 
             immutable stateCond = state != WindowState.hidden && state != WindowState.minimized;
-            immutable geomCond = geom.area != 0;
+            immutable rectCond = rect.area != 0;
 
             if (!_sentFstShow && stateCond) {
-                auto ev = new ShowEvent(_win);
+                auto ev = new PlShowEvent(_win);
                 collector(ev);
             }
-            if (!_sentFstResize && geomCond) {
+            if (!_sentFstResize && rectCond) {
                 handleGeometryChange(collector);
             }
 
-            if (stateCond && geomCond) _paintEvPackage = true;
+            if (stateCond && rectCond) _paintEvPackage = true;
         }
     }
 }

@@ -1,25 +1,23 @@
 module hello;
 
+import core.time : dur;
+
 import dgt.application;
-import dgt.color;
-import dgt.enums;
-import dgt.event;
-import dgt.geometry;
-import dgt.image;
-import dgt.math;
-import dgt.text.font;
-import dgt.text.fontcache;
-import dgt.text.layout;
-import dgt.view.animation;
-import dgt.view.button;
-import dgt.view.label;
-import dgt.view.layout;
-import dgt.view.miscviews;
-import dgt.view.view;
+import dgt.core.color : Color;
+import dgt.core.enums : Alignment;
+import dgt.core.geometry;
+import dgt.core.image;
+import dgt.core.rc : rc;
+import dgt.platform;
+import dgt.ui : UserInterface;
+import dgt.ui.button;
+import dgt.ui.label;
+import dgt.ui.layout;
 import dgt.window;
 
-import gfx.foundation.rc;
+import gfx.foundation.typecons;
 
+import std.exception;
 import std.math : PI;
 import std.stdio;
 import std.typecons : scoped;
@@ -29,66 +27,60 @@ int main()
     auto app = new Application();
     scope(exit) app.dispose();
 
-    auto win = new Window("Hello DGT");
+    auto ui = new UserInterface;
 
     immutable logoImg = assumeUnique (
         Image.loadFromView!"dlang_logo.png"(ImageFormat.argb)
     );
-    auto hello = new Label;
-    hello.name = "hello";
-    hello.text = "Hello";
-    hello.alignment = Alignment.center;
-    hello.css = "font: italic 1in serif";
+    auto label = new Label;
+    label.text = "Hello";
+    label.icon = logoImg;
+    label.alignment = Alignment.center;
+    label.id = "label";
 
-    auto icon = new Label;
-    icon.name = "icon";
-    icon.icon = logoImg;
-    icon.alignment = Alignment.center;
-
-    auto layout = new LinearLayout;
-    layout.name = "layout";
-    layout.orientation = Orientation.horizontal;
-    layout.appendChild(hello);
-    layout.appendChild(icon);
-    layout.spacing = 6;
-    layout.gravity = Gravity.center;
-
-    auto exit = new Button;
-    exit.name = "exit";
-    exit.text = "Exit";
-    exit.css = "font-size: 40px";
-    exit.padding = FPadding(16);
-    exit.onClick += {
+    auto btn = new Button;
+    btn.text = "Exit";
+    btn.alignment = Alignment.center;
+    btn.id = "button";
+    btn.onClick += {
         app.exit(0);
     };
 
-    auto root = new LinearLayout;
-    root.name = "root";
-    root.setVertical();
-    root.appendChild(layout);
-    root.appendChild(exit);
-    root.spacing = 6;
-    root.gravity = Gravity.center;
+    auto layout = new LinearLayout;
+    layout.setVertical();
+    layout.appendView(label);
+    layout.appendView(btn);
+    layout.gravity = Gravity.center;
 
-    win.root = root;
-    win.clearColor = Color.lightgray;
+    ui.root = layout;
 
+    import dgt.ui.animation : SmoothTransitionAnimation;
+    auto anim = new SmoothTransitionAnimation(ui, dur!"seconds"(3));
+    anim.name = "hello rotate";
+    anim.onTick = (float phase) {
+        import dgt.math.transform : rotation, scale, translation;
+        import std.math : PI, sin;
+        const size = label.size.asVec;
+        const center = fvec(size/2, 0);
+        const factor = 1 + cast(float)sin(phase*PI);
+        const transform =
+                translation!float(center) *
+                rotation(phase*2*PI, fvec(0, 0, 1)) *
+                scale(factor, factor, 1) *
+                translation!float(-center);
+        label.transform = transform;
+    };
+
+    auto win = new Window("Hello DGT");
+    win.ui = ui;
     win.show();
 
-    auto anim = new class Animation {
-        this() {
-            super(win, dur!"seconds"(2));
-        }
-
-        override void tick(Duration sinceStart) {
-            import std.math : PI;
-            immutable angle = sinceStart >= duration ? 0 : (2 * PI * (
-                real(sinceStart.total!"usecs") / real(duration.total!"usecs")
-            ));
-            exit.transform = rotation(angle, fvec(0, 0, 1));
-        }
-    };
-    anim.start();
+    auto timer = Application.platform.createTimer();
+    scope(exit) timer.dispose();
+    timer.duration = dur!"seconds"(1);
+    timer.mode = PlatformTimer.Mode.singleShot;
+    timer.handler = &anim.start;
+    timer.start();
 
     return app.loop();
 }

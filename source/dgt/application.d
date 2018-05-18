@@ -1,12 +1,13 @@
 /// Main application module.
 module dgt.application;
 
+import dgt;
 import dgt.context;
+import dgt.core.rc;
 import dgt.eventloop;
+import dgt.render.queue : RenderQueue;
 import dgt.platform;
-import dgt.sg.renderer;
 import dgt.window;
-import gfx.foundation.rc;
 
 import std.experimental.logger;
 
@@ -28,41 +29,21 @@ class Application : EventLoop, Disposable
 
     override void dispose()
     {
-        import dgt.text.font : FontEngine;
-        import dgt.text.fontcache : FontCache;
-
-        FontCache.instance.dispose();
-        FontEngine.instance.dispose();
         _platform.dispose();
+        finalizeSubsystems();
     }
 
 
     private void initialize(Platform platform)
     {
+        initializeSubsystems();
+
         // init Application singleton
         assert(!_instance, "Attempt to initialize twice DGT Application singleton");
         _instance = this;
 
-        // init bindings to C libraries
-        {
-            import derelict.freetype.ft : DerelictFT;
-            import derelict.opengl3.gl3 : DerelictGL3;
-            import dgt.bindings.cairo.load : loadCairoSymbols;
-            import dgt.bindings.fontconfig.load : loadFontconfigSymbols;
-            import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
-            import dgt.bindings.libpng.load : loadLibPngSymbols;
-            import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
-
-            DerelictGL3.load();
-            DerelictFT.load();
-            loadLibPngSymbols();
-            loadTurboJpegSymbols();
-            loadCairoSymbols();
-            loadFontconfigSymbols();
-            loadHarfbuzzSymbols();
-        }
-
         // init platform
+        log("initializing platform");
         if (!platform) platform = makeDefaultPlatform();
         _platform = platform;
         _platform.initialize();
@@ -71,12 +52,12 @@ class Application : EventLoop, Disposable
 
         // init other singletons
         {
-            import dgt.text.fontcache : FontCache;
-            import dgt.text.font : FontEngine;
-            FontEngine.initialize();
-            FontCache.initialize();
+            // import dgt.text.fontcache : FontCache;
+            // import dgt.text.font : FontEngine;
+            // FontEngine.initialize();
+            // FontCache.initialize();
+            RenderQueue.initialize();
         }
-        log("ending initialization");
     }
 
     override protected void onRegisterWindow(Window w) {
@@ -91,36 +72,33 @@ class Application : EventLoop, Disposable
         }
     }
 
-
     private void initializeGfx(Window window)
     {
         assert(window.created && !window.dummy);
-        SGRenderer.instance.start(createGlContext(window));
+        RenderQueue.instance.start(createGlContext(window));
     }
 
     private void finalizeGfx(Window window)
     {
         assert(window.created && !window.dummy);
-        SGRenderer.instance.stop(window);
+        RenderQueue.instance.stop(window.nativeHandle);
     }
 
+
     private Platform _platform;
-    private bool _exitFlag;
-    private int _exitCode;
 
     static __gshared
     {
         /// Get the Application singleton.
         @property Application instance()
         {
-            assert(_instance, "Attempt to get unintialized DGT Application");
             return _instance;
         }
         /// Get the Platform singleton.
         @property Platform platform()
         {
-            assert(_instance && _instance._platform, "Attempt to get unintialized DGT Platform");
-            return _instance._platform;
+            if (_instance) return _instance._platform;
+            else return null;
         }
 
         private Application _instance;
@@ -145,4 +123,3 @@ Platform makeDefaultPlatform()
         assert(false, "unimplemented");
     }
 }
-

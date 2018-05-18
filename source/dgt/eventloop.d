@@ -3,7 +3,7 @@ module dgt.eventloop;
 import dgt.application;
 import dgt.platform;
 import dgt.platform.event;
-import dgt.sg.renderer;
+import dgt.render.queue : RenderQueue;
 import dgt.window;
 
 import std.experimental.logger;
@@ -14,26 +14,59 @@ class EventLoop
     /// Enter event processing loop
     int loop()
     {
-        while (!_exitFlag) {
+        import dgt.platform : Wait;
+        import std.algorithm : each, filter, map;
+        import std.array : array;
 
-            import std.algorithm : any, each, filter;
-            import std.array : array;
+        // initialize style and layout such as first event handlers has the
+        // right state
+        windows
+            .filter!(w => w.ui && w.ui.needStylePass)
+            .each!(w => w.ui.stylePass());
+        windows
+            .filter!(w => w.ui && w.ui.needLayoutPass)
+            .each!(w => w.ui.layoutPass());
 
-            _windows.each!(w => w.playAnimations());
-            _windows.each!(w => w.styleAndLayout());
-
-            auto dirtyWindows = _windows
-                    .filter!(w => w.dirtyContent || w.hasAnimations)
-                    .array();
-            if (dirtyWindows.length) {
-                SGRenderer.instance.syncAndRender(dirtyWindows);
-                dirtyWindows.each!(w => w.cleanContent());
-            }
-
-            if (!_windows.any!(w => w.hasAnimations))
-                Application.platform.waitFor(Wait.input);
+        while (true) {
+            // the loop is as follow:
+            //  - collect all events from platform
+            //  - deliver events to ui(s)
+            //  - style pass
+            //  - layout pass
+            //  - animations
+            //  - collect frame and send it to renderer
+            //  - wait that at most one frame is in the render queue
+            //  - if no animation is running, wait that at least one event is in the event queue
             Application.platform.collectEvents(&compressEvent);
             deliverEvents();
+            if (_exitFlag) {
+                break;
+            }
+            windows
+                .filter!(w => w.ui && w.ui.needStylePass)
+                .each!(w => w.ui.stylePass());
+            windows
+                .filter!(w => w.ui && w.ui.needLayoutPass)
+                .each!(w => w.ui.layoutPass());
+            windows
+                .filter!(w => w.ui && w.ui.hasAnimations)
+                .each!(w => w.ui.tickAnimations());
+            immutable frames = windows
+                .filter!(w => w.ui && w.ui.needRenderPass)
+                .map!(w => w.ui.frame(w.nativeHandle))
+                .array;
+            if (frames.length) {
+                RenderQueue.instance.postFrames(frames);
+                // actually wait if the frames from the previous loop are still
+                // in process
+                RenderQueue.instance.waitAtMostFrames(1);
+            }
+            import std.algorithm : any;
+            const hasAnim = windows
+                    .filter!(w => w.ui)
+                    .map!(w => w.ui)
+                    .any!(ui => ui.hasAnimations);
+            if (!hasAnim) Application.platform.wait(Wait.input | Wait.timer);
         }
 
         // Window.close removes itself from _windows, so we need to dup.
@@ -95,17 +128,18 @@ class EventLoop
 
     private void compressEvent(PlEvent ev)
     {
-        auto wEv = cast(WindowEvent)ev;
+        auto wEv = cast(PlWindowEvent)ev;
         if (wEv) {
             assert(hasWindow(wEv.window));
             version(Windows) {
-                // windows has modal resize and move events
+                // windows has modal resize and move envents
                 if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
                     wEv.window.handleEvent(wEv);
-                    wEv.window.styleAndLayout();
-                    if (wEv.window.dirtyContent) {
-                        SGRenderer.instance.syncAndRender([wEv.window]);
-                        wEv.window.cleanContent();
+                    if (wEv.window.ui && RenderQueue.instance.numWaitingFrames <= 1) {
+                        immutable frames = [
+                            wEv.window.ui.frame(wEv.window.nativeHandle)
+                        ];
+                        RenderQueue.instance.postFrames(frames);
                     }
                 }
                 else {
@@ -116,16 +150,23 @@ class EventLoop
                 wEv.window.compressEvent(wEv);
             }
         }
+        else {
+            if (ev.type == PlEventType.timer) {
+                _timerEvents ~= cast(PlTimerEvent)ev;
+            }
+        }
     }
 
     private void deliverEvents()
     {
-        foreach (w; _windows) {
-            w.deliverEvents();
-        }
+        import std.algorithm : each;
+        windows.each!(w => w.deliverEvents());
+        _timerEvents.each!(t => t.handle());
+        _timerEvents = [];
     }
 
     private bool _exitFlag;
     private int _exitCode;
     private Window[] _windows;
+    private PlTimerEvent[] _timerEvents;
 }

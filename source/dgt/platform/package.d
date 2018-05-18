@@ -1,13 +1,15 @@
 /// Platform abstraction module
 module dgt.platform;
 
+import core.time : Duration, MonoTime;
+
 import dgt.context;
-import dgt.geometry;
-import dgt.image;
+import dgt.core.geometry;
+import dgt.core.rc;
+import dgt.core.signal;
 import dgt.platform.event;
 import dgt.screen;
 import dgt.window;
-import gfx.foundation.rc;
 
 import std.typecons : BitFlags;
 
@@ -29,18 +31,19 @@ interface Platform : Disposable
 
     @property string name() const;
 
+    @property inout(Screen) defaultScreen() inout;
+    @property inout(Screen)[] screens() inout;
+
+    PlatformWindow createWindow(Window window);
+
     GlContext createGlContext(
                 GlAttribs attribs, PlatformWindow window,
                 GlContext sharedCtx, Screen screen);
 
-    @property inout(Screen) defaultScreen() inout;
-    @property inout(Screen)[] screens() inout;
-    PlatformWindow createWindow(Window window);
+    PlatformTimer createTimer();
 
+    Wait wait(in Wait waitFlags);
     void collectEvents(void delegate(PlEvent) collector);
-    void processEvents();
-    Wait waitFor(Wait flags);
-    void vsync();
 }
 
 /// OS specific window interface.
@@ -59,31 +62,47 @@ interface PlatformWindow
     @property size_t nativeHandle() const;
 
     @property string title() const;
-    @property void title(string title);
+    void setTitle(in string title);
 
     @property WindowState state() const;
-    @property void state(WindowState state);
+    void setState(in WindowState state);
 
-    @property IRect geometry() const;
-    @property void geometry(IRect pos);
-
-    PlatformWindowBuffer makeBuffer(in ISize size);
+    @property IRect rect() const;
+    void setRect(in IRect rect);
 }
 
-/// A native buffer image suitable for blitting pixels on screen.
-/// Top left corner of this buffer image fit with the top left corner of the
-/// window.
-/// Suitable for software rendering into an image.
-interface PlatformWindowBuffer : Disposable
-{
-    /// The window associated to the buffer.
-    @property inout(PlatformWindow) window() inout;
+interface PlatformTimer : Disposable {
+    enum Mode {
+        singleShot,
+        multipleShots,
+        endless,
+    }
+    @property Mode mode();
+    @property void mode(in Mode mode);
+    @property bool engaged();
+    @property MonoTime started();
+    @property Duration duration();
+    @property void duration(in Duration dur);
+    @property uint shots();
+    @property void shots(in uint val);
 
-    /// The buffer data encapsulated as image.
-    @property inout(Image) image() inout;
+    void start()
+    in {
+        assert(!engaged);
+        assert(duration > Duration.zero);
+    }
+    out {
+        assert(engaged);
+    }
 
-    /// Blits the image pixels into the window native surface.
-    /// Orig is at the same time the source and destination offset for
-    /// reading and writing.
-    void blit(in IPoint orig, in ISize size);
+    void stop()
+    in {
+        assert(engaged);
+    }
+    out {
+        assert(!engaged);
+    }
+
+    @property Slot!() handler();
+    @property void handler(Slot!() slot);
 }

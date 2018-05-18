@@ -13,6 +13,8 @@ import std.traits;
 import std.meta;
 import std.typecons : Flag, Yes, No;
 
+@safe pure:
+
 /// Build a translation matrix.
 auto translation(X, Y)(in X x, in Y y)
 {

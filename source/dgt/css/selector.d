@@ -160,7 +160,7 @@ class SimpleSelector : AbstractSelector
                 return (style.pseudoState & _ps) != PseudoState.def;
             }
             else if (val == "root") {
-                return style.isRoot;
+                return style.isStyleRoot;
             }
             else {
                 _ps = translatePseudoClass(val);
@@ -254,23 +254,23 @@ class Combinator : AbstractSelector
         if (!rhs.matches(style)) return false;
         switch(_type) {
         case Type.descendant:
-            auto p = style.parent;
+            auto p = style.styleParent;
             while (p) {
                 if (lhs.matches(p)) return true;
-                else p = p.parent;
+                else p = p.styleParent;
             }
             return false;
         case Type.child:
-            auto p = style.parent;
+            auto p = style.styleParent;
             return p ? lhs.matches(p) : false;
         case Type.adjSibl:
-            auto s = style.prevSibling;
+            auto s = style.stylePrevSibling;
             return s ? lhs.matches(s) : false;
         case Type.genSibl:
-            auto s = style.prevSibling;
+            auto s = style.stylePrevSibling;
             while (s) {
                 if (lhs.matches(s)) return true;
-                else s = s.prevSibling;
+                else s = s.stylePrevSibling;
             }
             return false;
         default:

@@ -3,10 +3,11 @@ module dgt.platform.win32;
 version(Windows):
 
 import dgt.context;
-import dgt.geometry;
+import dgt.core.geometry;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32.context;
+import dgt.platform.win32.timer;
 import dgt.platform.win32.window;
 import dgt.screen;
 import dgt.window;
@@ -23,6 +24,11 @@ class Win32Platform : Platform
     private wstring[] _registeredClasses;
     private Win32Window[HWND] _windows;
     private Screen[] _screens;
+
+    private Win32Timer[] _timers;
+    private PlEvent[] _timerEvents;
+
+    private PlEvent[] _internalCollectEvents;
 
     private void delegate(PlEvent) _collector;
 
@@ -63,6 +69,10 @@ class Win32Platform : Platform
         return createWin32GlContext(attribs, window, sharedCtx, screen);
     }
 
+    override PlatformTimer createTimer() {
+        return new Win32Timer();
+    }
+
     override @property inout(Screen) defaultScreen() inout
     {
         return _screens[0];
@@ -81,6 +91,11 @@ class Win32Platform : Platform
 
     override void collectEvents(void delegate(PlEvent) collector)
     {
+        import std.algorithm : each;
+
+        _internalCollectEvents.each!(collector);
+        _internalCollectEvents = [];
+
         _collector = collector;
         scope(exit) _collector = &internalCollect;
 
@@ -89,55 +104,60 @@ class Win32Platform : Platform
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+
+        // collect the events issued from timer
+        _timerEvents.each!(collector);
+        _timerEvents = [];
     }
 
-    override void processEvents()
+    override Wait wait(in Wait flags)
     {
-        _collector = (PlEvent ev) {
-            auto wEv = cast(WindowEvent)ev;
-            if (wEv) {
-                wEv.window.handleEvent(wEv);
-            }
-        };
-        scope(exit) _collector = &internalCollect;
+        import std.array : array;
+        import std.algorithm : map;
 
         MSG msg;
-        if (GetMessage(&msg, null, 0, 0) > 0)
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+        if (PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
+            return Wait.input;
         }
-    }
 
-    private enum WM_VSYNC = WM_USER+1;
+        const timers = _timers.map!(t => t.handle).array;
 
-    override Wait waitFor(Wait flags)
-    {
-        Wait check() {
-            Wait res = Wait.none;
-            MSG msg;
-            if (PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
-                if (msg.message == WM_VSYNC) {
-                    res |= Wait.vsync;
-                }
-                else {
-                    res |= Wait.input;
+        immutable code = MsgWaitForMultipleObjects(
+                    cast(DWORD)timers.length,
+                    timers.ptr,
+                    FALSE,
+                    INFINITE,
+                    QS_ALLINPUT);
+
+        if (code == WAIT_FAILED) {
+            errorf("win32 wait failed with code: %s", GetLastError());
+            return Wait.none;
+        }
+        Wait wait = Wait.none;
+        immutable first = code - WAIT_OBJECT_0;
+        if (first < timers.length) {
+
+            wait |= Wait.timer;
+
+            void addTimerEvent(Win32Timer timer) {
+                _timerEvents ~= new PlTimerEvent(timer.handler);
+            }
+
+            addTimerEvent(_timers[first]);
+
+            // check for following timers that may have timed out at the same time
+            foreach (t; _timers[first+1 .. $]) {
+                if (WaitForSingleObject(t.handle, 0) == WAIT_OBJECT_0) {
+                    addTimerEvent(t);
                 }
             }
-            return res;
         }
 
-        Wait wait = check();
-        if (wait != Wait.none) return wait;
+        if (first == _timers.length || PeekMessage(&msg, null, 0, 0, PM_NOREMOVE)) {
+            wait |= Wait.input;
+        }
 
-        immutable code = MsgWaitForMultipleObjects(0, null, FALSE, INFINITE, QS_ALLINPUT);
-
-        return check();
-    }
-
-    override void vsync()
-    {
-        PostMessage(null, WM_VSYNC, 0, 0);
+        return wait;
     }
 
     wstring windowClassName(Window w)
@@ -189,6 +209,15 @@ class Win32Platform : Platform
     void unregisterWindow(HWND hWnd)
     {
         _windows.remove(hWnd);
+    }
+
+    void registerTimer(Win32Timer timer) {
+        _timers ~= timer;
+    }
+
+    void unregisterTimer(Win32Timer timer) {
+        import std.algorithm : remove;
+        _timers = _timers.remove!(t => t is timer);
     }
 
     private void fetchScreens()
@@ -249,8 +278,9 @@ class Win32Platform : Platform
 
     private void internalCollect(PlEvent ev)
     {
-        // TODO: impl an temp event buf
+        _internalCollectEvents ~= ev;
     }
+
 }
 
 class Win32Screen : Screen

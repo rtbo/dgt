@@ -2,7 +2,7 @@ module dgt.platform.win32.keymap;
 
 version (Windows):
 
-import dgt.keys;
+import dgt.input.keys;
 import core.sys.windows.windows;
 
 
