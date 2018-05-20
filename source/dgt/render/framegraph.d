@@ -6,11 +6,10 @@ module dgt.render.framegraph;
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.core.paint;
-import dgt.math.mat : FMat4;
 import dgt.text.layout : TextShape;
 
-import gfx.foundation.typecons : Option;
-import gfx.pipeline.draw;
+import gfx.core.typecons : Option;
+import gfx.math.mat : FMat4;
 
 class FrameContext {
     void prune(in CacheCookie cookie) {

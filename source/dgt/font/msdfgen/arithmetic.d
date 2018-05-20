@@ -1,6 +1,6 @@
 module dgt.font.msdfgen.arithmetic;
 
-import dgt.math.vec : FVec2;
+import gfx.math.vec : FVec2;
 
 T mix(T)(in T a, in T b, in float weight) {
     return (1-weight)*a + weight*b;
@@ -16,7 +16,7 @@ FVec2 orthogonal(in FVec2 input, in bool polarity) {
 }
 
 FVec2 orthonormal(in FVec2 input, in bool polarity, in bool allowZero=false) {
-    import dgt.math.vec : magnitude;
+    import gfx.math.vec : magnitude;
     const len = magnitude(input);
     if (len == 0) {
         const y = allowZero ? 0f : 1f;

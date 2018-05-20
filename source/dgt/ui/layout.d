@@ -4,7 +4,7 @@ module dgt.ui.layout;
 import dgt.core.enums;
 import dgt.core.geometry;
 import dgt.css.style;
-import dgt.math;
+import gfx.math;
 import dgt.ui.style;
 import dgt.ui.stylesupport;
 import dgt.ui.view;
@@ -366,7 +366,7 @@ class LinearLayout : Layout
 
     private void measureVertical(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        import dgt.math.approx : approxUlpAndAbs;
+        import gfx.math.approx : approxUlpAndAbs;
         import std.algorithm : max;
         import std.range : enumerate;
 
@@ -426,7 +426,7 @@ class LinearLayout : Layout
 
     private void measureHorizontal(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        import dgt.math.approx : approxUlpAndAbs;
+        import gfx.math.approx : approxUlpAndAbs;
         import std.algorithm : max;
         import std.range : enumerate;
 

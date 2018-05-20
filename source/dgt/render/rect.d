@@ -3,6 +3,8 @@
 /// with border, and paint (solid, linear gradient)
 module dgt.render.rect;
 
+version(none):
+
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.core.rc;

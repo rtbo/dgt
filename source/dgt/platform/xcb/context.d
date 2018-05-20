@@ -2,85 +2,358 @@ module dgt.platform.xcb.context;
 
 version(linux):
 
-import dgt.platform;
-import dgt.platform.xcb;
-import dgt.platform.xcb.screen;
-import dgt.platform.xcb.window;
-import dgt.context;
-import dgt.screen;
-
-import gfx.foundation.util : unsafeCast;
-
-import X11.Xlib;
-import xcb.xcb;
-import derelict.opengl3.gl3;
-import derelict.opengl3.glx;
-import derelict.opengl3.glxext;
-
-import std.typecons;
-import std.exception;
-import std.format;
-import std.experimental.logger;
-
 package:
 
-alias Screen = dgt.screen.Screen;
-
-xcb_visualtype_t* getXcbVisualForId(in XcbScreen screen, xcb_visualid_t visualId)
-{
-    auto vt = findXcbVisualInScreen(screen, visualId);
-    if (!vt)
-        throw new Exception("getXcbVisualForId: visual not found for given screen");
-    return vt;
-}
-
-xcb_visualtype_t* getXcbVisualForId(in XcbScreen[] screens, xcb_visualid_t visualId)
-{
-    foreach (s; screens)
-    {
-        auto vt = findXcbVisualInScreen(s, visualId);
-        if (vt)
-            return vt;
-    }
-    throw new Exception("getXcbVisualForId: visual not found for given screens");
-}
-
-xcb_visualtype_t* getXcbDefaultVisualOfScreen(in XcbScreen screen)
-{
-    return getXcbVisualForId(screen, screen.rootVisual);
-}
-
-/// Returned data should be freed with XFree.
-XVisualInfo* getXlibVisualInfo(Display* dpy, int screenNum, in GlAttribs attribs)
-{
-    auto fbc = getGlxFBConfig(dpy, screenNum, attribs);
-    if (!fbc)
-        return null;
-    return glXGetVisualFromFBConfig(dpy, fbc);
-}
-
-
+import dgt.platform : PlatformWindow;
+import dgt.platform.xcb : g_display;
+import dgt.screen : Screen;
+import gfx.bindings.core : SharedLib;
+import gfx.gl3.context : GlAttribs, GlContext, glVersions;
+import X11.Xlib : XDisplay = Display, XErrorEvent;
 
 GlContext createXcbGlContext(GlAttribs attribs, PlatformWindow window,
-                                     GlContext sharedCtx, Screen screen)
+                             GlContext sharedCtx, Screen screen)
 {
-    auto screenNum = screen ? screen.num() : XDefaultScreen(g_display);
-    auto fbc = getGlxFBConfig(g_display, screenNum, attribs);
+    const size_t windowHdl = window ? window.nativeHandle : 0;
+    const int screenNum = screen ? screen.num : 0;
+    auto glxSharedCtx = sharedCtx ? (cast(XcbGlContext)sharedCtx)._ctx : null;
 
-    if (!GLX_ARB_create_context) {
-        auto dummyCtx = enforce(
-            glXCreateNewContext(g_display, fbc, GLX_RGBA_TYPE, null, true)
-        );
-        glXMakeCurrent(g_display, cast(xcb_window_t)window.nativeHandle, dummyCtx);
+    return new XcbGlContext(windowHdl, screenNum, attribs, glxSharedCtx);
+}
 
-        immutable glVer = cast(GLVersion)attribs.decimalVersion;
-        DerelictGL3.reload(GLVersion.None, glVer);
+private:
 
-        glXMakeCurrent(g_display, 0, null);
-        glXDestroyContext(g_display, dummyCtx);
+/// GlX backed OpenGL context
+class XcbGlContext : GlContext
+{
+    import gfx.bindings.core : SharedSym;
+    import gfx.bindings.opengl.gl : Gl;
+    import gfx.bindings.opengl.glx : Glx, GLXContext, GLXFBConfig;
+    import gfx.core.rc : atomicRcCode, Disposable;
+
+    mixin(atomicRcCode);
+
+    private int _mainScreenNum;
+    private GlAttribs _attribs;
+    private Glx _glx;
+    private Gl _gl;
+    private string[] _glxAvailExts;
+    private string[] _glAvailExts;
+    private DummyWindow[size_t] dummies;
+    private size_t hiddenDummy;
+    private GLXContext _ctx;
+    private bool ARB_create_context;
+    private bool MESA_query_renderer;
+    private bool MESA_swap_control;
+    private bool EXT_swap_control;
+
+    /// Contruct an OpenGL context for the given display and screen.
+    /// It internally creates a dummy window
+    this (size_t window, int mainScreenNum, GlAttribs attribs, GLXContext sharedCtx)
+    {
+        import gfx.bindings.core : openSharedLib, loadSharedSym, SharedLib;
+        import gfx.bindings.opengl : splitExtString;
+        import gfx.bindings.opengl.gl : GL_EXTENSIONS;
+        import gfx.bindings.opengl.glx : PFN_glXGetProcAddressARB;
+        import std.algorithm : canFind;
+        import std.exception : enforce;
+        import std.experimental.logger : trace, tracef;
+        import X11.Xlib : XSetErrorHandler, XSync;
+
+        _mainScreenNum = mainScreenNum;
+        _attribs = attribs;
+
+        auto lib = loadGlLib();
+        auto getProcAddress = cast(PFN_glXGetProcAddressARB)enforce(loadSharedSym(lib, "glXGetProcAddressARB"));
+        SharedSym loadSymbol(in string symbol) {
+            import std.string : toStringz;
+            return cast(SharedSym)getProcAddress(cast(const(ubyte)*)toStringz(symbol));
+        }
+
+        _glx = new Glx(&loadSymbol);
+
+        const glxExts = splitExtString(_glx.QueryExtensionsString(g_display, _mainScreenNum));
+        ARB_create_context = glxExts.canFind("GLX_ARB_create_context");
+        MESA_query_renderer = glxExts.canFind("GLX_MESA_query_renderer");
+        MESA_swap_control = glxExts.canFind("GLX_MESA_swap_control");
+        EXT_swap_control = glxExts.canFind("GLX_EXT_swap_control");
+
+        enforce( ARB_create_context && ( MESA_swap_control || EXT_swap_control ));
+
+        auto fbc = getGlxFBConfig(attribs);
+        if (!window) {
+            window = XcbGlContext.createDummy();
+            hiddenDummy = window;
+        }
+        GlAttribs attrs = attribs;
+
+        auto oldHandler = XSetErrorHandler(&createCtxErrorHandler);
+
+        foreach (const glVer; glVersions) {
+            attrs.majorVersion = glVer / 10;
+            attrs.minorVersion = glVer % 10;
+            if (attrs.decimalVersion < attribs.decimalVersion) break;
+
+            const ctxAttribs = getCtxAttribs(attrs);
+            tracef("attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+
+            createContextErrorFlag = false;
+            _ctx = _glx.CreateContextAttribsARB(g_display, fbc, sharedCtx, 1, &ctxAttribs[0]);
+
+            if (_ctx && !createContextErrorFlag) break;
+        }
+
+        XSetErrorHandler(oldHandler);
+
+        enforce(_ctx);
+        XSync(g_display, 0);
+        _attribs = attrs;
+
+        tracef("created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+
+        XcbGlContext.makeCurrent(hiddenDummy);
+        _gl = new Gl(&loadSymbol);
+
+        trace("done loading GL/GLX");
     }
 
-    enforce(GLX_ARB_create_context);
+    override void dispose() {
+        import gfx.bindings.core : closeSharedLib;
+        import gfx.core.rc : disposeArray;
+        import std.experimental.logger : trace;
+
+        disposeArray(dummies);
+
+        _glx.DestroyContext(g_display, _ctx);
+        trace("destroyed GL/GLX context");
+    }
+
+
+    override @property Gl gl() {
+        return _gl;
+    }
+
+    override @property GlAttribs attribs() {
+        return _attribs;
+    }
+
+    override bool makeCurrent(size_t nativeHandle)
+    {
+        import gfx.bindings.opengl.glx : GLXDrawable;
+        return _glx.MakeCurrent(g_display, cast(GLXDrawable)nativeHandle, _ctx) != 0;
+    }
+
+    override void doneCurrent()
+    {
+        _glx.MakeCurrent(g_display, 0, null);
+    }
+
+    override @property bool current() const
+    {
+        return _glx.GetCurrentContext() is _ctx;
+    }
+
+    override @property int swapInterval()
+    {
+        import gfx.bindings.opengl.glx : GLXDrawable;
+        if (MESA_swap_control) {
+            return _glx.GetSwapIntervalMESA();
+        }
+        else if (EXT_swap_control) {
+            GLXDrawable drawable = _glx.GetCurrentDrawable();
+            uint swap;
+
+            if (drawable) {
+                import gfx.bindings.opengl.glx : GLX_SWAP_INTERVAL_EXT;
+                _glx.QueryDrawable(g_display, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
+                return swap;
+            }
+            else {
+                import std.experimental.logger : warningf;
+                warningf("could not get glx drawable to get swap interval");
+                return -1;
+            }
+
+        }
+        return -1;
+    }
+
+    override @property void swapInterval(int interval)
+    {
+        import gfx.bindings.opengl.glx : GLXDrawable;
+
+        if (MESA_swap_control) {
+            _glx.SwapIntervalMESA(interval);
+        }
+        else if (EXT_swap_control) {
+            GLXDrawable drawable = _glx.GetCurrentDrawable();
+
+            if (drawable) {
+                _glx.SwapIntervalEXT(g_display, drawable, interval);
+            }
+            else {
+                import std.experimental.logger : warningf;
+                warningf("could not get glx drawable to set swap interval");
+            }
+        }
+    }
+
+    override void swapBuffers(size_t nativeHandle)
+    {
+        import gfx.bindings.opengl.glx : GLXDrawable;
+        _glx.SwapBuffers(g_display, cast(GLXDrawable)nativeHandle);
+    }
+
+    private GLXFBConfig getGlxFBConfig(in GlAttribs attribs)
+    {
+        import X11.Xlib : XFree;
+
+        const glxAttribs = getGlxAttribs(attribs);
+
+        int numConfigs;
+        auto fbConfigs = _glx.ChooseFBConfig(g_display, _mainScreenNum, &glxAttribs[0], &numConfigs);
+
+        if (!fbConfigs || !numConfigs)
+        {
+            import std.experimental.logger : critical;
+            critical("GFX-GLX: could not get fb config");
+            return null;
+        }
+        scope (exit) XFree(fbConfigs);
+
+        return fbConfigs[0];
+    }
+
+    override size_t createDummy() {
+        if (hiddenDummy) {
+            const d = hiddenDummy;
+            hiddenDummy = 0;
+            return d;
+        }
+        auto dummy = new DummyWindow(g_display, _glx, getGlxFBConfig(_attribs));
+        size_t hdl = dummy.win;
+        dummies[hdl] = dummy;
+        return hdl;
+    }
+
+    override void releaseDummy(size_t dummy) {
+        auto d = dummy in dummies;
+        if (d) {
+            auto win = *d;
+            win.dispose();
+            dummies.remove(dummy);
+        }
+    }
+
+    private static class DummyWindow : Disposable
+    {
+        import X11.Xlib : XWindow = Window, XColormap = Colormap;
+        import X11.Xlib;
+
+        XWindow win;
+        XColormap cmap;
+        XDisplay* dpy;
+
+        this (XDisplay* dpy, Glx glx, GLXFBConfig fbc)
+        {
+            this.dpy = dpy;
+            auto vi = glx.GetVisualFromFBConfig( dpy, fbc );
+            scope(exit) {
+                XFree(vi);
+            }
+
+            cmap = XCreateColormap(dpy, XRootWindow(dpy, XDefaultScreen(dpy)),
+                                                vi.visual, AllocNone );
+
+            XSetWindowAttributes swa;
+            swa.colormap = cmap;
+            swa.background_pixmap = None ;
+            swa.border_pixel      = 0;
+            swa.event_mask        = StructureNotifyMask;
+
+            win = XCreateWindow(dpy, XRootWindow(dpy, vi.screen),
+                    0, 0, 100, 100, 0, vi.depth, InputOutput, vi.visual,
+                    CWBorderPixel|CWColormap|CWEventMask, &swa);
+        }
+
+        override void dispose()
+        {
+            XDestroyWindow(dpy, win);
+            XFreeColormap(dpy, cmap);
+        }
+    }
+}
+
+
+private SharedLib loadGlLib()
+{
+    import gfx.bindings.core : openSharedLib;
+
+    immutable glLibNames = ["libGL.so.1", "libGL.so"];
+
+    foreach (ln; glLibNames) {
+        auto lib = openSharedLib(ln);
+        if (lib) {
+            import std.experimental.logger : tracef;
+            tracef("opening shared library %s", ln);
+            return lib;
+        }
+    }
+
+    import std.conv : to;
+    throw new Exception("could not load any of these libraries: " ~ glLibNames.to!string);
+}
+
+private bool createContextErrorFlag;
+
+extern(C) private int createCtxErrorHandler(XDisplay *dpy, XErrorEvent *error)
+{
+   createContextErrorFlag = true;
+   return 0;
+}
+
+private int[] getGlxAttribs(in GlAttribs attribs) pure
+{
+    import gfx.bindings.opengl.glx;
+    import gfx.graal.format : formatDesc, redBits, greenBits, blueBits,
+                              alphaBits, depthBits, stencilBits;
+
+    int[] glxAttribs = [
+        GLX_X_RENDERABLE,   1,
+        GLX_DRAWABLE_TYPE,  GLX_WINDOW_BIT,
+        GLX_RENDER_TYPE,    GLX_RGBA_BIT,
+        GLX_X_VISUAL_TYPE,  GLX_TRUE_COLOR
+    ];
+
+    const colorDesc = formatDesc(attribs.colorFormat);
+    const depthStencilDesc = formatDesc(attribs.depthStencilFormat);
+
+    const r = redBits(colorDesc.surfaceType);
+    const g = greenBits(colorDesc.surfaceType);
+    const b = blueBits(colorDesc.surfaceType);
+    const a = alphaBits(colorDesc.surfaceType);
+    const d = depthBits(depthStencilDesc.surfaceType);
+    const s = stencilBits(depthStencilDesc.surfaceType);
+
+    if (r) glxAttribs ~= [GLX_RED_SIZE, r];
+    if (g) glxAttribs ~= [GLX_GREEN_SIZE, g];
+    if (b) glxAttribs ~= [GLX_BLUE_SIZE, b];
+    if (a) glxAttribs ~= [GLX_ALPHA_SIZE, a];
+    if (d) glxAttribs ~= [GLX_DEPTH_SIZE, d];
+    if (s) glxAttribs ~= [GLX_STENCIL_SIZE, s];
+
+    if (attribs.doublebuffer) glxAttribs ~= [GLX_DOUBLEBUFFER, 1];
+
+    if (attribs.samples > 1)
+        glxAttribs ~= [GLX_SAMPLE_BUFFERS, 1, GLX_SAMPLES, attribs.samples];
+
+    return glxAttribs ~ 0;
+}
+
+private int[] getCtxAttribs(in GlAttribs attribs) pure
+{
+    import gfx.bindings.opengl.glx;
+    import gfx.gl3.context : GlProfile;
 
     int[] ctxAttribs = [
         GLX_CONTEXT_MAJOR_VERSION_ARB, attribs.majorVersion,
@@ -95,234 +368,6 @@ GlContext createXcbGlContext(GlAttribs attribs, PlatformWindow window,
             ctxAttribs ~= GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
         }
     }
-    ctxAttribs ~= 0;
 
-    auto xcbCtx = cast(XcbGlContext)sharedCtx;
-    auto shCtx = xcbCtx ? xcbCtx._context : null;
-    auto glxCtx = enforce(
-        glXCreateContextAttribsARB(g_display, fbc, cast(GLXContext)shCtx, 1, &ctxAttribs[0])
-    );
-
-    XSync(g_display, false);
-
-    if (glxCtx) {
-        auto ctx = new XcbGlContext(glxCtx, attribs);
-        ctx.makeCurrent(window.nativeHandle);
-        scope(exit) ctx.doneCurrent();
-
-        immutable glVer = cast(GLVersion)attribs.decimalVersion;
-        DerelictGL3.reload(glVer, glVer);
-
-        enforce(glXGetProcAddress || glXGetProcAddressARB);
-        loadSwapControlMESA(screenNum);
-        enforce(GLX_EXT_swap_control || GLX_SGI_swap_control || GLX_MESA_swap_control);
-
-        return ctx;
-    }
-    else {
-        return null;
-    }
-}
-
-private:
-
-extern(C) nothrow @nogc {
-    alias da_glXGetSwapIntervalMESA = int function();
-    alias da_glXSwapIntervalMESA = int function(uint);
-}
-
-__gshared {
-    da_glXGetSwapIntervalMESA glXGetSwapIntervalMESA;
-    da_glXSwapIntervalMESA glXSwapIntervalMESA;
-    bool GLX_MESA_swap_control;
-}
-
-void loadSwapControlMESA(int screenNum)
-{
-    import std.algorithm : canFind, splitter;
-    import std.string : fromStringz;
-
-    void* get(const(char)*name) {
-        if (glXGetProcAddress) {
-            return glXGetProcAddress(name);
-        }
-        else if (glXGetProcAddressARB) {
-            return glXGetProcAddressARB(cast(const(ubyte)*)name);
-        }
-        else {
-            assert(false);
-        }
-    }
-
-    string exts = glXQueryExtensionsString(g_display, screenNum).fromStringz.idup;
-    if (exts.splitter(" ").canFind("GLX_MESA_swap_control")) {
-        glXGetSwapIntervalMESA = cast(da_glXGetSwapIntervalMESA)get("glXGetSwapIntervalMESA");
-        glXSwapIntervalMESA = cast(da_glXSwapIntervalMESA)get("glXSwapIntervalMESA");
-
-        GLX_MESA_swap_control = glXGetSwapIntervalMESA && glXSwapIntervalMESA;
-    }
-}
-
-final class XcbGlContext : GlContext
-{
-    private GLXContext _context;
-    private GlAttribs _attribs;
-    private bool _current;
-
-    this (GLXContext context, GlAttribs attribs)
-    {
-        _context = context;
-        _attribs = attribs;
-    }
-
-    override void dispose()
-    {
-        glXDestroyContext(g_display, _context);
-        _context = null;
-    }
-
-    override @property GlAttribs attribs() const
-    {
-        return _attribs;
-    }
-
-    override bool makeCurrent(size_t nativeHandle)
-    {
-        auto xWin = cast(xcb_window_t)nativeHandle;
-        _current = glXMakeCurrent(g_display, xWin, _context) != 0;
-        return _current;
-    }
-
-    override void doneCurrent()
-    {
-        glXMakeCurrent(g_display, 0, null);
-        _current = false;
-    }
-
-    override @property bool current() const
-    {
-        return _current;
-    }
-
-    override @property int swapInterval()
-    {
-        if (GLX_EXT_swap_control) {
-            Display *dpy = glXGetCurrentDisplay();
-            GLXDrawable drawable = glXGetCurrentDrawable();
-            uint swap;
-
-            if (drawable) {
-                glXQueryDrawable(dpy, drawable, GLX_SWAP_INTERVAL_EXT, &swap);
-                return swap;
-            }
-            else {
-                warningf("could not get glx drawable to get swap interval");
-                return -1;
-            }
-
-        }
-        else if (GLX_MESA_swap_control) {
-            return glXGetSwapIntervalMESA();
-        }
-        return -1;
-    }
-
-    override @property void swapInterval(int interval)
-    {
-        if (GLX_EXT_swap_control) {
-            assert(GLX_EXT_swap_control);
-            Display *dpy = glXGetCurrentDisplay();
-            GLXDrawable drawable = glXGetCurrentDrawable();
-
-            if (drawable) {
-                glXSwapIntervalEXT(dpy, drawable, interval);
-            }
-            else {
-                warningf("could not get glx drawable to set swap interval");
-            }
-        }
-        else if (GLX_SGI_swap_control) {
-            glXSwapIntervalSGI(interval);
-        }
-        else {
-            assert(GLX_MESA_swap_control);
-            glXSwapIntervalMESA(interval);
-        }
-    }
-
-    override void swapBuffers(size_t nativeHandle)
-    {
-        auto xWin = cast(xcb_window_t)nativeHandle;
-        glXSwapBuffers(g_display, xWin);
-    }
-}
-
-
-GLXFBConfig getGlxFBConfig(Display* dpy, int screenNum, in GlAttribs attribs)
-{
-    auto glxAttribs = getGlxAttribs(attribs);
-
-    int numConfigs;
-    GLXFBConfig* fbConfigs = glXChooseFBConfig(dpy, screenNum, &glxAttribs[0], &numConfigs);
-
-    if (!fbConfigs || !numConfigs)
-    {
-        critical("DGT-XCB: could not get fb config");
-        return null;
-    }
-    scope (exit)
-        XFree(fbConfigs);
-
-    return fbConfigs[0];
-}
-
-xcb_visualtype_t* findXcbVisualInScreen(in XcbScreen screen, xcb_visualid_t visualId)
-{
-    auto depthIter = xcb_screen_allowed_depths_iterator(screen.xcbScreen);
-    while (depthIter.rem)
-    {
-        auto visualIter = xcb_depth_visuals_iterator(depthIter.data);
-        while (visualIter.rem)
-        {
-            if (visualId == visualIter.data.visual_id)
-                return visualIter.data;
-            xcb_visualtype_next(&visualIter);
-        }
-        xcb_depth_next(&depthIter);
-    }
-    return null;
-}
-
-int[] getGlxAttribs(in GlAttribs attribs)
-{
-    int[] glxAttribs = [
-        GLX_X_RENDERABLE,   1,
-        GLX_DRAWABLE_TYPE,  GLX_WINDOW_BIT,
-        GLX_RENDER_TYPE,    GLX_RGBA_BIT,
-        GLX_X_VISUAL_TYPE,  GLX_TRUE_COLOR
-    ];
-
-    if (attribs.redSize)
-        glxAttribs ~= [GLX_RED_SIZE, attribs.redSize];
-    if (attribs.greenSize)
-        glxAttribs ~= [GLX_GREEN_SIZE, attribs.greenSize];
-    if (attribs.blueSize)
-        glxAttribs ~= [GLX_BLUE_SIZE, attribs.blueSize];
-    if (attribs.hasAlpha)
-        glxAttribs ~= [GLX_ALPHA_SIZE, attribs.alphaSize];
-
-    if (attribs.depthSize)
-        glxAttribs ~= [GLX_DEPTH_SIZE, attribs.depthSize];
-    if (attribs.hasStencil)
-        glxAttribs ~= [GLX_STENCIL_SIZE, attribs.stencilSize];
-
-    if (attribs.doublebuffer)
-        glxAttribs ~= [GLX_DOUBLEBUFFER, 1];
-
-    if (attribs.hasSamples)
-    {
-        glxAttribs ~= [GLX_SAMPLE_BUFFERS, 1, GLX_SAMPLES, attribs.samples];
-    }
-
-    return glxAttribs ~ 0;
+    return ctxAttribs ~ 0;
 }

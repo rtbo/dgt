@@ -5,7 +5,7 @@ import dgt.core.rc;
 import dgt.core.sync;
 import dgt.font.style;
 import dgt.font.typeface;
-import dgt.math.vec : fvec, FVec2;
+import gfx.math.vec : fvec, FVec2;
 import dgt.text.shaping : GlyphInfo;
 
 import std.exception : enforce;

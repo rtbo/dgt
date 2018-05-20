@@ -13,7 +13,7 @@ import dgt.ui.layout;
 import dgt.ui.style;
 import dgt.ui.stylesupport;
 
-import gfx.foundation.typecons : Option, some;
+import gfx.core.typecons : Option, some;
 
 import std.experimental.logger;
 import std.typecons : Rebindable, rebindable;

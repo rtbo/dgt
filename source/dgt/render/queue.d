@@ -32,19 +32,19 @@ class RenderQueue
     /// other references to this context after this call.
     void start(GlContext context) {
         assert(!_running);
-        _tid = spawn(&renderLoop, cast(shared(GlContext))context, thisTid);
+        // _tid = spawn(&renderLoop, cast(shared(GlContext))context, thisTid);
         _running = true;
     }
 
     /// Stop the queue and discard all frames that are not rendered yet.
     void stop(size_t windowHandle) {
         assert(_running);
-        prioritySend(_tid, Exit(windowHandle));
+        // prioritySend(_tid, Exit(windowHandle));
         while (_running) {
-            receive(
-                (DoneFrames df) { --_numFrames; },
-                (ExitCopy ec) { _running = false; }
-            );
+            // receive(
+            //     (DoneFrames df) { --_numFrames; },
+            //     (ExitCopy ec) { _running = false; }
+            // );
         }
         _numFrames = 0;
     }
@@ -53,7 +53,7 @@ class RenderQueue
     /// It is illegal to have 2 frames for the same window in the same batch.
     void postFrames(immutable(FGFrame)[] frames) {
         assert(_running);
-        send(_tid, frames);
+        // send(_tid, frames);
         _numFrames++;
     }
 
@@ -61,11 +61,11 @@ class RenderQueue
     /// To be noted: a frame that has started to be processed but not finished is still reported in the queue.
     void waitAtMostFrames(in size_t numFrames) {
         assert(_running);
-        while (_numFrames > numFrames) {
-            receive((DoneFrames df) {
-                --_numFrames;
-            });
-        }
+        // while (_numFrames > numFrames) {
+        //     receive((DoneFrames df) {
+        //         --_numFrames;
+        //     });
+        // }
     }
 
     /// The number of frames waiting to be processed.
@@ -74,9 +74,9 @@ class RenderQueue
         assert(_running);
         import core.time : Duration;
         // draining the mail box
-        while (receiveTimeout(Duration.min, (DoneFrames df) {
-            --_numFrames;
-        })) {}
+        // while (receiveTimeout(Duration.min, (DoneFrames df) {
+        //     --_numFrames;
+        // })) {}
         return _numFrames;
     }
 
@@ -85,6 +85,8 @@ class RenderQueue
     private bool _running;
     private static __gshared RenderQueue _instance;
 }
+
+version(none):
 
 private:
 

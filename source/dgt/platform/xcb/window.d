@@ -1,6 +1,7 @@
 module dgt.platform.xcb.window;
 
 version(linux):
+package:
 
 import dgt.context;
 import dgt.core.geometry;
@@ -10,8 +11,11 @@ import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.xcb;
 import dgt.platform.xcb.context;
+import dgt.platform.xcb.screen;
 import dgt.screen;
 import dgt.window;
+
+import gfx.bindings.opengl.glx : GLXFBConfig;
 
 import xcb.xcb;
 import xcb.xcb_icccm;
@@ -72,16 +76,10 @@ class XcbWindow : PlatformWindow
 
         _rect = IRect(pos, size);
 
-        auto visualInfo = getXlibVisualInfo(g_display, screenNum, _win.attribs);
-        if (!visualInfo)
-        {
-            throw new Exception("DGT-XCB: window could not get visual");
-        }
-        _visualId = visualInfo.visualid;
-        XFree(visualInfo);
+        _visual = drawArgbVisual(screen.xcbScreen);
+        _depth = drawVisualDepth(screen.xcbScreen, _visual.visual_id);
+        _visualId = _visual.visual_id;
 
-        _visual = getXcbVisualForId(_platform.xcbScreens, _visualId);
-        _depth = screen.rootDepth;
         _format = _platform.formatForDepth(_depth);
 
         immutable cmap = xcb_generate_id(g_connection);
@@ -584,3 +582,109 @@ class XcbWindow : PlatformWindow
 
     }
 }
+
+xcb_visualtype_t *drawArgbVisual(const xcb_screen_t *s)
+{
+    xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(s);
+
+    if(depth_iter.data) {
+        for(; depth_iter.rem; xcb_depth_next (&depth_iter)) {
+            if(depth_iter.data.depth == 32) {
+                for(xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
+                    visual_iter.rem; xcb_visualtype_next (&visual_iter))
+                {
+                    if (visual_iter.data && visual_iter.data.class_ == XCB_VISUAL_CLASS_TRUE_COLOR)
+                        return visual_iter.data;
+                }
+            }
+        }
+    }
+
+    throw new Exception("could not find a draw visual");
+}
+
+ubyte drawVisualDepth(const xcb_screen_t *s, xcb_visualid_t vis)
+{
+    xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(s);
+
+    if(depth_iter.data) {
+        for(; depth_iter.rem; xcb_depth_next (&depth_iter)) {
+            for(xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
+                visual_iter.rem; xcb_visualtype_next (&visual_iter))
+            {
+                if(vis == visual_iter.data.visual_id)
+                    return depth_iter.data.depth;
+            }
+        }
+    }
+    throw new Exception("could not find a visuals depth");
+}
+
+
+// xcb_visualtype_t* getXcbVisualForId(in XcbScreen screen, xcb_visualid_t visualId)
+// {
+//     auto vt = findXcbVisualInScreen(screen, visualId);
+//     if (!vt)
+//         throw new Exception("getXcbVisualForId: visual not found for given screen");
+//     return vt;
+// }
+
+// xcb_visualtype_t* getXcbVisualForId(in XcbScreen[] screens, xcb_visualid_t visualId)
+// {
+//     foreach (s; screens)
+//     {
+//         auto vt = findXcbVisualInScreen(s, visualId);
+//         if (vt)
+//             return vt;
+//     }
+//     throw new Exception("getXcbVisualForId: visual not found for given screens");
+// }
+
+// xcb_visualtype_t* getXcbDefaultVisualOfScreen(in XcbScreen screen)
+// {
+//     return getXcbVisualForId(screen, screen.rootVisual);
+// }
+
+// /// Returned data should be freed with XFree.
+// XVisualInfo* getXlibVisualInfo(Display* dpy, int screenNum, in GlAttribs attribs)
+// {
+//     auto fbc = getGlxFBConfig(dpy, screenNum, attribs);
+//     if (!fbc)
+//         return null;
+//     return glXGetVisualFromFBConfig(dpy, fbc);
+// }
+
+// GLXFBConfig getGlxFBConfig(Display* dpy, int screenNum, in GlAttribs attribs)
+// {
+//     auto glxAttribs = getGlxAttribs(attribs);
+
+//     int numConfigs;
+//     GLXFBConfig* fbConfigs = glXChooseFBConfig(dpy, screenNum, &glxAttribs[0], &numConfigs);
+
+//     if (!fbConfigs || !numConfigs)
+//     {
+//         critical("DGT-XCB: could not get fb config");
+//         return null;
+//     }
+//     scope (exit)
+//         XFree(fbConfigs);
+
+//     return fbConfigs[0];
+// }
+
+// xcb_visualtype_t* findXcbVisualInScreen(in XcbScreen screen, xcb_visualid_t visualId)
+// {
+//     auto depthIter = xcb_screen_allowed_depths_iterator(screen.xcbScreen);
+//     while (depthIter.rem)
+//     {
+//         auto visualIter = xcb_depth_visuals_iterator(depthIter.data);
+//         while (visualIter.rem)
+//         {
+//             if (visualId == visualIter.data.visual_id)
+//                 return visualIter.data;
+//             xcb_visualtype_next(&visualIter);
+//         }
+//         xcb_depth_next(&depthIter);
+//     }
+//     return null;
+// }

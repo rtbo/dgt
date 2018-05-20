@@ -9,7 +9,7 @@ import dgt.core.image;
 import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
-import dgt.math.vec : FVec2, IVec2;
+import gfx.math.vec : FVec2, IVec2;
 import dgt.text.shaping;
 
 import std.exception;

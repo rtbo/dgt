@@ -4,11 +4,11 @@ module dgt.ui.img;
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.core.paint;
-import dgt.math;
+import gfx.math;
 import dgt.ui.layout;
 import dgt.ui.view;
 import dgt.render.framegraph;
-import gfx.foundation.typecons;
+import gfx.core.typecons;
 
 import std.typecons;
 

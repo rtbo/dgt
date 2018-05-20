@@ -33,7 +33,8 @@
         "dgt:turbojpeg":	"*",
         "dgt:harfbuzz":	    "*",
 
-        "gfx-d": { "path": "gfx-d" },
+        "gfx":      { "path": "gfx-d" },
+        "gfx:math":      { "path": "gfx-d" },
 
         "derelict-ft":      "~>1.1.3",
         "derelict-gl3":		"~>1.0.19"

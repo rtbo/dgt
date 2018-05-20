@@ -1,9 +1,9 @@
 /// Geometric primitives module
 module dgt.core.geometry;
 
-import dgt.math.mat;
-import dgt.math.transform;
-public import dgt.math.vec;
+import gfx.math.mat;
+import gfx.math.transform;
+public import gfx.math.vec;
 
 import std.algorithm : max, min;
 import std.range;

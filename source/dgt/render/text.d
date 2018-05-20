@@ -1,6 +1,8 @@
 /// Text rendering module
 module dgt.render.text;
 
+version(none):
+
 import dgt.core.geometry;
 import dgt.core.rc;
 import dgt.core.sync;

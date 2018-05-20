@@ -1,6 +1,8 @@
 /// Common definitions for the rendering backend
 module dgt.render.defs;
 
+version(none):
+
 import dgt.math.mat : FMat4;
 import gfx.pipeline.format : R8, Unorm;
 import gfx.pipeline.pso.meta : GfxName;

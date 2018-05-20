@@ -4,7 +4,7 @@ module dgt.core.paint;
 import dgt.core.color;
 import dgt.core.geometry;
 import dgt.core.image;
-import dgt.math.vec;
+import gfx.math.vec;
 
 import std.experimental.logger;
 import std.typecons : Rebindable;
@@ -306,7 +306,7 @@ immutable(Paint) parsePaint(string css)
 ///
 unittest
 {
-    import dgt.math.approx : approxUlp;
+    import gfx.math.approx : approxUlp;
     alias Direction = LinearGradientPaint.Direction;
 
     auto p1 = parsePaint("linear-gradient(yellow, blue 20%, #0f0)");

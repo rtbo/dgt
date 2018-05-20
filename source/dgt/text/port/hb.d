@@ -4,12 +4,12 @@ import dgt.bindings.harfbuzz;
 import dgt.core.rc;
 import dgt.font.port.ft;
 import dgt.font.typeface;
-import dgt.math.vec;
+import gfx.math.vec;
 import dgt.text.shaping;
 
 
 class HbTextShapingContext : TextShapingContext {
-    mixin(rcCode);
+    mixin(atomicRcCode);
 
     this (FT_Face face, uint ftLoadFlags) {
         _font = hb_ft_font_create(face, null);

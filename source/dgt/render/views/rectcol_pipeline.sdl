@@ -1,0 +1,41 @@
+graal:DescriptorSetLayout {
+    store "rectcol_dsl"
+    bindings {
+        // MVP
+        0 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="vertex"
+        // Colors
+        1 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="fragment"
+    }
+}
+graal:PipelineLayout {
+    store "rectcol_layout"
+    layouts {
+        "store:rectcol_dsl"
+    }
+}
+graal:Pipeline {
+    store "rectcol_pl"
+    shaders {
+        vertex source="view:rectcol.vert.spv"
+        vertex source="view:rectcol.frag.spv"
+    }
+    inputBindings {
+        0 stride="sizeof:RectColVertex" instanced=off
+    }
+    inputAttribs {
+        0 binding=0 member="RectColVertex.position"
+        1 binding=0 member="RectColVertex.edge"
+    }
+    assembly primitive="triangleList" primitiveRestart=off
+    rasterizer polygonMode="fill"
+    blendInfo {
+        attachments {
+            blend colorMask="rgba" {
+                state op="add" srcFactor="one" dstFactor="oneMinusSrcAlpha"
+            }
+        }
+    }
+    dynamicStates "viewport" "scissor"
+    layout "store:layout"
+    renderPass "store:renderPass" subpass=0
+}

@@ -4,7 +4,7 @@
 module dgt.core.color;
 
 import dgt.css.token;
-import dgt.math.vec;
+import gfx.math.vec;
 
 import std.exception;
 import std.range;

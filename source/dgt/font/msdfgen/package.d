@@ -6,7 +6,7 @@ import dgt.font.msdfgen.edges;
 import dgt.font.msdfgen.shape;
 import dgt.font.msdfgen.sd;
 import dgt.font.typeface;
-import dgt.math.vec;
+import gfx.math.vec;
 
 import std.algorithm;
 import std.array;

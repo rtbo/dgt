@@ -3,13 +3,14 @@
 /// An alternative would also be the freetype-gl atlas implementation.
 module dgt.render.atlas;
 
+version(none):
+
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.core.rc;
 import dgt.font.typeface : Glyph;
-import dgt.math.vec : IVec2;
 import dgt.render.defs : Alpha8;
-import gfx.pipeline;
+import gfx.math.vec : IVec2;
 
 // binary tree representation of a texture space
 

@@ -1,5 +1,7 @@
 module dgt.render.renderer;
 
+version(none):
+
 import dgt.core.geometry;
 import dgt.core.rc;
 import dgt.math : FMat4;

@@ -1,0 +1,14 @@
+// Render pass with one blending color attachment
+graal:RenderPass {
+    store "renderPass"
+    attachments {
+        color {
+            format "store:sc_format"
+            ops load="clear" store="store"
+            layout from="presentSrc" to="presentSrc"
+        }
+    }
+    subpass {
+        color attachment=0 layout="colorAttachmentOptimal"
+    }
+}

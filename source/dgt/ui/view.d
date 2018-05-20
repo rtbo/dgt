@@ -3,8 +3,8 @@ module dgt.ui.view;
 import dgt.core.geometry;
 import dgt.core.tree;
 import dgt.css.style;
-import dgt.math.mat;
-import dgt.math.transform;
+import gfx.math.mat;
+import gfx.math.transform;
 import dgt.render.framegraph;
 import dgt.ui;
 import dgt.ui.event;
@@ -402,9 +402,9 @@ class View : StyleElement, TreeNode!View
                 _transformToParent = transform.translate(fvec(pos, 0));
             }
             else {
-                _transformToParent = translation!float(fvec(pos, 0));
+                _transformToParent = translation(fvec(pos, 0));
                 // this is cheap, let's do it now.
-                _transformFromParent = translation!float(fvec(-pos, 0));
+                _transformFromParent = translation(fvec(-pos, 0));
                 clean(Dirty.transformFromParent);
             }
             clean(Dirty.transformToParent);
@@ -415,14 +415,16 @@ class View : StyleElement, TreeNode!View
     /// Transform that maps parent coordinates to view coordinates
     final @property FMat4 transformFromParent()
     {
+        import gfx.math.inverse : inverse;
+
         if (isDirty(Dirty.transformFromParent)) {
             if (_hasTransform) {
                 _transformFromParent = inverse(transformToParent);
             }
             else {
-                _transformFromParent = translation!float(fvec(-pos, 0));
+                _transformFromParent = translation(fvec(-pos, 0));
                 // this is cheap, let's do it now.
-                _transformToParent = translation!float(fvec(pos, 0));
+                _transformToParent = translation(fvec(pos, 0));
                 clean(Dirty.transformToParent);
             }
             clean(Dirty.transformFromParent);
@@ -445,6 +447,8 @@ class View : StyleElement, TreeNode!View
     /// Transform that maps ui coordinates to view coordinates
     final @property FMat4 transformFromUI()
     {
+        import gfx.math.inverse : inverse;
+
         if (isDirty(Dirty.transformFromUI)) {
             _transformFromUI = inverse(transformToUI);
             clean(Dirty.transformFromUI);
@@ -1025,7 +1029,7 @@ unittest
 
 /// Testing coordinates transforms
 unittest {
-    import dgt.math.approx : approxUlp, approxUlpAndAbs;
+    import gfx.math.approx : approxUlp, approxUlpAndAbs;
 
     auto root = new View;
     auto child1 = new View;

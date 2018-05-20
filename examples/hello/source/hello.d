@@ -58,7 +58,7 @@ int main()
     auto anim = new SmoothTransitionAnimation(ui, dur!"seconds"(3));
     anim.name = "hello rotate";
     anim.onTick = (float phase) {
-        import dgt.math.transform : rotation, scale, translation;
+        import gfx.math.transform : rotation, scale, translation;
         import std.math : PI, sin;
         const size = label.size.asVec;
         const center = fvec(size/2, 0);
