@@ -67,11 +67,148 @@ Renderer createOpenGLRenderer(GlContext context)
 interface Renderer
 {
     @property Backend backend();
-    void render(immutable(FGFrame)[] frames);
+    void render(immutable(FGFrame)[] frames)
+    in {
+        assert(frames.length);
+    }
     void finalize(size_t windowHandle);
 }
 
 private:
+
+import gfx.core.rc : Rc;
+import gfx.decl.engine;
+import gfx.graal.device;
+import gfx.graal.pipeline;
+import gfx.graal.presentation;
+import gfx.graal.queue;
+import gfx.graal.renderpass;
+import gfx.graal.presentation;
+
+
+class WindowContext
+{
+    size_t windowHandle;
+    private Rc!Surface surface;
+    private Rc!Swapchain swapchain;
+    private Rc!Device device;
+
+    this (size_t windowHandle, Rc!Device device)
+    {
+        this.windowHandle = windowHandle;
+        this.device = device;
+    }
+}
+
+
+class RendererBase : Renderer
+{
+    private Rc!Instance instance;
+    private Rc!PhysicalDevice physicalDevice;
+    private Rc!Device device;
+    private uint graphicsQueueInd;
+    private uint presentQueueInd;
+    private Queue graphicsQueue;
+    private Queue presentQueue;
+    private Surface[size_t] surfaces;
+    private DeclarativeEngine declEng;
+
+    private bool initialized;
+
+    this(Instance instance)
+    {
+        this.instance = instance;
+    }
+
+    override @property Backend backend()
+    {
+        return this.instance.backend;
+    }
+
+    private void initialize(Surface surf)
+    {
+        prepareDevice(surf);
+    }
+
+    override void finalize(size_t windowHandle)
+    {
+        import gfx.core.rc : disposeObject, releaseArray;
+
+        disposeObject(declEng);
+        releaseArray(surfaces);
+        this.device.unload();
+        this.instance.unload();
+    }
+
+    abstract Surface makeSurface(size_t windowHandle);
+
+    private Surface getSurface(size_t windowHandle)
+    {
+        auto s = windowHandle in surfaces;
+        if (s) return *s;
+        auto surf = makeSurface(windowHandle);
+        surf.retain();
+        surfaces[windowHandle] = surf;
+        return surf;
+    }
+
+    override void render(immutable(FGFrame)[] frames)
+    {
+        if (!initialized) {
+            initialize(getSurface(frames[0].windowHandle));
+            initialized = true;
+        }
+    }
+
+    private void prepareDevice(Surface surf)
+    {
+        import dgt.render.preparation : deviceScore;
+        PhysicalDevice chosen;
+        int score;
+        uint gq, pq;
+        foreach (pd; instance.devices) {
+            const s = deviceScore(pd, surf, gq, pq);
+            if (s > score) {
+                score = s;
+                chosen = pd;
+            }
+        }
+        physicalDevice = vitalEnforce(
+            chosen, "Could not find a suitable graphics device"
+        );
+        const qr = (gq == pq) ?
+                [ QueueRequest(gq, [ 0.5f ]) ] :
+                [ QueueRequest(gq, [ 0.5f ]), QueueRequest(pq, [ 0.5f ]) ];
+        device = vitalEnforce(
+            chosen.open( qr ), "Could not open a suitable graphics device"
+        );
+        graphicsQueueInd = gq;
+        graphicsQueue = device.getQueue(gq, 0);
+        presentQueueInd = pq;
+        presentQueue = device.getQueue(pq, 0);
+    }
+
+    static void frameError(Args...)(string msg, Args args)
+    {
+        import std.format : format;
+        throw new Exception(format(msg, args));
+    }
+
+    static void fatalError(Args...)(string msg, Args args)
+    {
+        import std.format : format;
+        throw new Error(format(msg, args));
+    }
+
+    static T vitalEnforce(T, Args...)(T expr, string msg, Args args)
+    {
+        if (!expr) {
+            import std.format : format;
+            throw new Error(format(msg, args));
+        }
+        return expr;
+    }
+}
 
 class VulkanRenderer : RendererBase
 {
@@ -80,8 +217,10 @@ class VulkanRenderer : RendererBase
         super(instance);
     }
 
-    override void finalize(size_t windowHandle)
-    {}
+    override Surface makeSurface(size_t windowHandle)
+    {
+        assert(false, "unimplemented");
+    }
 }
 
 class OpenGLRenderer : RendererBase
@@ -104,51 +243,19 @@ class OpenGLRenderer : RendererBase
         _context.unload();
     }
 
+    override Surface makeSurface(size_t windowHandle)
+    {
+        import gfx.gl3.swapchain : GlSurface;
+        return new GlSurface(windowHandle);
+    }
+
     override void render(immutable(FGFrame)[] frames)
     {
         // At the moment, only make sure that at least the context is current.
         // It can be current on any window, the swapchain dispatches to the correct
         // window during presentation.
         // This is likely to change in the future.
-        if (frames.length) {
-            _context.makeCurrent(frames[0].windowHandle);
-        }
+        _context.makeCurrent(frames[0].windowHandle);
         super.render(frames);
-    }
-}
-
-
-class RendererBase : Renderer
-{
-    import dgt.core.rc : Rc;
-
-    private Rc!Instance _instance;
-    private bool _initialized;
-
-    this(Instance instance)
-    {
-        _instance = instance;
-    }
-
-    override void finalize(size_t windowHandle)
-    {
-        _instance.unload();
-    }
-
-    override @property Backend backend()
-    {
-        return _instance.backend;
-    }
-
-    private void initialize()
-    {
-
-    }
-
-    override void render(immutable(FGFrame)[] frames)
-    {
-        if (!_initialized) {
-            initialize();
-        }
     }
 }
