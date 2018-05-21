@@ -33,6 +33,25 @@ class Application : EventLoop, Disposable
         finalizeSubsystems();
     }
 
+    final @property string name() const
+    {
+        return _name;
+    }
+
+    final @property void name(in string name)
+    {
+        _name = name;
+    }
+
+    final @property uint[3] ver() const
+    {
+        return _ver;
+    }
+
+    final @property void ver(in uint[3] ver)
+    {
+        _ver = ver;
+    }
 
     private void initialize(Platform platform)
     {
@@ -74,8 +93,13 @@ class Application : EventLoop, Disposable
 
     private void initializeGfx(Window window)
     {
+        import dgt.render.renderer2 : createRenderer;
+        import gfx.graal : Backend;
+
         assert(window.created && !window.dummy);
-        RenderQueue.instance.start(createGlContext(window));
+        const tryOrder = [ Backend.vulkan, Backend.gl3 ];
+        auto renderer = createRenderer(tryOrder, name, ver, createGlContext(window));
+        RenderQueue.instance.start(renderer);
     }
 
     private void finalizeGfx(Window window)
@@ -86,6 +110,8 @@ class Application : EventLoop, Disposable
 
 
     private Platform _platform;
+    private string _name;
+    private uint[3] _ver;
 
     static __gshared
     {
