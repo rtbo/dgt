@@ -18,6 +18,8 @@ import dgt.platform.xcb.timer;
 import dgt.platform.xcb.window;
 import dgt.screen;
 import dgt.window;
+import gfx.graal : Instance;
+import gfx.graal.presentation : Surface;
 
 import derelict.opengl3.gl3;
 import xcb.dri2;
@@ -217,6 +219,20 @@ class XcbPlatform : Platform
             }
         }
         return res;
+    }
+
+    override @property string[] necessaryVulkanExtensions()
+    {
+        import gfx.vulkan.wsi : surfaceExtension, xcbSurfaceExtension;
+        return [
+            surfaceExtension, xcbSurfaceExtension
+        ];
+    }
+
+    Surface createGraalSurface(Instance instance, size_t windowHandle)
+    {
+        import gfx.vulkan.wsi : createVulkanXcbSurface;
+        return createVulkanXcbSurface(instance, g_connection, cast(xcb_window_t)windowHandle);
     }
 
     package void registerTimer(LinuxFdTimer timer) {

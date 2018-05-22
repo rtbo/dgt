@@ -27,6 +27,9 @@ enum Wait
 /// Platform singleton. Entry point to operating system specific code.
 interface Platform : Disposable
 {
+    import gfx.graal : Instance;
+    import gfx.graal.presentation : Surface;
+
     void initialize();
 
     @property string name() const;
@@ -44,6 +47,9 @@ interface Platform : Disposable
 
     Wait wait(in Wait waitFlags);
     void collectEvents(void delegate(PlEvent) collector);
+
+    @property string[] necessaryVulkanExtensions();
+    Surface createGraalSurface(Instance instance, size_t windowHandle);
 }
 
 /// OS specific window interface.

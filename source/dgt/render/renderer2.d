@@ -32,6 +32,8 @@ Renderer createRenderer(in Backend[] tryOrder, lazy string appName,
             }
         }
         catch(Exception e) {
+            import std.experimental.logger : warningf;
+            warningf("Failed to create %s backend: %s", backend, e.msg);
             ex = e;
         }
     }
@@ -41,9 +43,41 @@ Renderer createRenderer(in Backend[] tryOrder, lazy string appName,
 /// Creates a Vulkan backed renderer
 Renderer createVulkanRenderer(string appName, uint[3] appVersion)
 {
-    import gfx.vulkan : createVulkanInstance, VulkanVersion;
+    import dgt.application : Application;
+    import gfx.vulkan : createVulkanInstance, lunarGValidationLayers, vulkanInit,
+                        vulkanInstanceExtensions, vulkanInstanceLayers,
+                        VulkanVersion;
+    import std.algorithm : canFind, filter, map;
+    import std.array : array;
+
+    vulkanInit();
+
+    // TODO: make this feasible without Application and Platform
+    const necessaryExtensions = Application.platform.necessaryVulkanExtensions;
+
+    debug {
+        const wantedLayers = lunarGValidationLayers;
+        const wantedExts = [ "VK_KHR_debug_report", "VK_EXT_debug_report" ];
+    }
+    else {
+        const string[] wantedLayers = [];
+        const string[] wantedExts = [];
+    }
+
+    const requestedLayers = vulkanInstanceLayers
+            .map!(l => l.layerName)
+            .filter!(l => wantedLayers.canFind(l))
+            .array();
+    const requestedExtensions = vulkanInstanceExtensions
+            .map!(e => e.extensionName)
+            .filter!(e => wantedExts.canFind(e))
+            .array()
+            ~ necessaryExtensions;
+
+    const vv = VulkanVersion(appVersion[0], appVersion[1], appVersion[2]);
+
     return new VulkanRenderer(createVulkanInstance(
-        appName, VulkanVersion(appVersion[0], appVersion[1], appVersion[2])
+        requestedLayers, requestedExtensions, appName, vv
     ));
 }
 
@@ -250,7 +284,9 @@ class VulkanRenderer : RendererBase
 
     override Surface makeSurface(size_t windowHandle)
     {
-        assert(false, "unimplemented");
+        // TODO: make this work without Application and Platform
+        import dgt.application : Application;
+        return Application.platform.createGraalSurface(instance, windowHandle);
     }
 }
 

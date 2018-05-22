@@ -121,10 +121,11 @@ void renderLoop(shared(Renderer) sharedRenderer, Tid caller)
             stderr.writefln("Exception in render thread: %s", ex.msg);
         }
         catch (Throwable th) {
+            import core.stdc.stdlib : exit, EXIT_FAILURE;
             import std.stdio : stderr;
             // get a chance to print the error message before exiting the thread
             stderr.writefln("Unrecoverable error in render thread : %s", th.msg);
-            return;
+            exit(EXIT_FAILURE);
         }
     }
     prioritySend(caller, ExitCopy());
