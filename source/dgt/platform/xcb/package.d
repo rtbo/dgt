@@ -21,7 +21,6 @@ import dgt.window;
 import gfx.graal : Instance;
 import gfx.graal.presentation : Surface;
 
-import derelict.opengl3.gl3;
 import xcb.dri2;
 import xcb.dri3;
 import xcb.xcb;

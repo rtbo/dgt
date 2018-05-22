@@ -10,9 +10,6 @@ import dgt.screen;
 
 import gfx.foundation.util : unsafeCast;
 
-import derelict.opengl3.gl3;
-import derelict.opengl3.wglext;
-
 import std.exception;
 import std.experimental.logger;
 import core.sys.windows.wingdi;

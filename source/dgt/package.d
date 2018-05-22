@@ -70,13 +70,11 @@ __gshared Mutex gMut;
 
 void loadBindings()
 {
-    import derelict.opengl3.gl3 : DerelictGL3;
     import derelict.freetype.ft : DerelictFT;
     import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
     import dgt.bindings.libpng.load : loadLibPngSymbols;
     import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
 
-    DerelictGL3.load();
     DerelictFT.load();
     loadHarfbuzzSymbols();
     loadLibPngSymbols();
