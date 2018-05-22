@@ -15,7 +15,7 @@ import dgt.ui.label;
 import dgt.ui.layout;
 import dgt.window;
 
-import gfx.foundation.typecons;
+import gfx.core.typecons;
 
 import std.exception;
 import std.math : PI;
@@ -64,10 +64,10 @@ int main()
         const center = fvec(size/2, 0);
         const factor = 1 + cast(float)sin(phase*PI);
         const transform =
-                translation!float(center) *
+                translation(center) *
                 rotation(phase*2*PI, fvec(0, 0, 1)) *
                 scale(factor, factor, 1) *
-                translation!float(-center);
+                translation(-center);
         label.transform = transform;
     };
 
