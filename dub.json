@@ -11,7 +11,7 @@
 
     "stringImportPaths": [
         "views",
-        "source/dgt/render/shaders"
+        "source/dgt/render/views"
     ],
 
     "subPackages": [

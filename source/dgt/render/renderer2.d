@@ -188,6 +188,37 @@ class RendererBase : Renderer
         presentQueue = device.getQueue(pq, 0);
     }
 
+    private void prepareDeclarative()
+    {
+        import dgt.render.rect2 : RectColVertex, RectImgVertex;
+        import dgt.render.defs : P2T2Vertex;
+        import std.array : join;
+        import std.range : only;
+
+        declEng = new DeclarativeEngine(device);
+        declEng.addView!"rectcol_pipeline.sdl"();
+        declEng.addView!"rectcol.vert.spv"();
+        declEng.addView!"rectcol.frag.spv"();
+        declEng.addView!"rectimg_pipeline.sdl"();
+        declEng.addView!"rectimg.vert.spv"();
+        declEng.addView!"rectimg.frag.spv"();
+        declEng.addView!"text_pipeline.sdl"();
+        declEng.addView!"text.vert.spv"();
+        declEng.addView!"text.frag.spv"();
+        declEng.declareStruct!RectColVertex();
+        declEng.declareStruct!RectImgVertex();
+        declEng.declareStruct!P2T2Vertex();
+
+        const sdl = only(
+            import("renderpass.sdl"),
+            import("rectcol_pipeline.sdl"),
+            import("rectimg_pipeline.sdl"),
+            import("text_pipeline.sdl"),
+        ).join("\n");
+
+        declEng.parseSDLSource(sdl);
+    }
+
     static void frameError(Args...)(string msg, Args args)
     {
         import std.format : format;
