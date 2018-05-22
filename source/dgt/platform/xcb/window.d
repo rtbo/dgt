@@ -80,6 +80,7 @@ class XcbWindow : PlatformWindow
         _depth = drawVisualDepth(screen.xcbScreen, _visual.visual_id);
         _visualId = _visual.visual_id;
 
+
         _format = _platform.formatForDepth(_depth);
 
         immutable cmap = xcb_generate_id(g_connection);
@@ -87,13 +88,15 @@ class XcbWindow : PlatformWindow
 
         xcb_create_colormap(g_connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen.root, _visualId);
 
-        immutable mask = XCB_CW_COLORMAP;
-        uint[] values = [cmap, 0];
+        const mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_COLORMAP;
+        const uint[] values = [XCB_BACK_PIXMAP_NONE, 0, cmap, 0];
+        // immutable mask = XCB_CW_COLORMAP;
+        // uint[] values = [cmap, 0];
 
-        auto cook = xcb_create_window_checked(g_connection, screen.rootDepth,
+        auto cook = xcb_create_window_checked(g_connection, depth,
                 _xcbWin, screen.root, cast(short) pos.x, cast(short) pos.y,
                 cast(ushort) size.width, cast(ushort) size.height, 0,
-                XCB_WINDOW_CLASS_INPUT_OUTPUT, screen.rootVisual, mask, &values[0]);
+                XCB_WINDOW_CLASS_INPUT_OUTPUT, _visualId, mask, &values[0]);
 
         auto err = xcb_request_check(g_connection, cook);
         if (err)
