@@ -11,8 +11,8 @@ class RenderCache : Disposable
     import dgt.core.rc : AtomicRefCounted;
 
     override void dispose() {
-        import dgt.core.rc : releaseArray;
-        releaseArray(_cache);
+        import dgt.core.rc : releaseAA;
+        releaseAA(_cache);
     }
 
     /// Add a resource identified by cookie in the cache

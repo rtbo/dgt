@@ -120,17 +120,25 @@ import gfx.graal.renderpass;
 import gfx.graal.presentation;
 
 
-class WindowContext
+class WindowContext : Disposable
 {
-    size_t windowHandle;
+    private size_t windowHandle;
     private Rc!Surface surface;
-    private Rc!Swapchain swapchain;
     private Rc!Device device;
+    private Rc!Swapchain swapchain;
 
-    this (size_t windowHandle, Rc!Device device)
+    this (size_t windowHandle, Surface surface, Device device)
     {
         this.windowHandle = windowHandle;
+        this.surface = surface;
         this.device = device;
+    }
+
+    override void dispose()
+    {
+        surface.unload();
+        swapchain.unload();
+        device.unload();
     }
 }
 
@@ -144,8 +152,9 @@ class RendererBase : Renderer
     private uint presentQueueInd;
     private Queue graphicsQueue;
     private Queue presentQueue;
-    private Surface[size_t] surfaces;
     private DeclarativeEngine declEng;
+
+    private WindowContext[] windows;
 
     private bool initialized;
 
@@ -166,31 +175,36 @@ class RendererBase : Renderer
 
     override void finalize(size_t windowHandle)
     {
-        import gfx.core.rc : disposeObject, releaseArray;
+        import gfx.core.rc : disposeObj, disposeArr;
 
-        disposeObject(declEng);
-        releaseArray(surfaces);
-        this.device.unload();
-        this.instance.unload();
+        disposeObj(declEng);
+        disposeArr(windows);
+        device.unload();
+        physicalDevice.unload();
+        instance.unload();
     }
 
     abstract Surface makeSurface(size_t windowHandle);
 
-    private Surface getSurface(size_t windowHandle)
+    private WindowContext getWindow(size_t windowHandle)
     {
-        auto s = windowHandle in surfaces;
-        if (s) return *s;
-        auto surf = makeSurface(windowHandle);
-        surf.retain();
-        surfaces[windowHandle] = surf;
-        return surf;
+        foreach (w; windows) {
+            if (w.windowHandle == windowHandle) return w;
+        }
+        auto w = new WindowContext(windowHandle, makeSurface(windowHandle), device);
+        windows ~= w;
+        return w;
     }
 
     override void render(immutable(FGFrame)[] frames)
     {
         if (!initialized) {
-            initialize(getSurface(frames[0].windowHandle));
+            import dgt.core.rc : rc;
+            const wh = frames[0].windowHandle;
+            auto s = makeSurface(wh).rc;
+            initialize(s);
             initialized = true;
+            windows ~= new WindowContext(wh, s, device);
         }
     }
 
