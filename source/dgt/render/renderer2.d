@@ -146,7 +146,7 @@ class WindowContext : Disposable
 class RendererBase : Renderer
 {
     private Rc!Instance instance;
-    private Rc!PhysicalDevice physicalDevice;
+    private PhysicalDevice physicalDevice;
     private Rc!Device device;
     private uint graphicsQueueInd;
     private uint presentQueueInd;
@@ -180,7 +180,6 @@ class RendererBase : Renderer
         disposeObj(declEng);
         disposeArr(windows);
         device.unload();
-        physicalDevice.unload();
         instance.unload();
     }
 
