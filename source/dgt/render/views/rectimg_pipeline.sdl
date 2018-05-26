@@ -19,7 +19,7 @@ graal:Pipeline {
     store "rectimg_pl"
     shaders {
         vertex source="view:rectimg.vert.spv"
-        vertex source="view:rectimg.frag.spv"
+        fragment source="view:rectimg.frag.spv"
     }
     inputBindings {
         0 stride="sizeof:RectImgVertex" instanced=off
@@ -39,6 +39,6 @@ graal:Pipeline {
         }
     }
     dynamicStates "viewport" "scissor"
-    layout "store:layout"
+    layout "store:rectimg_layout"
     renderPass "store:renderPass" subpass=0
 }

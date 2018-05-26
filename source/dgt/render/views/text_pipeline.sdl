@@ -19,7 +19,7 @@ graal:Pipeline {
     store "text_pl"
     shaders {
         vertex source="view:text.vert.spv"
-        vertex source="view:text.frag.spv"
+        fragment source="view:text.frag.spv"
     }
     inputBindings {
         0 stride="sizeof:P2T2Vertex" instanced=off
@@ -38,6 +38,6 @@ graal:Pipeline {
         }
     }
     dynamicStates "viewport" "scissor"
-    layout "store:layout"
+    layout "store:text_layout"
     renderPass "store:renderPass" subpass=0
 }

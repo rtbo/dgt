@@ -17,7 +17,7 @@ graal:Pipeline {
     store "rectcol_pl"
     shaders {
         vertex source="view:rectcol.vert.spv"
-        vertex source="view:rectcol.frag.spv"
+        fragment source="view:rectcol.frag.spv"
     }
     inputBindings {
         0 stride="sizeof:RectColVertex" instanced=off
@@ -36,6 +36,6 @@ graal:Pipeline {
         }
     }
     dynamicStates "viewport" "scissor"
-    layout "store:layout"
+    layout "store:rectcol_layout"
     renderPass "store:renderPass" subpass=0
 }
