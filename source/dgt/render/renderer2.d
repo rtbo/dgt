@@ -238,6 +238,14 @@ final class WindowContext : Disposable
                 .map!(ib => PerImage(device, renderPass, ib))
                 .array();
 
+        foreach (i, ref img; images) {
+            import gfx.core.rc : releaseObj;
+            if (images.length == fences.length) {
+                fences[i].wait();
+            }
+            releaseObj(img.view);
+            releaseObj(img.framebuffer);
+        }
         if (fences.length != imgs.length || cmdBufs.length != imgs.length) {
             import gfx.core.rc : releaseArr, retainArr;
             import std.range : iota;
@@ -255,11 +263,6 @@ final class WindowContext : Disposable
             retainObj(img.view);
             retainObj(img.framebuffer);
         }
-        foreach (ref img; images) {
-            import gfx.core.rc : releaseObj;
-            releaseObj(img.view);
-            releaseObj(img.framebuffer);
-        }
 
         swapchain = sc;
         images = imgs;
@@ -269,10 +272,6 @@ final class WindowContext : Disposable
     uint acquireNextImage() {
         import core.time : dur;
         return swapchain.acquireNextImage(dur!"seconds"(-1),imageAvailableSem, mustRebuildSwapchain);
-    }
-
-    void present(uint imgInd, Queue presentQueue) {
-        import gfx.graal.queue : PresentRequest;
     }
 }
 
@@ -358,10 +357,12 @@ class RendererBase : Renderer
         return w;
     }
 
+    // frames is one frame per window, not several frames of the same window at once
     override void render(immutable(FGFrame)[] frames)
     {
         import gfx.core.types : Rect, Viewport;
         import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
+        import gfx.graal.error : OutOfDateException;
         import gfx.graal.queue : PresentRequest, Submission, StageWait;
         import gfx.graal.sync : Semaphore;
         import gfx.math.vec : FVec4;
@@ -385,7 +386,15 @@ class RendererBase : Renderer
             const vp = frame.viewport;
             window.resizeIfNeeded([ vp.width, vp.height ]);
 
-            const imgInd = window.acquireNextImage();
+            uint imgInd;
+            try {
+                imgInd = window.acquireNextImage();
+            }
+            catch(OutOfDateException ex) {
+                // being resized, and frame.viewport size is out of date
+                // will render next one
+                continue;
+            }
             auto cmdBuf = window.cmdBufs[imgInd];
             auto fence = window.fences[imgInd];
             auto img = window.images[imgInd];
@@ -429,7 +438,7 @@ class RendererBase : Renderer
             prs[fi] = PresentRequest(window.swapchain.obj, imgInd);
         }
 
-        presentQueue.present(waitSems, prs);
+        if (prs.length) presentQueue.present(waitSems, prs);
     }
 
     private void prepareDevice(Surface surf)
