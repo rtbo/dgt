@@ -141,8 +141,8 @@ final class WindowContext : Disposable
     private uint[2] size;
     private bool mustRebuildSwapchain;
 
-    private Rc!Semaphore imageAvailableSem;
-    private Rc!Semaphore renderingFinishSem;
+    private Semaphore imageAvailableSem;
+    private Semaphore renderingFinishSem;
 
     private static struct PerImage
     {
@@ -166,26 +166,32 @@ final class WindowContext : Disposable
     this (size_t windowHandle, Surface surface, Device device,
             RenderPass renderPass, CommandPool cmdPool, SwapchainProps scProps)
     {
+        import gfx.core.rc : retainObj;
+
         this.windowHandle = windowHandle;
         this.surface = surface;
         this.device = device;
         this.pool = cmdPool;
         this.renderPass = renderPass;
         this.scProps = scProps;
-        this.imageAvailableSem = device.createSemaphore();
-        this.renderingFinishSem = device.createSemaphore();
+        this.imageAvailableSem = retainObj(device.createSemaphore());
+        this.renderingFinishSem = retainObj(device.createSemaphore());
     }
 
     override void dispose()
     {
         import gfx.core.rc : releaseArr, releaseObj;
 
-        foreach (ref img; images) {
+        assert(fences.length == images.length);
+        foreach (i, ref img; images) {
+            import gfx.core.rc : releaseObj;
+            // img might might still be used in command buffer from previous frame
+            fences[i].wait();
             releaseObj(img.view);
             releaseObj(img.framebuffer);
         }
-        imageAvailableSem.unload();
-        renderingFinishSem.unload();
+        releaseObj(imageAvailableSem);
+        releaseObj(renderingFinishSem);
         releaseArr(fences);
         if (cmdBufs.length) pool.free(cmdBufs);
         pool.unload();
@@ -202,6 +208,7 @@ final class WindowContext : Disposable
         import std.algorithm : clamp, map, max;
         import std.array : array;
         import std.exception : enforce;
+        import std.experimental.logger : tracef;
 
         if (swapchain && newSize == size && !mustRebuildSwapchain) return;
 
@@ -230,6 +237,8 @@ final class WindowContext : Disposable
             sz[i] = clamp(newSize[i], surfCaps.minSize[i], surfCaps.maxSize[i]);
         }
 
+        tracef("creating swapchain for size %s", sz);
+
         const usage = ImageUsage.colorAttachment;
         const pm = PresentMode.fifo;
         auto sc = device.createSwapchain(surface, pm, numImages, scProps.format, sz, usage, ca, swapchain.obj);
@@ -238,15 +247,19 @@ final class WindowContext : Disposable
                 .map!(ib => PerImage(device, renderPass, ib))
                 .array();
 
+        // releasing previous framebuffer (if any)
+        assert(fences.length == images.length);
         foreach (i, ref img; images) {
             import gfx.core.rc : releaseObj;
-            if (images.length == fences.length) {
-                fences[i].wait();
-            }
+            // img might might still be used in command buffer from previous frame
+            fences[i].wait();
             releaseObj(img.view);
             releaseObj(img.framebuffer);
         }
-        if (fences.length != imgs.length || cmdBufs.length != imgs.length) {
+        // building new fences and command buffers if image count is different
+        // (also for first use)
+        assert(fences.length == cmdBufs.length);
+        if (fences.length != imgs.length) {
             import gfx.core.rc : releaseArr, retainArr;
             import std.range : iota;
             import std.typecons : Yes;
@@ -267,11 +280,13 @@ final class WindowContext : Disposable
         swapchain = sc;
         images = imgs;
         size = sz;
+        mustRebuildSwapchain = false;
+
     }
 
     uint acquireNextImage() {
         import core.time : dur;
-        return swapchain.acquireNextImage(dur!"seconds"(-1),imageAvailableSem, mustRebuildSwapchain);
+        return swapchain.acquireNextImage(dur!"seconds"(-1), imageAvailableSem, mustRebuildSwapchain);
     }
 }
 
@@ -352,7 +367,10 @@ class RendererBase : Renderer
         foreach (w; windows) {
             if (w.windowHandle == windowHandle) return w;
         }
-        auto w = new WindowContext(windowHandle, makeSurface(windowHandle), device, renderPass, graphicsPool, swapchainProps);
+        auto w = new WindowContext(
+            windowHandle, makeSurface(windowHandle), device, renderPass,
+            graphicsPool, swapchainProps
+        );
         windows ~= w;
         return w;
     }
@@ -366,7 +384,8 @@ class RendererBase : Renderer
         import gfx.graal.queue : PresentRequest, Submission, StageWait;
         import gfx.graal.sync : Semaphore;
         import gfx.math.vec : FVec4;
-        import std.algorithm : each;
+        import std.algorithm : map;
+        import std.array : array;
         import std.typecons : No;
 
         if (!initialized) {
@@ -374,14 +393,18 @@ class RendererBase : Renderer
             const wh = frames[0].windowHandle;
             auto s = makeSurface(wh).rc;
             initialize(s);
-            windows ~= new WindowContext(wh, s, device, renderPass, graphicsPool, swapchainProps);
+            windows ~= new WindowContext(
+                wh, s, device, renderPass, graphicsPool, swapchainProps
+            );
             initialized = true;
         }
 
-        Semaphore[] waitSems = new Semaphore[frames.length];
-        PresentRequest[] prs = new PresentRequest[frames.length];
+        Semaphore[] waitSems;
+        PresentRequest[] prs;
+        waitSems.reserve(frames.length);
+        prs.reserve(frames.length);
 
-        foreach (fi, frame; frames) {
+        foreach (frame; frames) {
             auto window = getWindow(frame.windowHandle);
             const vp = frame.viewport;
             window.resizeIfNeeded([ vp.width, vp.height ]);
@@ -393,23 +416,21 @@ class RendererBase : Renderer
             catch(OutOfDateException ex) {
                 // being resized, and frame.viewport size is out of date
                 // will render next one
+                window.mustRebuildSwapchain = true;
                 continue;
             }
             auto cmdBuf = window.cmdBufs[imgInd];
             auto fence = window.fences[imgInd];
             auto img = window.images[imgInd];
 
+            const wsz = window.size;
+
             fence.wait();
             fence.reset();
 
-            ClearValues[1] cvArr;
-            ClearValues[] cvs;
-            frame.clearColor.each!(
-                (FVec4 color) {
-                    cvArr[0] = ClearValues.color(color.r, color.g, color.b, color.a);
-                    cvs = cvArr[0 .. 1];
-                }
-            );
+            ClearValues[] cvs = frame.clearColor
+                    .map!(c => ClearValues.color(c.r, c.g, c.b, c.a))
+                    .array();
 
             cmdBuf.begin(No.persistent);
 
@@ -417,9 +438,7 @@ class RendererBase : Renderer
             cmdBuf.setScissor(0, [ Rect(0, 0, vp.width, vp.height) ]);
 
             cmdBuf.beginRenderPass(
-                renderPass, img.framebuffer,
-                Rect(0, 0, vp.width, vp.height),
-                cvs
+                renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
             );
 
             cmdBuf.endRenderPass();
@@ -430,12 +449,12 @@ class RendererBase : Renderer
             graphicsQueue.submit([
                 Submission (
                     [ StageWait(window.imageAvailableSem, PipelineStage.transfer) ],
-                    [ window.renderingFinishSem.obj ], [ cmdBuf ]
+                    [ window.renderingFinishSem ], [ cmdBuf ]
                 )
             ], fence );
 
-            waitSems[fi] = window.renderingFinishSem.obj;
-            prs[fi] = PresentRequest(window.swapchain.obj, imgInd);
+            waitSems ~= window.renderingFinishSem;
+            prs ~= PresentRequest(window.swapchain.obj, imgInd);
         }
 
         if (prs.length) presentQueue.present(waitSems, prs);

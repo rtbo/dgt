@@ -104,11 +104,12 @@ void renderLoop(shared(Renderer) sharedRenderer, Tid caller)
     auto renderer = cast(Renderer)sharedRenderer;
     bool run = true;
     while(run) {
+        bool doneFrame = false;
         try {
             receive(
                 (immutable(FGFrame)[] frames) {
+                    doneFrame = true;
                     renderer.render(frames);
-                    send(caller, DoneFrames());
                 },
                 (Exit e) {
                     run = false;
@@ -126,6 +127,9 @@ void renderLoop(shared(Renderer) sharedRenderer, Tid caller)
             // get a chance to print the error message before exiting the thread
             stderr.writefln("Unrecoverable error in render thread : %s", th.msg);
             exit(EXIT_FAILURE);
+        }
+        if (doneFrame) {
+            send(caller, DoneFrames());
         }
     }
     prioritySend(caller, ExitCopy());
