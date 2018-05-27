@@ -236,6 +236,16 @@ class Image
         return _stride;
     }
 
+    /// clear the image content with zeros
+    void clear(T=ubyte)(uint val)
+    in {
+        assert((_data.length % T.sizeof) == 0);
+    }
+    body {
+        auto d = cast(T[])_data;
+        d[] = cast(T)val;
+    }
+
     /// blit pixels from src into this image.
     /// The two formats must be identical and this must be big enough in both directions
     /// Unimplemented for ImageFormat.a1.
