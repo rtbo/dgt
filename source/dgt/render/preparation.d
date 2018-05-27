@@ -3,9 +3,13 @@ module dgt.render.preparation;
 package:
 
 import gfx.graal.device : Device, PhysicalDevice;
+import gfx.graal.format : Format;
 import gfx.graal.presentation : Surface;
 import gfx.graal.queue : QueueCap, QueueFamily;
 
+/// Get the compatibility score for a device
+/// Call this function on all available devices to choose the right one.
+/// This also gives the queue indices for graphics and presentation (will often be the same one)
 int deviceScore(PhysicalDevice dev,  Surface surface, out uint graphicsQueue, out uint presentQueue)
 {
     int score;
@@ -50,4 +54,34 @@ int deviceScore(PhysicalDevice dev,  Surface surface, out uint graphicsQueue, ou
     presentQueue = presentAspect.queueIndex;
 
     return score;
+}
+
+/// Return a format suitable for the surface.
+///  - if supported by the surface Format.rgba8_uNorm
+///  - otherwise the first format with uNorm numeric format
+///  - otherwise the first format
+Format chooseFormat(PhysicalDevice pd, Surface surface)
+{
+    import gfx.graal.format : formatDesc, NumFormat;
+    import std.exception : enforce;
+
+    const formats = pd.surfaceFormats(surface);
+    enforce(formats.length, "Could not get surface formats");
+
+    // the surface supports all kinds of formats
+    if (formats.length == 1 && formats[0] == Format.undefined) {
+        return Format.rgba8_uNorm;
+    }
+
+    foreach(f; formats) {
+        if (f == Format.rgba8_uNorm) {
+            return f;
+        }
+    }
+    foreach(f; formats) {
+        if (f.formatDesc.numFormat == NumFormat.uNorm) {
+            return f;
+        }
+    }
+    return formats[0];
 }

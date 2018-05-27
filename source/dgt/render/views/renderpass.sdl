@@ -5,10 +5,15 @@ graal:RenderPass {
         color {
             format "store:sc_format"
             ops load="clear" store="store"
-            layout from="presentSrc" to="presentSrc"
+            layout from="undefined" to="presentSrc"
         }
     }
     subpass {
         color attachment=0 layout="colorAttachmentOptimal"
     }
+    // dependency {
+    //     subpass from="external" to=0 // can also specify "external" here
+    //     stageMask from="lateFragmentTests" to="earlyFragmentTests"
+    //     accessMask from="depthStencilAttachmentWrite" to="depthStencilAttachmentRead"
+    // }
 }
