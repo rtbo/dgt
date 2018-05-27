@@ -108,6 +108,35 @@ interface Renderer
     void finalize(size_t windowHandle);
 }
 
+
+package:
+
+class RenderContext
+{
+    import dgt.render.cache : RenderCache;
+    import gfx.math.mat : FMat4;
+
+    private RenderCache _cache;
+    private FMat4 _viewProj;
+
+    this (RenderCache cache, in FMat4 viewProj) {
+        _cache = cache;
+        _viewProj = viewProj;
+    }
+
+    /// The render cache
+    @property RenderCache cache() {
+        return _cache;
+    }
+
+    /// The view-projection transform matrix
+    @property FMat4 viewProj()
+    {
+        return _viewProj;
+    }
+}
+
+
 private:
 
 struct SwapchainProps
@@ -293,6 +322,9 @@ final class WindowContext : Disposable
 
 class RendererBase : Renderer
 {
+    import dgt.render.cache :       RenderCache;
+    import dgt.render.rect2 :       RectRenderer;
+    import dgt.render.text2 :       TextRenderer;
     import gfx.core.rc :            Rc;
     import gfx.decl.engine :        DeclarativeEngine;
     import gfx.graal :              Instance;
@@ -301,6 +333,7 @@ class RendererBase : Renderer
     import gfx.graal.presentation : Surface;
     import gfx.graal.queue :        Queue;
     import gfx.graal.renderpass :   RenderPass;
+    import gfx.math.mat :           FMat4;
     import gfx.memalloc :           Allocator;
 
     private Rc!Instance instance;
@@ -320,11 +353,15 @@ class RendererBase : Renderer
     private SwapchainProps swapchainProps;
     private WindowContext[] windows;
 
+    private RenderCache cache;
+    private RectRenderer rectRenderer;
+    private TextRenderer textRenderer;
     private bool initialized;
 
     this(Instance instance)
     {
         this.instance = instance;
+        this.cache = new RenderCache;
     }
 
     override @property Backend backend()
@@ -342,6 +379,7 @@ class RendererBase : Renderer
         // Lets start with 128kb per allocation.
         // TODO: scan 1st frame and adapt default block size
         prepareAllocator(128 * 1024);
+        prepareRenderers();
     }
 
     override void finalize(size_t windowHandle)
@@ -350,6 +388,9 @@ class RendererBase : Renderer
 
         device.waitIdle();
 
+        disposeObj(rectRenderer);
+        disposeObj(textRenderer);
+        disposeObj(cache);
         disposeObj(declEng);
         disposeArr(windows);
         renderPass.unload();
@@ -378,6 +419,7 @@ class RendererBase : Renderer
     // frames is one frame per window, not several frames of the same window at once
     override void render(immutable(FGFrame)[] frames)
     {
+        import dgt.core.geometry : FRect;
         import gfx.core.types : Rect, Viewport;
         import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
         import gfx.graal.error : OutOfDateException;
@@ -405,8 +447,11 @@ class RendererBase : Renderer
         prs.reserve(frames.length);
 
         foreach (frame; frames) {
+
             auto window = getWindow(frame.windowHandle);
+
             const vp = frame.viewport;
+            const vpf = cast(FRect)vp;
             window.resizeIfNeeded([ vp.width, vp.height ]);
 
             uint imgInd;
@@ -434,12 +479,19 @@ class RendererBase : Renderer
 
             cmdBuf.begin(No.persistent);
 
-            cmdBuf.setViewport(0, [ Viewport(0f, 0f, cast(float)vp.width, cast(float)vp.height) ]);
+            cmdBuf.setViewport(0, [ Viewport(0f, 0f, vpf.width, vpf.height) ]);
             cmdBuf.setScissor(0, [ Rect(0, 0, vp.width, vp.height) ]);
 
             cmdBuf.beginRenderPass(
                 renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
             );
+
+            if (frame.root) {
+                import gfx.math.proj : ortho;
+                const viewProj = ortho(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
+                auto ctx = new RenderContext(cache, viewProj);
+                renderNode(frame.root, ctx, FMat4.identity);
+            }
 
             cmdBuf.endRenderPass();
 
@@ -458,6 +510,32 @@ class RendererBase : Renderer
         }
 
         if (prs.length) presentQueue.present(waitSems, prs);
+    }
+
+    void renderNode(immutable(FGNode) node, RenderContext ctx, in FMat4 model)
+    {
+        switch(node.type)
+        {
+        case FGNode.Type.group:
+            import std.algorithm : each;
+            immutable gn = cast(immutable(FGGroupNode))node;
+            gn.children.each!(n => renderNode(n, ctx, model));
+            break;
+        case FGNode.Type.transform:
+            immutable tn = cast(immutable(FGTransformNode))node;
+            renderNode(tn.child, ctx, model*tn.transform);
+            break;
+        case FGNode.Type.rect:
+            immutable rn = cast(immutable(FGRectNode))node;
+            rectRenderer.render(rn, ctx, model);
+            break;
+        case FGNode.Type.text:
+            immutable tn = cast(immutable(FGTextNode))node;
+            textRenderer.render(tn, ctx, model);
+            break;
+        default:
+            break;
+        }
     }
 
     private void prepareDevice(Surface surf)
@@ -554,6 +632,12 @@ class RendererBase : Renderer
         const f = chooseFormat(physicalDevice, surface);
 
         swapchainProps = SwapchainProps(f);
+    }
+
+    void prepareRenderers()
+    {
+        rectRenderer = new RectRenderer(device, declEng.store, allocator);
+        textRenderer = new TextRenderer(device, declEng.store, allocator);
     }
 
     static void frameError(Args...)(string msg, Args args)
