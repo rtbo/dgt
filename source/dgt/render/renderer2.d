@@ -448,6 +448,10 @@ class RendererBase : Renderer
 
         foreach (frame; frames) {
 
+            import std.parallelism : task;
+            auto textPreprocess = task(&textRenderer.framePreprocess, frame);
+            textPreprocess.executeInNewThread();
+
             auto window = getWindow(frame.windowHandle);
 
             const vp = frame.viewport;
@@ -462,6 +466,7 @@ class RendererBase : Renderer
                 // being resized, and frame.viewport size is out of date
                 // will render next one
                 window.mustRebuildSwapchain = true;
+                textPreprocess.yieldForce();
                 continue;
             }
             auto cmdBuf = window.cmdBufs[imgInd];
@@ -486,6 +491,7 @@ class RendererBase : Renderer
                 renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
             );
 
+            textPreprocess.yieldForce();
             if (frame.root) {
                 import gfx.math.proj : ortho;
                 const viewProj = ortho(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);

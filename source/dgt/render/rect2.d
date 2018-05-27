@@ -81,8 +81,8 @@ class RectRendererBase : Disposable
         pipeline.unload();
         device.unload();
     }
-
 }
+
 
 class RectColRenderer : RectRendererBase
 {

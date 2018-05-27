@@ -3,19 +3,17 @@
 /// An alternative would also be the freetype-gl atlas implementation.
 module dgt.render.atlas;
 
-version(none):
-
-import dgt.core.geometry;
-import dgt.core.image;
-import dgt.core.rc;
-import dgt.font.typeface : Glyph;
-import dgt.render.defs : Alpha8;
+import gfx.core.rc : AtomicRefCounted;
 import gfx.math.vec : IVec2;
 
 // binary tree representation of a texture space
 
 final class AtlasNode
 {
+    import dgt.font.typeface : Glyph;
+    import gfx.core.rc : Weak;
+    import gfx.math.vec : IVec2;
+
     this (GlyphAtlas atlas, in IVec2 origin, in IVec2 size) {
         this.atlas = atlas;
         _origin = origin;
@@ -30,8 +28,7 @@ final class AtlasNode
         return _size;
     }
 
-    Weak!GlyphAtlas atlas;
-
+    GlyphAtlas atlas;
     Glyph glyph;
 
     private IVec2 _origin;
@@ -40,9 +37,20 @@ final class AtlasNode
     private AtlasNode right;
 }
 
-final class GlyphAtlas : RefCounted
+final class GlyphAtlas
 {
-    mixin(rcCode);
+    import dgt.core.image : Image;
+    import dgt.font.typeface : Glyph;
+
+    private AtlasNode root;
+    private Image _image;
+    private IVec2 _textureSize;
+    private IVec2 _maxSize;
+    private int _margin;
+    private IVec2 lastFailedSize=IVec2(int.max, int.max);
+    private size_t numNodes;
+    private bool _realized;
+
 
     this (in IVec2 startSize, in IVec2 maxSize, in int margin=0) {
         _textureSize = startSize;
@@ -51,22 +59,8 @@ final class GlyphAtlas : RefCounted
         root = new AtlasNode(this, IVec2(margin, margin), maxSize - 2*IVec2(margin, margin));
     }
 
-    override void dispose() {
-        _srv.unload();
-        _sampler.unload();
-        root = null;
-    }
-
     @property IVec2 textureSize() {
         return _textureSize;
-    }
-
-    @property Sampler sampler() {
-        return _sampler.obj;
-    }
-
-    @property ShaderResourceView!Alpha8 srv() {
-        return _srv.obj;
     }
 
     AtlasNode pack(in IVec2 size, Glyph glyph) {
@@ -94,17 +88,27 @@ final class GlyphAtlas : RefCounted
         return size.x < lastFailedSize.x || size.y < lastFailedSize.y;
     }
 
-    void realize() {
-        if (_realized) return;
+    /// Realize the atlas, that is render all collected glyphs in an image.
+    /// Returns: true if the image was updated, false otherwise
+    bool realize()
+    {
+        import dgt.core.geometry : ISize;
+        import dgt.core.image : alignedStrideForWidth, Image, ImageFormat;
+        import gfx.math : ivec;
+
+        if (_realized) return false;
 
         scope(success) _realized = true;
 
-        auto img = new Image(ImageFormat.a8, ISize(_textureSize.x, _textureSize.y),
-                    alignedStrideForWidth(ImageFormat.a8, _textureSize.x));
+        const sz = ISize(_textureSize.x, _textureSize.y);
+        if (!_image || _image.size != sz) {
+            _image = new Image(ImageFormat.a8, sz, alignedStrideForWidth(ImageFormat.a8, sz.width));
+        }
+        _image.clear!uint(0);
 
         void browse(AtlasNode node) {
             if (node.glyph) {
-                img.blitFrom(node.glyph.img, ivec(0, 0), node.origin, node.glyph.img.size);
+                _image.blitFrom(node.glyph.img, ivec(0, 0), node.origin, node.glyph.img.size);
             }
             if (node.left) {
                 browse(node.left);
@@ -118,20 +122,16 @@ final class GlyphAtlas : RefCounted
 
         import std.format;
         static int num = 1;
-        img.saveToFile(format("atlas%s.png", num++));
+        _image.saveToFile(format("atlas%s.png", num++));
 
-        const pixels = img.data;
-        TexUsageFlags usage = TextureUsage.shaderResource;
-        auto tex = new Texture2D!Alpha8(
-            usage, 1, cast(ushort)img.width, cast(ushort)img.height, [pixels]
-        ).rc();
-        _srv = tex.viewAsShaderResource(0, 0, newSwizzle());
-        // FilterMethod.scale maps to GL_NEAREST
-        // no need to filter what is already filtered
-        _sampler = new Sampler(
-            srv, SamplerInfo(FilterMethod.scale, WrapMode.init)
-        );
+        return true;
     }
+
+    /// Get the realized image of the Atlas. It has format ImageFormat.a8.
+    @property Image image() {
+        return _image;
+    }
+
 
     /// Recursively scan the tree from node to find a space for the given size.
     /// Returns: a new node if space was found, null otherwise.
@@ -194,14 +194,4 @@ final class GlyphAtlas : RefCounted
             }
         }
     }
-
-    private AtlasNode root;
-    private IVec2 _textureSize;
-    private IVec2 _maxSize;
-    private int _margin;
-    private Rc!(ShaderResourceView!Alpha8) _srv;
-    private Rc!Sampler _sampler;
-    private IVec2 lastFailedSize=IVec2(int.max, int.max);
-    private size_t numNodes;
-    private bool _realized;
 }
