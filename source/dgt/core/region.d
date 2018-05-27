@@ -1,10 +1,7 @@
 /// Screen region manipulation.
 module dgt.core.region;
 
-import dgt.core.geometry;
-
-import std.exception : assumeUnique;
-import std.range;
+import dgt.core.geometry : IRect;
 
 /// An immutable screen region.
 alias Region = immutable(_Region);
@@ -20,6 +17,8 @@ Region subtract(in Region lhs, in Region rhs);
 // Top is lower y and bottom is higher y
 class _Region
 {
+    import dgt.core.geometry : IPoint;
+
     private IRect _extents;
     private IRect[] _rects;
 
@@ -55,7 +54,10 @@ class _Region
         return _rects;
     }
 
-    bool contains(in IPoint p) const {
+    bool contains(in IPoint p) const
+    {
+        import dgt.core.geometry : contains;
+
         if (!_extents.contains(p)) return false;
         else if (rects.length == 1) return true;
 
@@ -69,7 +71,9 @@ class _Region
 
 Region intersect(in Region lhs, in Region rhs)
 {
+    import dgt.core.geometry : contains, intersection, IPoint;
     import std.algorithm : min, max;
+    import std.exception : assumeUnique;
 
     if (lhs.empty || rhs.empty) {
         return Region.init;
@@ -132,7 +136,9 @@ unittest
 
 Region unite(in Region lhs, in Region rhs)
 {
+    import dgt.core.geometry : contains, IPoint;
     import std.algorithm : min, max;
+    import std.exception : assumeUnique;
 
     if (lhs.empty && rhs.empty) {
         return Region.init;
@@ -237,6 +243,10 @@ unittest
 
 Region subtract(in Region lhs, in Region rhs)
 {
+    import dgt.core.geometry : IPoint, overlaps;
+    import std.exception : assumeUnique;
+    import std.range : empty;
+
     if (lhs.empty && rhs.empty) {
         return Region.init;
     }
@@ -399,6 +409,8 @@ body
 void appendNonOverlap(ref IRect[] rects, in IRect[] addedRects,
                                 in int top, in int bottom)
 {
+    import dgt.core.geometry : IPoint;
+
     rects.reserve(addedRects.length);
     foreach (r; addedRects) {
         rects ~= IRect(IPoint(r.left, top), IPoint(r.right, bottom));
@@ -420,6 +432,8 @@ IRect[] operator (const(IRect)[] r1, const(IRect)[] r2,
                 OverlapFn overlapFn)
 {
     import std.algorithm : min, max;
+    import std.range : empty;
+
     assert(!r1.empty);
     assert(!r2.empty);
 

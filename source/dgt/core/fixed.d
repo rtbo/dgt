@@ -1,11 +1,12 @@
 module dgt.core.fixed;
 
-import std.traits : isFloatingPoint, isIntegral;
 
 alias Fixed16 = Fixed!(16, 16);
 alias Fixed26_6 = Fixed!(26, 6);
 
-struct Fixed(size_t I, size_t D) {
+struct Fixed(size_t I, size_t D)
+{
+    import std.traits : isFloatingPoint, isIntegral;
 
     enum ipart = I;
     enum dpart = D;

@@ -1,8 +1,6 @@
 /// The obligatory junk module with unsortable and essential utilities.
 module dgt.core.util;
 
-import std.traits : Unqual, hasIndirections;
-
 /// Computes a string hash at compile time.
 template hash(string s, size_t sofar=0)
 {

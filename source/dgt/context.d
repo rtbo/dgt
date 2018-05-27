@@ -1,9 +1,9 @@
 module dgt.context;
 
 import dgt.screen : Screen;
-import dgt.window : Window, WindowFlags;
+import dgt.window : Window;
 
-public import gfx.gl3.context;
+public import gfx.gl3.context : GlAttribs, GlContext;
 
 GlContext createGlContext(GlAttribs attribs,
                                   GlContext sharedCtx=null,
@@ -30,6 +30,8 @@ private:
 GlContext createGlContext(GlAttribs attribs, Window window,
                                   GlContext sharedCtx, Screen screen)
 {
+    import dgt.window : WindowFlags;
+
     Window dummy;
     if (!window) {
         window = new Window("Dummy!", WindowFlags.dummy);

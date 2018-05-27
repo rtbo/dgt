@@ -2,7 +2,6 @@
 module dgt;
 
 import core.sync.mutex : Mutex;
-import std.experimental.logger;
 
 interface Subsystem
 {
@@ -25,14 +24,17 @@ interface Subsystem
     }
 }
 
-void registerSubsystem(Subsystem ss) {
+void registerSubsystem(Subsystem ss)
+{
     gMut.lock();
     scope(exit) gMut.unlock();
     gSubsystems ~= ss;
 }
 
-void initializeSubsystems() {
+void initializeSubsystems()
+{
     import std.algorithm : each, filter;
+    import std.experimental.logger : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
@@ -46,8 +48,10 @@ void initializeSubsystems() {
         .each!(ss => ss.initialize());
 }
 
-void finalizeSubsystems() {
+void finalizeSubsystems()
+{
     import std.algorithm : each, filter;
+    import std.experimental.logger : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
@@ -61,7 +65,8 @@ void finalizeSubsystems() {
 
 private:
 
-shared static this() {
+shared static this()
+{
     gMut = new Mutex();
 }
 

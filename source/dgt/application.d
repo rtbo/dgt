@@ -1,19 +1,15 @@
 /// Main application module.
 module dgt.application;
 
-import dgt;
-import dgt.context;
-import dgt.core.rc;
-import dgt.eventloop;
-import dgt.render.queue : RenderQueue;
-import dgt.platform;
-import dgt.window;
-
-import std.experimental.logger;
+import dgt.core.rc : Disposable;
+import dgt.eventloop : EventLoop;
+import dgt.platform : Platform;
 
 /// Singleton class that must be built by the client application
 class Application : EventLoop, Disposable
 {
+    import dgt.window : Window;
+
     /// Build an application. This will initialize underlying platform.
     this()
     {
@@ -29,6 +25,8 @@ class Application : EventLoop, Disposable
 
     override void dispose()
     {
+        import dgt : finalizeSubsystems;
+
         _platform.dispose();
         finalizeSubsystems();
     }
@@ -55,6 +53,10 @@ class Application : EventLoop, Disposable
 
     private void initialize(Platform platform)
     {
+        import dgt : initializeSubsystems;
+        import dgt.render.queue : RenderQueue;
+        import std.experimental.logger : log;
+
         initializeSubsystems();
 
         // init Application singleton
@@ -93,6 +95,8 @@ class Application : EventLoop, Disposable
 
     private void initializeGfx(Window window)
     {
+        import dgt.context : createGlContext;
+        import dgt.render.queue : RenderQueue;
         import dgt.render.renderer2 : createRenderer;
         import gfx.graal : Backend;
 
@@ -104,6 +108,8 @@ class Application : EventLoop, Disposable
 
     private void finalizeGfx(Window window)
     {
+        import dgt.render.queue : RenderQueue;
+
         assert(window.created && !window.dummy);
         RenderQueue.instance.stop(window.nativeHandle);
     }

@@ -1,12 +1,6 @@
 /// Paint module describes the stroke and fill paint used during rendering.
 module dgt.core.paint;
 
-import dgt.core.color;
-import dgt.core.geometry;
-import dgt.core.image;
-import gfx.math.vec;
-
-import std.experimental.logger;
 import std.typecons : Rebindable;
 
 /// The type of a paint.
@@ -25,6 +19,8 @@ enum PaintType
 /// A gradient stop.
 struct GradientStop
 {
+    import dgt.core.color : Color;
+
     /// linear position of the stop in the range [0-1].
     float position;
     /// color of this stop.
@@ -74,6 +70,8 @@ alias RColorPaint = Rebindable!(immutable(ColorPaint));
 /// ditto
 immutable class ColorPaint : Paint
 {
+    import dgt.core.color : Color;
+
     /// Initialize with color
     immutable this (in Color color)
     {
@@ -122,6 +120,8 @@ alias RLinearGradientPaint = Rebindable!(immutable(LinearGradientPaint));
 /// ditto
 immutable class LinearGradientPaint : GradientPaint
 {
+    import dgt.core.geometry : FSize, FVec2;
+
     /// gradient line direction
     enum Direction
     {
@@ -223,6 +223,8 @@ alias RRadialGradientPaint = Rebindable!(immutable(RadialGradientPaint));
 /// ditto
 immutable class RadialGradientPaint : GradientPaint
 {
+    import dgt.core.geometry : FVec2;
+
     this (in FVec2 focal, in FVec2 center, in float radius, immutable GradientStop[] stops)
     {
         super(PaintType.radialGradient, stops);
@@ -255,6 +257,8 @@ alias RImagePaint = Rebindable!(immutable(ImagePaint));
 /// ditto
 immutable class ImagePaint : Paint
 {
+    import dgt.core.image : Image;
+
     this(immutable(Image) image)
     {
         super(PaintType.image);
@@ -276,6 +280,8 @@ import std.range;
 immutable(Paint) parsePaint(Tokens)(ref Tokens tokens)
 if (isInputRange!Tokens && is(ElementType!Tokens == Token))
 {
+    import dgt.core.color : Color, parseColor;
+
     tokens.popSpaces();
     if (tokens.empty) return null;
 
@@ -419,6 +425,9 @@ immutable(LinearGradientPaint) parseLinearGradientPaint(Tokens)(ref Tokens token
 
 immutable(GradientStop)[] parseColorStops(Tokens)(ref Tokens tokens)
 {
+    import dgt.core.color : parseColor;
+    import dgt.css.token : Tok;
+
     GradientStop[] stops;
     tokens.popSpaces();
 
@@ -485,9 +494,12 @@ immutable(GradientStop)[] parseColorStops(Tokens)(ref Tokens tokens)
 
 immutable(Paint) parseImageFromUri(in string uri)
 {
+    import dgt.core.image : assumeUnique, Image, ImageFormat;
+    import dgt.core.resource : Registry, Resource, retrieveResource;
+    import std.algorithm : startsWith;
+    import std.experimental.logger : errorf, tracef;
+
     try {
-        import dgt.core.resource : Registry, Resource, retrieveResource;
-        import std.algorithm : startsWith;
 
         const network = (uri.startsWith("http") || uri.startsWith("ftp"));
 

@@ -1,20 +1,17 @@
 module dgt.eventloop;
 
-import dgt.application;
-import dgt.platform;
-import dgt.platform.event;
-import dgt.render.queue : RenderQueue;
-import dgt.window;
-
-import std.experimental.logger;
-
 /// An event loop
 class EventLoop
 {
+    import dgt.platform.event : PlEvent, PlTimerEvent;
+    import dgt.window : Window;
+
     /// Enter event processing loop
     int loop()
     {
+        import dgt.application : Application;
         import dgt.platform : Wait;
+        import dgt.render.queue : RenderQueue;
         import std.algorithm : each, filter, map;
         import std.array : array;
 
@@ -99,6 +96,8 @@ class EventLoop
 
     package void registerWindow(Window w)
     {
+        import std.experimental.logger : logf;
+
         assert(!hasWindow(w), "tentative to register registered window");
         logf(`register window: 0x%08x "%s"`, cast(void*)w, w.title);
         _windows ~= w;
@@ -109,6 +108,8 @@ class EventLoop
     package void unregisterWindow(Window w)
     {
         import std.algorithm : remove, SwapStrategy;
+        import std.experimental.logger : logf;
+
         assert(hasWindow(w), "tentative to unregister unregistered window");
 
         onUnregisterWindow(w);
@@ -128,6 +129,8 @@ class EventLoop
 
     private void compressEvent(PlEvent ev)
     {
+        import dgt.platform.event : PlEventType, PlWindowEvent;
+
         auto wEv = cast(PlWindowEvent)ev;
         if (wEv) {
             assert(hasWindow(wEv.window));

@@ -1,12 +1,10 @@
 /// Geometric primitives module
 module dgt.core.geometry;
 
-import gfx.math.mat;
-import gfx.math.transform;
+import gfx.math.mat : isMat;
+import gfx.math.transform : transform;
 public import gfx.math.vec;
 
-import std.algorithm : max, min;
-import std.range;
 import std.traits : isNumeric;
 
 alias Point(T) = Vec2!T;
@@ -286,6 +284,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void width(T val)
     {
+        import std.algorithm : max;
+
         _w = cast(T)max(0, val);
     }
 
@@ -296,6 +296,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void height(T val)
     {
+        import std.algorithm : max;
+
         _h = cast(T)max(0, val);
     }
 
@@ -328,6 +330,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void left(T val)
     {
+        import std.algorithm : max;
+
         _w = cast(T)max(0, _w - (val - _x));
         _x = val;
     }
@@ -339,6 +343,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void top(T val)
     {
+        import std.algorithm : max;
+
         _h = cast(T)max(0, _h - (val - _y));
         _y = val;
     }
@@ -583,7 +589,9 @@ if (isRect!R1 && isRect!R2)
 auto intersection(R1, R2)(in R1 r1, in R2 r2)
 if (isRect!R1 && isRect!R2)
 {
+    import std.algorithm : max, min;
     import std.traits : CommonType;
+
     Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
     r.left = max(r1.left, r2.left);
     r.right = max(min(r1.right, r2.right), r.left);
@@ -596,7 +604,9 @@ if (isRect!R1 && isRect!R2)
 auto extents(R1, R2)(in R1 r1, in R2 r2)
 if (isRect!R1 && isRect!R2)
 {
+    import std.algorithm : max, min;
     import std.traits : CommonType;
+
     Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
     r.left = min(r1.left, r2.left);
     r.right = max(r1.right, r2.right);
@@ -675,6 +685,8 @@ if (isRect!R && isMat!M &&  (is(typeof(transform(bounds.topLeft, mat))) ||
                              is(typeof(transform(fvec(bounds.topLeft, 0), mat)))) &&
     is(R.Scalar == M.Component))
 {
+    import std.algorithm : max, min;
+
     static if (is(typeof(transform(bounds.topLeft, mat)))) {
         immutable tl = transform(bounds.topLeft, mat).xy;
         immutable tr = transform(bounds.topRight, mat).xy;
