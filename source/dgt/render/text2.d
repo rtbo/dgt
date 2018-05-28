@@ -30,6 +30,9 @@ class TextRenderer : Disposable
 
     override void dispose()
     {
+        import std.algorithm : each;
+        atlases.each!(a => a.release());
+        atlases = null;
         allocator.unload();
         pipeline.unload();
         device.unload();
@@ -38,6 +41,7 @@ class TextRenderer : Disposable
     void framePreprocess(immutable(FGFrame) frame)
     {
         import dgt.render.framegraph : breadthFirst, FGNode;
+        import std.algorithm : each;
 
         foreach(immutable n; breadthFirst(frame.root)) {
             if (n.type == FGNode.Type.text) {
@@ -47,51 +51,7 @@ class TextRenderer : Disposable
                 }
             }
         }
-        foreach (ref at; atlases) {
-            if (at.atlas.realize()) {
-                // rebuild and upload texture
-                import gfx.core.rc : releaseObj, retainObj;
-                import gfx.graal.format : Format;
-                import gfx.graal.image :    ImageAspect, ImageInfo, ImageSubresourceRange,
-                                            ImageTiling, ImageType, ImageUsage,
-                                            SamplerInfo, Swizzle;
-                import gfx.graal.memory :   MemoryRequirements, MemProps;
-                import gfx.memalloc : AllocationInfo, MemoryUsage;
-                import std.format : format;
-                import std.exception : enforce;
-
-                releaseObj(at.img);
-                releaseObj(at.view);
-                releaseObj(at.sampler);
-                releaseObj(at.alloc);
-
-                auto atImg = at.atlas.image;
-                const sz = atImg.size;
-
-                auto img = device.createImage(
-                    ImageInfo.d2(sz.width, sz.height)
-                        .withFormat(Format.r8_uNorm)
-                        .withUsage(ImageUsage.sampled)
-                        .withTiling(ImageTiling.optimal)
-                );
-                auto alloc = enforce(allocator.allocate(
-                    img.memoryRequirements,
-                    AllocationInfo.forUsage(MemoryUsage.gpuOnly).withPreferredProps(MemProps.hostVisible)
-                ), format("could not allocate for %s", img.memoryRequirements));
-                img.bindMemory(alloc.mem, alloc.offset);
-
-                auto view = img.createView(
-                    ImageType.d2, ImageSubresourceRange(ImageAspect.color),
-                    Swizzle.identity
-                );
-                auto sampler = device.createSampler(SamplerInfo.nearest);
-
-                at.img = retainObj(img);
-                at.view = retainObj(view);
-                at.sampler = retainObj(sampler);
-                at.alloc = retainObj(alloc);
-            }
-        }
+        atlases.each!((ref AtlasTexture atlas) { atlas.realize(device, allocator); });
     }
 
     void render(immutable(FGTextNode) node, RenderContext ctx, in FMat4 model)
@@ -179,20 +139,17 @@ class TextRenderer : Disposable
 
 private:
 
-struct AtlasTexture
+struct GRGlyph
 {
-    import dgt.render.atlas : GlyphAtlas;
-    import gfx.graal.image : Image, ImageView, Sampler;
-    import gfx.memalloc : Allocation;
+    import dgt.render.atlas : AtlasNode;
+    import gfx.math : FVec2;
 
-    GlyphAtlas atlas;
-    Allocation alloc;
-    Image img;
-    ImageView view;
-    Sampler sampler;
+    FVec2 position;
+    AtlasNode node;
 }
 
 
+// TODO: make this a struct
 class GlyphRun
 {
     import dgt.render.atlas : AtlasNode, GlyphAtlas;
@@ -208,11 +165,71 @@ class GlyphRun
     Part[] parts;
 }
 
-struct GRGlyph
+struct AtlasTexture
 {
-    import dgt.render.atlas : AtlasNode;
-    import gfx.math : FVec2;
+    import dgt.render.atlas : GlyphAtlas;
+    import gfx.graal.device : Device;
+    import gfx.graal.image : Image, ImageView, Sampler;
+    import gfx.memalloc : Allocation, Allocator;
 
-    FVec2 position;
-    AtlasNode node;
+    GlyphAtlas atlas;
+    Allocation alloc;
+    Image img;
+    ImageView view;
+    Sampler sampler;
+
+    void release()
+    {
+        import gfx.core.rc : releaseObj;
+
+        releaseObj(this.img);
+        releaseObj(this.view);
+        releaseObj(this.sampler);
+        releaseObj(this.alloc);
+    }
+
+    void realize(Device device, Allocator allocator)
+    {
+            // rebuild and upload texture
+        import gfx.core.rc :        retainObj;
+        import gfx.graal.format :   Format;
+        import gfx.graal.image :    ImageAspect, ImageInfo, ImageSubresourceRange,
+                                    ImageTiling, ImageType, ImageUsage,
+                                    SamplerInfo, Swizzle;
+        import gfx.graal.memory :   MemoryRequirements, MemProps;
+        import gfx.memalloc :       AllocationInfo, MemoryUsage;
+        import std.format :         format;
+        import std.exception :      enforce;
+
+        if (atlas.realize()) {
+
+            release();
+
+            const sz = atlas.image.size;
+
+            auto img = device.createImage(
+                ImageInfo.d2(sz.width, sz.height)
+                    .withFormat(Format.r8_uNorm)
+                    .withUsage(ImageUsage.sampled)
+                    .withTiling(ImageTiling.optimal)
+            );
+            auto alloc = enforce(allocator.allocate(
+                img.memoryRequirements,
+                AllocationInfo.forUsage(MemoryUsage.gpuOnly).withPreferredProps(MemProps.hostVisible)
+            ), format("could not allocate for %s", img.memoryRequirements));
+            img.bindMemory(alloc.mem, alloc.offset);
+
+            auto view = img.createView(
+                ImageType.d2, ImageSubresourceRange(ImageAspect.color),
+                Swizzle.identity
+            );
+            auto sampler = device.createSampler(SamplerInfo.nearest);
+
+            this.img = retainObj(img);
+            this.view = retainObj(view);
+            this.sampler = retainObj(sampler);
+            this.alloc = retainObj(alloc);
+        }
+    }
 }
+
