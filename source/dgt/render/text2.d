@@ -243,6 +243,9 @@ final class TextRenderer : FGNodeRenderer
             device.updateDescriptorSets(writes, []);
         }
 
+        uniformBuf.retainMap();
+        vertexBuf.retainMap();
+
         glyphCount = 0;
         nodeCount = 0;
     }
@@ -346,6 +349,8 @@ final class TextRenderer : FGNodeRenderer
         glyphCount = 0;
         nodeCount = 0;
         frameNum++;
+        uniformBuf.releaseMap();
+        vertexBuf.releaseMap();
     }
 
     private void feedGlyphRun(in TextShape shape)
@@ -487,7 +492,7 @@ struct AtlasTexture
                                     ImageSubresourceRange, ImageTiling,
                                     ImageType, ImageUsage, Swizzle;
         import gfx.graal.memory :   MemoryRequirements, MemProps;
-        import gfx.memalloc :       AllocOptions, MemoryUsage;
+        import gfx.memalloc :       AllocFlags, AllocOptions, MemoryUsage;
         import std.format :         format;
         import std.exception :      enforce;
 
@@ -505,7 +510,7 @@ struct AtlasTexture
                     .withTiling(ImageTiling.optimal),
 
                 AllocOptions.forUsage(MemoryUsage.gpuOnly)
-                    .withPreferredProps(MemProps.hostVisible)
+                    .withFlags(AllocFlags.dedicated)
             );
             cmd.pipelineBarrier(
                 trans(PipelineStage.topOfPipe, PipelineStage.transfer), [], [
