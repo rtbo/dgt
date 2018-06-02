@@ -1,5 +1,6 @@
 module dgt.render.rect2;
 
+import dgt.render.renderer2 : FGNodeRenderer;
 import gfx.core.rc : Disposable;
 import gfx.math.vec : FVec2, FVec3;
 
@@ -16,24 +17,22 @@ struct RectImgVertex
     FVec3 edge;
 }
 
-class RectRenderer : Disposable
+class RectRenderer : FGNodeRenderer
 {
-    import dgt.render.framegraph : FGRectNode;
-    import dgt.render.renderer2 : RenderContext;
+    import dgt.render.framegraph : FGNode, FGRectNode, FGType;
+    import dgt.render.renderer2 : PrepareContext, PrerenderContext, RenderContext;
     import gfx.decl.store : DeclarativeStore;
+    import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
-    import gfx.graal.pipeline : Pipeline;
-    import gfx.math.mat : FMat4;
+    import gfx.graal.pipeline : DescriptorPool, Pipeline;
+    import gfx.math : FMat4;
     import gfx.memalloc : Allocator;
 
     RectColRenderer rectCol;
     RectImgRenderer rectImg;
 
-    this(Device device, DeclarativeStore store, Allocator allocator)
-    {
-        rectCol = new RectColRenderer(device, store, allocator);
-        rectImg = new RectImgRenderer(device, store, allocator);
-    }
+    this()
+    {}
 
     override void dispose()
     {
@@ -43,10 +42,30 @@ class RectRenderer : Disposable
         disposeObj(rectImg);
     }
 
-    void render(immutable(FGRectNode) node, RenderContext ctx, in FMat4 model)
+    override FGType type() const
     {
+        import dgt.render.framegraph : FGRenderType, FGTypeCat;
 
+        return FGType(FGTypeCat.render, FGRenderType.rect);
     }
+
+    override void prepare(Device device, DeclarativeStore store, Allocator allocator, PrepareContext ctx)
+    {}
+
+    override void initDescriptors(DescriptorPool pool)
+    {}
+
+    override void prerender(immutable(FGNode) node, PrerenderContext ctx)
+    {}
+
+    override void prerenderEnd(PrerenderContext ctx, CommandBuffer cmd)
+    {}
+
+    override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
+    {}
+
+    override void postrender()
+    {}
 }
 
 private:

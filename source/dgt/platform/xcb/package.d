@@ -31,7 +31,6 @@ import X11.Xlib;
 import std.container : DList;
 import std.exception : enforce;
 import std.experimental.logger;
-import std.stdio;
 import std.string : toStringz;
 import std.typecons : scoped;
 

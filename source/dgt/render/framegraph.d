@@ -57,6 +57,73 @@ class FGFrame
     }
 }
 
+/// Framegraph node category
+enum FGTypeCat
+{
+    /// meta nodes does not perform rendering, but may affect how children nodes are rendered
+    /// example: group, transform, clip...
+    meta        = 0x100,
+    /// node that perform actual rendering
+    render      = 0x200,
+    /// node defined by application
+    user        = 0x800,
+}
+
+/// mask to apply to a node type id to obtain the index of the node type within the node category
+enum uint fgTypeIndexMask = 0x00ff;
+/// mask to apply to a node type id to obtain the category of the node type
+enum uint fgTypeCatMask = 0xff00;
+
+/// built-in node types in the meta category
+enum FGMetaType
+{
+    /// node that simply groups other nodes under it
+    group,
+    /// node that transform it unique child with a matrix
+    transform,
+}
+
+/// built-in node types in the render category
+enum FGRenderType
+{
+    /// Renders a rectangle, with a inner paint and border.
+    rect,
+    /// Renders text
+    text,
+}
+
+/// describes the type of a node
+struct FGType
+{
+    uint id;
+
+    this(T)(in FGTypeCat cat, in T index)
+    in {
+        assert(cast(uint)index <= fgTypeIndexMask);
+    }
+    body {
+        id = cast(uint)cat | cast(uint)index;
+    }
+
+    @property FGTypeCat cat() const {
+        return cast(FGTypeCat)(id & fgTypeCatMask);
+    }
+
+    @property uint index() const {
+        return id & fgTypeIndexMask;
+    }
+
+    @property FGMetaType asMeta() const {
+        assert(cat & FGTypeCat.meta);
+        return cast(FGMetaType)index;
+    }
+
+    @property FGRenderType asRender() const {
+        assert(cat & FGTypeCat.render);
+        return cast(FGRenderType)index;
+    }
+}
+
 
 /// Transient frame graph node tree
 /// A graph structure that tells a renderer what to render, no more, no less.
@@ -65,17 +132,9 @@ class FGFrame
 /// Application (or widgets or whatever) can still cache the nodes in their immutable form.
 abstract class FGNode
 {
-    enum Type
-    {
-        group,
-        transform,
-        rect,
-        text,
-    }
+    FGType type;
 
-    Type type;
-
-    immutable this(in Type type)
+    immutable this(in FGType type)
     {
         this.type = type;
     }
@@ -92,7 +151,7 @@ final class FGGroupNode : FGNode
     }
     body {
         this.children = children;
-        super(Type.group);
+        super(FGType(FGTypeCat.meta, FGMetaType.group));
     }
 }
 
@@ -106,9 +165,9 @@ final class FGTransformNode : FGNode
         assert(child !is null);
     }
     body {
+        super(FGType(FGTypeCat.meta, FGMetaType.transform));
         this.transform = transform;
         this.child = child;
-        super(Type.transform);
     }
 }
 
@@ -128,7 +187,7 @@ final class FGRectNode : FGNode
     immutable this(in FRect rect, in float radius, immutable Paint paint,
                    in Option!RectBorder border, in CacheCookie=nullCookie)
     {
-        super(Type.rect);
+        super(FGType(FGTypeCat.render, FGRenderType.rect));
         _rect = rect;
         _radius = radius;
         _paint = paint;
@@ -159,10 +218,10 @@ final class FGTextNode : FGNode
     FVec4 color;
 
     immutable this(in FVec2 bearing, immutable(TextShape)[] shapes, in FVec4 color) {
+        super(FGType(FGTypeCat.render, FGRenderType.text));
         this.bearing = bearing;
         this.shapes = shapes;
         this.color = color;
-        super(Type.text);
     }
 }
 
@@ -298,17 +357,19 @@ struct FgDepthFirstRange
         immutable node = stage.nodes[stage.ind];
 
         // getting deeper if possible
-        switch (node.type) {
-        case FGNode.Type.group:
-            immutable gnode = cast(immutable(FGGroupNode))node;
-            stack ~= Stage (gnode.children, 0);
-            return;
-        case FGNode.Type.transform:
-            immutable tnode = cast(immutable(FGTransformNode))node;
-            stack ~= Stage ([ tnode.child ], 0);
-            return;
-        default:
-            break;
+        if (node.type.cat == FGTypeCat.meta) {
+            switch (node.type.asMeta) {
+            case FGMetaType.group:
+                immutable gnode = cast(immutable(FGGroupNode))node;
+                stack ~= Stage (gnode.children, 0);
+                return;
+            case FGMetaType.transform:
+                immutable tnode = cast(immutable(FGTransformNode))node;
+                stack ~= Stage ([ tnode.child ], 0);
+                return;
+            default:
+                break;
+            }
         }
 
         // otherwise going to sibling
@@ -355,17 +416,19 @@ struct FgBreadthFirstRange
         immutable node = thisLevel[0];
 
         // filling next level
-        switch (node.type) {
-        case FGNode.Type.group:
-            immutable gnode = cast(immutable(FGGroupNode))node;
-            nextLevel ~= gnode.children;
-            break;
-        case FGNode.Type.transform:
-            immutable tnode = cast(immutable(FGTransformNode))node;
-            nextLevel ~= tnode.child;
-            break;
-        default:
-            break;
+        if (node.type.cat == FGTypeCat.meta) {
+            switch (node.type.asMeta) {
+            case FGMetaType.group:
+                immutable gnode = cast(immutable(FGGroupNode))node;
+                nextLevel ~= gnode.children;
+                break;
+            case FGMetaType.transform:
+                immutable tnode = cast(immutable(FGTransformNode))node;
+                nextLevel ~= tnode.child;
+                break;
+            default:
+                break;
+            }
         }
 
         // pop current level front and swap to next level if exhausted

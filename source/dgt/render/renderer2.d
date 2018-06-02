@@ -109,35 +109,616 @@ interface Renderer
 }
 
 
-package:
+class PrepareContext
+{
+    import gfx.graal.pipeline : DescriptorType;
+
+    uint setCount;
+    uint[DescriptorType.max+1] descriptorCounts;
+}
+
+class PrerenderContext
+{
+    import dgt.render.cache : RenderCache;
+
+    this (RenderCache cache) {
+        this.cache = cache;
+    }
+
+    RenderCache cache;
+    size_t indexLen;
+    size_t vertexLen;
+    size_t uniformLen;
+    bool dirtyDescriptorSets;
+}
+
+// /// Map the memory of a buffer and track successive writes by different unrelated entities
+// struct BufferMap
+// {
+//     import gfx.graal.memory : MemoryMap;
+//     import std.traits : isDynamicArray;
+
+//     auto getViewAndAdvance(T)(size_t count, out size_t offset)
+//     if (isDynamicArray!T)
+//     {
+//         alias Elem = typeof(T.init[0]);
+//         offset = this.offset;
+//         this.offset += count * Elem.sizeof;
+//         return map.view!T(offset, count);
+//     }
+
+//     size_t offset;
+//     MemoryMap map;
+// }
 
 class RenderContext
 {
     import dgt.render.cache : RenderCache;
-    import gfx.math.mat : FMat4;
+    import gfx.graal.device : Device;
+    import gfx.math : FMat4;
 
-    private RenderCache _cache;
-    private FMat4 _viewProj;
+    RenderCache cache;
+    FMat4 viewProj;
 
-    this (RenderCache cache, in FMat4 viewProj) {
-        _cache = cache;
-        _viewProj = viewProj;
-    }
 
-    /// The render cache
-    @property RenderCache cache() {
-        return _cache;
-    }
-
-    /// The view-projection transform matrix
-    @property FMat4 viewProj()
+    this (RenderCache cache, in FMat4 viewProj)
     {
-        return _viewProj;
+        this.cache = cache;
+        this.viewProj = viewProj;
     }
+}
+
+/// Renderer for a type of node
+interface FGNodeRenderer : Disposable
+{
+    import dgt.render.framegraph : FGType;
+    import gfx.decl.store : DeclarativeStore;
+    import gfx.graal.device : Device;
+    import gfx.graal.cmd : CommandBuffer;
+    import gfx.graal.pipeline : DescriptorPool;
+    import gfx.memalloc : Allocator;
+    import gfx.math : FMat4;
+
+    FGType type() const;
+
+    /// called once during preparation step
+    void prepare(Device device, DeclarativeStore store, Allocator allocator, PrepareContext ctx);
+    /// called once at end of preparation step to init descriptors
+    void initDescriptors(DescriptorPool pool);
+    /// called during prerender step for each node that fits type
+    void prerender(immutable(FGNode) node, PrerenderContext ctx);
+    /// called once per frame to finalize the prerender step
+    void prerenderEnd(PrerenderContext ctx, CommandBuffer cmd);
+    /// perform actual rendering
+    void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd);
+    /// called once per frame after rendering all nodes
+    void postrender();
 }
 
 
 private:
+
+
+class RendererBase : Renderer
+{
+    import dgt.render.cache :       RenderCache;
+    import dgt.render.rect2 :       RectRenderer;
+    import dgt.render.text2 :       TextRenderer;
+    import gfx.core.rc :            Rc;
+    import gfx.decl.engine :        DeclarativeEngine;
+    import gfx.graal :              Instance;
+    import gfx.graal.cmd :          CommandBuffer, CommandPool;
+    import gfx.graal.device :       Device, PhysicalDevice;
+    import gfx.graal.pipeline :     DescriptorPool;
+    import gfx.graal.presentation : Surface;
+    import gfx.graal.queue :        Queue;
+    import gfx.graal.renderpass :   RenderPass;
+    import gfx.graal.sync :         Fence;
+    import gfx.math.mat :           FMat4;
+    import gfx.memalloc :           Allocator, BufferAlloc;
+
+    private Rc!Instance instance;
+    private PhysicalDevice physicalDevice;
+    private Rc!Device device;
+    private uint graphicsQueueInd;
+    private uint presentQueueInd;
+    private Queue graphicsQueue;
+    private Queue presentQueue;
+    private DeclarativeEngine declEng;
+    private Rc!Allocator allocator;
+
+    private Rc!RenderPass renderPass;
+    private Rc!CommandPool prerenderPool;
+    private Rc!CommandPool graphicsPool;
+    private Rc!CommandPool presentPool;
+    private CommandBuffer[] prerenderCmds;
+    private Fence[] prerenderFences;
+    private size_t prerenderCmdInd;
+
+    private SwapchainProps swapchainProps;
+    private WindowContext[] windows;
+
+    private RenderCache cache;
+    private Rc!DescriptorPool descPool;
+    private FGNodeRenderer[] dgtRenderers;
+    private FGNodeRenderer[] userRenderers;
+    private bool initialized;
+
+    this(Instance instance)
+    {
+        this.instance = instance;
+        this.cache = new RenderCache;
+    }
+
+    override @property Backend backend()
+    {
+        return this.instance.backend;
+    }
+
+    private void initialize(Surface surf)
+    {
+        prepareDevice(surf);
+        prepareSwapchain(surf);
+        prepareCommandPools();
+        prepareDeclarative();
+        // This is just gui, no need for a lot of memory.
+        // Lets start with 128kb per allocation.
+        // TODO: scan 1st frame and adapt default block size
+        prepareAllocator(128 * 1024);
+        prepareRenderers();
+
+        import gfx.graal : Severity;
+        instance.setDebugCallback((Severity sev, string msg) {
+            import std.stdio : writefln;
+            if (sev == Severity.warning || sev == Severity.error) {
+                writefln("Gfx backend %s message: %s", sev, msg);
+            }
+            if (sev == Severity.error) {
+                // debug break;
+                asm { int 0x03; }
+            }
+        });
+    }
+
+    override void finalize(size_t windowHandle)
+    {
+        import gfx.core.rc : disposeObj, disposeArr, releaseArr;
+
+        device.waitIdle();
+
+        disposeArr(dgtRenderers);
+        disposeArr(userRenderers);
+        descPool.unload();
+        disposeObj(cache);
+        disposeObj(declEng);
+        disposeArr(windows);
+        renderPass.unload();
+        if (prerenderCmds.length) prerenderPool.free(prerenderCmds);
+        releaseArr(prerenderFences);
+        prerenderPool.unload();
+        graphicsPool.unload();
+        presentPool.unload();
+        allocator.unload();
+        device.unload();
+        instance.unload();
+    }
+
+    abstract Surface makeSurface(size_t windowHandle);
+
+    private WindowContext getWindow(size_t windowHandle)
+    {
+        foreach (w; windows) {
+            if (w.windowHandle == windowHandle) return w;
+        }
+        auto w = new WindowContext(
+            windowHandle, makeSurface(windowHandle), device, renderPass,
+            graphicsPool, swapchainProps
+        );
+        windows ~= w;
+        return w;
+    }
+
+    void prerender(immutable(FGFrame)[] frames)
+    {
+        import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.queue : Submission;
+        import gfx.memalloc : AllocOptions, MemoryUsage;
+        import dgt.render.framegraph : breadthFirst, FGNode, FGTypeCat;
+        import std.algorithm : each;
+        import std.range : chain;
+        import std.typecons : No, scoped, Yes;
+
+        auto ctx = scoped!PrerenderContext(cache);
+
+        foreach (frame; frames) {
+            foreach(immutable n; breadthFirst(frame.root))
+            {
+                enum userRender = FGTypeCat.render | FGTypeCat.user;
+                enum dgtRender = FGTypeCat.render;
+                const ind = n.type.index;
+
+                if ((n.type.cat & userRender) == userRender) {
+                    userRenderers[ind].prerender(n, ctx);
+                }
+                else if ((n.type.cat & dgtRender) == dgtRender) {
+                    dgtRenderers[ind].prerender(n, ctx);
+                }
+            }
+        }
+
+        prerenderCmdInd++;
+        if (prerenderCmdInd == 4) prerenderCmdInd = 0;
+
+        if (!prerenderCmds.length) {
+            import gfx.core.rc : retainArr;
+            import std.algorithm : map;
+            import std.array : array;
+            import std.range : iota;
+            prerenderCmds = prerenderPool.allocate(4);
+            prerenderFences = iota(4).map!(i => device.createFence(Yes.signaled)).array();
+            retainArr(prerenderFences);
+            prerenderCmdInd = 0;
+        }
+
+        auto prerenderCmd = prerenderCmds[prerenderCmdInd];
+        auto f = prerenderFences[prerenderCmdInd];
+        f.wait();
+        f.reset();
+
+        prerenderCmd.begin(No.persistent);
+
+        foreach (r; chain(dgtRenderers, userRenderers))
+            r.prerenderEnd(ctx, prerenderCmd);
+
+        prerenderCmd.end();
+
+        graphicsQueue.submit([ Submission ( [], [],  [ prerenderCmd ] ) ], f );
+    }
+
+    // frames is one frame per window, not several frames of the same window at once
+    override void render(immutable(FGFrame)[] frames)
+    {
+        import dgt.core.geometry : FRect;
+        import gfx.core.types : Rect, Viewport;
+        import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
+        import gfx.graal.error : OutOfDateException;
+        import gfx.graal.queue : PresentRequest, Submission, StageWait;
+        import gfx.graal.sync : Semaphore;
+        import gfx.math.vec : FVec4;
+        import std.algorithm : map;
+        import std.array : array;
+        import std.range : chain;
+        import std.parallelism : task;
+        import std.typecons : No, scoped;
+
+        if (!initialized) {
+            import dgt.core.rc : rc;
+            const wh = frames[0].windowHandle;
+            auto s = makeSurface(wh).rc;
+            initialize(s);
+            windows ~= new WindowContext(
+                wh, s, device, renderPass, graphicsPool, swapchainProps
+            );
+            initialized = true;
+        }
+
+        // prerender(frames);
+        auto prerenderTask = task(&prerender, frames);
+        prerenderTask.executeInNewThread();
+
+        Semaphore[] waitSems;
+        PresentRequest[] prs;
+        waitSems.reserve(frames.length);
+        prs.reserve(frames.length);
+
+        foreach (fi, frame; frames) {
+
+            auto window = getWindow(frame.windowHandle);
+
+            const vp = frame.viewport;
+            const vpf = cast(FRect)vp;
+            window.resizeIfNeeded([ vp.width, vp.height ]);
+
+            uint imgInd;
+            try {
+                imgInd = window.acquireNextImage();
+            }
+            catch(OutOfDateException ex) {
+                // being resized, and frame.viewport size is out of date
+                // will render next one
+                window.mustRebuildSwapchain = true;
+                if (fi == 0) prerenderTask.yieldForce();
+                continue;
+            }
+            auto cmd = window.cmdBufs[imgInd];
+            auto fence = window.fences[imgInd];
+            auto img = window.images[imgInd];
+
+            const wsz = window.size;
+
+            fence.wait();
+            fence.reset();
+
+            ClearValues[] cvs = frame.clearColor
+                    .map!(c => ClearValues.color(c.r, c.g, c.b, c.a))
+                    .array();
+
+            cmd.begin(No.persistent);
+
+            cmd.setViewport(0, [ Viewport(0f, 0f, vpf.width, vpf.height) ]);
+            cmd.setScissor(0, [ Rect(0, 0, vp.width, vp.height) ]);
+
+            cmd.beginRenderPass(
+                renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
+            );
+
+            if (fi == 0) prerenderTask.yieldForce();
+
+            if (frame.root) {
+                import gfx.math.proj : ortho;
+                const viewProj = ortho(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
+                auto ctx = scoped!RenderContext(cache, viewProj);
+                renderNode(frame.root, ctx, FMat4.identity, cmd);
+                foreach (r; chain(dgtRenderers, userRenderers))
+                    r.postrender();
+            }
+
+            cmd.endRenderPass();
+
+            cmd.end();
+
+
+            graphicsQueue.submit([
+                Submission (
+                    [ StageWait(window.imageAvailableSem, PipelineStage.transfer) ],
+                    [ window.renderingFinishSem ], [ cmd ]
+                )
+            ], fence );
+
+            waitSems ~= window.renderingFinishSem;
+            prs ~= PresentRequest(window.swapchain.obj, imgInd);
+        }
+
+        if (prs.length) presentQueue.present(waitSems, prs);
+    }
+
+    private void renderNode(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
+    {
+        import std.algorithm : each;
+
+        if (node.type.cat == FGTypeCat.meta) {
+            const t = node.type.asMeta;
+            if (t == FGMetaType.group) {
+                immutable gn = cast(immutable(FGGroupNode))node;
+                gn.children.each!(n => renderNode(n, ctx, model, cmd));
+            }
+            else if (t == FGMetaType.transform) {
+                immutable tn = cast(immutable(FGTransformNode))node;
+                renderNode(tn.child, ctx, model*tn.transform, cmd);
+            }
+        }
+        else {
+            enum userRender = FGTypeCat.render | FGTypeCat.user;
+            enum dgtRender = FGTypeCat.render;
+            const ind = node.type.index;
+
+            if ((node.type.cat & userRender) == userRender) {
+                userRenderers[ind].render(node, ctx, model, cmd);
+            }
+            else if ((node.type.cat & dgtRender) == dgtRender) {
+                dgtRenderers[ind].render(node, ctx, model, cmd);
+            }
+        }
+    }
+
+    private void prepareDevice(Surface surf)
+    {
+        import dgt.render.preparation : deviceScore;
+        import gfx.graal.device : QueueRequest;
+
+        PhysicalDevice chosen;
+        int score;
+        uint gq, pq;
+        foreach (pd; instance.devices) {
+            const s = deviceScore(pd, surf, gq, pq);
+            if (s > score) {
+                score = s;
+                chosen = pd;
+            }
+        }
+        physicalDevice = vitalEnforce(
+            chosen, "Could not find a suitable graphics device"
+        );
+        const qr = (gq == pq) ?
+                [ QueueRequest(gq, [ 0.5f ]) ] :
+                [ QueueRequest(gq, [ 0.5f ]), QueueRequest(pq, [ 0.5f ]) ];
+        device = vitalEnforce(
+            chosen.open( qr ), "Could not open a suitable graphics device"
+        );
+        graphicsQueueInd = gq;
+        graphicsQueue = device.getQueue(gq, 0);
+        presentQueueInd = pq;
+        presentQueue = device.getQueue(pq, 0);
+    }
+
+    private void prepareDeclarative()
+    {
+        import dgt.render.rect2 : RectColVertex, RectImgVertex;
+        import dgt.render.defs : P2T2Vertex;
+        import std.array : join;
+        import std.range : only;
+
+        declEng = new DeclarativeEngine(device);
+        declEng.addView!"rectcol.vert.spv"();
+        declEng.addView!"rectcol.frag.spv"();
+        declEng.addView!"rectimg.vert.spv"();
+        declEng.addView!"rectimg.frag.spv"();
+        declEng.addView!"text.vert.spv"();
+        declEng.addView!"text.frag.spv"();
+        declEng.declareStruct!RectColVertex();
+        declEng.declareStruct!RectImgVertex();
+        declEng.declareStruct!P2T2Vertex();
+        declEng.store.store("sc_format", swapchainProps.format);
+
+        const sdl = only(
+            import("renderpass.sdl"),
+            import("rectcol_pipeline.sdl"),
+            import("rectimg_pipeline.sdl"),
+            import("text_pipeline.sdl"),
+        ).join("\n");
+
+        declEng.parseSDLSource(sdl);
+
+        renderPass = declEng.store.expect!RenderPass("renderPass");
+    }
+
+    void prepareCommandPools()
+    {
+        graphicsPool = device.createCommandPool(graphicsQueueInd);
+        if (graphicsQueueInd == presentQueueInd) {
+            presentPool = graphicsPool;
+        }
+        else {
+            presentPool = device.createCommandPool(presentQueueInd);
+        }
+        prerenderPool = device.createCommandPool(graphicsQueueInd);
+    }
+
+    void prepareAllocator(in size_t blockSize)
+    {
+        import gfx.memalloc : AllocatorOptions, createAllocator, HeapOptions;
+        import std.algorithm : map;
+        import std.array : array;
+
+        AllocatorOptions options;
+
+        const memProps = physicalDevice.memoryProperties;
+        options.heapOptions = memProps.heaps
+                    .map!(h => HeapOptions(uint.max, blockSize))
+                    .array();
+        allocator = createAllocator(device.obj, options);
+    }
+
+    void prepareSwapchain(Surface surface)
+    {
+        import dgt.render.preparation : chooseFormat;
+
+        const f = chooseFormat(physicalDevice, surface);
+
+        swapchainProps = SwapchainProps(f);
+    }
+
+    void prepareRenderers()
+    {
+        import dgt.render.framegraph : FGRenderType;
+        import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
+        import std.range : chain;
+        import std.typecons : scoped;
+
+        dgtRenderers = new FGNodeRenderer[FGRenderType.max + 1];
+
+        void addRenderer(FGNodeRenderer nr) {
+            dgtRenderers[nr.type.index] = nr;
+        }
+        addRenderer(new RectRenderer);
+        addRenderer(new TextRenderer);
+
+        auto ctx = scoped!PrepareContext;
+
+        foreach (nr; chain(dgtRenderers, userRenderers)) {
+            nr.prepare(device, declEng.store, allocator, ctx);
+        }
+
+        DescriptorPoolSize[DescriptorType.max+1] poolSizes;
+        uint pos;
+        foreach (dt, dc; ctx.descriptorCounts) {
+            if (dc > 0) {
+                poolSizes[pos++] = DescriptorPoolSize(cast(DescriptorType)dt, dc);
+            }
+        }
+        descPool = device.createDescriptorPool(ctx.setCount, poolSizes[0 .. pos]);
+
+        foreach (nr; chain(dgtRenderers, userRenderers)) {
+            nr.initDescriptors(descPool);
+        }
+    }
+
+    static void frameError(Args...)(string msg, Args args)
+    {
+        import std.format : format;
+        throw new Exception(format(msg, args));
+    }
+
+    static void fatalError(Args...)(string msg, Args args)
+    {
+        import std.format : format;
+        throw new Error(format(msg, args));
+    }
+
+    static T vitalEnforce(T, Args...)(T expr, string msg, Args args)
+    {
+        if (!expr) {
+            import std.format : format;
+            throw new Error(format(msg, args));
+        }
+        return expr;
+    }
+}
+
+class VulkanRenderer : RendererBase
+{
+    import gfx.graal.presentation : Surface;
+
+    this(Instance instance)
+    {
+        super(instance);
+    }
+
+    override Surface makeSurface(size_t windowHandle)
+    {
+        // TODO: make this work without Application and Platform
+        import dgt.application : Application;
+        return Application.platform.createGraalSurface(instance, windowHandle);
+    }
+}
+
+class OpenGLRenderer : RendererBase
+{
+    import dgt.core.rc : Rc;
+    import gfx.graal.presentation : Surface;
+
+    Rc!GlContext _context;
+
+    this(Instance instance, GlContext context)
+    {
+        super(instance);
+        _context = context;
+    }
+
+    override void finalize(size_t windowHandle)
+    {
+        _context.makeCurrent(windowHandle);
+        super.finalize(windowHandle);
+        _context.doneCurrent();
+        _context.unload();
+    }
+
+    override Surface makeSurface(size_t windowHandle)
+    {
+        import gfx.gl3.swapchain : GlSurface;
+        return new GlSurface(windowHandle);
+    }
+
+    override void render(immutable(FGFrame)[] frames)
+    {
+        // At the moment, only make sure that at least the context is current.
+        // It can be current on any window, the swapchain dispatches to the correct
+        // window during presentation.
+        // This is likely to change in the future.
+        _context.makeCurrent(frames[0].windowHandle);
+        super.render(frames);
+    }
+}
 
 struct SwapchainProps
 {
@@ -316,409 +897,5 @@ final class WindowContext : Disposable
     uint acquireNextImage() {
         import core.time : dur;
         return swapchain.acquireNextImage(dur!"seconds"(-1), imageAvailableSem, mustRebuildSwapchain);
-    }
-}
-
-
-class RendererBase : Renderer
-{
-    import dgt.render.cache :       RenderCache;
-    import dgt.render.rect2 :       RectRenderer;
-    import dgt.render.text2 :       TextRenderer;
-    import gfx.core.rc :            Rc;
-    import gfx.decl.engine :        DeclarativeEngine;
-    import gfx.graal :              Instance;
-    import gfx.graal.cmd :          CommandPool;
-    import gfx.graal.device :       Device, PhysicalDevice;
-    import gfx.graal.presentation : Surface;
-    import gfx.graal.queue :        Queue;
-    import gfx.graal.renderpass :   RenderPass;
-    import gfx.math.mat :           FMat4;
-    import gfx.memalloc :           Allocator;
-
-    private Rc!Instance instance;
-    private PhysicalDevice physicalDevice;
-    private Rc!Device device;
-    private uint graphicsQueueInd;
-    private uint presentQueueInd;
-    private Queue graphicsQueue;
-    private Queue presentQueue;
-    private DeclarativeEngine declEng;
-    private Rc!Allocator allocator;
-
-    private Rc!RenderPass renderPass;
-    private Rc!CommandPool graphicsPool;
-    private Rc!CommandPool presentPool;
-
-    private SwapchainProps swapchainProps;
-    private WindowContext[] windows;
-
-    private RenderCache cache;
-    private RectRenderer rectRenderer;
-    private TextRenderer textRenderer;
-    private bool initialized;
-
-    this(Instance instance)
-    {
-        this.instance = instance;
-        this.cache = new RenderCache;
-    }
-
-    override @property Backend backend()
-    {
-        return this.instance.backend;
-    }
-
-    private void initialize(Surface surf)
-    {
-        prepareDevice(surf);
-        prepareSwapchain(surf);
-        prepareCommandPools();
-        prepareDeclarative();
-        // This is just gui, no need for a lot of memory.
-        // Lets start with 128kb per allocation.
-        // TODO: scan 1st frame and adapt default block size
-        prepareAllocator(128 * 1024);
-        prepareRenderers();
-    }
-
-    override void finalize(size_t windowHandle)
-    {
-        import gfx.core.rc : disposeObj, disposeArr;
-
-        device.waitIdle();
-
-        disposeObj(rectRenderer);
-        disposeObj(textRenderer);
-        disposeObj(cache);
-        disposeObj(declEng);
-        disposeArr(windows);
-        renderPass.unload();
-        graphicsPool.unload();
-        presentPool.unload();
-        allocator.unload();
-        device.unload();
-        instance.unload();
-    }
-
-    abstract Surface makeSurface(size_t windowHandle);
-
-    private WindowContext getWindow(size_t windowHandle)
-    {
-        foreach (w; windows) {
-            if (w.windowHandle == windowHandle) return w;
-        }
-        auto w = new WindowContext(
-            windowHandle, makeSurface(windowHandle), device, renderPass,
-            graphicsPool, swapchainProps
-        );
-        windows ~= w;
-        return w;
-    }
-
-    // frames is one frame per window, not several frames of the same window at once
-    override void render(immutable(FGFrame)[] frames)
-    {
-        import dgt.core.geometry : FRect;
-        import gfx.core.types : Rect, Viewport;
-        import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
-        import gfx.graal.error : OutOfDateException;
-        import gfx.graal.queue : PresentRequest, Submission, StageWait;
-        import gfx.graal.sync : Semaphore;
-        import gfx.math.vec : FVec4;
-        import std.algorithm : map;
-        import std.array : array;
-        import std.typecons : No;
-
-        if (!initialized) {
-            import dgt.core.rc : rc;
-            const wh = frames[0].windowHandle;
-            auto s = makeSurface(wh).rc;
-            initialize(s);
-            windows ~= new WindowContext(
-                wh, s, device, renderPass, graphicsPool, swapchainProps
-            );
-            initialized = true;
-        }
-
-        Semaphore[] waitSems;
-        PresentRequest[] prs;
-        waitSems.reserve(frames.length);
-        prs.reserve(frames.length);
-
-        foreach (frame; frames) {
-
-            import std.parallelism : task;
-            auto textPreprocess = task(&textRenderer.framePreprocess, frame);
-            textPreprocess.executeInNewThread();
-
-            auto window = getWindow(frame.windowHandle);
-
-            const vp = frame.viewport;
-            const vpf = cast(FRect)vp;
-            window.resizeIfNeeded([ vp.width, vp.height ]);
-
-            uint imgInd;
-            try {
-                imgInd = window.acquireNextImage();
-            }
-            catch(OutOfDateException ex) {
-                // being resized, and frame.viewport size is out of date
-                // will render next one
-                window.mustRebuildSwapchain = true;
-                textPreprocess.yieldForce();
-                continue;
-            }
-            auto cmdBuf = window.cmdBufs[imgInd];
-            auto fence = window.fences[imgInd];
-            auto img = window.images[imgInd];
-
-            const wsz = window.size;
-
-            fence.wait();
-            fence.reset();
-
-            ClearValues[] cvs = frame.clearColor
-                    .map!(c => ClearValues.color(c.r, c.g, c.b, c.a))
-                    .array();
-
-            cmdBuf.begin(No.persistent);
-
-            cmdBuf.setViewport(0, [ Viewport(0f, 0f, vpf.width, vpf.height) ]);
-            cmdBuf.setScissor(0, [ Rect(0, 0, vp.width, vp.height) ]);
-
-            cmdBuf.beginRenderPass(
-                renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
-            );
-
-            textPreprocess.yieldForce();
-            if (frame.root) {
-                import gfx.math.proj : ortho;
-                const viewProj = ortho(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
-                auto ctx = new RenderContext(cache, viewProj);
-                renderNode(frame.root, ctx, FMat4.identity);
-            }
-
-            cmdBuf.endRenderPass();
-
-            cmdBuf.end();
-
-
-            graphicsQueue.submit([
-                Submission (
-                    [ StageWait(window.imageAvailableSem, PipelineStage.transfer) ],
-                    [ window.renderingFinishSem ], [ cmdBuf ]
-                )
-            ], fence );
-
-            waitSems ~= window.renderingFinishSem;
-            prs ~= PresentRequest(window.swapchain.obj, imgInd);
-        }
-
-        if (prs.length) presentQueue.present(waitSems, prs);
-    }
-
-    void renderNode(immutable(FGNode) node, RenderContext ctx, in FMat4 model)
-    {
-        switch(node.type)
-        {
-        case FGNode.Type.group:
-            import std.algorithm : each;
-            immutable gn = cast(immutable(FGGroupNode))node;
-            gn.children.each!(n => renderNode(n, ctx, model));
-            break;
-        case FGNode.Type.transform:
-            immutable tn = cast(immutable(FGTransformNode))node;
-            renderNode(tn.child, ctx, model*tn.transform);
-            break;
-        case FGNode.Type.rect:
-            immutable rn = cast(immutable(FGRectNode))node;
-            rectRenderer.render(rn, ctx, model);
-            break;
-        case FGNode.Type.text:
-            immutable tn = cast(immutable(FGTextNode))node;
-            textRenderer.render(tn, ctx, model);
-            break;
-        default:
-            break;
-        }
-    }
-
-    private void prepareDevice(Surface surf)
-    {
-        import dgt.render.preparation : deviceScore;
-        import gfx.graal.device : QueueRequest;
-
-        PhysicalDevice chosen;
-        int score;
-        uint gq, pq;
-        foreach (pd; instance.devices) {
-            const s = deviceScore(pd, surf, gq, pq);
-            if (s > score) {
-                score = s;
-                chosen = pd;
-            }
-        }
-        physicalDevice = vitalEnforce(
-            chosen, "Could not find a suitable graphics device"
-        );
-        const qr = (gq == pq) ?
-                [ QueueRequest(gq, [ 0.5f ]) ] :
-                [ QueueRequest(gq, [ 0.5f ]), QueueRequest(pq, [ 0.5f ]) ];
-        device = vitalEnforce(
-            chosen.open( qr ), "Could not open a suitable graphics device"
-        );
-        graphicsQueueInd = gq;
-        graphicsQueue = device.getQueue(gq, 0);
-        presentQueueInd = pq;
-        presentQueue = device.getQueue(pq, 0);
-    }
-
-    private void prepareDeclarative()
-    {
-        import dgt.render.rect2 : RectColVertex, RectImgVertex;
-        import dgt.render.defs : P2T2Vertex;
-        import std.array : join;
-        import std.range : only;
-
-        declEng = new DeclarativeEngine(device);
-        declEng.addView!"rectcol.vert.spv"();
-        declEng.addView!"rectcol.frag.spv"();
-        declEng.addView!"rectimg.vert.spv"();
-        declEng.addView!"rectimg.frag.spv"();
-        declEng.addView!"text.vert.spv"();
-        declEng.addView!"text.frag.spv"();
-        declEng.declareStruct!RectColVertex();
-        declEng.declareStruct!RectImgVertex();
-        declEng.declareStruct!P2T2Vertex();
-        declEng.store.store("sc_format", swapchainProps.format);
-
-        const sdl = only(
-            import("renderpass.sdl"),
-            import("rectcol_pipeline.sdl"),
-            import("rectimg_pipeline.sdl"),
-            import("text_pipeline.sdl"),
-        ).join("\n");
-
-        declEng.parseSDLSource(sdl);
-
-        renderPass = declEng.store.expect!RenderPass("renderPass");
-    }
-
-    void prepareCommandPools()
-    {
-        graphicsPool = device.createCommandPool(graphicsQueueInd);
-        if (graphicsQueueInd == presentQueueInd) {
-            presentPool = graphicsPool;
-        }
-        else {
-            presentPool = device.createCommandPool(presentQueueInd);
-        }
-    }
-
-    void prepareAllocator(in size_t blockSize)
-    {
-        import gfx.memalloc : AllocatorOptions, createAllocator, HeapOptions;
-        import std.algorithm : map;
-        import std.array : array;
-
-        AllocatorOptions options;
-
-        const memProps = physicalDevice.memoryProperties;
-        options.heapOptions = memProps.heaps
-                    .map!(h => HeapOptions(uint.max, blockSize))
-                    .array();
-        allocator = createAllocator(device.obj, options);
-    }
-
-    void prepareSwapchain(Surface surface)
-    {
-        import dgt.render.preparation : chooseFormat;
-
-        const f = chooseFormat(physicalDevice, surface);
-
-        swapchainProps = SwapchainProps(f);
-    }
-
-    void prepareRenderers()
-    {
-        rectRenderer = new RectRenderer(device, declEng.store, allocator);
-        textRenderer = new TextRenderer(device, declEng.store, allocator);
-    }
-
-    static void frameError(Args...)(string msg, Args args)
-    {
-        import std.format : format;
-        throw new Exception(format(msg, args));
-    }
-
-    static void fatalError(Args...)(string msg, Args args)
-    {
-        import std.format : format;
-        throw new Error(format(msg, args));
-    }
-
-    static T vitalEnforce(T, Args...)(T expr, string msg, Args args)
-    {
-        if (!expr) {
-            import std.format : format;
-            throw new Error(format(msg, args));
-        }
-        return expr;
-    }
-}
-
-class VulkanRenderer : RendererBase
-{
-    import gfx.graal.presentation : Surface;
-
-    this(Instance instance)
-    {
-        super(instance);
-    }
-
-    override Surface makeSurface(size_t windowHandle)
-    {
-        // TODO: make this work without Application and Platform
-        import dgt.application : Application;
-        return Application.platform.createGraalSurface(instance, windowHandle);
-    }
-}
-
-class OpenGLRenderer : RendererBase
-{
-    import dgt.core.rc : Rc;
-    import gfx.graal.presentation : Surface;
-
-    Rc!GlContext _context;
-
-    this(Instance instance, GlContext context)
-    {
-        super(instance);
-        _context = context;
-    }
-
-    override void finalize(size_t windowHandle)
-    {
-        _context.makeCurrent(windowHandle);
-        super.finalize(windowHandle);
-        _context.doneCurrent();
-        _context.unload();
-    }
-
-    override Surface makeSurface(size_t windowHandle)
-    {
-        import gfx.gl3.swapchain : GlSurface;
-        return new GlSurface(windowHandle);
-    }
-
-    override void render(immutable(FGFrame)[] frames)
-    {
-        // At the moment, only make sure that at least the context is current.
-        // It can be current on any window, the swapchain dispatches to the correct
-        // window during presentation.
-        // This is likely to change in the future.
-        _context.makeCurrent(frames[0].windowHandle);
-        super.render(frames);
     }
 }
