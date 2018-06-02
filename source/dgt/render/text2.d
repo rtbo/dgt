@@ -19,12 +19,27 @@ final class GarbageCollector : Disposable
     }
 
     size_t maxAge = 4;
+    size_t frameNum;
     Garbage first;
     Garbage last;
 
-    void collect(size_t frameNum, AtomicRefCounted obj)
+    void incrFrameNum()
     {
-        import gfx.core.rc : retainObj, releaseObj;
+        import gfx.core.rc : releaseObj;
+
+        ++frameNum;
+        if (frameNum >= maxAge) {
+            const lastAllowed = frameNum-maxAge;
+            while (first && first.frameNum < lastAllowed) {
+                releaseObj(first.obj);
+                first = first.next;
+            }
+        }
+    }
+
+    void collect(AtomicRefCounted obj)
+    {
+        import gfx.core.rc : retainObj;
 
         auto g = new Garbage(frameNum, retainObj(obj));
         if (!last) {
@@ -36,13 +51,6 @@ final class GarbageCollector : Disposable
             assert(!last.next);
             last.next = g;
             last = g;
-            if (frameNum >= maxAge) {
-                const lastAllowed = frameNum-maxAge;
-                while (first.frameNum < lastAllowed) {
-                    releaseObj(first.obj);
-                    first = first.next;
-                }
-            }
         }
     }
 
@@ -86,8 +94,6 @@ final class TextRenderer : FGNodeRenderer
     private AtlasTexture[] atlases;
     private GlyphRun[size_t] glyphRuns;
     private GarbageCollector gc;
-
-    private size_t frameNum;
 
     private size_t nodeCount;
     private size_t glyphCount;
@@ -194,7 +200,7 @@ final class TextRenderer : FGNodeRenderer
         import std.algorithm : each;
 
         atlases.each!((ref AtlasTexture atlas) {
-            atlas.realize(device, allocator, frameNum, gc, cmd);
+            atlas.realize(device, allocator, gc, cmd);
         });
 
         mvpLen = nodeCount * MVP.sizeof;
@@ -207,7 +213,7 @@ final class TextRenderer : FGNodeRenderer
 
         if (!uniformBuf || uniformBuf.size != uniformSize) {
             if (uniformBuf) {
-                gc.collect(frameNum, uniformBuf);
+                gc.collect(uniformBuf);
             }
             uniformBuf = allocator.allocateBuffer(
                 BufferUsage.uniform, uniformSize,
@@ -217,7 +223,7 @@ final class TextRenderer : FGNodeRenderer
         }
         if (!vertexBuf || vertexBuf.size != vertexSize) {
             if (vertexBuf) {
-                gc.collect(frameNum, vertexBuf);
+                gc.collect(vertexBuf);
             }
             vertexBuf = allocator.allocateBuffer(
                 BufferUsage.vertex, vertexSize,
@@ -348,9 +354,9 @@ final class TextRenderer : FGNodeRenderer
     {
         glyphCount = 0;
         nodeCount = 0;
-        frameNum++;
         uniformBuf.releaseMap();
         vertexBuf.releaseMap();
+        gc.incrFrameNum();
     }
 
     private void feedGlyphRun(in TextShape shape)
@@ -480,7 +486,7 @@ struct AtlasTexture
         releaseObj(this.view);
     }
 
-    void realize(Device device, Allocator allocator, size_t frameNum, GarbageCollector gc, CommandBuffer cmd)
+    void realize(Device device, Allocator allocator, GarbageCollector gc, CommandBuffer cmd)
     {
         // rebuild and upload texture
         import gfx.core.rc :        rc, retainObj;
@@ -540,7 +546,7 @@ struct AtlasTexture
                     stagBuf.buffer, imgAlloc.image, ImageLayout.transferDstOptimal,
                     regions
                 );
-                gc.collect(frameNum, stagBuf.obj);
+                gc.collect(stagBuf.obj);
             }
 
             auto view = imgAlloc.image.createView(
