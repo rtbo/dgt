@@ -12,7 +12,7 @@ import dgt.ui.layout;
 import dgt.ui.text;
 import dgt.window;
 
-import gfx.foundation.typecons : some;
+import gfx.core.typecons : some;
 
 import std.exception;
 import std.math : PI;
