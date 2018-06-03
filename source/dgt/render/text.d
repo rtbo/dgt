@@ -12,7 +12,7 @@ final class TextRenderer : FGNodeRenderer
     import dgt.render.services : RenderServices;
     import dgt.text.layout : TextShape;
     import gfx.core.rc : Rc;
-    import gfx.decl.store : DeclarativeStore;
+    import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
     import gfx.graal.image : Sampler;
@@ -76,7 +76,7 @@ final class TextRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.text);
     }
 
-    override void prepare(RenderServices services, DeclarativeStore store, PrepareContext ctx)
+    override void prepare(RenderServices services, DeclarativeEngine declEng, PrepareContext ctx)
     {
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.image : SamplerInfo;
@@ -86,6 +86,13 @@ final class TextRenderer : FGNodeRenderer
         this.device = services.device;
         this.allocator = services.allocator;
         this.services = services;
+
+        declEng.addView!"text.vert.spv"();
+        declEng.addView!"text.frag.spv"();
+        declEng.parseSDLView!"text_pipeline.sdl"();
+
+        auto store = declEng.store;
+
         this.pipeline = store.expect!Pipeline("text_pl");
         this.layout = store.expect!PipelineLayout("text_layout");
         this.dsl = store.expect!DescriptorSetLayout("text_dsl");

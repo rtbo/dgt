@@ -173,7 +173,7 @@ interface FGNodeRenderer : Disposable
 {
     import dgt.render.framegraph : FGType;
     import dgt.render.services : RenderServices;
-    import gfx.decl.store : DeclarativeStore;
+    import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.device : Device;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.pipeline : DescriptorPool;
@@ -183,7 +183,7 @@ interface FGNodeRenderer : Disposable
     FGType type() const;
 
     /// called once during preparation step
-    void prepare(RenderServices services, DeclarativeStore store, PrepareContext ctx);
+    void prepare(RenderServices services, DeclarativeEngine declEng, PrepareContext ctx);
     /// called once at end of preparation step to init descriptors
     void initDescriptors(DescriptorPool pool);
     /// called during prerender step for each node that fits type
@@ -553,29 +553,12 @@ class RendererBase : Renderer
     {
         import dgt.render.rect : RectColVertex, RectImgVertex;
         import dgt.render.defs : P2T2Vertex;
-        import std.array : join;
-        import std.range : only;
 
         declEng = new DeclarativeEngine(device);
-        declEng.addView!"rectcol.vert.spv"();
-        declEng.addView!"rectcol.frag.spv"();
-        declEng.addView!"rectimg.vert.spv"();
-        declEng.addView!"rectimg.frag.spv"();
-        declEng.addView!"text.vert.spv"();
-        declEng.addView!"text.frag.spv"();
-        declEng.declareStruct!RectColVertex();
-        declEng.declareStruct!RectImgVertex();
         declEng.declareStruct!P2T2Vertex();
         declEng.store.store("sc_format", swapchainProps.format);
 
-        const sdl = only(
-            import("renderpass.sdl"),
-            import("rectcol_pipeline.sdl"),
-            import("rectimg_pipeline.sdl"),
-            import("text_pipeline.sdl"),
-        ).join("\n");
-
-        declEng.parseSDLSource(sdl);
+        declEng.parseSDLView!"renderpass.sdl"();
 
         renderPass = declEng.store.expect!RenderPass("renderPass");
     }
@@ -636,7 +619,7 @@ class RendererBase : Renderer
         auto ctx = scoped!PrepareContext;
 
         foreach (nr; chain(dgtRenderers, userRenderers)) {
-            nr.prepare(services, declEng.store, ctx);
+            nr.prepare(services, declEng, ctx);
         }
 
         DescriptorPoolSize[DescriptorType.max+1] poolSizes;
