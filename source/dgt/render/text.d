@@ -1,85 +1,302 @@
-/// Text rendering module
 module dgt.render.text;
 
-version(none):
+import dgt.render.renderer : FGNodeRenderer;
+import gfx.core.rc : AtomicRefCounted, Disposable;
 
-import dgt.core.geometry;
-import dgt.core.rc;
-import dgt.core.sync;
-import dgt.font.library;
-import dgt.font.typeface;
-import dgt.math : FMat4, transpose;
-import dgt.render.atlas;
-import dgt.render.defs;
-import dgt.render.framegraph;
-import dgt.render.renderer : RenderContext;
-import dgt.text.layout;
-import dgt.text.shaping;
-
-import gfx.pipeline;
-
-class TextRenderer : Disposable
+final class GarbageCollector : Disposable
 {
-    alias Vertex = P2T2Vertex;
-    alias Meta = TextMeta;
-    alias StateObject = PipelineState!TextMeta;
-    alias Data = StateObject.Data;
+    static class Garbage
+    {
+        size_t frameNum;
+        AtomicRefCounted obj;
+        Garbage next;
 
-    this() {
-        auto prog = makeRc!Program(ShaderSet.vertexPixel(
-            textVShader, textFShader
-        ));
-
-        _pso = new StateObject(
-            prog.obj, Primitive.triangles,
-            Rasterizer.fill.withSamples()
-        );
-        _pso.retain();
-
-        _mvpBlk = new ConstBuffer!MVP(1);
-        _mvpBlk.retain();
-
-        _colBlk = new ConstBuffer!Color(1);
-        _colBlk.retain();
-
-        ushort[] quadInds = [0, 1, 2, 0, 2, 3];
-        _quadIBuf = new IndexBuffer!ushort(quadInds);
-        _quadIBuf.retain();
+        this (size_t frameNum, AtomicRefCounted obj)
+        {
+            this.frameNum = frameNum;
+            this.obj = obj;
+        }
     }
 
-    override void dispose() {
-        _pso.release();
-        _mvpBlk.release();
-        _colBlk.release();
-        _quadIBuf.release();
-        releaseArray(_glyphRuns);
-        releaseArray(_atlases);
-    }
+    size_t maxAge = 4;
+    size_t frameNum;
+    Garbage first;
+    Garbage last;
 
-    void framePreprocess(immutable(FGFrame) frame) {
-        foreach(immutable n; breadthFirst(frame.root)) {
-            if (n.type == FGNode.Type.text) {
-                immutable tn = cast(immutable(FGTextNode)) n;
-                foreach (s; tn.shapes) {
-                    feedGlyphRun(s);
-                }
+    void incrFrameNum()
+    {
+        import gfx.core.rc : releaseObj;
+
+        ++frameNum;
+        if (frameNum >= maxAge) {
+            const lastAllowed = frameNum-maxAge;
+            while (first && first.frameNum < lastAllowed) {
+                releaseObj(first.obj);
+                first = first.next;
             }
         }
-        foreach (atlas; _atlases) {
-            atlas.realize();
+    }
+
+    void collect(AtomicRefCounted obj)
+    {
+        import gfx.core.rc : retainObj;
+
+        auto g = new Garbage(frameNum, retainObj(obj));
+        if (!last) {
+            assert(!first);
+            first = g;
+            last = g;
+        }
+        else {
+            assert(!last.next);
+            last.next = g;
+            last = g;
         }
     }
 
-    void render(immutable(FGTextNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmdBuf)
+    override void dispose()
     {
-        auto encoder = Encoder(cmdBuf);
-        encoder.updateConstBuffer(_colBlk, Color(node.color));
+        import gfx.core.rc : releaseObj;
 
-        const bearing = node.bearing;
+        while(first) {
+            releaseObj(first.obj);
+            first = first.next;
+        }
+    }
+}
 
-        foreach (shape; node.shapes) {
+final class TextRenderer : FGNodeRenderer
+{
+    import dgt.render.atlas : GlyphAtlas;
+    import dgt.render.framegraph : FGNode, FGType;
+    import dgt.render.renderer : PrepareContext, PrerenderContext, RenderContext;
+    import dgt.text.layout : TextShape;
+    import gfx.core.rc : Rc;
+    import gfx.decl.store : DeclarativeStore;
+    import gfx.graal.cmd : CommandBuffer;
+    import gfx.graal.device : Device;
+    import gfx.graal.image : Sampler;
+    import gfx.graal.pipeline : DescriptorPool, DescriptorSet,
+                                DescriptorSetLayout, Pipeline, PipelineLayout;
+    import gfx.math : FMat4, FVec4;
+    import gfx.memalloc : Allocator, BufferAlloc;
 
-            auto gr = _glyphRuns[shape.id].rc;
+    private Rc!Device device;
+    private Rc!Allocator allocator;
+    private Rc!Pipeline pipeline;
+    private Rc!PipelineLayout layout;
+    private Rc!DescriptorSetLayout dsl;
+    private Rc!Sampler sampler;
+    private Rc!BufferAlloc uniformBuf;
+    private Rc!BufferAlloc indexBuf;
+    private Rc!BufferAlloc vertexBuf;
+    private DescriptorSet ds;
+    private AtlasTexture[] atlases;
+    private GlyphRun[size_t] glyphRuns;
+    private GarbageCollector gc;
+
+    private size_t nodeCount;
+    private size_t glyphCount;
+    private size_t mvpLen;
+    private size_t colLen;
+
+    private static struct MVP {
+        FMat4 model;
+        FMat4 viewProj;
+    }
+    private static struct Col {
+        FVec4 color;
+        FVec4 pad;
+    }
+
+    this()
+    {
+        gc = new GarbageCollector;
+    }
+
+    override void dispose()
+    {
+        import std.algorithm : each;
+        gc.dispose();
+        uniformBuf.unload();
+        vertexBuf.unload();
+        indexBuf.unload();
+        sampler.unload();
+        atlases.each!(a => a.release());
+        atlases = null;
+        dsl.unload();
+        allocator.unload();
+        layout.unload();
+        pipeline.unload();
+        device.unload();
+    }
+
+    override FGType type() const
+    {
+        import dgt.render.framegraph : FGRenderType, FGTypeCat;
+
+        return FGType(FGTypeCat.render, FGRenderType.text);
+    }
+
+    override void prepare(Device device, DeclarativeStore store, Allocator allocator, PrepareContext ctx)
+    {
+        import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.image : SamplerInfo;
+        import gfx.graal.pipeline : DescriptorType;
+        import gfx.memalloc : AllocOptions, MemoryUsage;
+
+        this.device = device;
+        this.allocator = allocator;
+        this.pipeline = store.expect!Pipeline("text_pl");
+        this.layout = store.expect!PipelineLayout("text_layout");
+        this.dsl = store.expect!DescriptorSetLayout("text_dsl");
+        this.sampler = device.createSampler(SamplerInfo.nearest);
+
+        this.indexBuf = allocator.allocateBuffer(
+            BufferUsage.index, 6*ushort.sizeof,
+            AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+        );
+        {
+            auto map = indexBuf.map();
+            auto view = map.view!(ushort[])();
+            view[] = [ 0, 1, 2, 0, 2, 3 ];
+        }
+
+        ctx.setCount += 1;
+        ctx.descriptorCounts[DescriptorType.uniformBufferDynamic] += 2;
+        ctx.descriptorCounts[DescriptorType.combinedImageSampler] += 1;
+    }
+
+    override void initDescriptors(DescriptorPool pool)
+    {
+        ds = pool.allocate([dsl.obj])[0];
+    }
+
+    override void prerender(immutable(FGNode) node, PrerenderContext context)
+    {
+        import dgt.render.framegraph : FGTextNode;
+        import dgt.render.defs : P2T2Vertex;
+
+        immutable tn = cast(immutable(FGTextNode))node;
+
+        foreach (s; tn.shapes) {
+            feedGlyphRun(s);
+            glyphCount += s.glyphs.length;
+        }
+
+        nodeCount++;
+    }
+
+    override void prerenderEnd(PrerenderContext ctx, CommandBuffer cmd)
+    {
+        import dgt.render.defs : P2T2Vertex;
+        import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.image : ImageLayout;
+        import gfx.graal.pipeline : BufferRange, CombinedImageSampler,
+                                    CombinedImageSamplerDescWrites,
+                                    UniformBufferDynamicDescWrites,
+                                    WriteDescriptorSet;
+        import gfx.memalloc : AllocOptions, MemoryUsage;
+        import std.algorithm : each;
+
+        atlases.each!((ref AtlasTexture atlas) {
+            atlas.realize(device, allocator, gc, cmd);
+        });
+
+        mvpLen = nodeCount * MVP.sizeof;
+        colLen = nodeCount * Col.sizeof;
+
+        const uniformSize = mvpLen + colLen;
+        const vertexSize = glyphCount * 4 * P2T2Vertex.sizeof;
+
+        bool writeDesc;
+
+        if (!uniformBuf || uniformBuf.size != uniformSize) {
+            if (uniformBuf) {
+                gc.collect(uniformBuf);
+            }
+            uniformBuf = allocator.allocateBuffer(
+                BufferUsage.uniform, uniformSize,
+                AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+            );
+            writeDesc = true;
+        }
+        if (!vertexBuf || vertexBuf.size != vertexSize) {
+            if (vertexBuf) {
+                gc.collect(vertexBuf);
+            }
+            vertexBuf = allocator.allocateBuffer(
+                BufferUsage.vertex, vertexSize,
+                AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+            );
+            writeDesc = true;
+        }
+
+        if (writeDesc) {
+            // TODO handle more atlases, requires one descriptor set per atlas
+            assert(atlases.length == 1);
+            auto writes = [
+                WriteDescriptorSet(ds, 0, 0, new UniformBufferDynamicDescWrites([
+                    BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
+                ])),
+                WriteDescriptorSet(ds, 1, 0, new UniformBufferDynamicDescWrites([
+                    BufferRange(uniformBuf.buffer, MVP.sizeof * nodeCount, Col.sizeof),
+                ])),
+                WriteDescriptorSet(ds, 2, 0, new CombinedImageSamplerDescWrites([
+                    CombinedImageSampler(sampler, atlases[0].view, ImageLayout.shaderReadOnlyOptimal)
+                ]))
+            ];
+            device.updateDescriptorSets(writes, []);
+        }
+
+        uniformBuf.retainMap();
+        vertexBuf.retainMap();
+
+        glyphCount = 0;
+        nodeCount = 0;
+    }
+
+    override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
+    {
+        import dgt.core.geometry : FRect, FSize;
+        import dgt.render.defs : P2T2Vertex;
+        import dgt.render.framegraph : FGTextNode;
+        import gfx.graal.buffer : IndexType;
+        import gfx.graal.cmd : PipelineBindPoint, VertexBinding;
+        import gfx.math : fvec, FVec2, transpose;
+
+        immutable tn = cast(immutable(FGTextNode))node;
+
+        {
+            auto unifMap = uniformBuf.map();
+            {
+                auto mvp = unifMap.view!(MVP[])(0, mvpLen/MVP.sizeof);
+                mvp[nodeCount] = MVP(
+                    transpose(model), transpose(ctx.viewProj)
+                );
+            }
+            {
+                auto col = unifMap.view!(Col[])(mvpLen);
+                col[nodeCount] = Col(tn.color);
+            }
+        }
+
+        cmd.bindPipeline(pipeline.obj);
+        cmd.bindDescriptorSets(
+            PipelineBindPoint.graphics, layout, 0, [ ds ], [
+                nodeCount * MVP.sizeof, nodeCount * Col.sizeof
+            ]
+        );
+        cmd.bindIndexBuffer(indexBuf.buffer, 0, IndexType.u16);
+
+        auto vertMap = vertexBuf.map();
+        auto verts = vertMap.view!(P2T2Vertex[])();
+
+        const bearing = tn.bearing;
+
+        foreach (shape; tn.shapes) {
+
+            auto gr = glyphRuns[shape.id];
 
             foreach (p; gr.parts) {
 
@@ -101,27 +318,58 @@ class TextRenderer : Disposable
                     immutable vertRect = FRect(
                         gl.position, txRect.size
                     );
-                    auto quadVerts = [
-                        P2T2Vertex([vertRect.left+bearing.x, vertRect.top+bearing.y], [normRect.left, normRect.top]),
-                        P2T2Vertex([vertRect.left+bearing.x, vertRect.bottom+bearing.y], [normRect.left, normRect.bottom]),
-                        P2T2Vertex([vertRect.right+bearing.x, vertRect.bottom+bearing.y], [normRect.right, normRect.bottom]),
-                        P2T2Vertex([vertRect.right+bearing.x, vertRect.top+bearing.y], [normRect.right, normRect.top]),
+                    verts[4*glyphCount .. 4*glyphCount+4] = [
+                        P2T2Vertex(
+                            fvec(vertRect.left+bearing.x, vertRect.top+bearing.y),
+                            fvec(normRect.left, normRect.top)
+                        ),
+                        P2T2Vertex(
+                            fvec(vertRect.left+bearing.x, vertRect.bottom+bearing.y),
+                            fvec(normRect.left, normRect.bottom)
+                        ),
+                        P2T2Vertex(
+                            fvec(vertRect.right+bearing.x, vertRect.bottom+bearing.y),
+                            fvec(normRect.right, normRect.bottom)
+                        ),
+                        P2T2Vertex(
+                            fvec(vertRect.right+bearing.x, vertRect.top+bearing.y),
+                            fvec(normRect.right, normRect.top)
+                        ),
                     ];
-                    auto vbuf = makeRc!(VertexBuffer!P2T2Vertex)(quadVerts);
 
-                    encoder.updateConstBuffer(_mvpBlk, MVP(transpose(model), transpose(ctx.viewProj)));
+                    cmd.bindVertexBuffers(0, [ VertexBinding (
+                        vertexBuf.buffer, 4*glyphCount*P2T2Vertex.sizeof
+                    )]);
+                    cmd.drawIndexed(6, 1, 0, 0, 0);
 
-                    encoder.draw!TextMeta(VertexBufferSlice(_quadIBuf), _pso, Data(
-                        rc(vbuf), rc(_mvpBlk), rc(_colBlk), rc(p.atlas.srv), rc(p.atlas.sampler), rc(ctx.renderTarget)
-                    ));
+                    glyphCount++;
                 }
             }
         }
+
+        nodeCount++;
+    }
+
+    override void postrender()
+    {
+        glyphCount = 0;
+        nodeCount = 0;
+        uniformBuf.releaseMap();
+        vertexBuf.releaseMap();
+        gc.incrFrameNum();
     }
 
     private void feedGlyphRun(in TextShape shape)
     {
-        if (shape.id in _glyphRuns) return;
+        import dgt.core.sync : synchronize;
+        import dgt.font.library : FontLibrary;
+        import dgt.font.typeface : Glyph, ScalingContext, Typeface;
+        import dgt.render.atlas : AtlasNode;
+        import dgt.text.shaping : GlyphInfo;
+        import gfx.core.rc : rc;
+        import gfx.math : fvec, ivec;
+
+        if (shape.id in glyphRuns) return;
 
         GlyphRun.Part[] parts;
         auto advance = fvec(0, 0);
@@ -151,23 +399,21 @@ class TextRenderer : Disposable
                 if (!node) {
                     // this glyph is not yet in an atlas, let's pack it
                     const size = glyph.img.size.asVec;
-                    auto atlasF = _atlases.find!(a => a.couldPack(size));
+                    auto atlasF = atlases.find!(a => a.atlas.couldPack(size));
                     if (atlasF.length) {
-                        node = atlasF[0].pack(size, glyph);
+                        node = atlasF[0].atlas.pack(size, glyph);
                     }
                     if (!node) {
                         // could not find an atlas with room left, or did not create atlas at all yet
                         auto atlas = new GlyphAtlas(ivec(128, 128), ivec(512, 512), 1);
-                        atlas.retain();
-                        _atlases ~= atlas;
+                        atlases ~= AtlasTexture(atlas);
                         node = enforce(atlas.pack(size, glyph),
                                 "could not pack a glyph into a new atlas. What size is this glyph??");
                     }
                     glyph.rendererData = node;
                 }
 
-                auto atlas = node.atlas.lock();
-                assert(atlas, "Atlas not found");
+                auto atlas = node.atlas;
 
                 auto grg = GRGlyph(position, node);
 
@@ -184,105 +430,132 @@ class TextRenderer : Disposable
         if (parts.length) {
             auto run = new GlyphRun;
             run.parts = parts;
-            run.retain();
-            _glyphRuns[shape.id] = run;
+            glyphRuns[shape.id] = run;
         }
     }
 
-    private GlyphAtlas[] _atlases;
-    private GlyphRun[size_t] _glyphRuns;
-
-    private StateObject _pso;
-    private ConstBuffer!MVP _mvpBlk;
-    private ConstBuffer!Color _colBlk;
-    private IndexBuffer!ushort _quadIBuf;
 }
 
 
 private:
 
-class GlyphRun : RefCounted {
-    mixin(rcCode);
+struct GRGlyph
+{
+    import dgt.render.atlas : AtlasNode;
+    import gfx.math : FVec2;
+
+    FVec2 position;
+    AtlasNode node;
+}
+
+
+// TODO: make this a struct
+class GlyphRun
+{
+    import dgt.render.atlas : AtlasNode, GlyphAtlas;
 
     // most runs will have a single part, but if there are a lot of glyphs with
     // big size, it can happen that we come to an atlas boundary and then the
     // end of the run arrives on a second atlas
     struct Part {
-        Rc!GlyphAtlas atlas;
+        GlyphAtlas atlas;
         GRGlyph[] glyphs;  // ordered array - each node map to a glyph
     }
 
     Part[] parts;
-
-    override void dispose() {
-        reinitArray(parts);
-    }
 }
 
-struct GRGlyph {
-    FVec2 position;
-    AtlasNode node;
-}
-
-struct Color {
-    FVec4 color;
-}
-
-struct TextMeta
+struct AtlasTexture
 {
-    VertexInput!P2T2Vertex   input;
+    import dgt.render.atlas : GlyphAtlas;
+    import dgt.render.renderer : PrerenderContext;
+    import gfx.graal.cmd : CommandBuffer;
+    import gfx.graal.device : Device;
+    import gfx.graal.image : Image, ImageView;
+    import gfx.memalloc : ImageAlloc, Allocator;
 
-    @GfxName("MVP")
-    ConstantBlock!MVP       mvp;
+    GlyphAtlas atlas;
+    ImageAlloc imgAlloc;
+    ImageView view;
 
-    @GfxName("Color")
-    ConstantBlock!Color       color;
+    void release()
+    {
+        import gfx.core.rc : releaseObj;
 
-    @GfxName("t_Sampler")
-    ResourceView!Alpha8          texture;
+        releaseObj(this.imgAlloc);
+        releaseObj(this.view);
+    }
 
-    @GfxName("t_Sampler")
-    ResourceSampler             sampler;
+    void realize(Device device, Allocator allocator, GarbageCollector gc, CommandBuffer cmd)
+    {
+        // rebuild and upload texture
+        import gfx.core.rc :        rc, retainObj;
+        import gfx.core.typecons :  trans;
+        import gfx.graal.cmd :      Access, BufferImageCopy, ImageMemoryBarrier,
+                                    PipelineStage, queueFamilyIgnored;
+        import gfx.graal.format :   Format;
+        import gfx.graal.image :    ImageAspect, ImageInfo, ImageLayout,
+                                    ImageSubresourceRange, ImageTiling,
+                                    ImageType, ImageUsage, Swizzle;
+        import gfx.graal.memory :   MemoryRequirements, MemProps;
+        import gfx.memalloc :       AllocFlags, AllocOptions, MemoryUsage;
+        import std.format :         format;
+        import std.exception :      enforce;
 
-    @GfxName("o_Color")
-    @GfxBlend(Blend( Equation.add, Factor.one, Factor.oneMinusSrcAlpha ))
-    BlendOutput!Rgba8           outColor;
+        if (atlas.realize()) {
+
+            release();
+
+            const sz = atlas.image.size;
+
+            auto imgAlloc = allocator.allocateImage
+            (
+                ImageInfo.d2(sz.width, sz.height)
+                    .withFormat(Format.r8_uNorm)
+                    .withUsage(ImageUsage.sampled | ImageUsage.transferDst)
+                    .withTiling(ImageTiling.optimal),
+
+                AllocOptions.forUsage(MemoryUsage.gpuOnly)
+                    .withFlags(AllocFlags.dedicated)
+            );
+            cmd.pipelineBarrier(
+                trans(PipelineStage.topOfPipe, PipelineStage.transfer), [], [
+                    ImageMemoryBarrier(
+                        trans(Access.none, Access.transferWrite),
+                        trans(ImageLayout.undefined, ImageLayout.transferDstOptimal),
+                        trans(queueFamilyIgnored, queueFamilyIgnored),
+                        imgAlloc.image, ImageSubresourceRange(ImageAspect.color)
+                    )
+                ]
+            );
+            {
+                import gfx.graal.buffer : BufferUsage;
+                auto stagBuf = allocator.allocateBuffer(
+                    BufferUsage.transferSrc, atlas.image.data.length,
+                    AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+                ).rc;
+                {
+                    auto map = stagBuf.map();
+                    auto view = map.view!(ubyte[])();
+                    view[] = atlas.image.data;
+                }
+                BufferImageCopy region;
+                region.extent = [sz.width, sz.height, 1];
+                const regions = (&region)[0 .. 1];
+                cmd.copyBufferToImage(
+                    stagBuf.buffer, imgAlloc.image, ImageLayout.transferDstOptimal,
+                    regions
+                );
+                gc.collect(stagBuf.obj);
+            }
+
+            auto view = imgAlloc.image.createView(
+                ImageType.d2, ImageSubresourceRange(ImageAspect.color),
+                Swizzle.identity
+            );
+
+            this.imgAlloc = retainObj(imgAlloc);
+            this.view = retainObj(view);
+        }
+    }
 }
-
-enum textVShader = `
-    #version 330
-    in vec2 a_Pos;
-    in vec2 a_Tex;
-
-    uniform MVP {
-        mat4 u_modelMat;
-        mat4 u_viewProjMat;
-    };
-
-    out vec2 v_Tex;
-
-    void main() {
-        v_Tex = a_Tex;
-        vec4 worldPos = u_modelMat * vec4(a_Pos, 0, 1);
-        gl_Position = u_viewProjMat * vec4(worldPos.xy, 0, 1);
-    }
-`;
-enum textFShader = `
-    #version 330
-
-    in vec2 v_Tex;
-
-    uniform sampler2D t_Sampler;
-    uniform Color {
-        vec4 u_Color;
-    };
-
-    out vec4 o_Color;
-
-    void main() {
-        vec4 sample = texture(t_Sampler, v_Tex);
-        const float gamma = 1.8;
-        o_Color = pow(sample.r, gamma) * u_Color;
-        // o_Color = sample.r * u_Color;
-    }
-`;

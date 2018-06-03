@@ -2,7 +2,7 @@ module dgt.render.queue;
 
 import dgt.context;
 import dgt.render.framegraph;
-import dgt.render.renderer2;
+import dgt.render.renderer;
 
 import std.experimental.logger;
 import std.concurrency;

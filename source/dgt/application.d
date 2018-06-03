@@ -97,7 +97,7 @@ class Application : EventLoop, Disposable
     {
         import dgt.context : createGlContext;
         import dgt.render.queue : RenderQueue;
-        import dgt.render.renderer2 : createRenderer;
+        import dgt.render.renderer : createRenderer;
         import gfx.graal : Backend;
 
         assert(window.created && !window.dummy);
