@@ -3,17 +3,17 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(location = 0) in vec3 i_Position;
-layout(location = 1) in vec3 i_Edge;
+layout(location=0) in vec3 i_Position;
+layout(location=1) in vec3 i_Edge;
 
 out gl_PerVertex {
     vec4 gl_Position;
 };
 
-layout(location = 0) out vec3 vx_Position;
-layout(location = 1) out vec3 vx_Edge;
+layout(location=0) out vec3 vx_Position;
+layout(location=1) out vec3 vx_Edge;
 
-layout(std140, binding = 0) uniform MVP {
+layout(std140, binding=0) uniform MVP {
     mat4 model;
     mat4 viewProj;
 } mvp;

@@ -11,7 +11,7 @@ struct ColorStop
     vec4 position; // only x relevant
 };
 
-layout(std140, binding = 1) uniform Locals {
+layout(std140, binding=1) uniform Locals {
     ColorStop stops[MAX_STOPS];
     vec4 stroke;
     float width;
@@ -19,10 +19,10 @@ layout(std140, binding = 1) uniform Locals {
 } locals;
 
 
-layout(location = 0) in vec3 vx_Position;
-layout(location = 1) in vec3 vx_Edge;
+layout(location=0) in vec3 vx_Position;
+layout(location=1) in vec3 vx_Edge;
 
-layout(location = 0) out vec4 o_Color;
+layout(location=0) out vec4 o_Color;
 
 void main()
 {

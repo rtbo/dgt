@@ -4,18 +4,18 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 
-layout(std140, binding = 1) uniform Locals {
+layout(std140, binding=1) uniform Locals {
     vec4 stroke;
     float width;
 } locals;
 
-layout(binding = 2) uniform sampler2D imgSampler;
+layout(binding=2) uniform sampler2D imgSampler;
 
-layout(location = 0) in vec2 vx_Position;
-layout(location = 1) in vec2 vx_TexCoord;
-layout(location = 2) in vec3 vx_Edge;
+layout(location=0) in vec2 vx_Position;
+layout(location=1) in vec2 vx_TexCoord;
+layout(location=2) in vec3 vx_Edge;
 
-layout(location = 0) out vec4 o_Color;
+layout(location=0) out vec4 o_Color;
 
 void main()
 {

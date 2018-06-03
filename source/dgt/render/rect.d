@@ -20,7 +20,7 @@ struct RectImgVertex
 class RectRenderer : FGNodeRenderer
 {
     import dgt.render.framegraph : FGNode, FGRectNode, FGType;
-    import dgt.render.renderer : PrepareContext, PrerenderContext, RenderContext;
+    import dgt.render.renderer : RenderContext;
     import dgt.render.services : RenderServices;
     import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.cmd : CommandBuffer;
@@ -50,8 +50,7 @@ class RectRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.rect);
     }
 
-    override void prepare(RenderServices services, DeclarativeEngine declEng,
-                          PrepareContext ctx)
+    override void prepare(RenderServices services, DeclarativeEngine declEng)
     {
         import std.array : join;
         import std.range : only;
@@ -70,13 +69,10 @@ class RectRenderer : FGNodeRenderer
         declEng.parseSDLSource(sdl);
     }
 
-    override void initDescriptors(DescriptorPool pool)
+    override void prerender(immutable(FGNode) node)
     {}
 
-    override void prerender(immutable(FGNode) node, PrerenderContext ctx)
-    {}
-
-    override void prerenderEnd(PrerenderContext ctx, CommandBuffer cmd)
+    override void prerenderEnd(CommandBuffer cmd)
     {}
 
     override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)

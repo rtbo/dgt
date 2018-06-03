@@ -1,18 +1,24 @@
 graal:DescriptorSetLayout {
-    store "text_dsl"
+    store "text_dsl_unif"
     bindings {
         // MVP
         0 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="vertex"
         // Locals
         1 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="fragment"
+    }
+}
+graal:DescriptorSetLayout {
+    store "text_dsl_img"
+    bindings {
         // Alpha Mask
-        2 descriptorType="combinedImageSampler" descriptorCount=1 stages="fragment"
+        0 descriptorType="combinedImageSampler" descriptorCount=1 stages="fragment"
     }
 }
 graal:PipelineLayout {
     store "text_layout"
     layouts {
-        "store:text_dsl"
+        "store:text_dsl_unif"
+        "store:text_dsl_img"
     }
 }
 graal:Pipeline {

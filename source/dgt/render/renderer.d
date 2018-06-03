@@ -108,49 +108,6 @@ interface Renderer
     void finalize(size_t windowHandle);
 }
 
-
-class PrepareContext
-{
-    import gfx.graal.pipeline : DescriptorType;
-
-    uint setCount;
-    uint[DescriptorType.max+1] descriptorCounts;
-}
-
-class PrerenderContext
-{
-    import dgt.render.cache : RenderCache;
-
-    this (RenderCache cache) {
-        this.cache = cache;
-    }
-
-    RenderCache cache;
-    size_t indexLen;
-    size_t vertexLen;
-    size_t uniformLen;
-    bool dirtyDescriptorSets;
-}
-
-// /// Map the memory of a buffer and track successive writes by different unrelated entities
-// struct BufferMap
-// {
-//     import gfx.graal.memory : MemoryMap;
-//     import std.traits : isDynamicArray;
-
-//     auto getViewAndAdvance(T)(size_t count, out size_t offset)
-//     if (isDynamicArray!T)
-//     {
-//         alias Elem = typeof(T.init[0]);
-//         offset = this.offset;
-//         this.offset += count * Elem.sizeof;
-//         return map.view!T(offset, count);
-//     }
-
-//     size_t offset;
-//     MemoryMap map;
-// }
-
 class RenderContext
 {
     import dgt.render.cache : RenderCache;
@@ -183,13 +140,11 @@ interface FGNodeRenderer : Disposable
     FGType type() const;
 
     /// called once during preparation step
-    void prepare(RenderServices services, DeclarativeEngine declEng, PrepareContext ctx);
-    /// called once at end of preparation step to init descriptors
-    void initDescriptors(DescriptorPool pool);
+    void prepare(RenderServices services, DeclarativeEngine declEng);
     /// called during prerender step for each node that fits type
-    void prerender(immutable(FGNode) node, PrerenderContext ctx);
+    void prerender(immutable(FGNode) node);
     /// called once per frame to finalize the prerender step
-    void prerenderEnd(PrerenderContext ctx, CommandBuffer cmd);
+    void prerenderEnd(CommandBuffer cmd);
     /// perform actual rendering
     void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd);
     /// called once per frame after rendering all nodes
@@ -332,8 +287,6 @@ class RendererBase : Renderer
         import std.range : chain;
         import std.typecons : No, scoped, Yes;
 
-        auto ctx = scoped!PrerenderContext(cache);
-
         foreach (frame; frames) {
             foreach(immutable n; breadthFirst(frame.root))
             {
@@ -342,10 +295,10 @@ class RendererBase : Renderer
                 const ind = n.type.index;
 
                 if ((n.type.cat & userRender) == userRender) {
-                    userRenderers[ind].prerender(n, ctx);
+                    userRenderers[ind].prerender(n);
                 }
                 else if ((n.type.cat & dgtRender) == dgtRender) {
-                    dgtRenderers[ind].prerender(n, ctx);
+                    dgtRenderers[ind].prerender(n);
                 }
             }
         }
@@ -372,7 +325,7 @@ class RendererBase : Renderer
         prerenderCmd.begin(No.persistent);
 
         foreach (r; chain(dgtRenderers, userRenderers))
-            r.prerenderEnd(ctx, prerenderCmd);
+            r.prerenderEnd(prerenderCmd);
 
         prerenderCmd.end();
 
@@ -616,24 +569,22 @@ class RendererBase : Renderer
         addRenderer(new RectRenderer);
         addRenderer(new TextRenderer);
 
-        auto ctx = scoped!PrepareContext;
-
         foreach (nr; chain(dgtRenderers, userRenderers)) {
-            nr.prepare(services, declEng, ctx);
+            nr.prepare(services, declEng);
         }
 
-        DescriptorPoolSize[DescriptorType.max+1] poolSizes;
-        uint pos;
-        foreach (dt, dc; ctx.descriptorCounts) {
-            if (dc > 0) {
-                poolSizes[pos++] = DescriptorPoolSize(cast(DescriptorType)dt, dc);
-            }
-        }
-        descPool = device.createDescriptorPool(ctx.setCount, poolSizes[0 .. pos]);
+        // DescriptorPoolSize[DescriptorType.max+1] poolSizes;
+        // uint pos;
+        // foreach (dt, dc; ctx.descriptorCounts) {
+        //     if (dc > 0) {
+        //         poolSizes[pos++] = DescriptorPoolSize(cast(DescriptorType)dt, dc);
+        //     }
+        // }
+        // descPool = device.createDescriptorPool(ctx.setCount, poolSizes[0 .. pos]);
 
-        foreach (nr; chain(dgtRenderers, userRenderers)) {
-            nr.initDescriptors(descPool);
-        }
+        // foreach (nr; chain(dgtRenderers, userRenderers)) {
+        //     nr.initDescriptors(descPool);
+        // }
     }
 
     static void frameError(Args...)(string msg, Args args)

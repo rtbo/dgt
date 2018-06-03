@@ -6,34 +6,44 @@ import gfx.core.rc : AtomicRefCounted, Disposable;
 
 final class TextRenderer : FGNodeRenderer
 {
-    import dgt.render.atlas : GlyphAtlas;
-    import dgt.render.framegraph : FGNode, FGType;
-    import dgt.render.renderer : PrepareContext, PrerenderContext, RenderContext;
-    import dgt.render.services : RenderServices;
-    import dgt.text.layout : TextShape;
-    import gfx.core.rc : Rc;
-    import gfx.decl.engine : DeclarativeEngine;
-    import gfx.graal.cmd : CommandBuffer;
-    import gfx.graal.device : Device;
-    import gfx.graal.image : Sampler;
-    import gfx.graal.pipeline : DescriptorPool, DescriptorSet,
-                                DescriptorSetLayout, Pipeline, PipelineLayout;
-    import gfx.math : FMat4, FVec4;
-    import gfx.memalloc : Allocator, BufferAlloc;
+    import dgt.render.atlas :       GlyphAtlas;
+    import dgt.render.framegraph :  FGNode, FGType;
+    import dgt.render.renderer :    RenderContext;
+    import dgt.render.services :    RenderServices;
+    import dgt.text.layout :        TextShape;
+    import gfx.core.rc :            Rc;
+    import gfx.decl.engine :        DeclarativeEngine;
+    import gfx.graal.buffer :       Buffer;
+    import gfx.graal.cmd :          CommandBuffer;
+    import gfx.graal.device :       Device;
+    import gfx.graal.image :        ImageView, Sampler;
+    import gfx.graal.pipeline :     DescriptorPool, DescriptorSet,
+                                    DescriptorSetLayout, Pipeline, PipelineLayout;
+    import gfx.math :               FMat4, FVec4;
+    import gfx.memalloc :           Allocator, BufferAlloc;
+
 
     private Rc!Device device;
     private Rc!Allocator allocator;
-    private Rc!Pipeline pipeline;
+    private RenderServices services;
+
+    private Rc!DescriptorSetLayout unifDsl;
+    private Rc!DescriptorSetLayout imgDsl;
+    private Rc!DescriptorPool dsPool;
+    // index zero is uniform, follows one ds per atlas
+    private DescriptorSet[] dss;
+
     private Rc!PipelineLayout layout;
-    private Rc!DescriptorSetLayout dsl;
+    private Rc!Pipeline pipeline;
+
     private Rc!Sampler sampler;
     private Rc!BufferAlloc uniformBuf;
     private Rc!BufferAlloc indexBuf;
     private Rc!BufferAlloc vertexBuf;
-    private DescriptorSet ds;
     private AtlasTexture[] atlases;
+
+    private BoundResources boundRes;
     private GlyphRun[size_t] glyphRuns;
-    private RenderServices services;
 
     private size_t nodeCount;
     private size_t glyphCount;
@@ -47,6 +57,11 @@ final class TextRenderer : FGNodeRenderer
     private static struct Col {
         FVec4 color;
         FVec4 pad;
+    }
+    private static struct BoundResources
+    {
+        Buffer uniform;
+        ImageView view;
     }
 
     this()
@@ -62,7 +77,9 @@ final class TextRenderer : FGNodeRenderer
         sampler.unload();
         atlases.each!(a => a.release());
         atlases = null;
-        dsl.unload();
+        unifDsl.unload();
+        imgDsl.unload();
+        dsPool.unload();
         allocator.unload();
         layout.unload();
         pipeline.unload();
@@ -76,11 +93,10 @@ final class TextRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.text);
     }
 
-    override void prepare(RenderServices services, DeclarativeEngine declEng, PrepareContext ctx)
+    override void prepare(RenderServices services, DeclarativeEngine declEng)
     {
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.image : SamplerInfo;
-        import gfx.graal.pipeline : DescriptorType;
         import gfx.memalloc : AllocOptions, MemoryUsage;
 
         this.device = services.device;
@@ -95,7 +111,8 @@ final class TextRenderer : FGNodeRenderer
 
         this.pipeline = store.expect!Pipeline("text_pl");
         this.layout = store.expect!PipelineLayout("text_layout");
-        this.dsl = store.expect!DescriptorSetLayout("text_dsl");
+        this.unifDsl = store.expect!DescriptorSetLayout("text_dsl_unif");
+        this.imgDsl = store.expect!DescriptorSetLayout("text_dsl_img");
         this.sampler = device.createSampler(SamplerInfo.nearest);
 
         this.indexBuf = allocator.allocateBuffer(
@@ -107,18 +124,9 @@ final class TextRenderer : FGNodeRenderer
             auto view = map.view!(ushort[])();
             view[] = [ 0, 1, 2, 0, 2, 3 ];
         }
-
-        ctx.setCount += 1;
-        ctx.descriptorCounts[DescriptorType.uniformBufferDynamic] += 2;
-        ctx.descriptorCounts[DescriptorType.combinedImageSampler] += 1;
     }
 
-    override void initDescriptors(DescriptorPool pool)
-    {
-        ds = pool.allocate([dsl.obj])[0];
-    }
-
-    override void prerender(immutable(FGNode) node, PrerenderContext context)
+    override void prerender(immutable(FGNode) node)
     {
         import dgt.render.framegraph : FGTextNode;
         import dgt.render.defs : P2T2Vertex;
@@ -133,73 +141,127 @@ final class TextRenderer : FGNodeRenderer
         nodeCount++;
     }
 
-    override void prerenderEnd(PrerenderContext ctx, CommandBuffer cmd)
+    override void prerenderEnd(CommandBuffer cmd)
     {
         import dgt.render.defs : P2T2Vertex;
         import gfx.graal.buffer : BufferUsage;
-        import gfx.graal.image : ImageLayout;
-        import gfx.graal.pipeline : BufferRange, CombinedImageSampler,
-                                    CombinedImageSamplerDescWrites,
-                                    UniformBufferDynamicDescWrites,
-                                    WriteDescriptorSet;
         import gfx.memalloc : AllocOptions, MemoryUsage;
         import std.algorithm : each;
 
-        atlases.each!((ref AtlasTexture atlas) {
-            atlas.realize(services, cmd);
-        });
+        const vertexSize = glyphCount * 4 * P2T2Vertex.sizeof;
+
+        if (!vertexBuf || vertexBuf.size != vertexSize) {
+            if (vertexBuf) services.gc(vertexBuf);
+            vertexBuf = allocator.allocateBuffer(
+                BufferUsage.vertex, vertexSize,
+                AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+            );
+        }
+
+
+        bool updateUnifDesc;
+        bool updateAtlasDescs;
 
         mvpLen = nodeCount * MVP.sizeof;
         colLen = nodeCount * Col.sizeof;
 
         const uniformSize = mvpLen + colLen;
-        const vertexSize = glyphCount * 4 * P2T2Vertex.sizeof;
-
-        bool writeDesc;
 
         if (!uniformBuf || uniformBuf.size != uniformSize) {
-            if (uniformBuf) {
-                services.gc(uniformBuf);
-            }
+            if (uniformBuf) services.gc(uniformBuf);
             uniformBuf = allocator.allocateBuffer(
                 BufferUsage.uniform, uniformSize,
                 AllocOptions.forUsage(MemoryUsage.cpuToGpu)
             );
-            writeDesc = true;
-        }
-        if (!vertexBuf || vertexBuf.size != vertexSize) {
-            if (vertexBuf) {
-                services.gc(vertexBuf);
-            }
-            vertexBuf = allocator.allocateBuffer(
-                BufferUsage.vertex, vertexSize,
-                AllocOptions.forUsage(MemoryUsage.cpuToGpu)
-            );
-            writeDesc = true;
+            updateUnifDesc = true;
         }
 
-        if (writeDesc) {
-            // TODO handle more atlases, requires one descriptor set per atlas
-            assert(atlases.length == 1);
-            auto writes = [
-                WriteDescriptorSet(ds, 0, 0, new UniformBufferDynamicDescWrites([
-                    BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
-                ])),
-                WriteDescriptorSet(ds, 1, 0, new UniformBufferDynamicDescWrites([
-                    BufferRange(uniformBuf.buffer, MVP.sizeof * nodeCount, Col.sizeof),
-                ])),
-                WriteDescriptorSet(ds, 2, 0, new CombinedImageSamplerDescWrites([
-                    CombinedImageSampler(sampler, atlases[0].view, ImageLayout.shaderReadOnlyOptimal)
-                ]))
-            ];
-            device.updateDescriptorSets(writes, []);
+        if (dss.length != atlases.length+1) {
+            allocDescriptorSets();
         }
+
+        atlases.each!((ref AtlasTexture atlas) {
+            if (atlas.realize(services, cmd)) {
+                updateAtlasDescs = true;
+            }
+        });
+
+        updateDescriptorSets(updateUnifDesc, updateAtlasDescs);
 
         uniformBuf.retainMap();
         vertexBuf.retainMap();
 
         glyphCount = 0;
         nodeCount = 0;
+    }
+
+    private void allocDescriptorSets()
+    {
+        import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
+        import std.array : array;
+        import std.range : chain, only, repeat;
+
+        if (dsPool) {
+            // previously recorded commands may still use it
+            services.gc(dsPool.obj);
+            dsPool.unload();
+            dss = null;
+        }
+
+        // we have 2 sets to bind:
+        // - uniform set: always the same with one buffer with 2 dynamic offsets
+        // - image set: one per atlas
+
+        const numAtlases = cast(uint)atlases.length;
+
+        DescriptorPoolSize[2] dsPoolSizes = [
+            DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2),
+            DescriptorPoolSize(DescriptorType.combinedImageSampler, numAtlases)
+        ];
+
+        this.dsPool = device.createDescriptorPool( numAtlases+1, dsPoolSizes[] );
+
+        auto dsls = only(unifDsl.obj).chain(repeat(imgDsl.obj, numAtlases)).array();
+
+        this.dss = this.dsPool.allocate(dsls);
+    }
+
+    private void updateDescriptorSets(in bool updateUnif, in bool updateAtlas)
+    {
+        import gfx.graal.image : ImageLayout;
+        import gfx.graal.pipeline : BufferRange, CombinedImageSampler,
+                                    CombinedImageSamplerDescWrites,
+                                    UniformBufferDynamicDescWrites,
+                                    WriteDescriptorSet;
+
+        WriteDescriptorSet[] writes;
+
+        if (updateUnif)
+        {
+            writes = [
+                WriteDescriptorSet(dss[0], 0, 0, new UniformBufferDynamicDescWrites([
+                    BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
+                ])),
+                WriteDescriptorSet(dss[0], 1, 0, new UniformBufferDynamicDescWrites([
+                    BufferRange(uniformBuf.buffer, MVP.sizeof * nodeCount, Col.sizeof),
+                ])),
+            ];
+        }
+        if (updateAtlas)
+        {
+            assert(dss.length == atlases.length+1);
+
+            writes.reserve(atlases.length);
+
+            foreach (i; 0 .. atlases.length) {
+                writes ~= WriteDescriptorSet(dss[i+1], 0, 0, new CombinedImageSamplerDescWrites([
+                    CombinedImageSampler(sampler, atlases[i].view, ImageLayout.shaderReadOnlyOptimal)
+                ]));
+            }
+        }
+
+        if (writes.length)
+            device.updateDescriptorSets(writes, []);
     }
 
     override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
@@ -229,11 +291,13 @@ final class TextRenderer : FGNodeRenderer
 
         cmd.bindPipeline(pipeline.obj);
         cmd.bindDescriptorSets(
-            PipelineBindPoint.graphics, layout, 0, [ ds ], [
+            PipelineBindPoint.graphics, layout, 0, dss[0 .. 1], [
                 nodeCount * MVP.sizeof, nodeCount * Col.sizeof
             ]
         );
         cmd.bindIndexBuffer(indexBuf.buffer, 0, IndexType.u16);
+
+        size_t boundAtlas = size_t.max;
 
         auto vertMap = vertexBuf.map();
         auto verts = vertMap.view!(P2T2Vertex[])();
@@ -247,6 +311,14 @@ final class TextRenderer : FGNodeRenderer
             foreach (p; gr.parts) {
 
                 const textureSize = cast(FVec2)p.atlas.textureSize;
+                const ind = p.atlasInd;
+
+                if (ind != boundAtlas) {
+                    cmd.bindDescriptorSets(
+                        PipelineBindPoint.graphics, layout, 1, dss[ind+1 .. ind+2], null
+                    );
+                    boundAtlas = ind;
+                }
 
                 foreach (gl; p.glyphs) {
 
@@ -363,7 +435,15 @@ final class TextRenderer : FGNodeRenderer
                 auto grg = GRGlyph(position, node);
 
                 if (!parts.length || parts[$-1].atlas !is atlas) {
-                    parts ~= GlyphRun.Part(atlas, [ grg ]);
+                    size_t ind = size_t.max;
+                    foreach (i, at; atlases) {
+                        if (at.atlas is atlas) {
+                            ind = i;
+                            break;
+                        }
+                    }
+                    assert(ind != size_t.max);
+                    parts ~= GlyphRun.Part(ind, atlas, [ grg ]);
                 }
                 else {
                     parts[$-1].glyphs ~= grg;
@@ -403,6 +483,7 @@ class GlyphRun
     // big size, it can happen that we come to an atlas boundary and then the
     // end of the run arrives on a second atlas
     struct Part {
+        size_t atlasInd;
         GlyphAtlas atlas;
         GRGlyph[] glyphs;  // ordered array - each node map to a glyph
     }
@@ -414,7 +495,6 @@ struct AtlasTexture
 {
     import dgt.render.atlas : GlyphAtlas;
     import dgt.render.services : RenderServices;
-    import dgt.render.renderer : PrerenderContext;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
     import gfx.graal.image : Image, ImageView;
@@ -432,7 +512,8 @@ struct AtlasTexture
         releaseObj(this.view);
     }
 
-    void realize(RenderServices services, CommandBuffer cmd)
+    /// Returns: whether the image was renewed or not
+    bool realize(RenderServices services, CommandBuffer cmd)
     {
         // rebuild and upload texture
         import dgt.render.services : setImageLayout;
@@ -473,6 +554,11 @@ struct AtlasTexture
                 ImageType.d2, ImageSubresourceRange(ImageAspect.color),
                 Swizzle.identity
             ));
+
+            return true;
+        }
+        else {
+            return false;
         }
     }
 }
