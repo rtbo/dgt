@@ -76,17 +76,15 @@ final class TextRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.text);
     }
 
-    override void prepare(Device device, DeclarativeStore store,
-                          Allocator allocator, RenderServices services,
-                          PrepareContext ctx)
+    override void prepare(RenderServices services, DeclarativeStore store, PrepareContext ctx)
     {
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.image : SamplerInfo;
         import gfx.graal.pipeline : DescriptorType;
         import gfx.memalloc : AllocOptions, MemoryUsage;
 
-        this.device = device;
-        this.allocator = allocator;
+        this.device = services.device;
+        this.allocator = services.allocator;
         this.services = services;
         this.pipeline = store.expect!Pipeline("text_pl");
         this.layout = store.expect!PipelineLayout("text_layout");
@@ -141,7 +139,7 @@ final class TextRenderer : FGNodeRenderer
         import std.algorithm : each;
 
         atlases.each!((ref AtlasTexture atlas) {
-            atlas.realize(device, allocator, services, cmd);
+            atlas.realize(services, cmd);
         });
 
         mvpLen = nodeCount * MVP.sizeof;
@@ -427,21 +425,20 @@ struct AtlasTexture
         releaseObj(this.view);
     }
 
-    void realize(Device device, Allocator allocator, RenderServices services, CommandBuffer cmd)
+    void realize(RenderServices services, CommandBuffer cmd)
     {
         // rebuild and upload texture
-        import gfx.core.rc :        rc, retainObj;
-        import gfx.core.typecons :  trans;
-        import gfx.graal.cmd :      Access, BufferImageCopy, ImageMemoryBarrier,
-                                    PipelineStage, queueFamilyIgnored;
-        import gfx.graal.format :   Format;
-        import gfx.graal.image :    ImageAspect, ImageInfo, ImageLayout,
-                                    ImageSubresourceRange, ImageTiling,
-                                    ImageType, ImageUsage, Swizzle;
-        import gfx.graal.memory :   MemoryRequirements, MemProps;
-        import gfx.memalloc :       AllocFlags, AllocOptions, MemoryUsage;
-        import std.format :         format;
-        import std.exception :      enforce;
+        import dgt.render.services : setImageLayout;
+        import gfx.core.rc :         rc, retainObj;
+        import gfx.graal.cmd :       BufferImageCopy;
+        import gfx.graal.format :    Format;
+        import gfx.graal.image :     ImageAspect, ImageInfo, ImageLayout,
+                                     ImageTiling, ImageSubresourceRange,
+                                     ImageType, ImageUsage, Swizzle;
+        import gfx.graal.memory :    MemoryRequirements, MemProps;
+        import gfx.memalloc :        AllocFlags, AllocOptions, MemoryUsage;
+        import std.format :          format;
+        import std.exception :       enforce;
 
         if (atlas.realize()) {
 
@@ -449,7 +446,7 @@ struct AtlasTexture
 
             const sz = atlas.image.size;
 
-            auto imgAlloc = allocator.allocateImage
+            auto imgAlloc = services.allocator.allocateImage
             (
                 ImageInfo.d2(sz.width, sz.height)
                     .withFormat(Format.r8_uNorm)
@@ -459,44 +456,16 @@ struct AtlasTexture
                 AllocOptions.forUsage(MemoryUsage.gpuOnly)
                     .withFlags(AllocFlags.dedicated)
             );
-            cmd.pipelineBarrier(
-                trans(PipelineStage.topOfPipe, PipelineStage.transfer), [], [
-                    ImageMemoryBarrier(
-                        trans(Access.none, Access.transferWrite),
-                        trans(ImageLayout.undefined, ImageLayout.transferDstOptimal),
-                        trans(queueFamilyIgnored, queueFamilyIgnored),
-                        imgAlloc.image, ImageSubresourceRange(ImageAspect.color)
-                    )
-                ]
-            );
-            {
-                import gfx.graal.buffer : BufferUsage;
-                auto stagBuf = allocator.allocateBuffer(
-                    BufferUsage.transferSrc, atlas.image.data.length,
-                    AllocOptions.forUsage(MemoryUsage.cpuToGpu)
-                ).rc;
-                {
-                    auto map = stagBuf.map();
-                    auto view = map.view!(ubyte[])();
-                    view[] = atlas.image.data;
-                }
-                BufferImageCopy region;
-                region.extent = [sz.width, sz.height, 1];
-                const regions = (&region)[0 .. 1];
-                cmd.copyBufferToImage(
-                    stagBuf.buffer, imgAlloc.image, ImageLayout.transferDstOptimal,
-                    regions
-                );
-                services.gc(stagBuf.obj);
-            }
 
-            auto view = imgAlloc.image.createView(
-                ImageType.d2, ImageSubresourceRange(ImageAspect.color),
-                Swizzle.identity
+            services.stageDataToImage(
+                cmd, imgAlloc.image, ImageAspect.color, ImageLayout.undefined, atlas.image.data
             );
 
             this.imgAlloc = retainObj(imgAlloc);
-            this.view = retainObj(view);
+            this.view = retainObj(imgAlloc.image.createView(
+                ImageType.d2, ImageSubresourceRange(ImageAspect.color),
+                Swizzle.identity
+            ));
         }
     }
 }

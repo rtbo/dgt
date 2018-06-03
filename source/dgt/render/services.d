@@ -1,15 +1,37 @@
 module dgt.render.services;
 
 import gfx.core.rc : Disposable;
+import gfx.core.typecons : Trans;
+import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
+import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
 
 final class RenderServices : Disposable
 {
     import gfx.core.rc : AtomicRefCounted;
+    import gfx.graal.cmd : CommandPool;
+    import gfx.graal.device : Device;
+    import gfx.graal.queue : Queue;
+    import gfx.memalloc : Allocator;
+
+    private Device _device;
+    private Queue _queue;
+    private CommandPool _pool;
+    private Allocator _allocator;
 
     private size_t _frameNum;
     private size_t _maxGcAge = 2;
     private Garbage _gcFirst;
     private Garbage _gcLast;
+
+    this (Queue queue, CommandPool pool, Allocator allocator)
+    {
+        import gfx.core.rc : retainObj;
+
+        _device = retainObj(queue.device);
+        _queue = queue;
+        _pool = retainObj(pool);
+        _allocator = retainObj(allocator);
+    }
 
     override void dispose()
     {
@@ -19,6 +41,63 @@ final class RenderServices : Disposable
             releaseObj(_gcFirst.obj);
             _gcFirst = _gcFirst.next;
         }
+
+        releaseObj(_allocator);
+        releaseObj(_pool);
+        releaseObj(_device);
+    }
+
+    @property Device device() {
+        return _device;
+    }
+
+    @property Allocator allocator() {
+        return _allocator;
+    }
+
+    /// Returns a RAII command buffer that will be submitted to a queue when it
+    /// goes out of scope
+    auto autoCmd()
+    {
+        return AutoCmdBuf(_queue, _pool);
+    }
+
+    /// Stage the provided data to an image
+    /// Use this to fill data to images with optimal layout, or residing in device local memory.
+    void stageDataToImage(CommandBuffer cmd, Image image, ImageAspect aspect, ImageLayout layout, void[] data)
+    {
+        import gfx.core.rc : rc;
+        import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.cmd : BufferImageCopy;
+        import gfx.memalloc : AllocOptions, MemoryUsage;
+
+        if (layout != ImageLayout.transferDstOptimal) {
+            setImageLayout(
+                cmd, image, aspect, layout, ImageLayout.transferDstOptimal
+            );
+        }
+
+        auto stagBuf = _allocator.allocateBuffer(
+            BufferUsage.transferSrc, data.length,
+            AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+        ).rc;
+
+        {
+            auto map = stagBuf.map();
+            map[] = data;
+        }
+
+        const info = image.info;
+
+        BufferImageCopy region;
+        region.extent = [info.dims.width, info.dims.height, info.dims.depth];
+
+        cmd.copyBufferToImage(
+            stagBuf.buffer, image, ImageLayout.transferDstOptimal,
+            (&region)[0 .. 1]
+        );
+
+        gc(stagBuf.obj);
     }
 
     void gc (AtomicRefCounted obj)
@@ -56,8 +135,84 @@ final class RenderServices : Disposable
     }
 }
 
+// from Sascha Willems' repo
+/// Record a pipeline barrier command in cmd in order to switch img layout
+/// from oldLayout to newLayout
+void setImageLayout(CommandBuffer cmd, Image img, in ImageAspect aspect,
+                    in ImageLayout oldLayout, in ImageLayout newLayout,
+                    in PipelineStage srcStageMask=PipelineStage.allCommands,
+                    in PipelineStage dstStageMask=PipelineStage.allCommands)
+{
+    setImageLayout(
+        cmd, img, ImageSubresourceRange(aspect, 0, 1, 0, 1),
+        oldLayout, newLayout, srcStageMask, dstStageMask
+    );
+}
+
+// from Sascha Willems' repo
+/// ditto
+void setImageLayout(CommandBuffer cmd, Image img, in ImageSubresourceRange range,
+                    in ImageLayout oldLayout, in ImageLayout newLayout,
+                    in PipelineStage srcStageMask=PipelineStage.allCommands,
+                    in PipelineStage dstStageMask=PipelineStage.allCommands)
+{
+    import gfx.core.typecons : trans;
+    import gfx.graal.cmd : ImageMemoryBarrier, queueFamilyIgnored;
+
+    Trans!ImageLayout layout = trans(oldLayout, newLayout);
+    auto barrier = ImageMemoryBarrier(
+        getLayoutAccess(layout), layout,
+        trans(queueFamilyIgnored, queueFamilyIgnored),
+        img, range
+    );
+
+    cmd.pipelineBarrier(
+        trans(srcStageMask, dstStageMask), [], (&barrier)[0 .. 1]
+    );
+}
+
 
 private:
+
+struct AutoCmdBuf
+{
+    import gfx.core.rc : Rc;
+    import gfx.graal.cmd : CommandPool;
+    import gfx.graal.device : Device;
+    import gfx.graal.queue : Queue;
+
+    public CommandBuffer cmd;
+
+    private Rc!Device device;
+    private Queue queue;
+    private Rc!CommandPool pool;
+
+    this(Queue queue, CommandPool pool)
+    {
+        import std.typecons : No;
+
+        this.pool = pool;
+        this.queue = queue;
+        this.device = queue.device;
+        this.cmd = this.pool.allocate(1)[0];
+        this.cmd.begin(No.persistent);
+    }
+
+    ~this()
+    {
+        import gfx.graal.queue : Submission;
+
+        this.cmd.end();
+        this.queue.submit([
+            Submission([], [], [ this.cmd ])
+        ], null);
+        this.queue.waitIdle();
+        this.pool.free([ this.cmd ]);
+        this.cmd = null;
+    }
+
+    alias cmd this;
+}
 
 class Garbage
 {
@@ -72,4 +227,107 @@ class Garbage
         this.frameNum = frameNum;
         this.obj = obj;
     }
+}
+
+
+// part of Sascha Willems's setImageLayout refactored here
+Trans!Access getLayoutAccess(in Trans!ImageLayout layout) pure
+{
+    Trans!Access access;
+
+    // Source access mask controls actions that have to be finished on the old layout
+    // before it will be transitioned to the new layout
+    switch (layout.from)
+    {
+    case ImageLayout.undefined:
+        // Image layout is undefined (or does not matter)
+        // Only valid as initial layout
+        // No flags required, listed only for completeness
+        access.from = Access.none;
+        break;
+
+    case ImageLayout.preinitialized:
+        // Image is preinitialized
+        // Only valid as initial layout for linear images, preserves memory contents
+        // Make sure host writes have been finished
+        access.from = Access.hostWrite;
+        break;
+
+    case ImageLayout.colorAttachmentOptimal:
+        // Image is a color attachment
+        // Make sure any writes to the color buffer have been finished
+        access.from = Access.colorAttachmentWrite;
+        break;
+
+    case ImageLayout.depthStencilAttachmentOptimal:
+        // Image is a depth/stencil attachment
+        // Make sure any writes to the depth/stencil buffer have been finished
+        access.from = Access.depthStencilAttachmentWrite;
+        break;
+
+    case ImageLayout.transferSrcOptimal:
+        // Image is a transfer source
+        // Make sure any reads from the image have been finished
+        access.from = Access.transferRead;
+        break;
+
+    case ImageLayout.transferDstOptimal:
+        // Image is a transfer destination
+        // Make sure any writes to the image have been finished
+        access.from = Access.transferWrite;
+        break;
+
+    case ImageLayout.shaderReadOnlyOptimal:
+        // Image is read by a shader
+        // Make sure any shader reads from the image have been finished
+        access.from = Access.shaderRead;
+        break;
+
+    default:
+        // Other source layouts aren't handled (yet)
+        break;
+    }
+
+    // Destination access mask controls the dependency for the new image layout
+    switch (layout.to)
+    {
+    case ImageLayout.transferDstOptimal:
+        // Image will be used as a transfer destination
+        // Make sure any writes to the image have been finished
+        access.to = Access.transferWrite;
+        break;
+
+    case ImageLayout.transferSrcOptimal:
+        // Image will be used as a transfer source
+        // Make sure any reads from the image have been finished
+        access.to = Access.transferRead;
+        break;
+
+    case ImageLayout.colorAttachmentOptimal:
+        // Image will be used as a color attachment
+        // Make sure any writes to the color buffer have been finished
+        access.to = Access.colorAttachmentWrite;
+        break;
+
+    case ImageLayout.depthStencilAttachmentOptimal:
+        // Image layout will be used as a depth/stencil attachment
+        // Make sure any writes to depth/stencil buffer have been finished
+        access.to = Access.depthStencilAttachmentWrite;
+        break;
+
+    case ImageLayout.shaderReadOnlyOptimal:
+        // Image will be read in a shader (sampler, input attachment)
+        // Make sure any writes to the image have been finished
+        if (access.from == Access.none) {
+            access.from = Access.hostWrite | Access.transferWrite;
+        }
+        access.to = Access.shaderRead;
+        break;
+
+    default:
+        // Other source layouts aren't handled (yet)
+        break;
+    }
+
+    return access;
 }

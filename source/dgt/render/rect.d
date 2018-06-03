@@ -50,8 +50,7 @@ class RectRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.rect);
     }
 
-    override void prepare(Device device, DeclarativeStore store,
-                          Allocator allocator, RenderServices services,
+    override void prepare(RenderServices services, DeclarativeStore store,
                           PrepareContext ctx)
     {}
 

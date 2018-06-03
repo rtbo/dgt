@@ -183,8 +183,7 @@ interface FGNodeRenderer : Disposable
     FGType type() const;
 
     /// called once during preparation step
-    void prepare(Device device, DeclarativeStore store, Allocator allocator,
-                 RenderServices services, PrepareContext ctx);
+    void prepare(RenderServices services, DeclarativeStore store, PrepareContext ctx);
     /// called once at end of preparation step to init descriptors
     void initDescriptors(DescriptorPool pool);
     /// called during prerender step for each node that fits type
@@ -624,7 +623,7 @@ class RendererBase : Renderer
         import std.range : chain;
         import std.typecons : scoped;
 
-        services = new RenderServices;
+        services = new RenderServices(graphicsQueue, graphicsPool, allocator);
 
         dgtRenderers = new FGNodeRenderer[FGRenderType.max + 1];
 
@@ -637,7 +636,7 @@ class RendererBase : Renderer
         auto ctx = scoped!PrepareContext;
 
         foreach (nr; chain(dgtRenderers, userRenderers)) {
-            nr.prepare(device, declEng.store, allocator, services, ctx);
+            nr.prepare(services, declEng.store, ctx);
         }
 
         DescriptorPoolSize[DescriptorType.max+1] poolSizes;
