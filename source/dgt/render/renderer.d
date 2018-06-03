@@ -172,6 +172,7 @@ class RenderContext
 interface FGNodeRenderer : Disposable
 {
     import dgt.render.framegraph : FGType;
+    import dgt.render.services : RenderServices;
     import gfx.decl.store : DeclarativeStore;
     import gfx.graal.device : Device;
     import gfx.graal.cmd : CommandBuffer;
@@ -182,7 +183,8 @@ interface FGNodeRenderer : Disposable
     FGType type() const;
 
     /// called once during preparation step
-    void prepare(Device device, DeclarativeStore store, Allocator allocator, PrepareContext ctx);
+    void prepare(Device device, DeclarativeStore store, Allocator allocator,
+                 RenderServices services, PrepareContext ctx);
     /// called once at end of preparation step to init descriptors
     void initDescriptors(DescriptorPool pool);
     /// called during prerender step for each node that fits type
@@ -203,6 +205,7 @@ class RendererBase : Renderer
 {
     import dgt.render.cache :       RenderCache;
     import dgt.render.rect :        RectRenderer;
+    import dgt.render.services :    RenderServices;
     import dgt.render.text :        TextRenderer;
     import gfx.core.rc :            Rc;
     import gfx.decl.engine :        DeclarativeEngine;
@@ -240,6 +243,7 @@ class RendererBase : Renderer
 
     private RenderCache cache;
     private Rc!DescriptorPool descPool;
+    private RenderServices services;
     private FGNodeRenderer[] dgtRenderers;
     private FGNodeRenderer[] userRenderers;
     private bool initialized;
@@ -288,6 +292,7 @@ class RendererBase : Renderer
 
         disposeArr(dgtRenderers);
         disposeArr(userRenderers);
+        disposeObj(services);
         descPool.unload();
         disposeObj(cache);
         disposeObj(declEng);
@@ -400,6 +405,10 @@ class RendererBase : Renderer
                 wh, s, device, renderPass, graphicsPool, swapchainProps
             );
             initialized = true;
+        }
+
+        scope(exit) {
+            services.incrFrameNum();
         }
 
         // prerender(frames);
@@ -615,6 +624,8 @@ class RendererBase : Renderer
         import std.range : chain;
         import std.typecons : scoped;
 
+        services = new RenderServices;
+
         dgtRenderers = new FGNodeRenderer[FGRenderType.max + 1];
 
         void addRenderer(FGNodeRenderer nr) {
@@ -626,7 +637,7 @@ class RendererBase : Renderer
         auto ctx = scoped!PrepareContext;
 
         foreach (nr; chain(dgtRenderers, userRenderers)) {
-            nr.prepare(device, declEng.store, allocator, ctx);
+            nr.prepare(device, declEng.store, allocator, services, ctx);
         }
 
         DescriptorPoolSize[DescriptorType.max+1] poolSizes;

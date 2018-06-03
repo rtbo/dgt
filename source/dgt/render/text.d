@@ -3,73 +3,13 @@ module dgt.render.text;
 import dgt.render.renderer : FGNodeRenderer;
 import gfx.core.rc : AtomicRefCounted, Disposable;
 
-final class GarbageCollector : Disposable
-{
-    static class Garbage
-    {
-        size_t frameNum;
-        AtomicRefCounted obj;
-        Garbage next;
-
-        this (size_t frameNum, AtomicRefCounted obj)
-        {
-            this.frameNum = frameNum;
-            this.obj = obj;
-        }
-    }
-
-    size_t maxAge = 4;
-    size_t frameNum;
-    Garbage first;
-    Garbage last;
-
-    void incrFrameNum()
-    {
-        import gfx.core.rc : releaseObj;
-
-        ++frameNum;
-        if (frameNum >= maxAge) {
-            const lastAllowed = frameNum-maxAge;
-            while (first && first.frameNum < lastAllowed) {
-                releaseObj(first.obj);
-                first = first.next;
-            }
-        }
-    }
-
-    void collect(AtomicRefCounted obj)
-    {
-        import gfx.core.rc : retainObj;
-
-        auto g = new Garbage(frameNum, retainObj(obj));
-        if (!last) {
-            assert(!first);
-            first = g;
-            last = g;
-        }
-        else {
-            assert(!last.next);
-            last.next = g;
-            last = g;
-        }
-    }
-
-    override void dispose()
-    {
-        import gfx.core.rc : releaseObj;
-
-        while(first) {
-            releaseObj(first.obj);
-            first = first.next;
-        }
-    }
-}
 
 final class TextRenderer : FGNodeRenderer
 {
     import dgt.render.atlas : GlyphAtlas;
     import dgt.render.framegraph : FGNode, FGType;
     import dgt.render.renderer : PrepareContext, PrerenderContext, RenderContext;
+    import dgt.render.services : RenderServices;
     import dgt.text.layout : TextShape;
     import gfx.core.rc : Rc;
     import gfx.decl.store : DeclarativeStore;
@@ -93,7 +33,7 @@ final class TextRenderer : FGNodeRenderer
     private DescriptorSet ds;
     private AtlasTexture[] atlases;
     private GlyphRun[size_t] glyphRuns;
-    private GarbageCollector gc;
+    private RenderServices services;
 
     private size_t nodeCount;
     private size_t glyphCount;
@@ -111,13 +51,11 @@ final class TextRenderer : FGNodeRenderer
 
     this()
     {
-        gc = new GarbageCollector;
     }
 
     override void dispose()
     {
         import std.algorithm : each;
-        gc.dispose();
         uniformBuf.unload();
         vertexBuf.unload();
         indexBuf.unload();
@@ -138,7 +76,9 @@ final class TextRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.text);
     }
 
-    override void prepare(Device device, DeclarativeStore store, Allocator allocator, PrepareContext ctx)
+    override void prepare(Device device, DeclarativeStore store,
+                          Allocator allocator, RenderServices services,
+                          PrepareContext ctx)
     {
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.image : SamplerInfo;
@@ -147,6 +87,7 @@ final class TextRenderer : FGNodeRenderer
 
         this.device = device;
         this.allocator = allocator;
+        this.services = services;
         this.pipeline = store.expect!Pipeline("text_pl");
         this.layout = store.expect!PipelineLayout("text_layout");
         this.dsl = store.expect!DescriptorSetLayout("text_dsl");
@@ -200,7 +141,7 @@ final class TextRenderer : FGNodeRenderer
         import std.algorithm : each;
 
         atlases.each!((ref AtlasTexture atlas) {
-            atlas.realize(device, allocator, gc, cmd);
+            atlas.realize(device, allocator, services, cmd);
         });
 
         mvpLen = nodeCount * MVP.sizeof;
@@ -213,7 +154,7 @@ final class TextRenderer : FGNodeRenderer
 
         if (!uniformBuf || uniformBuf.size != uniformSize) {
             if (uniformBuf) {
-                gc.collect(uniformBuf);
+                services.gc(uniformBuf);
             }
             uniformBuf = allocator.allocateBuffer(
                 BufferUsage.uniform, uniformSize,
@@ -223,7 +164,7 @@ final class TextRenderer : FGNodeRenderer
         }
         if (!vertexBuf || vertexBuf.size != vertexSize) {
             if (vertexBuf) {
-                gc.collect(vertexBuf);
+                services.gc(vertexBuf);
             }
             vertexBuf = allocator.allocateBuffer(
                 BufferUsage.vertex, vertexSize,
@@ -356,7 +297,6 @@ final class TextRenderer : FGNodeRenderer
         nodeCount = 0;
         uniformBuf.releaseMap();
         vertexBuf.releaseMap();
-        gc.incrFrameNum();
     }
 
     private void feedGlyphRun(in TextShape shape)
@@ -468,6 +408,7 @@ class GlyphRun
 struct AtlasTexture
 {
     import dgt.render.atlas : GlyphAtlas;
+    import dgt.render.services : RenderServices;
     import dgt.render.renderer : PrerenderContext;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
@@ -486,7 +427,7 @@ struct AtlasTexture
         releaseObj(this.view);
     }
 
-    void realize(Device device, Allocator allocator, GarbageCollector gc, CommandBuffer cmd)
+    void realize(Device device, Allocator allocator, RenderServices services, CommandBuffer cmd)
     {
         // rebuild and upload texture
         import gfx.core.rc :        rc, retainObj;
@@ -546,7 +487,7 @@ struct AtlasTexture
                     stagBuf.buffer, imgAlloc.image, ImageLayout.transferDstOptimal,
                     regions
                 );
-                gc.collect(stagBuf.obj);
+                services.gc(stagBuf.obj);
             }
 
             auto view = imgAlloc.image.createView(

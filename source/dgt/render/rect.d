@@ -21,6 +21,7 @@ class RectRenderer : FGNodeRenderer
 {
     import dgt.render.framegraph : FGNode, FGRectNode, FGType;
     import dgt.render.renderer : PrepareContext, PrerenderContext, RenderContext;
+    import dgt.render.services : RenderServices;
     import gfx.decl.store : DeclarativeStore;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
@@ -49,7 +50,9 @@ class RectRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.rect);
     }
 
-    override void prepare(Device device, DeclarativeStore store, Allocator allocator, PrepareContext ctx)
+    override void prepare(Device device, DeclarativeStore store,
+                          Allocator allocator, RenderServices services,
+                          PrepareContext ctx)
     {}
 
     override void initDescriptors(DescriptorPool pool)
