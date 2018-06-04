@@ -88,24 +88,28 @@ class RectRendererBase : Disposable
 {
     import dgt.render.framegraph : FGRectNode;
     import dgt.render.renderer : RenderContext;
+    import dgt.render.services : RenderServices;
     import gfx.core.rc : Rc;
-    import gfx.decl.store : DeclarativeStore;
+    import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : Pipeline;
     import gfx.math.mat : FMat4;
     import gfx.memalloc : Allocator;
 
     Rc!Device device;
-    Rc!Pipeline pipeline;
     Rc!Allocator allocator;
+    RenderServices services;
+
+    Rc!Pipeline pipeline;
     string prefix;
 
-    this(Device device, DeclarativeStore store, Allocator allocator, string prefix)
+    this(RenderServices services, DeclarativeEngine declEng, string prefix)
     {
-        this.device = device;
-        this.allocator = allocator;
+        this.services = services;
+        this.device = services.device;
+        this.allocator = services.allocator;
         this.prefix = prefix;
-        this.pipeline = store.expect!Pipeline(prefix~"_pl");
+        this.pipeline = declEng.store.expect!Pipeline(prefix~"_pl");
     }
 
     override void dispose()
@@ -119,25 +123,27 @@ class RectRendererBase : Disposable
 
 class RectColRenderer : RectRendererBase
 {
-    import gfx.decl.store : DeclarativeStore;
+    import dgt.render.services : RenderServices;
+    import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : Pipeline;
 
-    this(Device device, DeclarativeStore store, Allocator allocator)
+    this(RenderServices services, DeclarativeEngine declEng)
     {
-        super(device, store, allocator, "rectcol");
+        super(services, declEng, "rectcol");
     }
 }
 
 class RectImgRenderer : RectRendererBase
 {
+    import dgt.render.services : RenderServices;
     import gfx.decl.store : DeclarativeStore;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : Pipeline;
 
-    this(Device device, DeclarativeStore store, Allocator allocator)
+    this(RenderServices services, DeclarativeEngine declEng)
     {
-        super(device, store, allocator, "rectimg");
+        super(services, declEng, "rectimg");
     }
 }
 

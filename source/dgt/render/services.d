@@ -1,3 +1,5 @@
+/// Rendering services module
+/// Set of utilities to help rendering
 module dgt.render.services;
 
 import gfx.core.rc : Disposable;
@@ -5,6 +7,12 @@ import gfx.core.typecons : Trans;
 import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
 
+/// General services helper for nodes. Provides:
+///     - reference to device, graphics queue and allocator
+///     - a garbage collector that keep the collected resources around for
+///       a predefined number of frames.
+///     - a staging buffer service for optimal images.
+///     - a RAII command buffer service
 final class RenderServices : Disposable
 {
     import gfx.core.rc : AtomicRefCounted;
@@ -47,12 +55,19 @@ final class RenderServices : Disposable
         releaseObj(_device);
     }
 
+    /// The device associated to services
     @property Device device() {
         return _device;
     }
 
+    /// A memory allocator
     @property Allocator allocator() {
         return _allocator;
+    }
+
+    /// The graphics queue
+    @property Queue queue() {
+        return _queue;
     }
 
     /// Returns a RAII command buffer that will be submitted to a queue when it
@@ -64,16 +79,18 @@ final class RenderServices : Disposable
 
     /// Stage the provided data to an image
     /// Use this to fill data to images with optimal layout, or residing in device local memory.
-    void stageDataToImage(CommandBuffer cmd, Image image, ImageAspect aspect, ImageLayout layout, void[] data)
+    /// image layout will be set to transferDstOptimal if currentLayout is not transferDstOptimal.
+    void stageDataToImage(CommandBuffer cmd, Image image, ImageAspect aspect,
+                          ImageLayout currentLayout, void[] data)
     {
         import gfx.core.rc : rc;
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.cmd : BufferImageCopy;
         import gfx.memalloc : AllocOptions, MemoryUsage;
 
-        if (layout != ImageLayout.transferDstOptimal) {
+        if (currentLayout != ImageLayout.transferDstOptimal) {
             setImageLayout(
-                cmd, image, aspect, layout, ImageLayout.transferDstOptimal
+                cmd, image, aspect, currentLayout, ImageLayout.transferDstOptimal
             );
         }
 
@@ -100,6 +117,9 @@ final class RenderServices : Disposable
         gc(stagBuf.obj);
     }
 
+    /// Collect and retain obj into a garbage pool until it is eventually released
+    /// a predefined number of frames later.
+    /// Used mainly when you want to dispose a resource you just sent into a command buffer.
     void gc (AtomicRefCounted obj)
     {
         import gfx.core.rc : retainObj;
