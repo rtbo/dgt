@@ -25,7 +25,7 @@ final class TextRenderer : FGNodeRenderer
 
     private Rc!Device device;
     private Rc!Allocator allocator;
-    private RenderServices services;
+    private Rc!RenderServices services;
 
     private Rc!DescriptorSetLayout unifDsl;
     private Rc!DescriptorSetLayout imgDsl;
@@ -80,6 +80,7 @@ final class TextRenderer : FGNodeRenderer
         unifDsl.unload();
         imgDsl.unload();
         dsPool.unload();
+        services.unload();
         allocator.unload();
         layout.unload();
         pipeline.unload();

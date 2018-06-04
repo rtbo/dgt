@@ -33,7 +33,10 @@ class RectRenderer : FGNodeRenderer
     RectImgRenderer rectImg;
 
     this()
-    {}
+    {
+        rectCol = new RectColRenderer;
+        rectImg = new RectImgRenderer;
+    }
 
     override void dispose()
     {
@@ -67,6 +70,9 @@ class RectRenderer : FGNodeRenderer
         ).join("\n");
 
         declEng.parseSDLSource(sdl);
+
+        rectCol.prepare(services, declEng);
+        rectImg.prepare(services, declEng);
     }
 
     override void prerender(immutable(FGNode) node)
@@ -98,12 +104,12 @@ class RectRendererBase : Disposable
 
     Rc!Device device;
     Rc!Allocator allocator;
-    RenderServices services;
+    Rc!RenderServices services;
 
     Rc!Pipeline pipeline;
     string prefix;
 
-    this(RenderServices services, DeclarativeEngine declEng, string prefix)
+    void prepare (RenderServices services, DeclarativeEngine declEng, string prefix)
     {
         this.services = services;
         this.device = services.device;
@@ -114,6 +120,7 @@ class RectRendererBase : Disposable
 
     override void dispose()
     {
+        services.unload();
         allocator.unload();
         pipeline.unload();
         device.unload();
@@ -121,29 +128,29 @@ class RectRendererBase : Disposable
 }
 
 
-class RectColRenderer : RectRendererBase
+final class RectColRenderer : RectRendererBase
 {
     import dgt.render.services : RenderServices;
     import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : Pipeline;
 
-    this(RenderServices services, DeclarativeEngine declEng)
+    void prepare (RenderServices services, DeclarativeEngine declEng)
     {
-        super(services, declEng, "rectcol");
+        super.prepare(services, declEng, "rectcol");
     }
 }
 
-class RectImgRenderer : RectRendererBase
+final class RectImgRenderer : RectRendererBase
 {
     import dgt.render.services : RenderServices;
     import gfx.decl.store : DeclarativeStore;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : Pipeline;
 
-    this(RenderServices services, DeclarativeEngine declEng)
+    void prepare (RenderServices services, DeclarativeEngine declEng)
     {
-        super(services, declEng, "rectimg");
+        super.prepare(services, declEng, "rectimg");
     }
 }
 

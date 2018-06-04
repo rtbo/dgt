@@ -2,7 +2,7 @@
 /// Set of utilities to help rendering
 module dgt.render.services;
 
-import gfx.core.rc : Disposable;
+import gfx.core.rc : AtomicRefCounted;
 import gfx.core.typecons : Trans;
 import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
@@ -13,13 +13,15 @@ import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
 ///       a predefined number of frames.
 ///     - a staging buffer service for optimal images.
 ///     - a RAII command buffer service
-final class RenderServices : Disposable
+final class RenderServices : AtomicRefCounted
 {
-    import gfx.core.rc : AtomicRefCounted;
+    import gfx.core.rc : atomicRcCode;
     import gfx.graal.cmd : CommandPool;
     import gfx.graal.device : Device;
     import gfx.graal.queue : Queue;
     import gfx.memalloc : Allocator;
+
+    mixin(atomicRcCode);
 
     private Device _device;
     private Queue _queue;

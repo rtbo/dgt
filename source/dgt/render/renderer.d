@@ -183,6 +183,7 @@ class RendererBase : Renderer
     private Queue presentQueue;
     private DeclarativeEngine declEng;
     private Rc!Allocator allocator;
+    private Rc!RenderServices services;
 
     private Rc!RenderPass renderPass;
     private Rc!CommandPool prerenderPool;
@@ -197,7 +198,6 @@ class RendererBase : Renderer
 
     private RenderCache cache;
     private Rc!DescriptorPool descPool;
-    private RenderServices services;
     private FGNodeRenderer[] dgtRenderers;
     private FGNodeRenderer[] userRenderers;
     private bool initialized;
@@ -246,7 +246,6 @@ class RendererBase : Renderer
 
         disposeArr(dgtRenderers);
         disposeArr(userRenderers);
-        disposeObj(services);
         descPool.unload();
         disposeObj(cache);
         disposeObj(declEng);
@@ -257,6 +256,8 @@ class RendererBase : Renderer
         prerenderPool.unload();
         graphicsPool.unload();
         presentPool.unload();
+
+        services.unload();
         allocator.unload();
         device.unload();
         instance.unload();
