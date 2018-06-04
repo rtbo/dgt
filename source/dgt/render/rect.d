@@ -1,6 +1,6 @@
 /// Rect rendering module.
 /// implements hardware rendering of rect, possibly with rounded corners,
-/// with border, and paint (solid, linear gradient)
+/// with border, and paint (solid, linear gradient, and image)
 module dgt.render.rect;
 
 import dgt.core.geometry;
@@ -193,6 +193,9 @@ class RectRenderer : Disposable
 
             auto verts = buildVertices!ImgVertex(node);
             setTexCoords(verts, node);
+            import std.stdio;
+            // writeln("will render with vertices:");
+            // writeln(verts);
             vbuf = makeRc!(VertexBuffer!ImgVertex)(verts);
 
             import gfx.foundation.util : retypeSlice;
@@ -279,6 +282,12 @@ class RectRenderer : Disposable
         const ir = r - FPadding(hm);
         // extent rect
         const er = r + FMargins(hw);
+
+        // import std.stdio;
+        // writefln("r = %s", r);
+        // writefln("ir = %s", ir);
+        // writefln("er = %s", er);
+        // writefln("radius = %s", radius);
 
         V[] verts;
 

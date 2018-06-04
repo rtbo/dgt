@@ -132,11 +132,13 @@ class Label : View
         if (text.length) {
             width += _textNode.metrics.size.x;
             height += _textNode.metrics.size.y;
+            _textNode.measurement = _textNode.metrics.size;
         }
         if (icon) {
             import std.algorithm : max;
             width += icon.width;
             height = max(icon.height, height);
+            _iconNode.measurement = FSize(icon.width, icon.height);
             if (text.length) {
                 width += spacing;
             }

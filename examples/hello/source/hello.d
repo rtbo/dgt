@@ -32,24 +32,25 @@ int main()
     immutable logoImg = assumeUnique (
         Image.loadFromView!"dlang_logo.png"(ImageFormat.argb)
     );
+    logoImg.saveToFile("logo.png");
     auto label = new Label;
     label.text = "Hello";
     label.icon = logoImg;
     label.alignment = Alignment.center;
     label.id = "label";
 
-    auto btn = new Button;
-    btn.text = "Exit";
-    btn.alignment = Alignment.center;
-    btn.id = "button";
-    btn.onClick += {
-        app.exit(0);
-    };
+    // auto btn = new Button;
+    // btn.text = "Exit";
+    // btn.alignment = Alignment.center;
+    // btn.id = "button";
+    // btn.onClick += {
+    //     app.exit(0);
+    // };
 
     auto layout = new LinearLayout;
     layout.setVertical();
     layout.appendView(label);
-    layout.appendView(btn);
+    // layout.appendView(btn);
     layout.gravity = Gravity.center;
 
     ui.root = layout;

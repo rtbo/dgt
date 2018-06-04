@@ -26,6 +26,7 @@ class ImageView : View
         _img = image;
         _dirty = true;
         invalidate();
+        requestLayoutPass();
     }
 
     override @property string cssType()
@@ -35,12 +36,22 @@ class ImageView : View
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
+        import std.stdio;
         if (_img) {
             measurement = cast(FSize)_img.size;
+            writeln("meas img = ", measurement);
         }
         else {
             super.measure(widthSpec, heightSpec);
+            writeln("meas no img = ", measurement);
         }
+    }
+
+    override void layout(in FRect rect) {
+        _dirty = true;
+        import std.stdio;
+        writeln("layout : ", rect);
+        super.layout(rect);
     }
 
     override immutable(FGNode) render(FrameContext fc) {
@@ -50,6 +61,9 @@ class ImageView : View
             _fgNode = null;
         }
         if (_dirty && _img) {
+            import std.stdio;
+            writeln("localRect : ", localRect);
+            writeln("rect : ", rect);
             immutable img = _img.get;
             _fgNode = new immutable(FGRectNode)(
                 localRect, 0, new immutable(ImagePaint)(img),
