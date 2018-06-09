@@ -94,7 +94,7 @@ final class TextRenderer : FGNodeRenderer
         return FGType(FGTypeCat.render, FGRenderType.text);
     }
 
-    override void prepare(RenderServices services, DeclarativeEngine declEng)
+    override void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd)
     {
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.image : SamplerInfo;
@@ -118,13 +118,10 @@ final class TextRenderer : FGNodeRenderer
 
         this.indexBuf = allocator.allocateBuffer(
             BufferUsage.index, 6*ushort.sizeof,
-            AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+            AllocOptions.forUsage(MemoryUsage.gpuOnly)
         );
-        {
-            auto map = indexBuf.map();
-            auto view = map.view!(ushort[])();
-            view[] = [ 0, 1, 2, 0, 2, 3 ];
-        }
+        const ushort[6] indices = [ 0, 1, 2, 0, 2, 3 ];
+        this.services.stageDataToBuffer(cmd, this.indexBuf, 0, cast(const(void)[])indices[]);
     }
 
     override void prerender(immutable(FGNode) node)

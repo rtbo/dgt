@@ -12,10 +12,10 @@ struct ColorStop
 };
 
 layout(std140, binding=1) uniform Locals {
-    ColorStop stops[MAX_STOPS];
     vec4 stroke;
     float width;
     int numStops;
+    ColorStop stops[MAX_STOPS];
 } locals;
 
 

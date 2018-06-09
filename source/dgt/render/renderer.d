@@ -140,7 +140,7 @@ interface FGNodeRenderer : Disposable
     FGType type() const;
 
     /// called once during preparation step
-    void prepare(RenderServices services, DeclarativeEngine declEng);
+    void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd);
     /// called during prerender step for each node that fits type
     void prerender(immutable(FGNode) node);
     /// called once per frame to finalize the prerender step
@@ -505,7 +505,6 @@ class RendererBase : Renderer
 
     private void prepareDeclarative()
     {
-        import dgt.render.rect : RectColVertex, RectImgVertex;
         import dgt.render.defs : P2T2Vertex;
 
         declEng = new DeclarativeEngine(device);
@@ -570,22 +569,11 @@ class RendererBase : Renderer
         addRenderer(new RectRenderer);
         addRenderer(new TextRenderer);
 
+        auto autoCmd = services.autoCmd();
+
         foreach (nr; chain(dgtRenderers, userRenderers)) {
-            nr.prepare(services, declEng);
+            nr.prepare(services, declEng, autoCmd.cmd);
         }
-
-        // DescriptorPoolSize[DescriptorType.max+1] poolSizes;
-        // uint pos;
-        // foreach (dt, dc; ctx.descriptorCounts) {
-        //     if (dc > 0) {
-        //         poolSizes[pos++] = DescriptorPoolSize(cast(DescriptorType)dt, dc);
-        //     }
-        // }
-        // descPool = device.createDescriptorPool(ctx.setCount, poolSizes[0 .. pos]);
-
-        // foreach (nr; chain(dgtRenderers, userRenderers)) {
-        //     nr.initDescriptors(descPool);
-        // }
     }
 
     static void frameError(Args...)(string msg, Args args)

@@ -37,6 +37,19 @@ int main()
     label.icon = logoImg;
     label.alignment = Alignment.center;
     label.id = "label";
+    {
+        import gfx.math.transform : rotation, scale, translation;
+        import std.math : PI;
+        const size = label.size.asVec;
+        const center = fvec(size/2, 0);
+        const factor = 1.5f;
+        const transform =
+                translation(center) *
+                rotation(0.1*2*PI, fvec(0, 0, 1)) *
+                scale(factor, factor, 1) *
+                translation(-center);
+        label.transform = transform;
+    }
 
     auto btn = new Button;
     btn.text = "Exit";
@@ -80,7 +93,7 @@ int main()
     timer.duration = dur!"seconds"(1);
     timer.mode = PlatformTimer.Mode.singleShot;
     timer.handler = &anim.start;
-    timer.start();
+    //timer.start();
 
     return app.loop();
 }

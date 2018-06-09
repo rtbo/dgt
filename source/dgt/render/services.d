@@ -4,10 +4,12 @@ module dgt.render.services;
 
 import gfx.core.rc : AtomicRefCounted;
 import gfx.core.typecons : Trans;
+import gfx.graal.buffer : Buffer;
 import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
+import gfx.memalloc : BufferAlloc;
 
-/// General services helper for nodes. Provides:
+/// General services helper for the rendering of framegraph nodes. Provides:
 ///     - reference to device, graphics queue and allocator
 ///     - a garbage collector that keep the collected resources around for
 ///       a predefined number of frames.
@@ -83,7 +85,7 @@ final class RenderServices : AtomicRefCounted
     /// Use this to fill data to images with optimal layout, or residing in device local memory.
     /// image layout will be set to transferDstOptimal if currentLayout is not transferDstOptimal.
     void stageDataToImage(CommandBuffer cmd, Image image, ImageAspect aspect,
-                          ImageLayout currentLayout, void[] data)
+                          ImageLayout currentLayout, const(void)[] data)
     {
         import gfx.core.rc : rc;
         import gfx.graal.buffer : BufferUsage;
@@ -117,6 +119,41 @@ final class RenderServices : AtomicRefCounted
         );
 
         gc(stagBuf.obj);
+    }
+
+    /// Stage the provided data to offset bytes from start of buffer.
+    /// Buffer must be already bound to device local memory.
+    /// The function setup the transfer via an intermediate stage buffer or directly
+    /// whether the bound memory is host visible or not.
+    void stageDataToBuffer(CommandBuffer cmd, BufferAlloc buffer, size_t offset, const(void)[] data)
+    {
+        import gfx.core.rc : rc;
+        import gfx.core.typecons : trans;
+        import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.cmd : CopyRegion;
+        import gfx.graal.memory : MemProps;
+        import gfx.memalloc : AllocOptions, MemoryUsage;
+
+        if (buffer.mem.props & MemProps.hostVisible) {
+            auto mm = buffer.map(offset, data.length);
+            mm[] = data;
+        }
+        else {
+            auto stagBuf = _allocator.allocateBuffer(
+                BufferUsage.transferSrc, data.length,
+                AllocOptions.forUsage(MemoryUsage.cpuToGpu)
+            ).rc;
+
+            {
+                auto mm = stagBuf.map();
+                mm[] = data;
+            }
+
+            const reg = CopyRegion(trans(0, offset), data.length);
+            cmd.copyBuffer(trans(stagBuf.buffer, buffer.buffer), (&reg)[0..1]);
+
+            gc(stagBuf.obj);
+        }
     }
 
     /// Collect and retain obj into a garbage pool until it is eventually released
@@ -155,6 +192,27 @@ final class RenderServices : AtomicRefCounted
             }
         }
     }
+}
+
+/// Checks whether the buffer should be re-allocated, considering
+/// the needed size. The current rules are the following:
+///   - if buffer is null, return true
+///   - if buffer.size < neededSize, return true
+///   - if buffer.size > 2*neededSize, return true
+///   - otherwise, return false
+bool mustReallocBuffer(Buffer buffer, in size_t neededSize)
+{
+    return !buffer ||
+            buffer.size < neededSize ||
+            buffer.size > 2*neededSize;
+}
+
+/// ditto
+bool mustReallocBuffer(BufferAlloc buffer, in size_t neededSize)
+{
+    return !buffer ||
+            buffer.size < neededSize ||
+            buffer.size > 2*neededSize;
 }
 
 // from Sascha Willems' repo

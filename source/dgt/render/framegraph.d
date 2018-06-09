@@ -142,6 +142,8 @@ abstract class FGNode
 
 final class FGGroupNode : FGNode
 {
+    static immutable FGType fgType = FGType(FGTypeCat.meta, FGMetaType.group);
+
     immutable(FGNode)[] children;
 
     immutable this(immutable(FGNode)[] children)
@@ -151,12 +153,14 @@ final class FGGroupNode : FGNode
     }
     body {
         this.children = children;
-        super(FGType(FGTypeCat.meta, FGMetaType.group));
+        super(fgType);
     }
 }
 
 final class FGTransformNode : FGNode
 {
+    static immutable FGType fgType = FGType(FGTypeCat.meta, FGMetaType.transform);
+
     FMat4 transform;
     immutable(FGNode) child;
 
@@ -165,7 +169,7 @@ final class FGTransformNode : FGNode
         assert(child !is null);
     }
     body {
-        super(FGType(FGTypeCat.meta, FGMetaType.transform));
+        super(fgType);
         this.transform = transform;
         this.child = child;
     }
@@ -178,6 +182,8 @@ struct RectBorder {
 
 final class FGRectNode : FGNode
 {
+    static immutable FGType fgType = FGType(FGTypeCat.render, FGRenderType.rect);
+
     private FRect _rect;
     private float _radius;
     private Paint _paint;
@@ -187,7 +193,7 @@ final class FGRectNode : FGNode
     immutable this(in FRect rect, in float radius, immutable Paint paint,
                    in Option!RectBorder border, in CacheCookie=nullCookie)
     {
-        super(FGType(FGTypeCat.render, FGRenderType.rect));
+        super(fgType);
         _rect = rect;
         _radius = radius;
         _paint = paint;
@@ -213,12 +219,14 @@ final class FGRectNode : FGNode
 
 final class FGTextNode : FGNode
 {
+    static immutable FGType fgType = FGType(FGTypeCat.render, FGRenderType.text);
+
     FVec2 bearing;
     immutable(TextShape)[] shapes;
     FVec4 color;
 
     immutable this(in FVec2 bearing, immutable(TextShape)[] shapes, in FVec4 color) {
-        super(FGType(FGTypeCat.render, FGRenderType.text));
+        super(fgType);
         this.bearing = bearing;
         this.shapes = shapes;
         this.color = color;
