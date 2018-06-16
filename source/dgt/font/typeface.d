@@ -76,7 +76,7 @@ final class Glyph {
         return _glyphId;
     }
 
-    @property Image img() {
+    @property immutable(Image) img() {
         return _img;
     }
 
@@ -94,10 +94,10 @@ final class Glyph {
         return _isWhitespace;
     }
 
-    import std.typecons : Nullable;
+    import std.typecons : Nullable, Rebindable;
 
     private GlyphId _glyphId;
-    package(dgt.font) Image _img;
+    package(dgt.font) Rebindable!(immutable(Image)) _img;
     package(dgt.font) FVec2 _bearing;
     package(dgt.font) Nullable!GlyphMetrics _metrics;
     package(dgt.font) bool _isWhitespace;

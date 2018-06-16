@@ -262,7 +262,9 @@ final class FtScalingContext : ScalingContext
         enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa), "Could not decompose outline");
     }
 
-    override Glyph renderGlyph(in GlyphId glyphId) {
+    override Glyph renderGlyph(in GlyphId glyphId)
+    {
+        import std.typecons : Rebindable;
 
         Glyph* glp = glyphId in _glyphs;
         if (glp && (glp.img || glp._isWhitespace)) {
@@ -275,16 +277,17 @@ final class FtScalingContext : ScalingContext
         bool ownedByFT;
         auto img = renderGlyphPriv(glyphId, bearing, yReversed, ownedByFT);
 
-        Image glImg;
+        Rebindable!(immutable(Image)) glImg;
         if (img && yReversed) {
-            glImg = new Image(img.format, img.size, img.stride);
-            glImg.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
+            auto gi = new Image(img.format, img.size, img.stride);
+            gi.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
+            glImg = assumeUnique(gi);
         }
         else if (img && ownedByFT) {
-            glImg = img.dup;
+            glImg = img.idup;
         }
         else if (img) {
-            glImg = img;
+            glImg = assumeUnique(img);
         }
 
         // if (glImg) {
