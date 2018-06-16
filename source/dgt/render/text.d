@@ -6,7 +6,7 @@ import gfx.core.rc : AtomicRefCounted, Disposable;
 
 final class TextRenderer : FGNodeRenderer
 {
-    import dgt.render.atlas :       GlyphAtlas;
+    import dgt.render.atlas :      AtlasNode;
     import dgt.render.framegraph :  FGNode, FGType;
     import dgt.render.renderer :    RenderContext;
     import dgt.render.services :    RenderServices;
@@ -323,8 +323,7 @@ final class TextRenderer : FGNodeRenderer
                     auto an = gl.node;
 
                     // texel space rect
-                    const fSize = FSize(an.size.x, an.size.y);
-                    const txRect = FRect(cast(FVec2)an.origin, fSize);
+                    const txRect = cast(FRect)an.rect;
 
                     // normalized rect
                     immutable normRect = FRect(
@@ -379,7 +378,6 @@ final class TextRenderer : FGNodeRenderer
         import dgt.core.sync : synchronize;
         import dgt.font.library : FontLibrary;
         import dgt.font.typeface : Glyph, ScalingContext, Typeface;
-        import dgt.render.atlas : AtlasNode;
         import dgt.text.shaping : GlyphInfo;
         import gfx.core.rc : rc;
         import gfx.math : fvec, ivec;
@@ -413,16 +411,21 @@ final class TextRenderer : FGNodeRenderer
 
                 if (!node) {
                     // this glyph is not yet in an atlas, let's pack it
-                    const size = glyph.img.size.asVec;
-                    auto atlasF = atlases.find!(a => a.atlas.couldPack(size));
-                    if (atlasF.length) {
-                        node = atlasF[0].atlas.pack(size, glyph);
+                    foreach (a; atlases) {
+                        node = a.atlas.pack(glyph.img);
+                        if (node) break;
                     }
                     if (!node) {
+                        import dgt.core.image : ImageFormat;
+                        import dgt.render.atlas : Atlas;
+                        import dgt.render.binpack : maxRectsBinPackFactory, MaxRectsBinPack;
                         // could not find an atlas with room left, or did not create atlas at all yet
-                        auto atlas = new GlyphAtlas(ivec(128, 128), ivec(512, 512), 1);
+                        auto atlas = new Atlas(
+                            maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit),
+                            ImageFormat.a8, 2
+                        );
                         atlases ~= AtlasTexture(atlas);
-                        node = enforce(atlas.pack(size, glyph),
+                        node = enforce(atlas.pack(glyph.img),
                                 "could not pack a glyph into a new atlas. What size is this glyph??");
                     }
                     glyph.rendererData = node;
@@ -475,14 +478,14 @@ struct GRGlyph
 // TODO: make this a struct
 class GlyphRun
 {
-    import dgt.render.atlas : AtlasNode, GlyphAtlas;
+    import dgt.render.atlas : Atlas, AtlasNode;
 
     // most runs will have a single part, but if there are a lot of glyphs with
     // big size, it can happen that we come to an atlas boundary and then the
     // end of the run arrives on a second atlas
     struct Part {
         size_t atlasInd;
-        GlyphAtlas atlas;
+        Atlas atlas;
         GRGlyph[] glyphs;  // ordered array - each node map to a glyph
     }
 
@@ -491,14 +494,14 @@ class GlyphRun
 
 struct AtlasTexture
 {
-    import dgt.render.atlas : GlyphAtlas;
+    import dgt.render.atlas : Atlas;
     import dgt.render.services : RenderServices;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
-    import gfx.graal.image : Image, ImageView;
+    import gfx.graal.image : ImageView;
     import gfx.memalloc : ImageAlloc, Allocator;
 
-    GlyphAtlas atlas;
+    Atlas atlas;
     ImageAlloc imgAlloc;
     ImageView view;
 
@@ -514,6 +517,7 @@ struct AtlasTexture
     bool realize(RenderServices services, CommandBuffer cmd)
     {
         // rebuild and upload texture
+        import dgt.core.image :      Image;
         import dgt.render.services : setImageLayout;
         import gfx.core.rc :         rc, retainObj;
         import gfx.graal.cmd :       BufferImageCopy;
@@ -526,11 +530,13 @@ struct AtlasTexture
         import std.format :          format;
         import std.exception :       enforce;
 
-        if (atlas.realize()) {
+
+        Image img;
+        if (atlas.realize(img)) {
 
             release();
 
-            const sz = atlas.image.size;
+            const sz = img.size;
 
             auto imgAlloc = services.allocator.allocateImage
             (
@@ -544,7 +550,7 @@ struct AtlasTexture
             );
 
             services.stageDataToImage(
-                cmd, imgAlloc.image, ImageAspect.color, ImageLayout.undefined, atlas.image.data
+                cmd, imgAlloc.image, ImageAspect.color, ImageLayout.undefined, img.data
             );
 
             this.imgAlloc = retainObj(imgAlloc);

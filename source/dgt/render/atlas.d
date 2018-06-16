@@ -1,197 +1,206 @@
-/// module that implement font atlas generation
-/// see: https://straypixels.net/texture-packing-for-fonts/
-/// An alternative would also be the freetype-gl atlas implementation.
+/// module that produce atlases of packed images.
 module dgt.render.atlas;
 
-import gfx.core.rc : AtomicRefCounted;
-import gfx.math.vec : IVec2;
 
-// binary tree representation of a texture space
-
-final class AtlasNode
+class AtlasNode
 {
-    import dgt.font.typeface : Glyph;
-    import gfx.core.rc : Weak;
-    import gfx.math.vec : IVec2;
+    import dgt.core.geometry : IRect;
+    import dgt.core.image : Image;
+    import std.typecons : Rebindable;
 
-    this (GlyphAtlas atlas, in IVec2 origin, in IVec2 size) {
-        this.atlas = atlas;
-        _origin = origin;
-        _size = size;
+    private Atlas _atlas;
+    private Rebindable!(immutable(Image)) _image;
+    private IRect _rect;
+    private AtlasNode prev;
+    private AtlasNode next;
+
+    private this (Atlas atlas, immutable(Image) image, in IRect rect)
+    {
+        _atlas = atlas;
+        _image = image;
+        _rect = rect;
     }
 
-    @property IVec2 origin() const {
-        return _origin;
+    @property Atlas atlas() {
+        return _atlas;
     }
 
-    @property IVec2 size() const {
-        return _size;
+    @property immutable(Image) image() {
+        return _image;
     }
 
-    GlyphAtlas atlas;
-    Glyph glyph;
+    @property IRect rect() const {
+        return _rect;
+    }
 
-    private IVec2 _origin;
-    private IVec2 _size;
-    private AtlasNode left;
-    private AtlasNode right;
+    void setFree() {
+        _image = null;
+        _atlas.setFree(this);
+    }
+
+    @property bool isFree() const {
+        return _image is null;
+    }
 }
 
-final class GlyphAtlas
+
+class Atlas
 {
-    import dgt.core.image : Image;
-    import dgt.font.typeface : Glyph;
+    import dgt.core.geometry : ISize;
+    import dgt.core.image : Image, ImageFormat;
+    import dgt.render.binpack : BinPack, BinPackFactory;
+    import gfx.math : IVec2;
 
-    private AtlasNode root;
+    /// the rectangle bin packing algorithm
+    private BinPack _binPack;
+
+    /// the format of the bin image
+    private ImageFormat _format;
+
+    /// the side size if the bin
+    /// always a power of 2
+    private uint _binSize;
+
+    /// whether some nodes have been freed
+    /// this indicates that the atlas should repack itself if it can't pack
+    /// a new node
+    private bool _hasFreedNodes;
+
+    /// The first node of this atlas
+    private AtlasNode _first;
+    /// The last node of this atlas
+    private AtlasNode _last;
+
+    /// The image built from the set of nodes.
+    /// This member is set to null each time the image must be reconstructed
     private Image _image;
-    private IVec2 _textureSize;
-    private IVec2 _maxSize;
+
+    /// Margin around images
     private int _margin;
-    private IVec2 lastFailedSize=IVec2(int.max, int.max);
-    private size_t numNodes;
-    private bool _realized;
 
+    /// The bin side size at the start
+    enum startSize = 128;
+    /// The max side size the bin can be extended to
+    enum maxSize = 512;
 
-    this (in IVec2 startSize, in IVec2 maxSize, in int margin=0) {
-        _textureSize = startSize;
-        _maxSize = maxSize;
+    this (BinPackFactory factory, in ImageFormat format, int margin=0)
+    {
+        _binPack = factory(ISize(startSize, startSize), true);
+        _binSize = startSize;
+        _format = format;
         _margin = margin;
-        root = new AtlasNode(this, IVec2(margin, margin), maxSize - 2*IVec2(margin, margin));
     }
 
-    @property IVec2 textureSize() {
-        return _textureSize;
+    @property IVec2 textureSize() const {
+        import gfx.math : ivec;
+        return ivec(_binSize, _binSize);
     }
 
-    AtlasNode pack(in IVec2 size, Glyph glyph) {
-        auto node = pack(root, size);
-        while (!node && (_textureSize.x < _maxSize.x || _textureSize.y < _maxSize.y)) {
-            import std.algorithm : min;
-            _textureSize.x = min(_textureSize.x*2, _maxSize.x);
-            _textureSize.y = min(_textureSize.y*2, _maxSize.y);
-            node = pack(root, size);
+    /// Packs an image into the atlas.
+    /// Returns: whether the pack was successful.
+    AtlasNode pack (immutable(Image) image)
+    {
+        import dgt.core.geometry : IMargins, IRect;
+
+        const sz = image.size + IMargins(_margin);
+        IRect rect;
+        bool packed = _binPack.pack(sz, rect);
+        if (!packed && _hasFreedNodes) {
+            _image = null;
+            repack();
+            packed = _binPack.pack(sz, rect);
         }
-        if (node) {
-            node.glyph = glyph;
-            ++numNodes;
-            _realized = false;
+        if (!packed && _binSize != maxSize && _binPack.extensible) {
+            _image = null;
+            _binSize *= 2;
+            _binPack.extend( ISize(_binSize, _binSize) );
+            packed = _binPack.pack(sz, rect);
+        }
+        if (!packed) {
+            return null;
+        }
+
+        _image = null;
+
+        auto n = new AtlasNode(this, image, rect - IMargins(_margin));
+        if (!_last) {
+            assert(!_first);
+            _first = n;
+            _last = n;
         }
         else {
-            import std.algorithm : min;
-            lastFailedSize.x = min(lastFailedSize.x, size.x);
-            lastFailedSize.y = min(lastFailedSize.y, size.y);
+            assert(!_last.next);
+            _last.next = n;
+            n.prev = _last;
+            _last = n;
         }
-        return node;
+        return n;
     }
 
-    bool couldPack(in IVec2 size) {
-        return size.x < lastFailedSize.x || size.y < lastFailedSize.y;
-    }
-
-    /// Realize the atlas, that is render all collected glyphs in an image.
-    /// Returns: true if the image was updated, false otherwise
-    bool realize()
+    /// Realizes the assembly into a single image.
+    /// If the image was not already realized, or if data has changed, returns true.
+    /// Otherwise (same data as previous call returned) returns false.
+    bool realize(out Image img)
     {
-        import dgt.core.geometry : ISize;
-        import dgt.core.image : alignedStrideForWidth, Image, ImageFormat;
+        import dgt.core.image : alignedStrideForWidth;
         import gfx.math : ivec;
 
-        if (_realized) return false;
-
-        scope(success) _realized = true;
-
-        const sz = ISize(_textureSize.x, _textureSize.y);
-        if (!_image || _image.size != sz) {
-            _image = new Image(ImageFormat.a8, sz, alignedStrideForWidth(ImageFormat.a8, sz.width));
+        if (_image) {
+            img = _image;
+            return false;
         }
+
+        const bs = ISize(_binSize, _binSize);
+
+        if (!_image || _image.size != bs) {
+            _image = new Image(
+                ImageFormat.a8, bs,
+                alignedStrideForWidth(ImageFormat.a8, bs.width)
+            );
+        }
+        /// uint ok also for 1 byte format as we have power of 2 sizes
         _image.clear!uint(0);
 
-        void browse(AtlasNode node) {
-            if (node.glyph) {
-                _image.blitFrom(node.glyph.img, ivec(0, 0), node.origin, node.glyph.img.size);
-            }
-            if (node.left) {
-                browse(node.left);
-            }
-            if (node.right) {
-                browse(node.right);
-            }
+        AtlasNode n = _first;
+        while (n) {
+            const nr = n.rect;
+            _image.blitFrom(n.image, ivec(0, 0), nr.point, nr.size);
+            n = n.next;
         }
-
-        browse(root);
 
         import std.format;
         static int num = 1;
         _image.saveToFile(format("atlas%s.png", num++));
 
+        img = _image;
         return true;
     }
 
-    /// Get the realized image of the Atlas. It has format ImageFormat.a8.
-    @property Image image() {
-        return _image;
+    private void setFree(AtlasNode node)
+    {
+        if (node is _first) {
+            _first = node.next;
+        }
+        if (node is _last) {
+            _last = node.prev;
+        }
+        if (node.prev) {
+            node.prev.next = node.next;
+        }
+        if (node.next) {
+            node.next.prev = node.prev;
+        }
+        _hasFreedNodes = true;
     }
 
-
-    /// Recursively scan the tree from node to find a space for the given size.
-    /// Returns: a new node if space was found, null otherwise.
-    private AtlasNode pack (AtlasNode node, in IVec2 size)
-    in {
-        assert(node, "Node is null");
-    }
-    body {
-        if (node.glyph) {
-            // that one is filled, can't pack anything here.
-            return null;
-        }
-        else if (node.left && node.right) {
-            // not a leaf, we try to insert on the left, then on the right.
-            auto n = pack(node.left, size);
-            if (!n) {
-                n = pack(node.right, size);
-            }
-            return n;
-        }
-        else {
-            // this is an unfilled leaf. let's see if it can be filled.
-            auto realSize = node.size;
-            if (node.origin.x + node.size.x == _maxSize.x - _margin) {
-                realSize.x = _textureSize.x - node.origin.x - _margin;
-            }
-            if (node.origin.y + node.size.y == _maxSize.y - _margin) {
-                realSize.y = _textureSize.y - node.origin.y - _margin;
-            }
-
-            if (node.size.x == size.x && node.size.y == size.y) {
-                // perfect fit, let's pack it here
-                return node;
-            }
-            else if (realSize.x < size.x || realSize.y < size.y) {
-                // not enough space here
-                return null;
-            }
-            else {
-                // large enough, let's divide space for the given size
-                const remain = realSize - size;
-                assert(remain.x >= 0 && remain.y >= 0);
-                auto vertical = remain.x < remain.y;
-                if (remain.x == 0 && remain.y == 0) {
-                    // edge case, we hit the border exactly
-                    vertical = node.size.y >= node.size.x;
-                }
-                assert(!node.left && !node.right, "always assign both left and right together");
-                if (vertical) {
-                    node.left = new AtlasNode(this, node.origin, IVec2(node.size.x, size.y));
-                    node.right = new AtlasNode(this, IVec2(node.origin.x, node.origin.y+size.y),
-                                               IVec2(node.size.x, node.size.y-size.y));
-                }
-                else {
-                    node.left = new AtlasNode(this, node.origin, IVec2(size.x, node.size.y));
-                    node.right = new AtlasNode(this, IVec2(node.origin.x+size.x, node.origin.y),
-                                               IVec2(node.size.x-size.x, node.size.y));
-                }
-                return pack(node.left, size);
-            }
+    private void repack() {
+        _binPack.reset(ISize(_binSize, _binSize));
+        auto n = _first;
+        while (n) {
+            assert(n.image);
+            const packed = _binPack.pack(n.image.size, n._rect);
+            assert(packed);
+            n = n.next;
         }
     }
 }
