@@ -51,6 +51,21 @@ struct Size(T) if (isNumeric!T)
     Vec2!T asVec() const {
         return Vec2!T(width, height);
     }
+
+    ref Size!T opOpAssign(string op)(in Margins!T rhs) if (op == "+" || op == "-")
+    {
+        mixin("width "~op~"= rhs.horizontal;");
+        mixin("height "~op~"= rhs.vertical;");
+        return this;
+    }
+
+    Size!T opBinary(string op)(in Margins!T rhs) const if (op == "+" || op == "-")
+    {
+        Size!T ret = this;
+        mixin("ret " ~ op ~ "= rhs;");
+        return ret;
+    }
+
 }
 
 unittest
@@ -434,7 +449,7 @@ struct Rect(T) if (isNumeric!T)
         return cast(T)(_y + _h/2);
     }
 
-    ref Rect!T opOpAssign(string op)(in FMargins rhs) if (op == "+")
+    ref Rect!T opOpAssign(string op)(in Margins!T rhs) if (op == "+")
     {
         _x -= rhs.left;
         _y -= rhs.top;
@@ -443,7 +458,7 @@ struct Rect(T) if (isNumeric!T)
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(in FMargins rhs) if (op == "-")
+    ref Rect!T opOpAssign(string op)(in Margins!T rhs) if (op == "-")
     {
         _x += rhs.left;
         _y += rhs.top;
@@ -452,7 +467,7 @@ struct Rect(T) if (isNumeric!T)
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(in FPadding rhs) if (op == "+")
+    ref Rect!T opOpAssign(string op)(in Padding!T rhs) if (op == "+")
     {
         _x -= rhs.left;
         _y -= rhs.top;
@@ -461,7 +476,7 @@ struct Rect(T) if (isNumeric!T)
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(in FPadding rhs) if (op == "-")
+    ref Rect!T opOpAssign(string op)(in Padding!T rhs) if (op == "-")
     {
         _x += rhs.left;
         _y += rhs.top;
@@ -582,7 +597,7 @@ if (isRect!R1 && isRect!R2)
 bool overlaps(R1, R2)(in R1 r1, in R2 r2)
 if (isRect!R1 && isRect!R2)
 {
-    return r1.right >= r2.left && r1.left <= r2.right && r1.bottom >= r2.top && r1.top <= r2.bottom;
+    return r1.right > r2.left && r1.left < r2.right && r1.bottom > r2.top && r1.top < r2.bottom;
 }
 
 /// Computes the intersection of r1 with r2
