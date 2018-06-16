@@ -54,11 +54,11 @@ interface BinPack
 }
 
 /// A bin-pack factory
-alias BinPackFactory = BinPack delegate (in ISize size, in bool allowFlip);
+alias BinPackFactory = BinPack delegate (in ISize size);
 
-BinPackFactory maxRectsBinPackFactory(in MaxRectsBinPack.Heuristic heuristic)
+BinPackFactory maxRectsBinPackFactory(in MaxRectsBinPack.Heuristic heuristic, in bool allowFlip)
 {
-    BinPack make (in ISize size, in bool allowFlip) {
+    BinPack make (in ISize size) {
         return new MaxRectsBinPack(heuristic, size, allowFlip);
     }
     return &make;

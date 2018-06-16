@@ -43,13 +43,86 @@ class AtlasNode
     }
 }
 
+struct AtlasSizeRange
+{
+    import dgt.core.geometry : ISize;
+
+    /// A delegate that define the step taken to extent current towards max.
+    /// It is called with current and must return the new value for current.
+    alias Stepper = ISize delegate (in ISize sz);
+
+    ISize current;
+    ISize max;
+    Stepper stepper;
+
+    /// The size is fixed to a single dimension
+    this (in ISize fixed)
+    {
+        this(fixed, fixed);
+    }
+
+    /// The size starts at start and can extend to max in a single step
+    this (in ISize start, in ISize max)
+    {
+        this (start, max, cast(Stepper) sz => max);
+    }
+
+    /// The size starts at start and can extend to max by successive application of stepper
+    this (in ISize start, in ISize max, Stepper stepper)
+    in {
+        assert(max.width >= start.width);
+        assert(max.height >= start.height);
+        assert(max.width == start.width || stepper(start).width > start.width);
+        assert(max.height == start.height || stepper(start).height > start.height);
+    }
+    body {
+        this.current = start;
+        this.max = max;
+        this.stepper = stepper;
+    }
+
+    /// initialize a square size range
+    this (in uint fixed)
+    {
+        this(ISize(fixed, fixed));
+    }
+
+    /// ditto
+    this (in uint start, in uint max)
+    {
+        this(ISize(start, start), ISize(max, max));
+    }
+
+    /// ditto
+    this (in uint start, in uint max, Stepper stepper)
+    {
+        this(ISize(start, start), ISize(max, max), stepper);
+    }
+
+    @property bool canExtend() const
+    {
+        return current != max;
+    }
+
+    void extend()
+    {
+        import std.algorithm : min;
+
+        const nextSz = stepper(current);
+
+        current = ISize(
+            min(nextSz.width, max.width),
+            min(nextSz.height, max.height),
+        );
+    }
+}
+
 
 class Atlas
 {
     import dgt.core.geometry : ISize;
     import dgt.core.image : Image, ImageFormat;
     import dgt.render.binpack : BinPack, BinPackFactory;
-    import gfx.math : IVec2;
 
     /// the rectangle bin packing algorithm
     private BinPack _binPack;
@@ -57,9 +130,8 @@ class Atlas
     /// the format of the bin image
     private ImageFormat _format;
 
-    /// the side size if the bin
-    /// always a power of 2
-    private uint _binSize;
+    /// the size range of the bin
+    private AtlasSizeRange _sizeRange;
 
     /// whether some nodes have been freed
     /// this indicates that the atlas should repack itself if it can't pack
@@ -78,22 +150,16 @@ class Atlas
     /// Margin around images
     private int _margin;
 
-    /// The bin side size at the start
-    enum startSize = 128;
-    /// The max side size the bin can be extended to
-    enum maxSize = 512;
-
-    this (BinPackFactory factory, in ImageFormat format, int margin=0)
+    this (BinPackFactory factory, in AtlasSizeRange sizeRange, in ImageFormat format, int margin=0)
     {
-        _binPack = factory(ISize(startSize, startSize), true);
-        _binSize = startSize;
+        _sizeRange = sizeRange;
+        _binPack = factory(_sizeRange.current);
         _format = format;
         _margin = margin;
     }
 
-    @property IVec2 textureSize() const {
-        import gfx.math : ivec;
-        return ivec(_binSize, _binSize);
+    @property ISize binSize() const {
+        return _sizeRange.current;
     }
 
     /// Packs an image into the atlas.
@@ -110,10 +176,10 @@ class Atlas
             repack();
             packed = _binPack.pack(sz, rect);
         }
-        if (!packed && _binSize != maxSize && _binPack.extensible) {
+        if (!packed && _sizeRange.canExtend && _binPack.extensible) {
             _image = null;
-            _binSize *= 2;
-            _binPack.extend( ISize(_binSize, _binSize) );
+            _sizeRange.extend();
+            _binPack.extend( _sizeRange.current );
             packed = _binPack.pack(sz, rect);
         }
         if (!packed) {
@@ -150,7 +216,7 @@ class Atlas
             return false;
         }
 
-        const bs = ISize(_binSize, _binSize);
+        const bs = binSize;
 
         if (!_image || _image.size != bs) {
             _image = new Image(
@@ -194,7 +260,7 @@ class Atlas
     }
 
     private void repack() {
-        _binPack.reset(ISize(_binSize, _binSize));
+        _binPack.reset(binSize);
         auto n = _first;
         while (n) {
             assert(n.image);

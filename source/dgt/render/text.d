@@ -65,8 +65,7 @@ final class TextRenderer : FGNodeRenderer
     }
 
     this()
-    {
-    }
+    {}
 
     override void dispose()
     {
@@ -308,7 +307,8 @@ final class TextRenderer : FGNodeRenderer
 
             foreach (p; gr.parts) {
 
-                const textureSize = cast(FVec2)p.atlas.textureSize;
+                const bs = p.atlas.binSize;
+                const textureSize = fvec(bs.width, bs.height);
                 const ind = p.atlasInd;
 
                 if (ind != boundAtlas) {
@@ -416,12 +416,14 @@ final class TextRenderer : FGNodeRenderer
                         if (node) break;
                     }
                     if (!node) {
+                        import dgt.core.geometry : ISize;
                         import dgt.core.image : ImageFormat;
-                        import dgt.render.atlas : Atlas;
+                        import dgt.render.atlas : Atlas, AtlasSizeRange;
                         import dgt.render.binpack : maxRectsBinPackFactory, MaxRectsBinPack;
                         // could not find an atlas with room left, or did not create atlas at all yet
                         auto atlas = new Atlas(
-                            maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit),
+                            maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit, false),
+                            AtlasSizeRange(128, 512, sz => ISize(sz.width*2, sz.height*2) ),
                             ImageFormat.a8, 2
                         );
                         atlases ~= AtlasTexture(atlas);
