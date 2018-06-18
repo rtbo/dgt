@@ -6,7 +6,7 @@ import gfx.core.rc : AtomicRefCounted, Disposable;
 
 final class TextRenderer : FGNodeRenderer
 {
-    import dgt.render.atlas :      AtlasNode;
+    import dgt.render.atlas :       Atlas, AtlasNode;
     import dgt.render.framegraph :  FGNode, FGType;
     import dgt.render.renderer :    RenderContext;
     import dgt.render.services :    RenderServices;
@@ -40,7 +40,7 @@ final class TextRenderer : FGNodeRenderer
     private Rc!BufferAlloc uniformBuf;
     private Rc!BufferAlloc indexBuf;
     private Rc!BufferAlloc vertexBuf;
-    private AtlasTexture[] atlases;
+    private Atlas[] atlases;
 
     private BoundResources boundRes;
     private GlyphRun[size_t] glyphRuns;
@@ -69,13 +69,13 @@ final class TextRenderer : FGNodeRenderer
 
     override void dispose()
     {
-        import std.algorithm : each;
+        import gfx.core.rc : releaseArr;
+
         uniformBuf.unload();
         vertexBuf.unload();
         indexBuf.unload();
         sampler.unload();
-        atlases.each!(a => a.release());
-        atlases = null;
+        releaseArr(atlases);
         unifDsl.unload();
         imgDsl.unload();
         dsPool.unload();
@@ -177,7 +177,7 @@ final class TextRenderer : FGNodeRenderer
             allocDescriptorSets();
         }
 
-        atlases.each!((ref AtlasTexture atlas) {
+        atlases.each!((Atlas atlas) {
             if (atlas.realize(services, cmd)) {
                 updateAtlasDescs = true;
             }
@@ -252,7 +252,7 @@ final class TextRenderer : FGNodeRenderer
 
             foreach (i; 0 .. atlases.length) {
                 writes ~= WriteDescriptorSet(dss[i+1], 0, 0, new CombinedImageSamplerDescWrites([
-                    CombinedImageSampler(sampler, atlases[i].view, ImageLayout.shaderReadOnlyOptimal)
+                    CombinedImageSampler(sampler, atlases[i].imgView, ImageLayout.shaderReadOnlyOptimal)
                 ]));
             }
         }
@@ -412,7 +412,7 @@ final class TextRenderer : FGNodeRenderer
                 if (!node) {
                     // this glyph is not yet in an atlas, let's pack it
                     foreach (a; atlases) {
-                        node = a.atlas.pack(glyph.img);
+                        node = a.pack(glyph.img);
                         if (node) break;
                     }
                     if (!node) {
@@ -420,13 +420,15 @@ final class TextRenderer : FGNodeRenderer
                         import dgt.core.image : ImageFormat;
                         import dgt.render.atlas : Atlas, AtlasSizeRange;
                         import dgt.render.binpack : maxRectsBinPackFactory, MaxRectsBinPack;
+                        import gfx.core.rc : retainObj;
+
                         // could not find an atlas with room left, or did not create atlas at all yet
                         auto atlas = new Atlas(
                             maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit, false),
                             AtlasSizeRange(128, 512, sz => ISize(sz.width*2, sz.height*2) ),
                             ImageFormat.a8, 2
                         );
-                        atlases ~= AtlasTexture(atlas);
+                        atlases ~= retainObj(atlas);
                         node = enforce(atlas.pack(glyph.img),
                                 "could not pack a glyph into a new atlas. What size is this glyph??");
                     }
@@ -440,7 +442,7 @@ final class TextRenderer : FGNodeRenderer
                 if (!parts.length || parts[$-1].atlas !is atlas) {
                     size_t ind = size_t.max;
                     foreach (i, at; atlases) {
-                        if (at.atlas is atlas) {
+                        if (at is atlas) {
                             ind = i;
                             break;
                         }
@@ -492,79 +494,4 @@ class GlyphRun
     }
 
     Part[] parts;
-}
-
-struct AtlasTexture
-{
-    import dgt.render.atlas : Atlas;
-    import dgt.render.services : RenderServices;
-    import gfx.graal.cmd : CommandBuffer;
-    import gfx.graal.device : Device;
-    import gfx.graal.image : ImageView;
-    import gfx.memalloc : ImageAlloc, Allocator;
-
-    Atlas atlas;
-    ImageAlloc imgAlloc;
-    ImageView view;
-
-    void release()
-    {
-        import gfx.core.rc : releaseObj;
-
-        releaseObj(this.imgAlloc);
-        releaseObj(this.view);
-    }
-
-    /// Returns: whether the image was renewed or not
-    bool realize(RenderServices services, CommandBuffer cmd)
-    {
-        // rebuild and upload texture
-        import dgt.core.image :      Image;
-        import dgt.render.services : setImageLayout;
-        import gfx.core.rc :         rc, retainObj;
-        import gfx.graal.cmd :       BufferImageCopy;
-        import gfx.graal.format :    Format;
-        import gfx.graal.image :     ImageAspect, ImageInfo, ImageLayout,
-                                     ImageTiling, ImageSubresourceRange,
-                                     ImageType, ImageUsage, Swizzle;
-        import gfx.graal.memory :    MemoryRequirements, MemProps;
-        import gfx.memalloc :        AllocFlags, AllocOptions, MemoryUsage;
-        import std.format :          format;
-        import std.exception :       enforce;
-
-
-        Image img;
-        if (atlas.realize(img)) {
-
-            release();
-
-            const sz = img.size;
-
-            auto imgAlloc = services.allocator.allocateImage
-            (
-                ImageInfo.d2(sz.width, sz.height)
-                    .withFormat(Format.r8_uNorm)
-                    .withUsage(ImageUsage.sampled | ImageUsage.transferDst)
-                    .withTiling(ImageTiling.optimal),
-
-                AllocOptions.forUsage(MemoryUsage.gpuOnly)
-                    .withFlags(AllocFlags.dedicated)
-            );
-
-            services.stageDataToImage(
-                cmd, imgAlloc.image, ImageAspect.color, ImageLayout.undefined, img.data
-            );
-
-            this.imgAlloc = retainObj(imgAlloc);
-            this.view = retainObj(imgAlloc.image.createView(
-                ImageType.d2, ImageSubresourceRange(ImageAspect.color),
-                Swizzle.identity
-            ));
-
-            return true;
-        }
-        else {
-            return false;
-        }
-    }
 }

@@ -1,47 +1,7 @@
 /// module that produce atlases of packed images.
 module dgt.render.atlas;
 
-
-class AtlasNode
-{
-    import dgt.core.geometry : IRect;
-    import dgt.core.image : Image;
-    import std.typecons : Rebindable;
-
-    private Atlas _atlas;
-    private Rebindable!(immutable(Image)) _image;
-    private IRect _rect;
-    private AtlasNode prev;
-    private AtlasNode next;
-
-    private this (Atlas atlas, immutable(Image) image, in IRect rect)
-    {
-        _atlas = atlas;
-        _image = image;
-        _rect = rect;
-    }
-
-    @property Atlas atlas() {
-        return _atlas;
-    }
-
-    @property immutable(Image) image() {
-        return _image;
-    }
-
-    @property IRect rect() const {
-        return _rect;
-    }
-
-    void setFree() {
-        _image = null;
-        _atlas.setFree(this);
-    }
-
-    @property bool isFree() const {
-        return _image is null;
-    }
-}
+import gfx.core.rc : AtomicRefCounted;
 
 struct AtlasSizeRange
 {
@@ -117,12 +77,77 @@ struct AtlasSizeRange
     }
 }
 
+class AtlasNode
+{
+    import dgt.core.geometry : IRect;
+    import dgt.core.image : Image;
+    import std.typecons : Rebindable;
 
-class Atlas
+    private Atlas _atlas;
+    private Rebindable!(immutable(Image)) _image;
+    private IRect _rect;
+    private AtlasNode prev;
+    private AtlasNode next;
+    private bool written;
+
+    private this (Atlas atlas, immutable(Image) image, in IRect rect)
+    {
+        _atlas = atlas;
+        _image = image;
+        _rect = rect;
+    }
+
+    @property Atlas atlas() {
+        return _atlas;
+    }
+
+    @property immutable(Image) image() {
+        return _image;
+    }
+
+    @property IRect rect() const {
+        return _rect;
+    }
+
+    void setFree() {
+        _image = null;
+        _atlas.setFree(this);
+    }
+
+    @property bool isFree() const {
+        return _image is null;
+    }
+}
+
+
+class Atlas : AtomicRefCounted
 {
     import dgt.core.geometry : ISize;
     import dgt.core.image : Image, ImageFormat;
     import dgt.render.binpack : BinPack, BinPackFactory;
+    import dgt.render.services : RenderServices;
+    import gfx.core.rc : atomicRcCode, Rc;
+    import gfx.graal.cmd : CommandBuffer;
+    import gfx.graal.format : Format;
+    import gfx.graal.image : ImageView, Swizzle;
+    import gfx.memalloc : ImageAlloc;
+
+    mixin(atomicRcCode);
+
+    /// Define the invalidation state of the atlas image
+    private enum Invalidation {
+        /// the image view is up-to-date
+        upToDate,
+        /// the previous state is still valid, but new nodes were added and must
+        /// be rendered, and the image uploaded again into graphics memory
+        update,
+        /// same as update, but the image was also extended
+        extended,
+        /// the image must be entirely rebuilt
+        rebuild,
+    }
+    /// The invalidation state
+    private Invalidation _invalidation = Invalidation.rebuild;
 
     /// the rectangle bin packing algorithm
     private BinPack _binPack;
@@ -132,6 +157,9 @@ class Atlas
 
     /// the size range of the bin
     private AtlasSizeRange _sizeRange;
+
+    /// Margin around images
+    private int _margin;
 
     /// whether some nodes have been freed
     /// this indicates that the atlas should repack itself if it can't pack
@@ -144,11 +172,13 @@ class Atlas
     private AtlasNode _last;
 
     /// The image built from the set of nodes.
-    /// This member is set to null each time the image must be reconstructed
     private Image _image;
 
-    /// Margin around images
-    private int _margin;
+    /// The image in graphics memory
+    private Rc!ImageAlloc _imgAlloc;
+
+    /// The image view
+    private Rc!ImageView _imgView;
 
     this (BinPackFactory factory, in AtlasSizeRange sizeRange, in ImageFormat format, int margin=0)
     {
@@ -158,6 +188,12 @@ class Atlas
         _margin = margin;
     }
 
+    override void dispose()
+    {
+        _imgAlloc.unload();
+        _imgView.unload();
+    }
+
     @property ISize binSize() const {
         return _sizeRange.current;
     }
@@ -165,19 +201,24 @@ class Atlas
     /// Packs an image into the atlas.
     /// Returns: whether the pack was successful.
     AtlasNode pack (immutable(Image) image)
-    {
+    in {
+        assert(image && image.format == _format);
+    }
+    body {
         import dgt.core.geometry : IMargins, IRect;
+        import std.algorithm : max;
 
         const sz = image.size + IMargins(_margin);
         IRect rect;
         bool packed = _binPack.pack(sz, rect);
         if (!packed && _hasFreedNodes) {
-            _image = null;
+            invalidate(Invalidation.rebuild);
             repack();
             packed = _binPack.pack(sz, rect);
+            _hasFreedNodes = false;
         }
         if (!packed && _sizeRange.canExtend && _binPack.extensible) {
-            _image = null;
+            invalidate(Invalidation.extended);
             _sizeRange.extend();
             _binPack.extend( _sizeRange.current );
             packed = _binPack.pack(sz, rect);
@@ -186,7 +227,7 @@ class Atlas
             return null;
         }
 
-        _image = null;
+        invalidate(Invalidation.update);
 
         auto n = new AtlasNode(this, image, rect - IMargins(_margin));
         if (!_last) {
@@ -203,43 +244,99 @@ class Atlas
         return n;
     }
 
-    /// Realizes the assembly into a single image.
-    /// If the image was not already realized, or if data has changed, returns true.
-    /// Otherwise (same data as previous call returned) returns false.
-    bool realize(out Image img)
+    /// Realizes the assembly into a single image and get the gfx view to this image.
+    /// If the view is not the same as the previous one, true is returned.
+    /// Otherwise returns false.
+    bool realize(RenderServices services, CommandBuffer cmd)
     {
         import dgt.core.image : alignedStrideForWidth;
+        import gfx.graal.image : ImageAspect, ImageInfo, ImageLayout,
+                                 ImageSubresourceRange, ImageTiling, ImageType,
+                                 ImageUsage;
         import gfx.math : ivec;
+        import gfx.memalloc : AllocFlags, AllocOptions, MemoryUsage;
+        import std.parallelism : task;
 
-        if (_image) {
-            img = _image;
+        if (!_image || !_imgAlloc || !_imgView) {
+            _invalidation = Invalidation.rebuild;
+        }
+
+        if (_invalidation == Invalidation.upToDate) {
             return false;
         }
 
+        const makeNewImg = (cast(int)_invalidation >= cast(int)Invalidation.extended);
         const bs = binSize;
 
-        if (!_image || _image.size != bs) {
-            _image = new Image(
-                ImageFormat.a8, bs,
-                alignedStrideForWidth(ImageFormat.a8, bs.width)
+        void buildImage() {
+            auto prevImg = _image;
+
+            if (makeNewImg) {
+                _image = new Image(_format, bs, alignedStrideForWidth(_format, bs.width));
+                // data is uninitialized, but valid areas are always written so it can stay so
+            }
+
+            if (_invalidation == Invalidation.extended && prevImg) {
+                _image.blitFrom(prevImg, ivec(0, 0), ivec(0, 0), prevImg.size);
+            }
+
+            AtlasNode n = _first;
+            while (n) {
+                if (!n.written || _invalidation == Invalidation.rebuild) {
+                    const nr = n.rect;
+                    _image.blitFrom(n.image, ivec(0, 0), nr.point, nr.size);
+                    n.written = true;
+                }
+                n = n.next;
+            }
+        }
+
+        auto buildImgTask = task(&buildImage);
+
+        if (makeNewImg) {
+            buildImgTask.executeInNewThread();
+
+            Swizzle swizzle;
+            const format = convertFormat(_format, swizzle);
+
+            if (_imgAlloc) services.gc(_imgAlloc.obj);
+            if (_imgView) services.gc(_imgView.obj);
+
+            _imgAlloc = services.allocator.allocateImage
+            (
+                ImageInfo.d2(bs.width, bs.height)
+                    .withFormat(format)
+                    .withUsage(ImageUsage.sampled | ImageUsage.transferDst)
+                    .withTiling(ImageTiling.optimal),
+
+                AllocOptions.forUsage(MemoryUsage.gpuOnly)
+                    .withFlags(AllocFlags.dedicated)
+            );
+
+            _imgView = _imgAlloc.image.createView(
+                ImageType.d2, ImageSubresourceRange(ImageAspect.color), swizzle
             );
         }
-        /// uint ok also for 1 byte format as we have power of 2 sizes
-        _image.clear!uint(0);
 
-        AtlasNode n = _first;
-        while (n) {
-            const nr = n.rect;
-            _image.blitFrom(n.image, ivec(0, 0), nr.point, nr.size);
-            n = n.next;
-        }
+        buildImgTask.spinForce();
 
         import std.format;
         static int num = 1;
         _image.saveToFile(format("atlas%s.png", num++));
 
-        img = _image;
-        return true;
+        services.stageDataToImage(
+            cmd, _imgAlloc.image, ImageAspect.color, ImageLayout.undefined, _image.data
+        );
+
+        _invalidation = Invalidation.upToDate;
+
+        return makeNewImg;
+    }
+
+    /// The view to image in graphics memory for this atlas
+    @property ImageView imgView()
+    {
+        return _imgView;
     }
 
     private void setFree(AtlasNode node)
@@ -267,6 +364,35 @@ class Atlas
             const packed = _binPack.pack(n.image.size, n._rect);
             assert(packed);
             n = n.next;
+        }
+    }
+
+    private void invalidate(Invalidation invalidation)
+    {
+        if (cast(int)invalidation > cast(int)_invalidation) {
+            _invalidation = invalidation;
+        }
+    }
+
+    private static Format convertFormat(in ImageFormat fmt, out Swizzle swizzle)
+    {
+        final switch (fmt) {
+        case ImageFormat.a1: assert(false, "ImageFormat.a1 is not supported");
+        case ImageFormat.a8:
+            swizzle = Swizzle.identity;
+            return Format.r8_uNorm;
+        case ImageFormat.xrgb:
+        case ImageFormat.argb:
+        case ImageFormat.argbPremult:
+            // argb swizzling
+            version(LittleEndian) {
+                swizzle = Swizzle.bgra;
+            }
+            else {
+                swizzle = Swizzle.argb;
+            }
+            // alpha specificity to be handled by shader
+            return Format.rgba8_uNorm;
         }
     }
 }
