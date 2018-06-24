@@ -9,6 +9,9 @@ import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
 import gfx.memalloc : BufferAlloc;
 
+/// Number of frames command buffers execution can extend
+private enum frameCmdOverlap = 2;
+
 /// General services helper for the rendering of framegraph nodes. Provides:
 ///     - reference to device, graphics queue and allocator
 ///     - a garbage collector that keep the collected resources around for
@@ -31,7 +34,7 @@ final class RenderServices : AtomicRefCounted
     private Allocator _allocator;
 
     private size_t _frameNum;
-    private size_t _maxGcAge = 2;
+    private size_t _maxGcAge = frameCmdOverlap;
     private Garbage _gcFirst;
     private Garbage _gcLast;
 
@@ -249,6 +252,86 @@ void setImageLayout(CommandBuffer cmd, Image img, in ImageSubresourceRange range
     cmd.pipelineBarrier(
         trans(srcStageMask, dstStageMask), [], (&barrier)[0 .. 1]
     );
+}
+
+
+/// Mimics a descriptor pool that provides different descriptor sets
+/// each time an update is needed. The descriptor sets are provided in
+/// a circular way with a predefined size.
+/// Helpful when descriptor sets must be updated every frame to avoid
+/// updating an a descriptor set that is in use in a command buffer.
+class CircularDescriptorPool : AtomicRefCounted
+{
+    import gfx.core.rc : atomicRcCode, Rc;
+    import gfx.graal.device : Device;
+    import gfx.graal.pipeline : DescriptorPool, DescriptorPoolSize,
+                                DescriptorSet, DescriptorSetLayout;
+
+    mixin(atomicRcCode);
+
+    private Rc!DescriptorPool pool;
+    private uint numFrames = frameCmdOverlap;
+
+    this (Device device, in uint maxSets, in DescriptorPoolSize[] sizes)
+    {
+        import std.algorithm : map;
+        import std.array : array;
+
+        pool = device.createDescriptorPool(
+            numFrames*maxSets,
+            sizes.map!(s => DescriptorPoolSize(s.type, s.count*numFrames)).array
+        );
+    }
+
+    override void dispose()
+    {
+        pool.unload();
+    }
+
+    CircularDescriptorSet[] allocate(DescriptorSetLayout[] layouts)
+    {
+        DescriptorSetLayout[] cl = new DescriptorSetLayout[layouts.length * numFrames];
+
+        ///  l1 l2 l3   ==>  l1f1 l1f2   l2f1 l2f2   l3f1 l3f2
+
+        foreach (li; 0 .. layouts.length) {
+            foreach (fi; 0 .. numFrames) {
+                cl[li*numFrames + fi] = layouts[li];
+            }
+        }
+        auto ds = pool.allocate(cl);
+        assert(ds.length == cl.length);
+
+        CircularDescriptorSet[] res = new CircularDescriptorSet[layouts.length];
+
+        foreach (i, ref dcs; res) {
+            dcs.sets = ds[i*numFrames .. (i+1)*numFrames];
+            dcs.current = numFrames-1;
+        }
+
+        return res;
+    }
+}
+
+/// Works with CircularDescriptorPool
+struct CircularDescriptorSet
+{
+    import gfx.graal.pipeline : DescriptorSet;
+
+    DescriptorSet[] sets;
+    size_t current;
+
+    /// call before each update
+    void prepareUpdate()
+    {
+        current += 1;
+        if (current >= sets.length) current = 0;
+    }
+
+    /// access the in-use descriptor set
+    @property DescriptorSet get() {
+        return sets[current];
+    }
 }
 
 

@@ -243,7 +243,7 @@ class RectRendererBase : Disposable
 final class RectColRenderer : RectRendererBase
 {
     import dgt.render.framegraph : FGRectNode;
-    import dgt.render.services : RenderServices;
+    import dgt.render.services : CircularDescriptorPool, CircularDescriptorSet, RenderServices;
     import gfx.core.rc : Rc;
     import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.buffer : Buffer;
@@ -256,8 +256,8 @@ final class RectColRenderer : RectRendererBase
     Rc!BufferAlloc vertexBuf;
 
     Rc!DescriptorSetLayout dsl;
-    Rc!DescriptorPool dsPool;
-    DescriptorSet ds;
+    Rc!CircularDescriptorPool dsPool;
+    CircularDescriptorSet ds;
 
     Rc!PipelineLayout layout;
     Rc!Pipeline pipeline;
@@ -284,14 +284,15 @@ final class RectColRenderer : RectRendererBase
         import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
 
         super.prepare(services, declEng, indexBuf);
-        dsl = declEng.store.expect!DescriptorSetLayout("rectcol_dsl");
+        this.dsl = declEng.store.expect!DescriptorSetLayout("rectcol_dsl");
         layout = declEng.store.expect!PipelineLayout("rectcol_layout");
         pipeline = declEng.store.expect!Pipeline("rectcol_pl");
 
-        dsPool = device.createDescriptorPool(1,
-            [ DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2) ]
-        );
-        ds = dsPool.allocate([dsl])[0];
+        DescriptorPoolSize[1] dps = [ DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2) ];
+        DescriptorSetLayout[1] dsl = [ this.dsl.obj ];
+
+        dsPool = new CircularDescriptorPool(device, 1, dps[]);
+        ds = dsPool.allocate(dsl[])[0];
     }
 
     void prerender(immutable(FGRectNode) rn)
@@ -364,6 +365,9 @@ final class RectColRenderer : RectRendererBase
         import gfx.graal.pipeline : BufferRange,
                                     UniformBufferDynamicDescWrites,
                                     WriteDescriptorSet;
+
+        this.ds.prepareUpdate();
+        auto ds = this.ds.get;
 
         WriteDescriptorSet[2] wds;
         wds[0] = WriteDescriptorSet(ds, 0, 0, new UniformBufferDynamicDescWrites(
@@ -451,7 +455,7 @@ final class RectColRenderer : RectRendererBase
 
         cmd.bindPipeline(pipeline.obj);
 
-        DescriptorSet[1] ds = [ this.ds ];
+        DescriptorSet[1] ds = [ this.ds.get ];
         size_t[2] dynOffsets = [ mvpCursor, colStopsCursor ];
         VertexBinding[1] vb = [ VertexBinding(vertexBuf.buffer, vertexCursor) ];
 
