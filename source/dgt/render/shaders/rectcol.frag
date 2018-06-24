@@ -34,7 +34,6 @@ void main()
         col = vec4(0, 0, 0, 0);
     }
     else {
-        float fillOpacity = clamp(0.5 - dist, 0, 1);
         if (numStops == 1) {
             col = locals.stops[0].color;
         }
@@ -55,19 +54,20 @@ void main()
                     const ColorStop prevStop = locals.stops[i-1];
 
                     if (vx_Position.z < thisStop.position.x) {
-                        float pos = (vx_Position.z - prevStop.position.x) /
-                                    (thisStop.position.x - prevStop.position.x);
+                        const float pos = (vx_Position.z - prevStop.position.x) /
+                                (thisStop.position.x - prevStop.position.x);
                         col = mix(prevStop.color, thisStop.color, pos);
                         break;
                     }
                 }
             }
         }
+        const float fillOpacity = clamp(0.5 - dist, 0, 1);
         col *= fillOpacity;
     }
 
     if (locals.width > 0.0) {
-        float strokeOpacity = clamp(0.5 - (abs(dist)-locals.width/2), 0, 1);
+        const float strokeOpacity = clamp(0.5 - (abs(dist)-locals.width/2), 0, 1);
         col = locals.stroke * strokeOpacity + col * (1 - strokeOpacity);
     }
 

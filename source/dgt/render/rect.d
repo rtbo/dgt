@@ -1,3 +1,11 @@
+/// Rect rendering module.
+/// Renders rounded rectangle with:
+///  - stroke color
+///  - fill (color, linear gradiant or image)
+///  - rounded corners
+///
+/// Corners are rounded using signed distance field. Technique is explained here:
+/// https://mortoray.com/2015/06/05/quickly-drawing-a-rounded-rectangle-with-a-gl-shader/
 module dgt.render.rect;
 
 import dgt.render.framegraph : FGRectNode;
@@ -284,6 +292,7 @@ final class RectColRenderer : RectRendererBase
         import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
 
         super.prepare(services, declEng, indexBuf);
+
         this.dsl = declEng.store.expect!DescriptorSetLayout("rectcol_dsl");
         layout = declEng.store.expect!PipelineLayout("rectcol_layout");
         pipeline = declEng.store.expect!Pipeline("rectcol_pl");
@@ -458,12 +467,11 @@ final class RectColRenderer : RectRendererBase
         DescriptorSet[1] ds = [ this.ds.get ];
         size_t[2] dynOffsets = [ mvpCursor, colStopsCursor ];
         VertexBinding[1] vb = [ VertexBinding(vertexBuf.buffer, vertexCursor) ];
+        const indInterval = node.radius > 0 ? indexBuf.rounded : indexBuf.sharp;
 
         cmd.bindDescriptorSets(PipelineBindPoint.graphics, layout.obj, 0, ds[], dynOffsets[]);
         cmd.bindVertexBuffers(0, vb[]);
-        cmd.bindIndexBuffer(indexBuf.buf, 0, IndexType.u16);
-
-        const indInterval = node.radius > 0 ? indexBuf.rounded : indexBuf.sharp;
+        cmd.bindIndexBuffer(indexBuf.buf, indInterval.start*ushort.sizeof, IndexType.u16);
         cmd.drawIndexed(cast(uint)indInterval.length, 1, 0, 0, 0);
 
         mvpCursor += MVP.sizeof;
@@ -578,63 +586,58 @@ size_t buildVertices(V)(immutable(FGRectNode) node, V[] verts)
         verts[14] = V(fvec(r.left+rd, er.bottom), blEdge);
         verts[15] = V(fvec(er.left, er.bottom), blEdge);
 
-        // sides
-        verts[16 .. 40] = [
-            // top
-            V(fvec(r.left+rd, er.top), fvec(r.left+rd, ir.top, hm)),
-            V(fvec(r.right-rd, er.top), fvec(r.right-rd, ir.top, hm)),
-            V(fvec(r.left+rd, r.top+rd), fvec(r.left+rd, ir.top, hm)),
-            V(fvec(r.right-rd, r.top+rd), fvec(r.right-rd, ir.top, hm)),
-            V(ir.topLeft, fvec(ir.topLeft, hm)),
-            V(ir.topRight, fvec(ir.topRight, hm)),
-            // right
-            V(fvec(er.right, r.top+rd), fvec(ir.right, r.top+rd, hm)),
-            V(fvec(er.right, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm)),
-            V(fvec(r.right-rd, r.top+rd), fvec(ir.right, r.top+rd, hm)),
-            V(fvec(r.right-rd, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm)),
-            V(ir.topRight, fvec(ir.topRight, hm)),
-            V(ir.bottomRight, fvec(ir.bottomRight, hm)),
-            // bottom
-            V(fvec(r.right-rd, er.bottom), fvec(r.right-rd, ir.bottom, hm)),
-            V(fvec(r.left+rd, er.bottom), fvec(r.left+rd, ir.bottom, hm)),
-            V(fvec(r.right-rd, r.bottom-rd), fvec(r.right-rd, ir.bottom, hm)),
-            V(fvec(r.left+rd, r.bottom-rd), fvec(r.left+rd, ir.bottom, hm)),
-            V(ir.bottomRight, fvec(ir.bottomRight, hm)),
-            V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-            // left
-            V(fvec(er.left, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm)),
-            V(fvec(er.left, r.top+rd), fvec(ir.left, r.top+rd, hm)),
-            V(fvec(r.left+rd, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm)),
-            V(fvec(r.left+rd, r.top+rd), fvec(ir.left, r.top+rd, hm)),
-            V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-            V(ir.topLeft, fvec(ir.topLeft, hm)),
-        ];
+        // top side
+        verts[16] = V(fvec(r.left+rd, er.top), fvec(r.left+rd, ir.top, hm));
+        verts[17] = V(fvec(r.right-rd, er.top), fvec(r.right-rd, ir.top, hm));
+        verts[18] = V(fvec(r.left+rd, r.top+rd), fvec(r.left+rd, ir.top, hm));
+        verts[19] = V(fvec(r.right-rd, r.top+rd), fvec(r.right-rd, ir.top, hm));
+        verts[20] = V(ir.topLeft, fvec(ir.topLeft, hm));
+        verts[21] = V(ir.topRight, fvec(ir.topRight, hm));
+        // right side
+        verts[22] = V(fvec(er.right, r.top+rd), fvec(ir.right, r.top+rd, hm));
+        verts[23] = V(fvec(er.right, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm));
+        verts[24] = V(fvec(r.right-rd, r.top+rd), fvec(ir.right, r.top+rd, hm));
+        verts[25] = V(fvec(r.right-rd, r.bottom-rd), fvec(ir.right, r.bottom-rd, hm));
+        verts[26] = V(ir.topRight, fvec(ir.topRight, hm));
+        verts[27] = V(ir.bottomRight, fvec(ir.bottomRight, hm));
+        // bottom side
+        verts[28] = V(fvec(r.right-rd, er.bottom), fvec(r.right-rd, ir.bottom, hm));
+        verts[29] = V(fvec(r.left+rd, er.bottom), fvec(r.left+rd, ir.bottom, hm));
+        verts[30] = V(fvec(r.right-rd, r.bottom-rd), fvec(r.right-rd, ir.bottom, hm));
+        verts[31] = V(fvec(r.left+rd, r.bottom-rd), fvec(r.left+rd, ir.bottom, hm));
+        verts[32] = V(ir.bottomRight, fvec(ir.bottomRight, hm));
+        verts[33] = V(ir.bottomLeft, fvec(ir.bottomLeft, hm));
+        // left side
+        verts[34] = V(fvec(er.left, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm));
+        verts[35] = V(fvec(er.left, r.top+rd), fvec(ir.left, r.top+rd, hm));
+        verts[36] = V(fvec(r.left+rd, r.bottom-rd), fvec(ir.left, r.bottom-rd, hm));
+        verts[37] = V(fvec(r.left+rd, r.top+rd), fvec(ir.left, r.top+rd, hm));
+        verts[38] = V(ir.bottomLeft, fvec(ir.bottomLeft, hm));
+        verts[39] = V(ir.topLeft, fvec(ir.topLeft, hm));
 
         return 40;
     }
     else {
-        verts[0 .. 16] = [
-            // top side
-            V(er.topLeft, fvec(er.left, ir.top, hm)),
-            V(er.topRight, fvec(er.right, ir.top, hm)),
-            V(ir.topLeft, fvec(ir.topLeft, hm)),
-            V(ir.topRight, fvec(ir.topRight, hm)),
-            // right side
-            V(er.topRight, fvec(ir.right, er.top, hm)),
-            V(er.bottomRight, fvec(ir.right, er.bottom, hm)),
-            V(ir.topRight, fvec(ir.topRight, hm)),
-            V(ir.bottomRight, fvec(ir.bottomRight, hm)),
-            // bottom side
-            V(er.bottomRight, fvec(er.right, ir.bottom, hm)),
-            V(er.bottomLeft, fvec(er.left, ir.bottom, hm)),
-            V(ir.bottomRight, fvec(ir.bottomRight, hm)),
-            V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-            // left side
-            V(er.bottomLeft, fvec(ir.left, er.bottom, hm)),
-            V(er.topLeft, fvec(ir.left, er.top, hm)),
-            V(ir.bottomLeft, fvec(ir.bottomLeft, hm)),
-            V(ir.topLeft, fvec(ir.topLeft, hm)),
-        ];
+        // top side
+        verts[0] = V(er.topLeft, fvec(er.left, ir.top, hm));
+        verts[1] = V(er.topRight, fvec(er.right, ir.top, hm));
+        verts[2] = V(ir.topLeft, fvec(ir.topLeft, hm));
+        verts[3] = V(ir.topRight, fvec(ir.topRight, hm));
+        // right side
+        verts[4] = V(er.topRight, fvec(ir.right, er.top, hm));
+        verts[5] = V(er.bottomRight, fvec(ir.right, er.bottom, hm));
+        verts[6] = V(ir.topRight, fvec(ir.topRight, hm));
+        verts[7] = V(ir.bottomRight, fvec(ir.bottomRight, hm));
+        // bottom side
+        verts[8] = V(er.bottomRight, fvec(er.right, ir.bottom, hm));
+        verts[9] = V(er.bottomLeft, fvec(er.left, ir.bottom, hm));
+        verts[10] = V(ir.bottomRight, fvec(ir.bottomRight, hm));
+        verts[11] = V(ir.bottomLeft, fvec(ir.bottomLeft, hm));
+        // left side
+        verts[12] = V(er.bottomLeft, fvec(ir.left, er.bottom, hm));
+        verts[13] = V(er.topLeft, fvec(ir.left, er.top, hm));
+        verts[14] = V(ir.bottomLeft, fvec(ir.bottomLeft, hm));
+        verts[15] = V(ir.topLeft, fvec(ir.topLeft, hm));
 
         return 16;
     }

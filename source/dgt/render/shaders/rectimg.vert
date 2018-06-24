@@ -21,6 +21,6 @@ void main() {
     vx_TexCoord = i_TexCoord;
     vx_Edge = i_Edge;
 
-    vec4 worldPos = mvp.model * vec4(i_Position, 0, 1);
+    const vec4 worldPos = mvp.model * vec4(i_Position, 0, 1);
     gl_Position = mvp.viewProj * vec4(round(worldPos.x), round(worldPos.y), 0, 1);
 }
