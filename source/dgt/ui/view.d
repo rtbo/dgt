@@ -777,13 +777,13 @@ class View : StyleElement, TreeNode!View
     final void addPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState | flags;
-        // requestStylePass(); ??
+        requestStylePass();
     }
     /// ditto
     final void remPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState & (~flags);
-        // requestStylePass(); ??
+        requestStylePass();
     }
 
     /// Flag that causes PseudoState.hover to be set when the cursor hovers the view
