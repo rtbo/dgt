@@ -5,11 +5,11 @@
 
 layout(location=0) in vec2 vx_TexCoord;
 
-layout(std140, set=0, binding=1) uniform Locals {
+layout(std140, binding=1) uniform Locals {
     vec4 color;
 } locals;
 
-layout(set=1, binding=0) uniform sampler2D maskSampler;
+layout(binding=2) uniform sampler2D maskSampler;
 
 layout(location=0) out vec4 o_Color;
 

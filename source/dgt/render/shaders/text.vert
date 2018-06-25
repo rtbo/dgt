@@ -6,7 +6,7 @@
 layout(location=0) in vec2 i_Position;
 layout(location=1) in vec2 i_TexCoord;
 
-layout(std140, set=0, binding=0) uniform MVP {
+layout(std140, binding=0) uniform MVP {
     mat4 model;
     mat4 viewProj;
 } mvp;

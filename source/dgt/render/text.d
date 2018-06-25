@@ -9,7 +9,8 @@ final class TextRenderer : FGNodeRenderer
     import dgt.render.atlas :       Atlas, AtlasNode;
     import dgt.render.framegraph :  FGNode, FGType;
     import dgt.render.renderer :    RenderContext;
-    import dgt.render.services :    RenderServices;
+    import dgt.render.services :    CircularDescriptorPool, CircularDescriptorSet,
+                                    RenderServices;
     import dgt.text.layout :        TextShape;
     import gfx.core.rc :            Rc;
     import gfx.decl.engine :        DeclarativeEngine;
@@ -17,8 +18,7 @@ final class TextRenderer : FGNodeRenderer
     import gfx.graal.cmd :          CommandBuffer;
     import gfx.graal.device :       Device;
     import gfx.graal.image :        ImageView, Sampler;
-    import gfx.graal.pipeline :     DescriptorPool, DescriptorSet,
-                                    DescriptorSetLayout, Pipeline, PipelineLayout;
+    import gfx.graal.pipeline :     DescriptorSetLayout, Pipeline, PipelineLayout;
     import gfx.math :               FMat4, FVec4;
     import gfx.memalloc :           Allocator, BufferAlloc;
 
@@ -27,11 +27,10 @@ final class TextRenderer : FGNodeRenderer
     private Rc!Allocator allocator;
     private Rc!RenderServices services;
 
-    private Rc!DescriptorSetLayout unifDsl;
-    private Rc!DescriptorSetLayout imgDsl;
-    private Rc!DescriptorPool dsPool;
-    // index zero is uniform, follows one ds per atlas
-    private DescriptorSet[] dss;
+    private Rc!DescriptorSetLayout dsl;
+    private Rc!CircularDescriptorPool dsPool;
+    // one set per atlas
+    private CircularDescriptorSet[] dss;
 
     private Rc!PipelineLayout layout;
     private Rc!Pipeline pipeline;
@@ -76,8 +75,7 @@ final class TextRenderer : FGNodeRenderer
         indexBuf.unload();
         sampler.unload();
         releaseArr(atlases);
-        unifDsl.unload();
-        imgDsl.unload();
+        dsl.unload();
         dsPool.unload();
         services.unload();
         allocator.unload();
@@ -111,8 +109,7 @@ final class TextRenderer : FGNodeRenderer
 
         this.pipeline = store.expect!Pipeline("text_pl");
         this.layout = store.expect!PipelineLayout("text_layout");
-        this.unifDsl = store.expect!DescriptorSetLayout("text_dsl_unif");
-        this.imgDsl = store.expect!DescriptorSetLayout("text_dsl_img");
+        this.dsl = store.expect!DescriptorSetLayout("text_dsl");
         this.sampler = device.createSampler(SamplerInfo.nearest);
 
         this.indexBuf = allocator.allocateBuffer(
@@ -174,6 +171,8 @@ final class TextRenderer : FGNodeRenderer
         }
 
         if (dss.length != atlases.length+1) {
+            updateUnifDesc = true;
+            updateAtlasDescs = true;
             allocDescriptorSets();
         }
 
@@ -196,7 +195,7 @@ final class TextRenderer : FGNodeRenderer
     {
         import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
         import std.array : array;
-        import std.range : chain, only, repeat;
+        import std.range : repeat;
 
         if (dsPool) {
             // previously recorded commands may still use it
@@ -212,13 +211,13 @@ final class TextRenderer : FGNodeRenderer
         const numAtlases = cast(uint)atlases.length;
 
         DescriptorPoolSize[2] dsPoolSizes = [
-            DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2),
+            DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2*numAtlases),
             DescriptorPoolSize(DescriptorType.combinedImageSampler, numAtlases)
         ];
 
-        this.dsPool = device.createDescriptorPool( numAtlases+1, dsPoolSizes[] );
+        this.dsPool = new CircularDescriptorPool(device, numAtlases, dsPoolSizes[]);
 
-        auto dsls = only(unifDsl.obj).chain(repeat(imgDsl.obj, numAtlases)).array();
+        auto dsls = repeat(this.dsl.obj, numAtlases).array();
 
         this.dss = this.dsPool.allocate(dsls);
     }
@@ -231,27 +230,35 @@ final class TextRenderer : FGNodeRenderer
                                     UniformBufferDynamicDescWrites,
                                     WriteDescriptorSet;
 
+        assert(dss.length == atlases.length);
+
         WriteDescriptorSet[] writes;
+
+        size_t reserve;
+        if (updateUnif) reserve += 2*dss.length;
+        if (updateAtlas) reserve += dss.length;
+
+        writes.reserve(reserve);
 
         if (updateUnif)
         {
-            writes = [
-                WriteDescriptorSet(dss[0], 0, 0, new UniformBufferDynamicDescWrites([
-                    BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
-                ])),
-                WriteDescriptorSet(dss[0], 1, 0, new UniformBufferDynamicDescWrites([
-                    BufferRange(uniformBuf.buffer, MVP.sizeof * nodeCount, Col.sizeof),
-                ])),
-            ];
+            foreach (ref ds; dss) {
+                ds.prepareUpdate();
+                writes ~= [
+                    WriteDescriptorSet(ds.get, 0, 0, new UniformBufferDynamicDescWrites([
+                        BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
+                    ])),
+                    WriteDescriptorSet(ds.get, 1, 0, new UniformBufferDynamicDescWrites([
+                        BufferRange(uniformBuf.buffer, MVP.sizeof * nodeCount, Col.sizeof),
+                    ])),
+                ];
+            }
         }
         if (updateAtlas)
         {
-            assert(dss.length == atlases.length+1);
-
-            writes.reserve(atlases.length);
-
-            foreach (i; 0 .. atlases.length) {
-                writes ~= WriteDescriptorSet(dss[i+1], 0, 0, new CombinedImageSamplerDescWrites([
+            foreach (i, ref ds; dss) {
+                if (!updateUnif) ds.prepareUpdate();
+                writes ~= WriteDescriptorSet(ds.get, 2, 0, new CombinedImageSamplerDescWrites([
                     CombinedImageSampler(sampler, atlases[i].imgView, ImageLayout.shaderReadOnlyOptimal)
                 ]));
             }
@@ -268,6 +275,7 @@ final class TextRenderer : FGNodeRenderer
         import dgt.render.framegraph : FGTextNode;
         import gfx.graal.buffer : IndexType;
         import gfx.graal.cmd : PipelineBindPoint, VertexBinding;
+        import gfx.graal.pipeline : DescriptorSet;
         import gfx.math : fvec, FVec2, transpose;
 
         immutable tn = cast(immutable(FGTextNode))node;
@@ -287,11 +295,6 @@ final class TextRenderer : FGNodeRenderer
         }
 
         cmd.bindPipeline(pipeline.obj);
-        cmd.bindDescriptorSets(
-            PipelineBindPoint.graphics, layout, 0, dss[0 .. 1], [
-                nodeCount * MVP.sizeof, nodeCount * Col.sizeof
-            ]
-        );
         cmd.bindIndexBuffer(indexBuf.buffer, 0, IndexType.u16);
 
         size_t boundAtlas = size_t.max;
@@ -312,8 +315,10 @@ final class TextRenderer : FGNodeRenderer
                 const ind = p.atlasInd;
 
                 if (ind != boundAtlas) {
+                    DescriptorSet[1] ds = [ dss[ind].get ];
+                    size_t[2] dynOffsets = [ nodeCount * MVP.sizeof, nodeCount * Col.sizeof ];
                     cmd.bindDescriptorSets(
-                        PipelineBindPoint.graphics, layout, 1, dss[ind+1 .. ind+2], null
+                        PipelineBindPoint.graphics, layout, 0, ds[], dynOffsets[]
                     );
                     boundAtlas = ind;
                 }
