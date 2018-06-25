@@ -423,9 +423,11 @@ final class TextRenderer : FGNodeRenderer
                         import gfx.core.rc : retainObj;
 
                         // could not find an atlas with room left, or did not create atlas at all yet
+                        enum startSize = 128;
+                        enum maxSize = 4096;
                         auto atlas = new Atlas(
                             maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit, false),
-                            AtlasSizeRange(128, 512, sz => ISize(sz.width*2, sz.height*2) ),
+                            AtlasSizeRange(startSize, maxSize, sz => ISize(sz.width*2, sz.height*2) ),
                             ImageFormat.a8, 2
                         );
                         atlases ~= retainObj(atlas);
