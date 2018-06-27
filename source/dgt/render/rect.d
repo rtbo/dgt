@@ -110,12 +110,15 @@ class RectRenderer : FGNodeRenderer
         if (pt == PaintType.color || pt == PaintType.linearGradient) {
             rectCol.prerender(rn);
         }
+        else if (pt == PaintType.image) {
+            rectImg.prerender(rn);
+        }
     }
 
     override void prerenderEnd(CommandBuffer cmd)
     {
         rectCol.prerenderEnd();
-        // rectImg.prerenderEnd();
+        rectImg.prerenderEnd(cmd);
     }
 
     override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
@@ -128,11 +131,17 @@ class RectRenderer : FGNodeRenderer
         if (pt == PaintType.color || pt == PaintType.linearGradient) {
             rectCol.render(rn, ctx, model, cmd);
         }
+        else if (pt == PaintType.image) {
+            rectImg.render(rn, ctx, model, cmd);
+        }
 
     }
 
     override void postrender()
-    {}
+    {
+        rectCol.postrender();
+        rectImg.postrender();
+    }
 }
 
 private:
@@ -173,9 +182,15 @@ struct RectColVertex
 
 struct RectImgVertex
 {
-    FVec3 position;
+    FVec2 position;
     FVec2 texCoord;
     FVec3 edge;
+
+    this(in FVec2 position, in FVec3 edge)
+    {
+        this.position = position;
+        this.edge = edge;
+    }
 }
 
 struct MVP {
@@ -205,8 +220,16 @@ struct ColRectLocals
     ColStop[maxColStops] stops;
 }
 
+struct ImgRectLocals
+{
+    FVec4 strokeCol;
+    float strokeWidth;
+    int[3] padding;
+}
+
 static assert(ColStop.sizeof == 8*float.sizeof);
 static assert(ColRectLocals.sizeof == 8*float.sizeof + maxColStops*ColStop.sizeof);
+static assert(ImgRectLocals.sizeof == 8*float.sizeof);
 
 class RectRendererBase : Disposable
 {
@@ -270,11 +293,10 @@ final class RectColRenderer : RectRendererBase
     Rc!PipelineLayout layout;
     Rc!Pipeline pipeline;
 
-    size_t mvpCursor;
     size_t mvpLen;
+    size_t mvpCursor;
     size_t colStopsCursor;
     size_t vertexCursor;
-    size_t nodeCount;
 
     override void dispose()
     {
@@ -366,7 +388,6 @@ final class RectColRenderer : RectRendererBase
         mvpCursor = 0;
         colStopsCursor = 0;
         vertexCursor = 0;
-        nodeCount = 0;
     }
 
     void updateDescriptorSet()
@@ -491,19 +512,333 @@ final class RectColRenderer : RectRendererBase
 
 final class RectImgRenderer : RectRendererBase
 {
-    import dgt.render.services : RenderServices;
+    import dgt.render.atlas : Atlas, AtlasNode;
+    import dgt.render.framegraph : CacheCookie;
+    import dgt.render.services : CircularDescriptorPool, CircularDescriptorSet, RenderServices;
+    import gfx.core.rc : Rc;
     import gfx.decl.store : DeclarativeStore;
+    import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
-    import gfx.graal.pipeline : Pipeline;
+    import gfx.graal.image : Sampler;
+    import gfx.graal.pipeline : DescriptorSetLayout, Pipeline, PipelineLayout;
+    import gfx.memalloc : BufferAlloc;
+
+    Rc!BufferAlloc uniformBuf;
+    Rc!BufferAlloc vertexBuf;
+
+    Rc!DescriptorSetLayout dsl;
+    Rc!CircularDescriptorPool dsPool;
+    CircularDescriptorSet[] dss;
+
+    Rc!Sampler sampler;
+    Rc!PipelineLayout layout;
+    Rc!Pipeline argbPremultPipeline;
+    Rc!Pipeline argbPipeline;
+    Rc!Pipeline xrgbPipeline;
+    Atlas[] atlases;
+    AtlasNode[CacheCookie] imgNodes;
+
+    size_t mvpLen;
+    size_t mvpCursor;
+    size_t localsCursor;
+    size_t vertexCursor;
 
     override void dispose()
     {
+        import gfx.core.rc : releaseArr;
+
+        uniformBuf.unload();
+        vertexBuf.unload();
+        sampler.unload();
+        releaseArr(atlases);
+        dsl.unload();
+        dsPool.unload();
+        layout.unload();
+        argbPremultPipeline.unload();
+        argbPipeline.unload();
+        xrgbPipeline.unload();
         super.dispose();
     }
 
     override void prepare (RenderServices services, DeclarativeEngine declEng, IndexBuffer indexBuf)
     {
+        import gfx.core.typecons : trans;
+        import gfx.graal.image : SamplerInfo;
+        import gfx.graal.pipeline : BlendFactor, BlendOp, BlendState, ColorBlendAttachment, PipelineInfo;
+
         super.prepare(services, declEng, indexBuf);
+
+        this.dsl = declEng.store.expect!DescriptorSetLayout("rectimg_dsl");
+        layout = declEng.store.expect!PipelineLayout("rectimg_layout");
+
+        PipelineInfo[3] plInfos = void;
+        plInfos[0] = declEng.store.expect!PipelineInfo("rectimg_plinfo_premult");
+        plInfos[1] = plInfos[0];
+        plInfos[1].blendInfo.attachments[0] = ColorBlendAttachment.blend(
+            BlendState(trans(BlendFactor.srcAlpha, BlendFactor.oneMinusSrcAlpha), BlendOp.add)
+        );
+        plInfos[2] = plInfos[0];
+        plInfos[2].blendInfo.attachments[0] = ColorBlendAttachment.solid();
+
+        auto pipelines = device.createPipelines(plInfos[]);
+        argbPremultPipeline = pipelines[0];
+        argbPipeline = pipelines[1];
+        xrgbPipeline = pipelines[2];
+
+        sampler = device.createSampler(SamplerInfo.nearest);
+    }
+
+    void prerender(immutable(FGRectNode) rn)
+    {
+        mvpCursor += MVP.sizeof;
+        localsCursor += ImgRectLocals.sizeof;
+
+        vertexCursor += rn.radius > 0f ?
+                40 * RectImgVertex.sizeof :
+                16 * RectImgVertex.sizeof;
+
+        feedAtlas(rn);
+    }
+
+    void prerenderEnd(CommandBuffer cmd)
+    {
+        import dgt.render.services : mustReallocBuffer;
+        import gfx.graal.buffer : BufferUsage;
+        import gfx.memalloc : AllocFlags, AllocOptions, MemoryUsage;
+        import std.algorithm : each;
+
+        bool updateUnifDesc;
+        bool updateAtlasDesc;
+
+        const unifSize = mvpCursor + localsCursor;
+
+        if (mustReallocBuffer(uniformBuf, unifSize)) {
+            if (uniformBuf) services.gc(uniformBuf.obj);
+            uniformBuf = services.allocator.allocateBuffer(
+                BufferUsage.uniform, unifSize, AllocOptions.forUsage(
+                    MemoryUsage.cpuToGpu
+                )
+            );
+            updateUnifDesc = true;
+        }
+
+        if (mustReallocBuffer(vertexBuf, vertexCursor)) {
+            if (vertexBuf) services.gc(vertexBuf.obj);
+            vertexBuf = services.allocator.allocateBuffer(
+                BufferUsage.vertex, vertexCursor, AllocOptions.forUsage(
+                    MemoryUsage.cpuToGpu
+                )
+            );
+        }
+
+        if (atlases.length != dss.length) {
+            allocateDescriptorPool();
+            updateUnifDesc = true;
+            updateAtlasDesc = true;
+        }
+
+        atlases.each!((Atlas atlas) {
+            if (atlas.realize(services, cmd)) {
+                updateAtlasDesc = true;
+            }
+        });
+
+        updateDescriptorSets(updateUnifDesc, updateAtlasDesc);
+
+        uniformBuf.retainMap();
+        vertexBuf.retainMap();
+
+        mvpLen = mvpCursor;
+        mvpCursor = 0;
+        localsCursor = 0;
+        vertexCursor = 0;
+    }
+
+    void allocateDescriptorPool()
+    {
+        import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
+        if (dsPool) {
+            services.gc(dsPool.obj);
+            dsPool.unload();
+        }
+
+        const numAtlases = cast(uint)atlases.length;
+
+        DescriptorPoolSize[2] dps = [
+            DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2*numAtlases),
+            DescriptorPoolSize(DescriptorType.combinedImageSampler, 1*numAtlases),
+        ];
+        DescriptorSetLayout[1] dsl = [ this.dsl.obj ];
+
+        dsPool = new CircularDescriptorPool(device, 1, dps[]);
+        dss = dsPool.allocate(dsl[]);
+    }
+
+    void updateDescriptorSets(in bool updateUnif, in bool updateAtlas)
+    {
+        import gfx.graal.image : ImageLayout;
+        import gfx.graal.pipeline : BufferRange, CombinedImageSampler,
+                                    CombinedImageSamplerDescWrites,
+                                    UniformBufferDynamicDescWrites,
+                                    WriteDescriptorSet;
+
+        assert(dss.length == atlases.length);
+
+        WriteDescriptorSet[] writes;
+
+        size_t reserve;
+        if (updateUnif) reserve += 2*dss.length;
+        if (updateAtlas) reserve += dss.length;
+
+        writes.reserve(reserve);
+
+        if (updateUnif)
+        {
+            foreach (ref ds; dss) {
+                ds.prepareUpdate();
+                writes ~= [
+                    WriteDescriptorSet(ds.get, 0, 0, new UniformBufferDynamicDescWrites([
+                        BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
+                    ])),
+                    WriteDescriptorSet(ds.get, 1, 0, new UniformBufferDynamicDescWrites([
+                        BufferRange(uniformBuf.buffer, mvpLen, ImgRectLocals.sizeof),
+                    ])),
+                ];
+            }
+        }
+        if (updateAtlas)
+        {
+            foreach (i, ref ds; dss) {
+                if (!updateUnif) ds.prepareUpdate();
+                writes ~= WriteDescriptorSet(ds.get, 2, 0, new CombinedImageSamplerDescWrites([
+                    CombinedImageSampler(sampler, atlases[i].imgView, ImageLayout.shaderReadOnlyOptimal)
+                ]));
+            }
+        }
+
+        if (writes.length)
+            device.updateDescriptorSets(writes, []);
+    }
+
+    void render(immutable(FGRectNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
+    {
+        import dgt.core.image : ImageFormat;
+        import dgt.render.framegraph : RectBorder;
+        import gfx.core.typecons : ifNone, ifSome;
+        import gfx.graal.buffer : IndexType;
+        import gfx.graal.cmd : PipelineBindPoint, VertexBinding;
+        import gfx.graal.pipeline : DescriptorSet;
+        import gfx.math : fvec, transpose;
+
+        auto atlasNode = imgNodes[node.cookie];
+        auto atlas = atlasNode.atlas;
+
+        ImgRectLocals irl = void;
+        node.border
+            .ifSome!((RectBorder b) {
+                irl.strokeCol = b.color;
+                irl.strokeWidth = b.width;
+            })
+            .ifNone!({
+                irl.strokeCol = fvec(0, 0, 0, 0);
+                irl.strokeWidth = 0;
+            });
+
+        {
+            auto unifMap = uniformBuf.map();
+            {
+                auto view = unifMap.view!(MVP[])(mvpCursor, 1);
+                view[0] = MVP(
+                    transpose(model), transpose(ctx.viewProj)
+                );
+            }
+            {
+                auto view = unifMap.view!(ImgRectLocals[])(mvpLen+localsCursor, 1);
+                view[0] = irl;
+            }
+        }
+
+        size_t numVerts;
+        {
+            auto vertMap = vertexBuf.map();
+            auto verts = vertMap.view!(RectImgVertex[])(vertexCursor);
+
+            numVerts = buildVertices(node, verts[]);
+            const info = CoordInfo(node.rect, atlasNode.rect, atlas.binSize);
+            setTexCoords(info, verts[0 .. numVerts]);
+        }
+
+        Pipeline pl;
+        switch (atlas.format) {
+            case ImageFormat.xrgb:          pl = xrgbPipeline.obj; break;
+            case ImageFormat.argb:          pl = argbPipeline.obj; break;
+            case ImageFormat.argbPremult:   pl = argbPremultPipeline.obj; break;
+            default: assert(false);
+        }
+
+        cmd.bindPipeline(pl);
+
+        DescriptorSet[1] ds = [ this.dss[atlasNode.atlasInd].get ];
+        size_t[2] dynOffsets = [ mvpCursor, localsCursor ];
+        VertexBinding[1] vb = [ VertexBinding(vertexBuf.buffer, vertexCursor) ];
+        const indInterval = node.radius > 0 ? indexBuf.rounded : indexBuf.sharp;
+
+        cmd.bindDescriptorSets(PipelineBindPoint.graphics, layout.obj, 0, ds[], dynOffsets[]);
+        cmd.bindVertexBuffers(0, vb[]);
+        cmd.bindIndexBuffer(indexBuf.buf, indInterval.start*ushort.sizeof, IndexType.u16);
+        cmd.drawIndexed(cast(uint)indInterval.length, 1, 0, 0, 0);
+
+        mvpCursor += MVP.sizeof;
+        localsCursor += ImgRectLocals.sizeof;
+        vertexCursor += numVerts * RectImgVertex.sizeof;
+    }
+
+    void postrender()
+    {
+        mvpCursor = 0;
+        localsCursor = 0;
+        vertexCursor = 0;
+        uniformBuf.releaseMap();
+        vertexBuf.releaseMap();
+    }
+
+    void feedAtlas(immutable(FGRectNode) rn)
+    {
+        import dgt.core.paint : ImagePaint;
+        import std.algorithm : filter;
+
+        if (!(rn.cookie in imgNodes))
+        {
+            immutable paint = cast(immutable(ImagePaint))rn.paint;
+
+            AtlasNode node;
+            foreach (a; atlases.filter!(a => a.format == paint.image.format)) {
+                node = a.pack(paint.image);
+                if (node) break;
+            }
+            if (!node) {
+                // could not pack (includes no atlas with right format in the list)
+                import dgt.core.geometry : ISize;
+                import dgt.core.image : ImageFormat;
+                import dgt.render.atlas : Atlas, AtlasSizeRange;
+                import dgt.render.binpack : maxRectsBinPackFactory, MaxRectsBinPack;
+                import gfx.core.rc : retainObj;
+                import std.exception : enforce;
+
+                enum startSize = 128;
+                enum maxSize = 4096;
+                auto atlas = new Atlas(
+                    maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit, false),
+                    atlases.length,
+                    AtlasSizeRange(startSize, maxSize, sz => ISize(sz.width*2, sz.height*2) ),
+                    paint.image.format, 1
+                );
+                atlases ~= retainObj(atlas);
+                node = enforce(atlas.pack(paint.image),
+                    "could not pack an image into a new atlas.");
+                imgNodes[rn.cookie] = node;
+            }
+        }
     }
 }
 
@@ -678,5 +1013,30 @@ void setGPos(immutable(FGRectNode) node, RectColVertex[] verts)
 
     foreach (ref v; verts) {
         v.gpos = fact * orthoProjDist(v.vpos) + 0.5f;
+    }
+}
+
+struct CoordInfo
+{
+    import dgt.core.geometry : FRect, IRect, ISize;
+
+    FRect viewRect;
+    IRect imgRect;
+    ISize atlasSize;
+}
+
+// set the tex coords of the vertices
+void setTexCoords(const ref CoordInfo info, RectImgVertex[] verts)
+{
+    import gfx.math : fvec;
+
+    const atlasSize = fvec(info.atlasSize.width, info.atlasSize.height);
+    const imgOffset = fvec(info.imgRect.left, info.imgRect.top) / atlasSize;
+    const imgSize = fvec(info.imgRect.width, info.imgRect.height) / atlasSize;
+    const posOffset = info.viewRect.topLeft;
+    const factor = imgSize / fvec(info.viewRect.width, info.viewRect.height);
+
+    foreach (ref v; verts) {
+        v.texCoord = (v.position - posOffset) * factor + imgOffset;
     }
 }

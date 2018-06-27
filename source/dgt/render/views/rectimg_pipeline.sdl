@@ -15,11 +15,14 @@ graal:PipelineLayout {
         "store:rectimg_dsl"
     }
 }
-graal:Pipeline {
-    store "rectimg_pl"
+// one pipeline info defined here for argbPremult format. Code copies it and
+// modify blendInfo for xrgb and argb formats to create 3 pipelines.
+graal:PipelineInfo {
+    store "rectimg_plinfo_premult"
     shaders {
-        vertex source="view:rectimg.vert.spv"
-        fragment source="view:rectimg.frag.spv"
+        // need to keep the shader alive in the store
+        vertex source="view:rectimg.vert.spv" store="rectimg_keep_vtx"
+        fragment source="view:rectimg.frag.spv" store="rectimg_keep_frag"
     }
     inputBindings {
         0 stride="sizeof:RectImgVertex" instanced=off
@@ -31,6 +34,9 @@ graal:Pipeline {
     }
     assembly primitive="triangleList" primitiveRestart=off
     rasterizer polygonMode="fill"
+    // this blendInfo is for argbPremult
+    // xrgb use no blending
+    // argb use zeroPlusSrcAlpha instead of one in srcFactor
     blendInfo {
         attachments {
             blend colorMask="rgba" {
