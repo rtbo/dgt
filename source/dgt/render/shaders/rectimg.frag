@@ -22,8 +22,7 @@ void main()
     const float dist = length(vx_Position.xy - vx_Edge.xy) - vx_Edge.z;
 
     const float fillOpacity = clamp(0.5 - dist, 0, 1);
-    // little endian texel swizzling
-    vec4 col = texture(imgSampler, vx_TexCoord).bgra * fillOpacity;
+    vec4 col = texture(imgSampler, vx_TexCoord) * fillOpacity;
 
     if (locals.width > 0.0) {
         const float strokeOpacity = clamp(0.5 - (abs(dist)-locals.width/2), 0, 1);
