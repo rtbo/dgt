@@ -432,6 +432,7 @@ final class TextRenderer : FGNodeRenderer
                         enum maxSize = 4096;
                         auto atlas = new Atlas(
                             maxRectsBinPackFactory(MaxRectsBinPack.Heuristic.bestShortSideFit, false),
+                            atlases.length,
                             AtlasSizeRange(startSize, maxSize, sz => ISize(sz.width*2, sz.height*2) ),
                             ImageFormat.a8, 2
                         );

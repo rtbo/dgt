@@ -84,6 +84,7 @@ class AtlasNode
     import std.typecons : Rebindable;
 
     private Atlas _atlas;
+    private size_t _atlasInd;
     private Rebindable!(immutable(Image)) _image;
     private IRect _rect;
     private AtlasNode prev;
@@ -93,12 +94,17 @@ class AtlasNode
     private this (Atlas atlas, immutable(Image) image, in IRect rect)
     {
         _atlas = atlas;
+        _atlasInd = atlas._atlasInd;
         _image = image;
         _rect = rect;
     }
 
     @property Atlas atlas() {
         return _atlas;
+    }
+
+    @property size_t atlasInd() {
+        return _atlasInd;
     }
 
     @property immutable(Image) image() {
@@ -180,10 +186,23 @@ class Atlas : AtomicRefCounted
     /// The image view
     private Rc!ImageView _imgView;
 
-    this (BinPackFactory factory, in AtlasSizeRange sizeRange, in ImageFormat format, int margin=0)
+    /// The index of the atlas within its collection.
+    /// Only passed verbatim to nodes.
+    private size_t _atlasInd;
+
+    /// build a new Atlas
+    /// Params:
+    ///     factory = a factory to build a bin pack for this atlas
+    ///     atlasInd = the index of this atlas within its collection.
+    ///                This is only passed verbatim to the nodes and not used otherwise
+    ///     sizeRange = the size range that sizes the atlas and define how to extend it
+    ///     format = the image format to build the atlas
+    ///     margin = the margin around each node
+    this (BinPackFactory factory, in size_t atlasInd, in AtlasSizeRange sizeRange, in ImageFormat format, int margin=0)
     {
         _sizeRange = sizeRange;
         _binPack = factory(_sizeRange.current);
+        _atlasInd = atlasInd;
         _format = format;
         _margin = margin;
     }
@@ -196,6 +215,10 @@ class Atlas : AtomicRefCounted
 
     @property ISize binSize() const {
         return _sizeRange.current;
+    }
+
+    @property ImageFormat format() const {
+        return _format;
     }
 
     /// Packs an image into the atlas.
@@ -217,6 +240,8 @@ class Atlas : AtomicRefCounted
             packed = _binPack.pack(sz, rect);
             _hasFreedNodes = false;
         }
+        // checking whether bin can be extended
+        // try to extend only once
         if (!packed && _sizeRange.canExtend && _binPack.extensible) {
             invalidate(Invalidation.extended);
             _sizeRange.extend();
@@ -320,7 +345,7 @@ class Atlas : AtomicRefCounted
 
         buildImgTask.spinForce();
 
-        import std.format;
+        import std.format : format;
         static int num = 1;
         _image.saveToFile(format("atlas%s.png", num++));
 
