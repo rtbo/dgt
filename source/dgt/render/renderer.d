@@ -364,9 +364,13 @@ class RendererBase : Renderer
             services.incrFrameNum();
         }
 
-        // prerender(frames);
+        // TODO: retained mode for gl3 such as only queue submission
+        // and presentation are required on the same thread
         auto prerenderTask = task(&prerender, frames);
-        prerenderTask.executeInNewThread();
+        if (backend == Backend.gl3)
+            prerender(frames);
+        else
+            prerenderTask.executeInNewThread();
 
         Semaphore[] waitSems;
         PresentRequest[] prs;
@@ -414,7 +418,7 @@ class RendererBase : Renderer
                 renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
             );
 
-            if (fi == 0) prerenderTask.yieldForce();
+            if (fi == 0 && backend != Backend.gl3) prerenderTask.yieldForce();
 
             if (frame.root) {
                 import gfx.math.proj : ortho;
