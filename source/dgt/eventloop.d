@@ -135,6 +135,7 @@ class EventLoop
         if (wEv) {
             assert(hasWindow(wEv.window));
             version(Windows) {
+                import dgt.render.queue : RenderQueue;
                 // windows has modal resize and move envents
                 if (wEv.type == PlEventType.resize || wEv.type == PlEventType.move) {
                     wEv.window.handleEvent(wEv);

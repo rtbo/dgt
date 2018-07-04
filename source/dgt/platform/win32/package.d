@@ -21,6 +21,9 @@ private __gshared Win32Platform _w32Inst;
 /// Win32 platform implementation
 class Win32Platform : Platform
 {
+    import gfx.graal : Instance;
+    import gfx.graal.presentation : Surface;
+
     private wstring[] _registeredClasses;
     private Win32Window[HWND] _windows;
     private Screen[] _screens;
@@ -48,9 +51,7 @@ class Win32Platform : Platform
     }
 
     override void initialize()
-    {
-        initWin32Gl();
-    }
+    {}
 
     override void dispose()
     {
@@ -158,6 +159,22 @@ class Win32Platform : Platform
         }
 
         return wait;
+    }
+
+    override @property string[] necessaryVulkanExtensions()
+    {
+        import gfx.vulkan.wsi : surfaceExtension, win32SurfaceExtension;
+        return [
+            surfaceExtension, win32SurfaceExtension
+        ];
+    }
+
+    Surface createGraalSurface(Instance instance, size_t windowHandle)
+    {
+        import core.sys.windows.windows : HWND;
+        import gfx.vulkan.wsi : createVulkanWin32Surface;
+
+        return createVulkanWin32Surface(instance, GetModuleHandle(null), cast(HWND)windowHandle);
     }
 
     wstring windowClassName(Window w)
