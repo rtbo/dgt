@@ -159,6 +159,55 @@ final class RenderServices : AtomicRefCounted
         }
     }
 
+    /// Check if buffer has to be reallocated to be filled with size bytes of data.
+    /// If buffer must be reallocated:
+    ///    - give current buffer to gc and decrease ref count
+    ///    - create a new buffer, increase ref count and return it
+    /// Otherwise:
+    ///    - return same buffer
+    /// buffer can be null, and returned buffer can also be null if size is zero.
+    /// reallocated reports whether a new buffer was created. Always false if returned buffer is false.
+    Buffer reallocIfNeeded(Buffer buffer, in size_t neededSize,
+                           Buffer delegate(in size_t sz) createBufDg, out bool reallocated)
+    {
+        import gfx.core.rc : releaseObj, retainObj;
+
+        if (mustReallocBuffer(buffer, neededSize)) {
+            if (buffer) {
+                gc(buffer);
+                releaseObj(buffer);
+                buffer = null;
+            }
+            if (neededSize) {
+                buffer = createBufDg(neededSize);
+                retainObj(buffer);
+                reallocated = true;
+            }
+        }
+        return buffer;
+    }
+
+    /// ditto
+    BufferAlloc reallocIfNeeded(BufferAlloc buffer, in size_t neededSize,
+                                BufferAlloc delegate(in size_t sz) createBufDg, out bool reallocated)
+    {
+        import gfx.core.rc : releaseObj, retainObj;
+
+        if (mustReallocBuffer(buffer, neededSize)) {
+            if (buffer) {
+                gc(buffer);
+                releaseObj(buffer);
+                buffer = null;
+            }
+            if (neededSize) {
+                buffer = createBufDg(neededSize);
+                retainObj(buffer);
+                reallocated = true;
+            }
+        }
+        return buffer;
+    }
+
     /// Collect and retain obj into a garbage pool until it is eventually released
     /// a predefined number of frames later.
     /// Used mainly when you want to dispose a resource you just sent into a command buffer.
