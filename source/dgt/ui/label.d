@@ -18,7 +18,7 @@ class Label : View
     /// build a new label
     this()
     {
-        padding = FPadding(6);
+        padding = IPadding(6);
         _iconNode = new ImageView;
         _iconNode.name = "img";
         _textNode = new TextView;
@@ -73,22 +73,22 @@ class Label : View
     }
 
     /// Space between text and icon
-    enum spacing = 6f;
+    enum spacing = 6;
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
         measurement = computeMeasurement();
     }
 
-    override void layout(in FRect rect)
+    override void layout(in IRect rect)
     {
         // might differ from actual measurement because subclass have larger content
-        immutable mes = computeMeasurement();
+        const mes = computeMeasurement();
 
         // mes includes padding
-        float left;
+        int left;
         if (alignment & Alignment.centerH) {
-            left = padding.left + (rect.width - mes.width) / 2f;
+            left = padding.left + (rect.width - mes.width) / 2;
         }
         else if (alignment & Alignment.right) {
             left = padding.left + (rect.width - mes.width);
@@ -97,11 +97,11 @@ class Label : View
             left = padding.left;
         }
 
-        float topAlignment(in float height) {
+        int topAlignment(in int height) {
             // height does not include padding
-            float top;
+            int top;
             if (alignment & Alignment.centerV) {
-                top = (rect.height - height + padding.top - padding.bottom) / 2f;
+                top = (rect.height - height + padding.top - padding.bottom) / 2;
             }
             else if (alignment & Alignment.bottom) {
                 top = rect.height - height - padding.bottom;
@@ -113,25 +113,24 @@ class Label : View
         }
 
         if (icon) {
-            immutable top = topAlignment(icon.height);
-            _iconNode.rect = FRect(left, top, cast(FSize)icon.size);
+            const top = topAlignment(icon.height);
+            _iconNode.rect = IRect(left, top, icon.size);
             left += icon.width + spacing;
         }
         if (text.length) {
-            immutable ms = _textNode.metrics.size;
-            immutable top = topAlignment(ms.y);
-            _textNode.rect = FRect(left, top, ms.x, ms.y);
+            const ms = _textNode.metrics.size;
+            const top = topAlignment(cast(int)ms.y);
+            _textNode.rect = IRect(left, top, cast(int)ms.x, cast(int)ms.y);
         }
         this.rect = rect;
     }
 
-    private FSize computeMeasurement()
+    private ISize computeMeasurement()
     {
-        float width = 0;
-        float height = 0;
+        int width, height;
         if (text.length) {
-            width += _textNode.metrics.size.x;
-            height += _textNode.metrics.size.y;
+            width += cast(int)_textNode.metrics.size.x;
+            height += cast(int)_textNode.metrics.size.y;
         }
         if (icon) {
             import std.algorithm : max;
@@ -141,7 +140,7 @@ class Label : View
                 width += spacing;
             }
         }
-        return FSize(width+padding.horizontal, height+padding.vertical);
+        return ISize(width+padding.horizontal, height+padding.vertical);
     }
 
     private Alignment _alignment = Alignment.top | Alignment.left;

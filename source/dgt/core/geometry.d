@@ -571,6 +571,19 @@ if (isPoint!P && isSize!S)
     return Rect!T(p, s);
 }
 
+/// Round FRect components into a IRect such as each corner is rounded to the
+/// closest integer coordinate
+IRect roundRect(in FRect rect)
+{
+    import std.math : round;
+
+    const l = cast(int)round(rect.left);
+    const t = cast(int)round(rect.top);
+    const r = cast(int)round(rect.right);
+    const b = cast(int)round(rect.bottom);
+    return IRect(l, t, r-l, b-t);
+}
+
 /// Checks whether big contains small
 bool contains(S1, S2)(in S1 big, in S2 small)
 if (isSize!S1 && isSize!S2)

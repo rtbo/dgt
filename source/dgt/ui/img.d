@@ -36,7 +36,7 @@ class ImageView : View
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
         if (_img) {
-            measurement = cast(FSize)_img.size;
+            measurement = _img.size;
         }
         else {
             super.measure(widthSpec, heightSpec);
@@ -52,7 +52,7 @@ class ImageView : View
         if (_dirty && _img) {
             immutable img = _img.get;
             _fgNode = new immutable(FGRectNode)(
-                localRect, 0, new immutable(ImagePaint)(img),
+                cast(FRect)localRect, 0, new immutable(ImagePaint)(img),
                 none!RectBorder, CacheCookie.next()
             );
             _dirty = false;

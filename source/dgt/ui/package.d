@@ -127,12 +127,11 @@ final class UserInterface : StyleElement {
         if (!_size.area) return;
 
         import dgt.ui.layout : MeasureSpec;
-        auto fs = cast(FSize) _size;
         _root.measure(
-            MeasureSpec.makeAtMost(fs.width),
-            MeasureSpec.makeAtMost(fs.height)
+            MeasureSpec.makeAtMost(_size.width),
+            MeasureSpec.makeAtMost(_size.height)
         );
-        _root.layout(FRect(0, 0, fs));
+        _root.layout(IRect(0, 0, _size));
         _dirtyPass &= ~UIPass.layout;
     }
 
@@ -329,7 +328,7 @@ final class UserInterface : StyleElement {
             if (_root) {
                 import std.typecons : scoped;
 
-                immutable pos = cast(FVec2)ev.point;
+                const pos = ev.point;
 
                 if (!_mouseViews.length) {
                     errorf("mouse down without prior move");
@@ -364,7 +363,7 @@ final class UserInterface : StyleElement {
                 import std.algorithm : swap;
                 import std.typecons : scoped;
 
-                immutable pos = cast(FPoint)ev.point;
+                const pos = ev.point;
 
                 assert(!_tempViews.length);
                 _root.viewsAtPos(pos, _tempViews);
@@ -401,7 +400,7 @@ final class UserInterface : StyleElement {
             if (_root) {
                 import std.typecons : scoped;
 
-                immutable pos = cast(FVec2)ev.point;
+                const pos = ev.point;
 
                 if (_dragChain.length) {
                     auto upEv = scoped!MouseEvent(
@@ -445,7 +444,7 @@ final class UserInterface : StyleElement {
         {
             if (_root) {
                 import std.algorithm : swap;
-                immutable pos = cast(FPoint)ev.point;
+                const pos = ev.point;
 
                 if (_mouseViews.length) {
                     errorf("Enter window while having already nodes under mouse??");
@@ -474,7 +473,7 @@ final class UserInterface : StyleElement {
         static void emitEnterLeave(View view, EventType type, PlMouseEvent src)
         {
             import std.typecons : scoped;
-            immutable uiPos = cast(FPoint)src.point;
+            const uiPos = src.point;
             auto ev = scoped!MouseEvent(
                 type, [view], uiPos - view.uiPos, uiPos, src.button, src.state, src.modifiers
             );
@@ -484,7 +483,7 @@ final class UserInterface : StyleElement {
         static checkEnterLeave(View[] was, View[] now, PlMouseEvent src)
         {
             import std.algorithm : min;
-            immutable common = min(was.length, now.length);
+            const common = min(was.length, now.length);
             foreach (i; 0 .. common) {
                 if (was[i] !is now[i]) {
                     emitEnterLeave(was[i], EventType.mouseLeave, src);

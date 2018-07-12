@@ -660,21 +660,21 @@ class LayoutHeightMetaProperty : LayoutSizeMetaProperty
 /// Value:      number | match-parent | wrap-content
 /// Inherited:  no
 /// Initial:    wrap-content
-class LayoutSizeMetaProperty : StyleMetaProperty!float
+class LayoutSizeMetaProperty : StyleMetaProperty!int
 {
     this(string name)
     {
         super(name, false, wrapContent, false);
     }
 
-    override bool parseValueImpl(ref Token[] tokens, out float sz)
+    override bool parseValueImpl(ref Token[] tokens, out int sz)
     {
         popSpaces(tokens);
         if (tokens.empty) {
             return false;
         }
         else if (tokens.front.tok == Tok.number) {
-            sz = tokens.front.num;
+            sz = cast(int)tokens.front.num;
             tokens.popFront();
             return true;
         }
