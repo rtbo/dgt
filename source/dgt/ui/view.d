@@ -1046,40 +1046,39 @@ unittest
 }
 
 /// Testing coordinates transforms
-unittest {
-    import gfx.math.approx : approxUlp, approxUlpAndAbs;
-
+unittest
+{
     auto root = new View;
     auto child1 = new View;
     auto subchild = new View;
     auto child2 = new View;
 
-    root.rect = FRect(0, 0, 100, 100);
-    child1.rect = FRect(20, 20, 60, 40);
-    subchild.rect = FRect(5, 5, 40, 25);
-    child2.rect = FRect(10, 80, 90, 10);
+    root.rect = IRect(0, 0, 100, 100);
+    child1.rect = IRect(20, 20, 60, 40);
+    subchild.rect = IRect(5, 5, 40, 25);
+    child2.rect = IRect(10, 80, 90, 10);
 
     root.appendChild(child1);
     root.appendChild(child2);
     child1.appendChild(subchild);
 
-    immutable p = fvec(10, 10);
+    const p = ivec(10, 10);
 
-    assert(approxUlp(child1.mapFromParent(p),           fvec(-10, -10)));
-    assert(approxUlp(child1.mapFromUI(p),               fvec(-10, -10)));
-    assert(approxUlp(child1.mapToParent(p),             fvec( 30,  30)));
-    assert(approxUlp(child1.mapToUI(p),                 fvec( 30,  30)));
+    assert(child1.mapFromParent(p)         == ivec(-10, -10));
+    assert(child1.mapFromUI(p)             == ivec(-10, -10));
+    assert(child1.mapToParent(p)           == ivec( 30,  30));
+    assert(child1.mapToUI(p)               == ivec( 30,  30));
 
-    assert(approxUlp(child2.mapFromParent(p),           fvec(  0, -70)));
-    assert(approxUlp(child2.mapFromUI(p),               fvec(  0, -70)));
-    assert(approxUlp(child2.mapToParent(p),             fvec( 20,  90)));
-    assert(approxUlp(child2.mapToUI(p),                 fvec( 20,  90)));
+    assert(child2.mapFromParent(p)         == ivec(  0, -70));
+    assert(child2.mapFromUI(p)             == ivec(  0, -70));
+    assert(child2.mapToParent(p)           == ivec( 20,  90));
+    assert(child2.mapToUI(p)               == ivec( 20,  90));
 
-    assert(approxUlp(subchild.mapFromParent(p),         fvec(  5,   5)));
-    assert(approxUlp(subchild.mapFromUI(p),             fvec(-15, -15)));
-    assert(approxUlp(subchild.mapToParent(p),           fvec( 15,  15)));
-    assert(approxUlp(subchild.mapToUI(p),               fvec( 35,  35)));
+    assert(subchild.mapFromParent(p)       == ivec(  5,   5));
+    assert(subchild.mapFromUI(p)           == ivec(-15, -15));
+    assert(subchild.mapToParent(p)         == ivec( 15,  15));
+    assert(subchild.mapToUI(p)             == ivec( 35,  35));
 
-    assert(approxUlp(subchild.mapToView(child2, p),     fvec( 25,  -45)));
-    assert(approxUlp(subchild.mapFromView(child2, p),   fvec( -5,  65)));
+    assert(subchild.mapToView(child2, p)   == ivec( 25, -45));
+    assert(subchild.mapFromView(child2, p) == ivec( -5,  65));
 }
