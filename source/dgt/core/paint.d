@@ -312,7 +312,9 @@ immutable(Paint) parsePaint(string css)
 ///
 unittest
 {
+    import dgt.core.color : Color;
     import gfx.math.approx : approxUlp;
+
     alias Direction = LinearGradientPaint.Direction;
 
     auto p1 = parsePaint("linear-gradient(yellow, blue 20%, #0f0)");

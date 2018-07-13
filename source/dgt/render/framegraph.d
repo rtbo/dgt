@@ -456,7 +456,7 @@ struct FgBreadthFirstRange
 version(unittest) {
 
     import std.range.primitives : isForwardRange;
-    import gfx.foundation.typecons : none;
+    import gfx.core.typecons : none;
 
     static assert(isForwardRange!FgDepthFirstRange);
     static assert(isForwardRange!FgBreadthFirstRange);
@@ -487,22 +487,23 @@ version(unittest) {
     }
 }
 
-unittest {
+unittest
+{
     import std.algorithm : equal, map;
     immutable fg = makeTestFG();
     assert(fg.depthFirst.map!(n => n.type).equal([
-        FGNode.Type.group,
-        FGNode.Type.transform,
-        FGNode.Type.group,
-        FGNode.Type.rect,
-        FGNode.Type.rect,
-        FGNode.Type.rect,
-        FGNode.Type.rect,
-        FGNode.Type.transform,
-        FGNode.Type.group,
-        FGNode.Type.transform,
-        FGNode.Type.text,
-        FGNode.Type.rect,
+        FGGroupNode.fgType,
+        FGTransformNode.fgType,
+        FGGroupNode.fgType,
+        FGRectNode.fgType,
+        FGRectNode.fgType,
+        FGRectNode.fgType,
+        FGRectNode.fgType,
+        FGTransformNode.fgType,
+        FGGroupNode.fgType,
+        FGTransformNode.fgType,
+        FGTextNode.fgType,
+        FGRectNode.fgType,
     ]));
 }
 
@@ -510,17 +511,17 @@ unittest {
     import std.algorithm : equal, map;
     immutable fg = makeTestFG();
     assert(fg.breadthFirst.map!(n => n.type).equal([
-        FGNode.Type.group,
-        FGNode.Type.transform,
-        FGNode.Type.transform,
-        FGNode.Type.group,
-        FGNode.Type.group,
-        FGNode.Type.rect,
-        FGNode.Type.rect,
-        FGNode.Type.rect,
-        FGNode.Type.rect,
-        FGNode.Type.transform,
-        FGNode.Type.rect,
-        FGNode.Type.text,
+        FGGroupNode.fgType,
+        FGTransformNode.fgType,
+        FGTransformNode.fgType,
+        FGGroupNode.fgType,
+        FGGroupNode.fgType,
+        FGRectNode.fgType,
+        FGRectNode.fgType,
+        FGRectNode.fgType,
+        FGRectNode.fgType,
+        FGTransformNode.fgType,
+        FGRectNode.fgType,
+        FGTextNode.fgType,
     ]));
 }

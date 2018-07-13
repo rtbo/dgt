@@ -119,6 +119,8 @@ Region intersect(in Region lhs, in Region rhs)
 
 unittest
 {
+    import dgt.core.geometry : IPoint, ISize;
+
     immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
     immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
     immutable res = intersect(reg1, reg2);
@@ -225,6 +227,8 @@ Region unite(in Region lhs, in Region rhs)
 
 unittest
 {
+    import dgt.core.geometry : IPoint, ISize;
+
     immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
     immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
     immutable res = unite(reg1, reg2);
@@ -333,6 +337,8 @@ Region subtract(in Region lhs, in Region rhs)
 
 unittest
 {
+    import dgt.core.geometry : IPoint, ISize;
+
     immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
     immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
     immutable res = subtract(reg1, reg2);

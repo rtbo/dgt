@@ -165,7 +165,10 @@ Mutex mutex;
 
 enum uriRegex = `^(\w+)://(.+)`;
 
-unittest {
+unittest
+{
+    import std.regex : ctRegex, matchFirst;
+
     auto regex = ctRegex!(uriRegex);
 
     string testUri = "http://this.uri/is.awesome";
