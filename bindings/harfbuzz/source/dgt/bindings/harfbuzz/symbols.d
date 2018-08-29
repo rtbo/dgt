@@ -2,7 +2,7 @@ module dgt.bindings.harfbuzz.symbols;
 
 import dgt.bindings.harfbuzz.definitions;
 
-import derelict.freetype.ft;
+import ft.freetype;
 
 extern(C) nothrow @nogc __gshared
 {

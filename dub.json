@@ -16,8 +16,6 @@
 
     "subPackages": [
         "./bindings",
-        "./bindings/cairo",
-        "./bindings/libpng",
         "./bindings/turbojpeg",
         "./bindings/fontconfig",
         "./bindings/harfbuzz",
@@ -29,7 +27,6 @@
 
     "dependencies":	{
         "dgt:bindings":		"*",
-        "dgt:libpng":		"*",
         "dgt:turbojpeg":	"*",
         "dgt:harfbuzz":	    "*",
 
@@ -37,7 +34,8 @@
         "gfx:memalloc": { "path": "gfx-d" },
         "gfx:math":     { "path": "gfx-d" },
 
-        "derelict-ft":      "~>1.1.3"
+        "png-d":            "*",
+        "freetype-d":       "*"
     },
 
     "configurations": [

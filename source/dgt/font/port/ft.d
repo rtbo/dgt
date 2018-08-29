@@ -1,8 +1,6 @@
 /// Freetype typeface implementation module
 module dgt.font.port.ft;
 
-import derelict.freetype.ft;
-
 import dgt : Subsystem;
 import dgt.core.geometry;
 import dgt.core.image;
@@ -12,13 +10,20 @@ import dgt.font.typeface;
 import gfx.math.vec : FVec2, IVec2;
 import dgt.text.shaping;
 
+import ft.freetype;
+import ft.bitmap;
+import ft.image;
+import ft.outline;
+import ft.tttables;
+import ft.types;
+
 import std.exception;
 import std.experimental.logger;
 import std.typecons : Nullable;
 import std.uni : CodepointSet;
 
 // for other modules to import without having to deal with derelict
-alias FT_Face = derelict.freetype.ft.FT_Face;
+alias FT_Face = ft.freetype.FT_Face;
 
 class FtTypeface : Typeface
 {
