@@ -760,7 +760,7 @@ Nullable!ImageFileFormat checkImgSig(const(ubyte)[] data) pure
 private
 {
     import libpng.png;
-    import dgt.bindings.turbojpeg;
+    import turbojpeg.turbojpeg;
     import std.path;
     import std.string;
     import std.uni : toLower;

@@ -16,7 +16,6 @@
 
     "subPackages": [
         "./bindings",
-        "./bindings/turbojpeg",
         "./bindings/fontconfig",
         "./bindings/harfbuzz",
         "./bindings/xcb-image",
@@ -27,7 +26,6 @@
 
     "dependencies":	{
         "dgt:bindings":		"*",
-        "dgt:turbojpeg":	"*",
         "dgt:harfbuzz":	    "*",
 
         "gfx":          { "path": "gfx-d" },
@@ -35,6 +33,7 @@
         "gfx:math":     { "path": "gfx-d" },
 
         "png-d":            "*",
+        "turbojpeg-d":      "*",
         "freetype-d":       "*"
     },
 
