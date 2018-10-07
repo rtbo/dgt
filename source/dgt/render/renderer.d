@@ -225,22 +225,26 @@ class RendererBase : Renderer
         prepareAllocator(128 * 1024);
         prepareRenderers();
 
-        import gfx.graal : Severity;
-        instance.setDebugCallback((Severity sev, string msg) {
-            import std.stdio : writefln;
-            if (sev == Severity.warning || sev == Severity.error) {
-                writefln("Gfx backend %s message: %s", sev, msg);
-            }
-            if (sev == Severity.error) {
-                // debug break;
-                asm { int 0x03; }
-            }
-        });
+        debug {
+            import gfx.graal : Severity;
+            instance.setDebugCallback((Severity sev, string msg) {
+                import std.stdio : writefln;
+                if (sev == Severity.warning || sev == Severity.error) {
+                    writefln("Gfx backend %s message: %s", sev, msg);
+                }
+                if (sev == Severity.error) {
+                    // debug break;
+                    asm { int 0x03; }
+                }
+            });
+        }
     }
 
     override void finalize(size_t windowHandle)
     {
         import gfx.core.rc : disposeObj, disposeArr, releaseArr;
+        import std.experimental.logger : trace;
+        trace("finalizing renderer");
 
         device.waitIdle();
 
