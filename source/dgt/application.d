@@ -101,7 +101,10 @@ class Application : EventLoop, Disposable
         import gfx.graal : Backend;
 
         assert(window.created && !window.dummy);
-        const tryOrder = [ Backend.vulkan, Backend.gl3 ];
+        const tryOrder = [
+            Backend.vulkan,
+            Backend.gl3
+        ];
         auto renderer = createRenderer(tryOrder, name, ver, createGlContext(window));
         RenderQueue.instance.start(renderer);
     }
