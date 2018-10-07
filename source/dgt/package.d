@@ -76,10 +76,8 @@ __gshared Mutex gMut;
 void loadBindings()
 {
     import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
-    import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
 
     loadHarfbuzzSymbols();
-    loadTurboJpegSymbols();
 
     version(linux) {
         import dgt.bindings.fontconfig.load : loadFontconfigSymbols;

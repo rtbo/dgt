@@ -919,9 +919,9 @@ private
         }
 
 
-        string errorMsg() {
+        string errorMsg(tjhandle jpeg) {
             import core.stdc.string : strlen;
-            char* msg = tjGetErrorStr();
+            char* msg = tjGetErrorStr2(jpeg);
             auto len = strlen(msg);
             return msg[0..len].idup;
         }
@@ -945,12 +945,11 @@ private
             tjhandle jpeg = tjInitDecompress();
             scope(exit) tjDestroy(jpeg);
 
-            // const cast needed.  arrgh!
-            int width, height, jpegsubsamp;
-            if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length,
-                                    &width, &height, &jpegsubsamp) != 0)
+            int width, height, jpegsubsamp, colorspace;
+            if (tjDecompressHeader3(jpeg, bytes.ptr, cast(c_ulong)bytes.length,
+                                    &width, &height, &jpegsubsamp, &colorspace) != 0)
             {
-                throw new Exception("could not read from memory: "~errorMsg());
+                throw new Exception("could not read from memory: "~errorMsg(jpeg));
             }
 
             immutable rowStride = alignedStrideForWidth(ImageFormat.argb, width);
@@ -958,7 +957,7 @@ private
             if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length, data.ptr,
                             width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)
             {
-                throw new Exception("could not read from memory: "~errorMsg());
+                throw new Exception("could not read from memory: "~errorMsg(jpeg));
             }
 
             auto img = new Image(data, ImageFormat.argb, width, rowStride);
@@ -986,7 +985,7 @@ private
             if (tjCompress2(jpeg, cast(ubyte*)img.data.ptr, img.width, 0, img.height,
                        jpegFormat(img.format), &bytes, &len, TJSAMP.TJSAMP_444, 100,
                        TJFLAG_FASTDCT) != 0) {
-                throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg());
+                throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg(jpeg));
             }
             scope(exit) tjFree(bytes);
             write(filename, cast(void[])bytes[0..cast(uint)len]);
