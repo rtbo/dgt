@@ -4,7 +4,7 @@ version(linux):
 
 import dgt.input.keys;
 import dgt.platform.event;
-import dgt.platform.xcb : xcbEventType;
+import dgt.platform.xcb : dgtXcbTag, xcbEventType;
 import dgt.window;
 
 import xcb.xcb;
@@ -14,7 +14,7 @@ import xkbcommon.x11;
 import xkbcommon.xkbcommon;
 
 import std.exception : assumeUnique;
-import std.experimental.logger;
+import gfx.core.log;
 
 class XcbKeyboard
 {
@@ -187,7 +187,7 @@ KeyCode codeForKeycode(xkb_keycode_t keycode)
 {
     if (keycode >= keycodeTable.length)
     {
-        warningf("DGT-XCB: keycode 0x%x is out of bounds", keycode);
+        warningf(dgtXcbTag, "DGT-XCB: keycode 0x%x is out of bounds", keycode);
         return KeyCode.unknown;
     }
     return keycodeTable[keycode];

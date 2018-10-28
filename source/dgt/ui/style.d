@@ -1,6 +1,7 @@
 /// Module gathering CSS properties implemented by DGT for views
 module dgt.ui.style;
 
+import dgt : dgtTag;
 import dgt.core.color;
 import dgt.core.paint;
 import dgt.css.style;
@@ -9,8 +10,8 @@ import dgt.css.value;
 import dgt.font.style;
 import dgt.ui.layout;
 import dgt.ui.view;
+import gfx.core.log;
 
-import std.experimental.logger;
 import std.range;
 import std.typecons : rebindable, Nullable;
 
@@ -365,7 +366,7 @@ final class FontWeightMetaProperty : StyleMetaProperty!(FontWeight, ParsedFontWe
                 return fw.rel == ParsedFontWeight.RelKwd.lighter ? FontWeight.bold : FontWeight.extraLarge;
             }
             else {
-                warningf("out of range font-weight: %s", pfw);
+                warningf(dgtTag, "out of range font-weight: %s", pfw);
                 return getProperty(target).value;
             }
         }

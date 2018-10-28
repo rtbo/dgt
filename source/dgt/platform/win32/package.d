@@ -12,7 +12,7 @@ import dgt.platform.win32.window;
 import dgt.screen;
 import dgt.window;
 
-import std.experimental.logger;
+import gfx.core.log;
 import core.sys.windows.winuser;
 import core.sys.windows.windows;
 
@@ -131,7 +131,7 @@ class Win32Platform : Platform
                     QS_ALLINPUT);
 
         if (code == WAIT_FAILED) {
-            errorf("win32 wait failed with code: %s", GetLastError());
+            errorf(dgtTag, "win32 wait failed with code: %s", GetLastError());
             return Wait.none;
         }
         Wait wait = Wait.none;
@@ -330,7 +330,7 @@ private LRESULT win32WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     catch(Exception ex)
     {
-        try { errorf("Win32 Proc exception: %s", ex.msg); }
+        try { errorf(dgtTag, "Win32 Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return res;
@@ -348,7 +348,7 @@ private BOOL win32MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprc
     }
     catch(Exception ex)
     {
-        try { errorf("Win32 Monitor Proc exception: %s", ex.msg); }
+        try { errorf(dgtTag, "Win32 Monitor Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return TRUE;

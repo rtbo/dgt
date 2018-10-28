@@ -53,9 +53,9 @@ class Application : EventLoop, Disposable
 
     private void initialize(Platform platform)
     {
-        import dgt : initializeSubsystems;
+        import dgt : dgtTag, initializeSubsystems;
         import dgt.render.queue : RenderQueue;
-        import std.experimental.logger : log;
+        import gfx.core.log : info;
 
         initializeSubsystems();
 
@@ -64,12 +64,12 @@ class Application : EventLoop, Disposable
         _instance = this;
 
         // init platform
-        log("initializing platform");
+        info(dgtTag, "initializing platform");
         if (!platform) platform = makeDefaultPlatform();
         _platform = platform;
         _platform.initialize();
 
-        log("platform initialization done");
+        info(dgtTag, "platform initialization done");
 
         // init other singletons
         {

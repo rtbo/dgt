@@ -4,7 +4,7 @@ import dgt.context;
 import dgt.render.framegraph;
 import dgt.render.renderer;
 
-import std.experimental.logger;
+import gfx.core.log;
 import std.concurrency;
 
 /// Queue of framegraph frames that are submitted to a renderer.

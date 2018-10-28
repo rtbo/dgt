@@ -3,14 +3,15 @@ module dgt.font.port.fc;
 
 version(linux):
 
+import dgt : dgtTag;
 import dgt.bindings.fontconfig;
 import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
+import gfx.core.log;
 
-import std.experimental.logger;
 import std.string;
 import std.typecons : Nullable;
 import std.uni;
@@ -366,7 +367,7 @@ class FcTypeface : FtTypeface
             return fcCharsetToCoverage(csval);
         }
         else {
-            errorf("Cannot find charset in font %s to build coverage", family);
+            errorf(dgtTag, "Cannot find charset in font %s to build coverage", family);
             return CodepointSet.init;
         }
     }
@@ -446,7 +447,7 @@ FontSlant fcSlantToSlant(in int slant)
         case FC_SLANT_OBLIQUE:
             return FontSlant.oblique;
         default:
-            warningf("fontconfig slant %d do not match a FontSlant", slant);
+            warningf(dgtTag, "fontconfig slant %d do not match a FontSlant", slant);
             return FontSlant.normal;
     }
 }

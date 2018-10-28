@@ -1,13 +1,14 @@
 /// Module that contains main style related interfaces and base classes
 module dgt.css.style;
 
+import dgt : dgtTag;
 import dgt.core.geometry;
 import dgt.core.signal;
 import dgt.css.om;
 import dgt.css.token;
 import dgt.css.value;
+import gfx.core.log;
 
-import std.experimental.logger;
 import std.range;
 
 /// Bit flags that describe the pseudo state of a StyleElement.
@@ -277,7 +278,7 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
             winningVal = parseValue(winning.valueTokens);
             winning.value = winningVal;
             if (!winningVal) {
-                warningf("could not parse winning declaration "~winning.property);
+                warningf(dgtTag, "could not parse winning declaration "~winning.property);
                 applyInitial(target, winning.origin);
                 return;
             }

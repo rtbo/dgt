@@ -11,7 +11,7 @@ import dgt.ui.event;
 import dgt.ui.layout;
 
 import std.exception;
-import std.experimental.logger;
+import gfx.core.log;
 
 /// Base class for all views in the user interface
 class View : StyleElement, TreeNode!View

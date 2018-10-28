@@ -1,6 +1,7 @@
 /// Paint module describes the stroke and fill paint used during rendering.
 module dgt.core.paint;
 
+import dgt : dgtTag;
 import std.typecons : Rebindable;
 
 /// The type of a paint.
@@ -499,7 +500,7 @@ immutable(Paint) parseImageFromUri(in string uri)
     import dgt.core.image : assumeUnique, Image, ImageFormat;
     import dgt.core.resource : Registry, Resource, retrieveResource;
     import std.algorithm : startsWith;
-    import std.experimental.logger : errorf, tracef;
+    import gfx.core.log : errorf, tracef;
 
     try {
 
@@ -523,7 +524,7 @@ immutable(Paint) parseImageFromUri(in string uri)
         return new immutable ImagePaint(img);
     }
     catch(Exception ex) {
-        errorf("could not get paint image from url %s\nError msg:%s", uri, ex.msg);
+        errorf(dgtTag, "could not get paint image from url %s\nError msg:%s", uri, ex.msg);
         return null;
     }
 }

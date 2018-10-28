@@ -3,6 +3,8 @@ module dgt;
 
 import core.sync.mutex : Mutex;
 
+package immutable string dgtTag = "DGT";
+
 interface Subsystem
 {
     @property bool running() const;
@@ -33,16 +35,16 @@ void registerSubsystem(Subsystem ss)
 
 void initializeSubsystems()
 {
+    import gfx.core.log : trace;
     import std.algorithm : each, filter;
-    import std.experimental.logger : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
 
-    trace("loading dynamic bindings");
+    trace(dgtTag, "loading dynamic bindings");
     loadBindings();
 
-    trace("initializing subsystems");
+    trace(dgtTag, "initializing subsystems");
 
     gSubsystems.filter!(ss => !ss.running)
         .each!(ss => ss.initialize());
@@ -51,7 +53,7 @@ void initializeSubsystems()
 void finalizeSubsystems()
 {
     import std.algorithm : each, filter;
-    import std.experimental.logger : trace;
+    import gfx.core.log : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
@@ -60,7 +62,7 @@ void finalizeSubsystems()
         .each!(ss => ss.finalize());
     gSubsystems = [];
 
-    trace("finalized subsystems");
+    trace(dgtTag, "finalized subsystems");
 }
 
 private:

@@ -3,6 +3,7 @@
 /// build from/convert to various forms (including CSS).
 module dgt.core.color;
 
+import dgt : dgtTag;
 import dgt.css.token : Token;
 import gfx.math.vec : FVec3;
 import std.range : ElementType, isInputRange;
@@ -84,8 +85,8 @@ struct Color
             _argb = c._argb;
         }
         else {
-            import std.experimental.logger : errorf;
-            errorf("could not parse %s as a color", css);
+            import gfx.core.log : errorf;
+            errorf(dgtTag, "could not parse %s as a color", css);
         }
     }
 

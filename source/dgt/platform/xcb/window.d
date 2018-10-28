@@ -21,7 +21,7 @@ import xcb.xcb;
 import xcb.xcb_icccm;
 import X11.Xlib;
 
-import std.experimental.logger;
+import gfx.core.log;
 import std.typecons : scoped;
 import std.string : toStringz;
 import std.exception : enforce;
@@ -262,7 +262,7 @@ class XcbWindow : PlatformWindow
         auto r = xcb_get_geometry_reply(g_connection, c, &err);
         if (err)
         {
-            warningf("DGT-xcb could not retrieve window geometry");
+            warningf(dgtXcbTag, "could not retrieve window geometry");
             free(err);
             return IRect(0, 0, 0, 0);
         }
@@ -282,7 +282,7 @@ class XcbWindow : PlatformWindow
         auto err = xcb_request_check(g_connection, cookie);
         if (err)
         {
-            warningf("DGT-XCB: error resizing window");
+            warningf(dgtXcbTag, "error resizing window");
             free(err);
         }
         xcb_flush(g_connection);
@@ -666,7 +666,7 @@ ubyte drawVisualDepth(const xcb_screen_t *s, xcb_visualid_t vis)
 
 //     if (!fbConfigs || !numConfigs)
 //     {
-//         critical("DGT-XCB: could not get fb config");
+//         error(dgtXcbTag, "could not get fb config");
 //         return null;
 //     }
 //     scope (exit)

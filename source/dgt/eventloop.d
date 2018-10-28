@@ -3,6 +3,7 @@ module dgt.eventloop;
 /// An event loop
 class EventLoop
 {
+    import dgt : dgtTag;
     import dgt.platform.event : PlEvent, PlTimerEvent;
     import dgt.window : Window;
 
@@ -96,10 +97,10 @@ class EventLoop
 
     package void registerWindow(Window w)
     {
-        import std.experimental.logger : logf;
+        import gfx.core.log : infof;
 
         assert(!hasWindow(w), "tentative to register registered window");
-        logf(`register window: 0x%08x "%s"`, cast(void*)w, w.title);
+        infof(dgtTag, `register window: 0x%08x "%s"`, cast(void*)w, w.title);
         _windows ~= w;
 
         onRegisterWindow(w);
@@ -108,18 +109,18 @@ class EventLoop
     package void unregisterWindow(Window w)
     {
         import std.algorithm : remove, SwapStrategy;
-        import std.experimental.logger : logf;
+        import gfx.core.log : infof;
 
         assert(hasWindow(w), "tentative to unregister unregistered window");
 
         onUnregisterWindow(w);
 
         _windows = _windows.remove!(win => win is w, SwapStrategy.unstable)();
-        logf(`unregister window: 0x%08x "%s"`, cast(void*)w, w.title);
+        infof(dgtTag, `unregister window: 0x%08x "%s"`, cast(void*)w, w.title);
 
         if (!_windows.length && !_exitFlag)
         {
-            logf("last window exit!");
+            infof(dgtTag, "last window exit!");
             exit(0);
         }
     }

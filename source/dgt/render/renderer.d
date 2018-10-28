@@ -1,6 +1,7 @@
 module dgt.render.renderer;
 
 import dgt.core.rc : Disposable;
+import dgt.render : dgtRenderTag;
 import dgt.render.framegraph;
 import gfx.gl3.context : GlContext;
 import gfx.graal : Instance, Backend;
@@ -32,8 +33,8 @@ Renderer createRenderer(in Backend[] tryOrder, lazy string appName,
             }
         }
         catch(Exception e) {
-            import std.experimental.logger : warningf;
-            warningf("Failed to create %s backend: %s", backend, e.msg);
+            import gfx.core.log : warningf;
+            warningf(dgtRenderTag, "Failed to create %s backend: %s", backend, e.msg);
             ex = e;
         }
     }
@@ -243,8 +244,8 @@ class RendererBase : Renderer
     override void finalize(size_t windowHandle)
     {
         import gfx.core.rc : disposeObj, disposeArr, releaseArr;
-        import std.experimental.logger : trace;
-        trace("finalizing renderer");
+        import gfx.core.log : trace;
+        trace(dgtRenderTag, "finalizing renderer");
 
         device.waitIdle();
 
@@ -759,7 +760,7 @@ final class WindowContext : Disposable
         import std.algorithm : clamp, map, max;
         import std.array : array;
         import std.exception : enforce;
-        import std.experimental.logger : tracef;
+        import gfx.core.log : tracef;
 
         if (swapchain && newSize == size && !mustRebuildSwapchain) return;
 
@@ -788,7 +789,7 @@ final class WindowContext : Disposable
             sz[i] = clamp(newSize[i], surfCaps.minSize[i], surfCaps.maxSize[i]);
         }
 
-        tracef("creating swapchain for size %s", sz);
+        tracef(dgtRenderTag, "creating swapchain for size %s", sz);
 
         const usage = ImageUsage.colorAttachment;
         const pm = PresentMode.fifo;

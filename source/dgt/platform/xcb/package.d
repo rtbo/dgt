@@ -30,9 +30,11 @@ import X11.Xlib;
 
 import std.container : DList;
 import std.exception : enforce;
-import std.experimental.logger;
+import gfx.core.log;
 import std.string : toStringz;
 import std.typecons : scoped;
+
+package immutable string dgtXcbTag = "DGT-XCB";
 
 alias Window = dgt.window.Window;
 alias Screen = dgt.screen.Screen;
@@ -197,7 +199,7 @@ class XcbPlatform : Platform
                 import core.stdc.string : strerror;
                 import std.string : fromStringz;
                 if (errno == EINTR) continue;
-                logf("error during poll: %s", fromStringz(strerror(errno)));
+                infof(dgtXcbTag, "error during poll: %s", fromStringz(strerror(errno)));
             }
             break;
         }

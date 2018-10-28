@@ -1,5 +1,6 @@
 module dgt.ui;
 
+import dgt : dgtTag;
 import dgt.core.geometry;
 import dgt.core.color;
 import dgt.core.paint;
@@ -14,7 +15,7 @@ import dgt.ui.view : View;
 
 import gfx.core.typecons : option, Option, none;
 
-import std.experimental.logger;
+import gfx.core.log;
 import std.typecons : rebindable, Rebindable;
 
 /// The UserInterface class represent the top level of the GUI tree.
@@ -331,13 +332,13 @@ final class UserInterface : StyleElement {
                 const pos = ev.point;
 
                 if (!_mouseViews.length) {
-                    errorf("mouse down without prior move");
+                    errorf(dgtTag, "mouse down without prior move");
                     _root.viewsAtPos(pos, _mouseViews);
                 }
                 _dragChain = _mouseViews;
 
                 if (!_mouseViews.length) {
-                    error("No View under mouse?");
+                    error(dgtTag, "No View under mouse?");
                     return;
                 }
 
@@ -373,7 +374,7 @@ final class UserInterface : StyleElement {
                 _tempViews.length = 0;
 
                 if (!_mouseViews.length) {
-                    error("No View under mouse?");
+                    error(dgtTag, "No View under mouse?");
                     return;
                 }
 
@@ -424,9 +425,9 @@ final class UserInterface : StyleElement {
                 }
                 else {
                     // should not happen
-                    warning("mouse up without drag?");
+                    warning(dgtTag, "mouse up without drag?");
                     if (!_mouseViews.length) {
-                        error("No View under mouse?");
+                        error(dgtTag, "No View under mouse?");
                         return;
                     }
                     auto upEv = scoped!MouseEvent(
@@ -447,7 +448,7 @@ final class UserInterface : StyleElement {
                 const pos = ev.point;
 
                 if (_mouseViews.length) {
-                    errorf("Enter window while having already nodes under mouse??");
+                    errorf(dgtTag, "Enter window while having already nodes under mouse??");
                     _mouseViews.length = 0;
                 }
                 assert(!_tempViews.length);

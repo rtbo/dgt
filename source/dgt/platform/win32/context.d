@@ -87,7 +87,7 @@ private class Win32GlContext : GlContext
     import core.sys.windows.windows;
     import gfx.core.rc : atomicRcCode, Disposable;
     import std.exception : enforce;
-    import std.experimental.logger : tracef;
+    import gfx.core.log : tracef;
 
     mixin(atomicRcCode);
 
@@ -154,7 +154,7 @@ private class Win32GlContext : GlContext
             if (attrs.decimalVersion < attribs.decimalVersion) break;
 
             const ctxAttribs = getCtxAttribs(attrs);
-            tracef("attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+            tracef(dgtTag, "attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
 
             _ctx = _wgl.CreateContextAttribsARB(dc, sharedGlrc, &ctxAttribs[0]);
 
@@ -162,7 +162,7 @@ private class Win32GlContext : GlContext
         }
 
         enforce(_ctx, "Failed creating Wgl context");
-        tracef("created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+        tracef(dgtTag, "created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
         _attribs = attrs;
         Win32GlContext.makeCurrent(cast(size_t)window);
         _gl = new Gl(&loader);
@@ -170,7 +170,7 @@ private class Win32GlContext : GlContext
 
     override void dispose() {
         _wgl.DeleteContext(_ctx);
-        tracef("destroyed GL/WGL context");
+        tracef(dgtTag, "destroyed GL/WGL context");
     }
 
     override @property Gl gl() {
@@ -232,7 +232,7 @@ private class Win32GlContext : GlContext
     }
 
     private void printLastError() {
-        import std.experimental.logger : errorf;
+        import gfx.core.log : errorf;
         const err = GetLastError();
         LPSTR messageBuffer = null;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -271,8 +271,8 @@ private SharedLib loadGlLib()
     foreach (ln; glLibNames) {
         auto lib = openSharedLib(ln);
         if (lib) {
-            import std.experimental.logger : tracef;
-            tracef("opening shared library %s", ln);
+            import gfx.core.log : tracef;
+            tracef(dgtTag, "opening shared library %s", ln);
             return lib;
         }
     }

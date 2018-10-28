@@ -12,7 +12,7 @@ import dgt.font.style;
 import dgt.font.typeface;
 
 import std.exception;
-import std.experimental.logger;
+import gfx.core.log;
 import std.string;
 import std.stdio;
 

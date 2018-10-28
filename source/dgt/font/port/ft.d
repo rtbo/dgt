@@ -18,7 +18,7 @@ import ft.tttables;
 import ft.types;
 
 import std.exception;
-import std.experimental.logger;
+import gfx.core.log;
 import std.typecons : Nullable;
 import std.uni : CodepointSet;
 

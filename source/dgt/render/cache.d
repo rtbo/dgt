@@ -2,9 +2,10 @@
 module dgt.render.cache;
 
 import dgt.core.rc : Disposable;
+import dgt.render : dgtRenderTag;
 import dgt.render.framegraph : CacheCookie;
 
-import std.experimental.logger;
+import gfx.core.log;
 
 class RenderCache : Disposable
 {
@@ -19,10 +20,10 @@ class RenderCache : Disposable
     void cache(in CacheCookie cookie, AtomicRefCounted resource) {
         auto rcp = cookie in _cache;
         if (rcp && (*rcp) is resource) {
-            warning("RenderCache: Resource already cached.");
+            warning(dgtRenderTag, "RenderCache: Resource already cached.");
         }
         else if (rcp && (*rcp) !is resource) {
-            warning("RenderCache : Overriding a resource.");
+            warning(dgtRenderTag, "RenderCache : Overriding a resource.");
             rcp.release();
             resource.retain();
             (*rcp) = resource;
