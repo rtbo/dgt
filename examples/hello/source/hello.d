@@ -24,6 +24,12 @@ import std.typecons : scoped;
 
 int main()
 {
+    {
+        import gfx.core.log : Severity, severity;
+
+        severity = Severity.trace;
+    }
+
     auto app = new Application();
     scope(exit) app.dispose();
 
