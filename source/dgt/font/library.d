@@ -107,8 +107,15 @@ __gshared FontLibrary _instance;
 
 class FLSubsystem : Subsystem
 {
+    override @property string name() const
+    {
+        return "Font Library";
+    }
     override @property bool running() const {
         return _instance !is null;
+    }
+    override @property int priority() const {
+        return int.max - 10;
     }
     override void initialize() {
         version(linux) {

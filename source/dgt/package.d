@@ -7,6 +7,12 @@ package immutable string dgtTag = "DGT";
 
 interface Subsystem
 {
+    @property string name() const;
+    /// Order of priority in intialization and finalization.
+    /// Subsystems of higher priority are initialized first and finalized last.
+    /// Use this to enable ensure dependency correctness between subsystems.
+    @property int priority() const;
+
     @property bool running() const;
 
     void initialize()
@@ -36,7 +42,7 @@ void registerSubsystem(Subsystem ss)
 void initializeSubsystems()
 {
     import gfx.core.log : trace;
-    import std.algorithm : each, filter;
+    import std.algorithm : each, filter, sort;
 
     gMut.lock();
     scope(exit) gMut.unlock();
@@ -46,20 +52,28 @@ void initializeSubsystems()
 
     trace(dgtTag, "initializing subsystems");
 
-    gSubsystems.filter!(ss => !ss.running)
-        .each!(ss => ss.initialize());
+    auto ss = gSubsystems.dup;
+    ss.sort!"a.priority > b.priority"();
+    foreach (s; ss.filter!(s => !s.running)) {
+        trace(dgtTag, "Initialize subsystem "~s.name);
+        s.initialize();
+    }
 }
 
 void finalizeSubsystems()
 {
-    import std.algorithm : each, filter;
+    import std.algorithm : each, filter, sort;
     import gfx.core.log : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
 
-    gSubsystems.filter!(ss => ss.running)
-        .each!(ss => ss.finalize());
+    auto ss = gSubsystems.dup;
+    ss.sort!"a.priority < b.priority"();
+    foreach (s; ss.filter!(s => s.running)) {
+        trace(dgtTag, "Finalize subsystem "~s.name);
+        s.finalize();
+    }
     gSubsystems = [];
 
     trace(dgtTag, "finalized subsystems");

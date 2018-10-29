@@ -350,6 +350,7 @@ class FcTypeface : FtTypeface
     }
 
     override void dispose() {
+        super.dispose();
         FcPatternDestroy(_font);
     }
 

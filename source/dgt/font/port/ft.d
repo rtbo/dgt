@@ -193,6 +193,12 @@ shared static this() {
 }
 
 class FtSubsystem : Subsystem {
+    override @property string name() const {
+        return "Freetype";
+    }
+    override @property int priority() const {
+        return int.max; // no dependency
+    }
     override @property bool running() const {
         return gFtLib !is null;
     }
@@ -200,6 +206,8 @@ class FtSubsystem : Subsystem {
         enforce(FT_Init_FreeType(&gFtLib) == 0, "Could not initialize freetype");
     }
     override void finalize() {
+        import std.stdio;
+        writeln("finalize FT subsystem");
         FT_Done_FreeType(gFtLib);
         gFtLib = null;
     }
