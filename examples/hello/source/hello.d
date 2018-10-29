@@ -26,8 +26,12 @@ int main()
 {
     {
         import gfx.core.log : Severity, severity;
-
         severity = Severity.trace;
+    }
+    debug(rc) {
+        //import gfx.core.rc : rcPrintStack, rcTypeRegex;
+        //rcPrintStack = true;
+        //rcTypeRegex = "Typeface";
     }
 
     auto app = new Application();
