@@ -42,7 +42,7 @@
             "name": "linux",
             "platforms": ["linux"],
             "dependencies": {
-                "xcb-d":			"~>2.1.0",
+                "xcb-d":			"~>2.1.1",
                 "xcb-util-wm-d":	"~>0.5.0",
                 "xkbcommon-d":      "~>0.5.1",
                 "xlib-d":           "~>0.1.1",
