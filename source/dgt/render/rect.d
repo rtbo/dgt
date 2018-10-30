@@ -386,6 +386,32 @@ final class RectColRenderer : RectRendererBase
         if (uniformBuf) uniformBuf.retainMap();
         if (vertexBuf) vertexBuf.retainMap();
 
+        // if (mustReallocBuffer(uniformBuf, unifSize)) {
+        //     if (uniformBuf) services.gc(uniformBuf.obj);
+        //     uniformBuf = services.allocator.allocateBuffer(
+        //         BufferUsage.uniform, unifSize, AllocOptions.forUsage(
+        //             MemoryUsage.cpuToGpu
+        //         )
+        //     );
+        //     updateUnifDesc = true;
+        // }
+
+        // if (mustReallocBuffer(vertexBuf, vertexCursor)) {
+        //     if (vertexBuf) services.gc(vertexBuf.obj);
+        //     vertexBuf = services.allocator.allocateBuffer(
+        //         BufferUsage.vertex, vertexCursor, AllocOptions.forUsage(
+        //             MemoryUsage.cpuToGpu
+        //         )
+        //     );
+        // }
+
+        // if (updateUnifDesc) {
+        //     updateDescriptorSet();
+        // }
+
+        // uniformBuf.retainMap();
+        // vertexBuf.retainMap();
+
         mvpLen = mvpCursor;
         mvpCursor = 0;
         colStopsCursor = 0;
@@ -507,8 +533,8 @@ final class RectColRenderer : RectRendererBase
         mvpCursor = 0;
         colStopsCursor = 0;
         vertexCursor = 0;
-        if (uniformBuf) uniformBuf.releaseMap();
-        if (vertexBuf) vertexBuf.releaseMap();
+        uniformBuf.releaseMap();
+        vertexBuf.releaseMap();
     }
 }
 
@@ -616,9 +642,6 @@ final class RectImgRenderer : RectRendererBase
 
         if (mustReallocBuffer(uniformBuf, unifSize)) {
             if (uniformBuf) services.gc(uniformBuf.obj);
-            if (!unifSize) {
-                throw new Exception("RectImg unif null size");
-            }
             uniformBuf = services.allocator.allocateBuffer(
                 BufferUsage.uniform, unifSize, AllocOptions.forUsage(
                     MemoryUsage.cpuToGpu
@@ -629,9 +652,6 @@ final class RectImgRenderer : RectRendererBase
 
         if (mustReallocBuffer(vertexBuf, vertexCursor)) {
             if (vertexBuf) services.gc(vertexBuf.obj);
-            if (!vertexCursor) {
-                throw new Exception("RectImg vertex null size");
-            }
             vertexBuf = services.allocator.allocateBuffer(
                 BufferUsage.vertex, vertexCursor, AllocOptions.forUsage(
                     MemoryUsage.cpuToGpu
