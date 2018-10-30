@@ -206,8 +206,6 @@ class FtSubsystem : Subsystem {
         enforce(FT_Init_FreeType(&gFtLib) == 0, "Could not initialize freetype");
     }
     override void finalize() {
-        import std.stdio;
-        writeln("finalize FT subsystem");
         FT_Done_FreeType(gFtLib);
         gFtLib = null;
     }
