@@ -1,0 +1,50 @@
+graal:DescriptorSetLayout {
+    store "rectimg_dsl"
+    bindings {
+        // MVP
+        0 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="vertex"
+        // Stroke
+        1 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="fragment"
+        // Image
+        2 descriptorType="combinedImageSampler" descriptorCount=1 stages="fragment"
+    }
+}
+graal:PipelineLayout {
+    store "rectimg_layout"
+    layouts {
+        "store:rectimg_dsl"
+    }
+}
+// one pipeline info defined here for argbPremult format. Code copies it and
+// modify blendInfo for xrgb and argb formats to create 3 pipelines.
+graal:PipelineInfo {
+    store "rectimg_plinfo_premult"
+    shaders {
+        // need to keep the shader alive in the store
+        vertex source="view:rectimg.vert.spv" store="rectimg_keep_vtx"
+        fragment source="view:rectimg.frag.spv" store="rectimg_keep_frag"
+    }
+    inputBindings {
+        0 stride="sizeof:RectImgVertex" instanced=off
+    }
+    inputAttribs {
+        0 binding=0 member="RectImgVertex.position"
+        1 binding=0 member="RectImgVertex.texCoord"
+        2 binding=0 member="RectImgVertex.edge"
+    }
+    assembly primitive="triangleList" primitiveRestart=off
+    rasterizer polygonMode="fill"
+    // this blendInfo is for argbPremult
+    // xrgb use no blending
+    // argb use zeroPlusSrcAlpha instead of one in srcFactor
+    blendInfo {
+        attachments {
+            blend colorMask="rgba" {
+                state op="add" srcFactor="one" dstFactor="oneMinusSrcAlpha"
+            }
+        }
+    }
+    dynamicStates "viewport" "scissor"
+    layout "store:rectimg_layout"
+    renderPass "store:renderPass" subpass=0
+}

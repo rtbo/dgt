@@ -1,25 +1,29 @@
 /// Rendering cache module
 module dgt.render.cache;
 
-import dgt.core.rc;
+import dgt.core.rc : Disposable;
+import dgt.render : dgtRenderTag;
 import dgt.render.framegraph : CacheCookie;
 
-import std.experimental.logger;
+import gfx.core.log;
 
 class RenderCache : Disposable
 {
+    import dgt.core.rc : AtomicRefCounted;
+
     override void dispose() {
-        releaseArray(_cache);
+        import dgt.core.rc : releaseAA;
+        releaseAA(_cache);
     }
 
     /// Add a resource identified by cookie in the cache
-    void cache(in CacheCookie cookie, RefCounted resource) {
+    void cache(in CacheCookie cookie, AtomicRefCounted resource) {
         auto rcp = cookie in _cache;
         if (rcp && (*rcp) is resource) {
-            warning("RenderCache: Resource already cached.");
+            warning(dgtRenderTag, "RenderCache: Resource already cached.");
         }
         else if (rcp && (*rcp) !is resource) {
-            warning("RenderCache : Overriding a resource.");
+            warning(dgtRenderTag, "RenderCache : Overriding a resource.");
             rcp.release();
             resource.retain();
             (*rcp) = resource;
@@ -30,7 +34,7 @@ class RenderCache : Disposable
     }
 
     /// Retrieve the resource identified by cookie.
-    RefCounted resource(in CacheCookie cookie) {
+    AtomicRefCounted resource(in CacheCookie cookie) {
         auto rcp = cookie in _cache;
         if (rcp) return *rcp;
         else return null;
@@ -45,5 +49,5 @@ class RenderCache : Disposable
         }
     }
 
-    private RefCounted[CacheCookie] _cache;
+    private AtomicRefCounted[CacheCookie] _cache;
 }

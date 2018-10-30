@@ -3,14 +3,15 @@ module dgt.font.port.fc;
 
 version(linux):
 
+import dgt : dgtTag;
 import dgt.bindings.fontconfig;
 import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
+import gfx.core.log;
 
-import std.experimental.logger;
 import std.string;
 import std.typecons : Nullable;
 import std.uni;
@@ -242,28 +243,6 @@ class FcFontLibrary : FontLibrary
 
 private:
 
-class TypefaceCache : Disposable {
-
-    this() {}
-
-    override void dispose() {
-        releaseArray(_typefaces);
-    }
-
-    void add(Typeface tf) {
-        tf.retain();
-        _typefaces ~= tf;
-    }
-
-    private Typeface[] _typefaces;
-}
-
-Typeface find (alias pred)(TypefaceCache tfCache) {
-    foreach(tf; tfCache._typefaces) {
-        if (pred(tf)) return tf;
-    }
-    return null;
-}
 
 bool isGenericFamily(in string family) {
     if (!sicmp(family, "system-ui")) return true;
@@ -371,6 +350,7 @@ class FcTypeface : FtTypeface
     }
 
     override void dispose() {
+        super.dispose();
         FcPatternDestroy(_font);
     }
 
@@ -388,7 +368,7 @@ class FcTypeface : FtTypeface
             return fcCharsetToCoverage(csval);
         }
         else {
-            errorf("Cannot find charset in font %s to build coverage", family);
+            errorf(dgtTag, "Cannot find charset in font %s to build coverage", family);
             return CodepointSet.init;
         }
     }
@@ -468,7 +448,7 @@ FontSlant fcSlantToSlant(in int slant)
         case FC_SLANT_OBLIQUE:
             return FontSlant.oblique;
         default:
-            warningf("fontconfig slant %d do not match a FontSlant", slant);
+            warningf(dgtTag, "fontconfig slant %d do not match a FontSlant", slant);
             return FontSlant.normal;
     }
 }

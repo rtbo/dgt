@@ -152,8 +152,8 @@ class FocusEvent : Event
 
 class MouseEvent : Event
 {
-    this(in EventType type, View[] viewChain, in FPoint pos,
-            in FPoint scenePos, in MouseButton button, in MouseState state,
+    this(in EventType type, View[] viewChain, in IPoint pos,
+            in IPoint scenePos, in MouseButton button, in MouseState state,
             in KeyMods modifiers)
     in {
         assert(type & EventType.mouseMask);
@@ -167,12 +167,12 @@ class MouseEvent : Event
         _modifiers = modifiers;
     }
 
-    @property FPoint pos() const
+    @property IPoint pos() const
     {
         return _pos;
     }
 
-    @property FPoint scenePos() const
+    @property IPoint scenePos() const
     {
         return _scenePos;
     }
@@ -205,8 +205,8 @@ class MouseEvent : Event
 
     private
     {
-        FPoint _pos;
-        FPoint _scenePos;
+        IPoint _pos;
+        IPoint _scenePos;
         MouseButton _button;
         MouseState _state;
         KeyMods _modifiers;

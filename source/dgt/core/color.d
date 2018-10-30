@@ -3,16 +3,17 @@
 /// build from/convert to various forms (including CSS).
 module dgt.core.color;
 
-import dgt.css.token;
-import dgt.math.vec;
-
-import std.exception;
-import std.range;
+import dgt : dgtTag;
+import dgt.css.token : Token;
+import gfx.math.vec : FVec3;
+import std.range : ElementType, isInputRange;
 
 /// A Color construct that has a uint representation with ARGB components of
 /// one byte each in this order.
 struct Color
 {
+    import gfx.math.vec : FVec4;
+
     this(uint argb)
     {
         _argb = argb;
@@ -75,15 +76,17 @@ struct Color
     }
     this(in string css)
     {
+        import dgt.css.token : makeTokenInput;
         import std.utf : byDchar;
+
         auto tokens = makeTokenInput(byDchar(css));
         Color c = void;
         if (parseColor(tokens, c)) {
             _argb = c._argb;
         }
         else {
-            import std.experimental.logger : errorf;
-            errorf("could not parse %s as a color", css);
+            import gfx.core.log : errorf;
+            errorf(dgtTag, "could not parse %s as a color", css);
         }
     }
 
@@ -114,6 +117,8 @@ struct Color
     }
     @property FVec4 asVec() const
     {
+        import gfx.math.vec : fvec;
+
         immutable argb = _argb;
         return fvec(
             ((argb >> 16) & 0xff) / 255f,
@@ -431,7 +436,9 @@ in {
     assert(v >= 0 && v <= 1);
 }
 body {
+    import gfx.math.vec : fvec;
     import std.math : abs;
+
     immutable c = s * v;
     immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
     immutable m = v - c;
@@ -468,7 +475,9 @@ in {
     assert(l >= 0 && l <= 1);
 }
 body {
+    import gfx.math.vec : fvec;
     import std.math : abs;
+
     immutable c = (1 - abs(2*l - 1)) * s;
     immutable x = c * (1 - abs( ((h*6) % 2) - 1 ));
     immutable m = l - c/2;
@@ -560,7 +569,10 @@ FVec3 rgbToHSL(in float r, in float g, in float b)
 bool parseColor(TokenRange)(ref TokenRange tokens, out Color color)
 if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
 {
+    import dgt.css.token : popSpaces, Tok;
     import std.conv : to;
+    import std.exception : enforce;
+    import std.range : empty, front, popFront;
     import std.uni : toLower;
 
     tokens.popSpaces();
@@ -630,7 +642,10 @@ if (isInputRange!TokenRange && is(ElementType!TokenRange == Token))
 
 private Token[] funcArgs(Tokens)(ref Tokens tokens)
 {
+    import dgt.css.token : popSpaces, Tok;
     import std.algorithm : filter, until;
+    import std.range : empty, front, popFront;
+
     Token[] args;
     while(!tokens.empty) {
         tokens.popSpaces();
@@ -651,7 +666,9 @@ private Token[] funcArgs(Tokens)(ref Tokens tokens)
 
 private bool getComp(Token tok, out ubyte res)
 {
+    import dgt.css.token : Tok;
     import std.algorithm : clamp;
+
     switch(tok.tok) {
     case Tok.number:
         res = cast(ubyte)clamp(tok.num, 0, 255);
@@ -665,7 +682,9 @@ private bool getComp(Token tok, out ubyte res)
 }
 private bool getNComp(Token tok, out float res)
 {
+    import dgt.css.token : Tok;
     import std.algorithm : clamp;
+
     switch(tok.tok) {
     case Tok.number:
         res = clamp(tok.num, 0, 1);
@@ -679,7 +698,9 @@ private bool getNComp(Token tok, out float res)
 }
 private bool getAlpha(Token tok, out float res)
 {
+    import dgt.css.token : Tok;
     import std.algorithm : clamp;
+
     switch(tok.tok) {
     case Tok.number:
         res = clamp(tok.num, 0, 1);
@@ -690,7 +711,9 @@ private bool getAlpha(Token tok, out float res)
 }
 private bool getAngle(Token tok, out float res)
 {
+    import dgt.css.token : Tok;
     import std.algorithm : clamp;
+
     switch(tok.tok) {
     case Tok.number:
         res = tok.num / 360f;
@@ -742,6 +765,8 @@ private bool parseHSV(Tokens)(ref Tokens tokens, out Color col)
 
 private bool parseHSVA(Tokens)(ref Tokens tokens, out Color col)
 {
+    import gfx.math.vec : fvec;
+
     auto args = funcArgs(tokens);
     if (args.length != 3) return false;
     float h = void, s = void, v = void, a = void;
@@ -767,6 +792,8 @@ private bool parseHSL(Tokens)(ref Tokens tokens, out Color col)
 
 private bool parseHSLA(Tokens)(ref Tokens tokens, out Color col)
 {
+    import gfx.math.vec : fvec;
+
     auto args = funcArgs(tokens);
     if (args.length != 3) return false;
     float h = void, s = void, l = void, a = void;

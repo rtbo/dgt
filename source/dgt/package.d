@@ -2,10 +2,17 @@
 module dgt;
 
 import core.sync.mutex : Mutex;
-import std.experimental.logger;
+
+package immutable string dgtTag = "DGT";
 
 interface Subsystem
 {
+    @property string name() const;
+    /// Order of priority in intialization and finalization.
+    /// Subsystems of higher priority are initialized first and finalized last.
+    /// Use this to enable ensure dependency correctness between subsystems.
+    @property int priority() const;
+
     @property bool running() const;
 
     void initialize()
@@ -25,43 +32,57 @@ interface Subsystem
     }
 }
 
-void registerSubsystem(Subsystem ss) {
+void registerSubsystem(Subsystem ss)
+{
     gMut.lock();
     scope(exit) gMut.unlock();
     gSubsystems ~= ss;
 }
 
-void initializeSubsystems() {
-    import std.algorithm : each, filter;
+void initializeSubsystems()
+{
+    import gfx.core.log : trace;
+    import std.algorithm : each, filter, sort;
 
     gMut.lock();
     scope(exit) gMut.unlock();
 
-    trace("loading dynamic bindings");
+    trace(dgtTag, "loading dynamic bindings");
     loadBindings();
 
-    trace("initializing subsystems");
+    trace(dgtTag, "initializing subsystems");
 
-    gSubsystems.filter!(ss => !ss.running)
-        .each!(ss => ss.initialize());
+    auto ss = gSubsystems.dup;
+    ss.sort!"a.priority > b.priority"();
+    foreach (s; ss.filter!(s => !s.running)) {
+        trace(dgtTag, "Initialize subsystem "~s.name);
+        s.initialize();
+    }
 }
 
-void finalizeSubsystems() {
-    import std.algorithm : each, filter;
+void finalizeSubsystems()
+{
+    import std.algorithm : each, filter, sort;
+    import gfx.core.log : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
 
-    gSubsystems.filter!(ss => ss.running)
-        .each!(ss => ss.finalize());
+    auto ss = gSubsystems.dup;
+    ss.sort!"a.priority < b.priority"();
+    foreach (s; ss.filter!(s => s.running)) {
+        trace(dgtTag, "Finalize subsystem "~s.name);
+        s.finalize();
+    }
     gSubsystems = [];
 
-    trace("finalized subsystems");
+    trace(dgtTag, "finalized subsystems");
 }
 
 private:
 
-shared static this() {
+shared static this()
+{
     gMut = new Mutex();
 }
 
@@ -70,17 +91,9 @@ __gshared Mutex gMut;
 
 void loadBindings()
 {
-    import derelict.opengl3.gl3 : DerelictGL3;
-    import derelict.freetype.ft : DerelictFT;
     import dgt.bindings.harfbuzz.load : loadHarfbuzzSymbols;
-    import dgt.bindings.libpng.load : loadLibPngSymbols;
-    import dgt.bindings.turbojpeg.load : loadTurboJpegSymbols;
 
-    DerelictGL3.load();
-    DerelictFT.load();
     loadHarfbuzzSymbols();
-    loadLibPngSymbols();
-    loadTurboJpegSymbols();
 
     version(linux) {
         import dgt.bindings.fontconfig.load : loadFontconfigSymbols;

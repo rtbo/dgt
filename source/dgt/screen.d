@@ -1,10 +1,10 @@
 /// Screen module
 module dgt.screen;
 
-import dgt.core.geometry : IRect;
-
 interface Screen
 {
+    import dgt.core.geometry : IRect;
+
     @property int num() const;
     @property IRect rect() const;
     @property double dpi() const;

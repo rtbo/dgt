@@ -1,12 +1,10 @@
 /// Geometric primitives module
 module dgt.core.geometry;
 
-import dgt.math.mat;
-import dgt.math.transform;
-public import dgt.math.vec;
+import gfx.math.mat : isMat;
+import gfx.math.transform : transform;
+public import gfx.math.vec;
 
-import std.algorithm : max, min;
-import std.range;
 import std.traits : isNumeric;
 
 alias Point(T) = Vec2!T;
@@ -53,6 +51,21 @@ struct Size(T) if (isNumeric!T)
     Vec2!T asVec() const {
         return Vec2!T(width, height);
     }
+
+    ref Size!T opOpAssign(string op)(in Margins!T rhs) if (op == "+" || op == "-")
+    {
+        mixin("width "~op~"= rhs.horizontal;");
+        mixin("height "~op~"= rhs.vertical;");
+        return this;
+    }
+
+    Size!T opBinary(string op)(in Margins!T rhs) const if (op == "+" || op == "-")
+    {
+        Size!T ret = this;
+        mixin("ret " ~ op ~ "= rhs;");
+        return ret;
+    }
+
 }
 
 unittest
@@ -286,6 +299,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void width(T val)
     {
+        import std.algorithm : max;
+
         _w = cast(T)max(0, val);
     }
 
@@ -296,6 +311,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void height(T val)
     {
+        import std.algorithm : max;
+
         _h = cast(T)max(0, val);
     }
 
@@ -328,6 +345,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void left(T val)
     {
+        import std.algorithm : max;
+
         _w = cast(T)max(0, _w - (val - _x));
         _x = val;
     }
@@ -339,6 +358,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void top(T val)
     {
+        import std.algorithm : max;
+
         _h = cast(T)max(0, _h - (val - _y));
         _y = val;
     }
@@ -428,7 +449,7 @@ struct Rect(T) if (isNumeric!T)
         return cast(T)(_y + _h/2);
     }
 
-    ref Rect!T opOpAssign(string op)(in FMargins rhs) if (op == "+")
+    ref Rect!T opOpAssign(string op)(in Margins!T rhs) if (op == "+")
     {
         _x -= rhs.left;
         _y -= rhs.top;
@@ -437,7 +458,7 @@ struct Rect(T) if (isNumeric!T)
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(in FMargins rhs) if (op == "-")
+    ref Rect!T opOpAssign(string op)(in Margins!T rhs) if (op == "-")
     {
         _x += rhs.left;
         _y += rhs.top;
@@ -446,7 +467,7 @@ struct Rect(T) if (isNumeric!T)
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(in FPadding rhs) if (op == "+")
+    ref Rect!T opOpAssign(string op)(in Padding!T rhs) if (op == "+")
     {
         _x -= rhs.left;
         _y -= rhs.top;
@@ -455,7 +476,7 @@ struct Rect(T) if (isNumeric!T)
         return this;
     }
 
-    ref Rect!T opOpAssign(string op)(in FPadding rhs) if (op == "-")
+    ref Rect!T opOpAssign(string op)(in Padding!T rhs) if (op == "-")
     {
         _x += rhs.left;
         _y += rhs.top;
@@ -550,6 +571,19 @@ if (isPoint!P && isSize!S)
     return Rect!T(p, s);
 }
 
+/// Round FRect components into a IRect such as each corner is rounded to the
+/// closest integer coordinate
+IRect roundRect(in FRect rect)
+{
+    import std.math : round;
+
+    const l = cast(int)round(rect.left);
+    const t = cast(int)round(rect.top);
+    const r = cast(int)round(rect.right);
+    const b = cast(int)round(rect.bottom);
+    return IRect(l, t, r-l, b-t);
+}
+
 /// Checks whether big contains small
 bool contains(S1, S2)(in S1 big, in S2 small)
 if (isSize!S1 && isSize!S2)
@@ -576,14 +610,16 @@ if (isRect!R1 && isRect!R2)
 bool overlaps(R1, R2)(in R1 r1, in R2 r2)
 if (isRect!R1 && isRect!R2)
 {
-    return r1.right >= r2.left && r1.left <= r2.right && r1.bottom >= r2.top && r1.top <= r2.bottom;
+    return r1.right > r2.left && r1.left < r2.right && r1.bottom > r2.top && r1.top < r2.bottom;
 }
 
 /// Computes the intersection of r1 with r2
 auto intersection(R1, R2)(in R1 r1, in R2 r2)
 if (isRect!R1 && isRect!R2)
 {
+    import std.algorithm : max, min;
     import std.traits : CommonType;
+
     Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
     r.left = max(r1.left, r2.left);
     r.right = max(min(r1.right, r2.right), r.left);
@@ -596,7 +632,9 @@ if (isRect!R1 && isRect!R2)
 auto extents(R1, R2)(in R1 r1, in R2 r2)
 if (isRect!R1 && isRect!R2)
 {
+    import std.algorithm : max, min;
     import std.traits : CommonType;
+
     Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
     r.left = min(r1.left, r2.left);
     r.right = max(r1.right, r2.right);
@@ -675,6 +713,8 @@ if (isRect!R && isMat!M &&  (is(typeof(transform(bounds.topLeft, mat))) ||
                              is(typeof(transform(fvec(bounds.topLeft, 0), mat)))) &&
     is(R.Scalar == M.Component))
 {
+    import std.algorithm : max, min;
+
     static if (is(typeof(transform(bounds.topLeft, mat)))) {
         immutable tl = transform(bounds.topLeft, mat).xy;
         immutable tr = transform(bounds.topRight, mat).xy;

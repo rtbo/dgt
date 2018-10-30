@@ -540,7 +540,7 @@ private:
                 // eat comment
                 auto c1 = getChar();
                 c2 = getChar();
-                while (c1 != endOfInput || (c1 == '\u002A' && c2 == '\u002F')) {
+                while (c1 != endOfInput && !(c1 == '\u002A' && c2 == '\u002F')) {
                     c1 = c2;
                     c2 = getChar();
                 }

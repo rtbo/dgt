@@ -4,7 +4,7 @@ import dgt.context;
 import dgt.render.framegraph;
 import dgt.render.renderer;
 
-import std.experimental.logger;
+import gfx.core.log;
 import std.concurrency;
 
 /// Queue of framegraph frames that are submitted to a renderer.
@@ -28,11 +28,11 @@ class RenderQueue
     /// Whether the render thread is running
     @property bool running() const { return _running; }
 
-    /// Context is "moved" to the queue. It is undefined behavior to access
+    /// Renderer is "moved" to the queue. It is undefined behavior to access
     /// other references to this context after this call.
-    void start(GlContext context) {
+    void start(Renderer renderer) {
         assert(!_running);
-        _tid = spawn(&renderLoop, cast(shared(GlContext))context, thisTid);
+        _tid = spawn(&renderLoop, cast(shared(Renderer))renderer, thisTid);
         _running = true;
     }
 
@@ -83,13 +83,10 @@ class RenderQueue
     private Tid _tid;
     private size_t _numFrames;
     private bool _running;
-    private static __gshared RenderQueue _instance;
+    private __gshared RenderQueue _instance;
 }
 
 private:
-
-import gfx.device;
-import gfx.device.gl3 : createGlDevice;
 
 /// posted by main loop
 struct Exit {
@@ -102,66 +99,38 @@ struct ExitCopy {}
 /// posted by the render loop after processing of each batch of frames
 struct DoneFrames {}
 
-void renderLoop(shared(GlContext) context, Tid caller) {
-    auto rt = new RenderThread(cast(GlContext)context);
-    bool exit = false;
-    while(!exit) {
-        receive(
-            (immutable(FGFrame)[] frames) {
-                rt.frames(frames);
-                send(caller, DoneFrames());
-            },
-            (Exit e) {
-                exit = true;
-                prioritySend(caller, ExitCopy());
-            }
-        );
-    }
-}
-
-class RenderThread {
-    GlContext _context;
-    Renderer _renderer;
-
-    this(GlContext context) {
-        _context = context;
-    }
-
-    void finalize(size_t windowHandle) {
-        assert(_renderer);
-        _context.makeCurrent(windowHandle);
-        scope(exit) _context.doneCurrent();
-        _renderer.dispose();
-        _renderer = null;
-    }
-
-    void frames(immutable(FGFrame)[] frames) {
+void renderLoop(shared(Renderer) sharedRenderer, Tid caller)
+{
+    auto renderer = cast(Renderer)sharedRenderer;
+    bool run = true;
+    while(run) {
+        bool doneFrame = false;
         try {
-            foreach (i, f; frames) {
-                if (!_context.makeCurrent(f.windowHandle)) {
-                    error("could not make rendering context current!");
-                    return;
+            receive(
+                (immutable(FGFrame)[] frames) {
+                    doneFrame = true;
+                    renderer.render(frames);
+                },
+                (Exit e) {
+                    run = false;
+                    renderer.finalize(e.windowHandle);
                 }
-                scope(exit) _context.doneCurrent();
-
-                _context.swapInterval = ((i+1) == frames.length) ? 1 : 0;
-
-                if (!_renderer) {
-                    _renderer = new Renderer(createGlDevice(), RenderOptions(_context.attribs.samples));
-                }
-
-                _renderer.renderFrame(f);
-
-                _context.swapBuffers(f.windowHandle);
-            }
+            );
         }
         catch (Exception ex) {
             import std.stdio : stderr;
             stderr.writefln("Exception in render thread: %s", ex.msg);
         }
         catch (Throwable th) {
+            import core.stdc.stdlib : exit, EXIT_FAILURE;
             import std.stdio : stderr;
+            // get a chance to print the error message before exiting the thread
             stderr.writefln("Unrecoverable error in render thread : %s", th.msg);
+            exit(EXIT_FAILURE);
+        }
+        if (doneFrame) {
+            send(caller, DoneFrames());
         }
     }
+    prioritySend(caller, ExitCopy());
 }

@@ -13,9 +13,9 @@ import dgt.ui.layout;
 import dgt.ui.style;
 import dgt.ui.stylesupport;
 
-import gfx.foundation.typecons : Option, some;
+import gfx.core.typecons : Option, some;
 
-import std.experimental.logger;
+import gfx.core.log;
 import std.typecons : Rebindable, rebindable;
 
 class Button : Label
@@ -26,7 +26,7 @@ class Button : Label
     /// build a new button
     this()
     {
-        padding = FPadding(6);
+        padding = IPadding(6);
         _onClick = new FireableSignal!();
         hoverSensitive = true;
         _backgroundProperty = addStyleSupport(this, BackgroundMetaProperty.instance);
@@ -83,7 +83,7 @@ class Button : Label
             immutable ip = cast(immutable(ImagePaint))bg;
             immutable img = ip.image;
             auto m = measurement;
-            m = FSize(max(m.width, img.width), max(m.height, img.height));
+            m = ISize(max(m.width, img.width), max(m.height, img.height));
             measurement = m;
         }
     }
@@ -108,7 +108,7 @@ class Button : Label
                     border = some(RectBorder(bcol.asVec, _bss.borderWidth.value));
                 }
 
-                _bgNode = new immutable FGRectNode(localRect,
+                _bgNode = new immutable FGRectNode(cast(FRect)localRect,
                         _bss.borderRadius.value, bg, border, CacheCookie.next());
 
             }

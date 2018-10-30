@@ -12,7 +12,7 @@ import dgt.platform.win32.window;
 import dgt.screen;
 import dgt.window;
 
-import std.experimental.logger;
+import gfx.core.log;
 import core.sys.windows.winuser;
 import core.sys.windows.windows;
 
@@ -21,6 +21,9 @@ private __gshared Win32Platform _w32Inst;
 /// Win32 platform implementation
 class Win32Platform : Platform
 {
+    import gfx.graal : Instance;
+    import gfx.graal.presentation : Surface;
+
     private wstring[] _registeredClasses;
     private Win32Window[HWND] _windows;
     private Screen[] _screens;
@@ -48,9 +51,7 @@ class Win32Platform : Platform
     }
 
     override void initialize()
-    {
-        initWin32Gl();
-    }
+    {}
 
     override void dispose()
     {
@@ -130,7 +131,7 @@ class Win32Platform : Platform
                     QS_ALLINPUT);
 
         if (code == WAIT_FAILED) {
-            errorf("win32 wait failed with code: %s", GetLastError());
+            errorf(dgtTag, "win32 wait failed with code: %s", GetLastError());
             return Wait.none;
         }
         Wait wait = Wait.none;
@@ -158,6 +159,22 @@ class Win32Platform : Platform
         }
 
         return wait;
+    }
+
+    override @property string[] necessaryVulkanExtensions()
+    {
+        import gfx.vulkan.wsi : surfaceExtension, win32SurfaceExtension;
+        return [
+            surfaceExtension, win32SurfaceExtension
+        ];
+    }
+
+    Surface createGraalSurface(Instance instance, size_t windowHandle)
+    {
+        import core.sys.windows.windows : HWND;
+        import gfx.vulkan.wsi : createVulkanWin32Surface;
+
+        return createVulkanWin32Surface(instance, GetModuleHandle(null), cast(HWND)windowHandle);
     }
 
     wstring windowClassName(Window w)
@@ -313,7 +330,7 @@ private LRESULT win32WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     catch(Exception ex)
     {
-        try { errorf("Win32 Proc exception: %s", ex.msg); }
+        try { errorf(dgtTag, "Win32 Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return res;
@@ -331,7 +348,7 @@ private BOOL win32MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprc
     }
     catch(Exception ex)
     {
-        try { errorf("Win32 Monitor Proc exception: %s", ex.msg); }
+        try { errorf(dgtTag, "Win32 Monitor Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return TRUE;

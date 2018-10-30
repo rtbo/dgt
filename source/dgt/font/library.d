@@ -75,6 +75,29 @@ protected:
     }
 }
 
+class TypefaceCache : Disposable {
+
+    this() {}
+
+    override void dispose() {
+        releaseArr(_typefaces);
+    }
+
+    void add(Typeface tf) {
+        tf.retain();
+        _typefaces ~= tf;
+    }
+
+    private Typeface[] _typefaces;
+}
+
+Typeface find (alias pred)(TypefaceCache tfCache) {
+    foreach(tf; tfCache._typefaces) {
+        if (pred(tf)) return tf;
+    }
+    return null;
+}
+
 
 private:
 
@@ -84,8 +107,15 @@ __gshared FontLibrary _instance;
 
 class FLSubsystem : Subsystem
 {
+    override @property string name() const
+    {
+        return "Font Library";
+    }
     override @property bool running() const {
         return _instance !is null;
+    }
+    override @property int priority() const {
+        return int.max - 10;
     }
     override void initialize() {
         version(linux) {

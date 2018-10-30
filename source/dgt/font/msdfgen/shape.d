@@ -2,10 +2,10 @@
 module dgt.font.msdfgen.shape;
 
 import dgt.font.msdfgen.edges;
-import dgt.math.vec : FVec2;
+import gfx.math.vec : FVec2;
 
 // TODO: use a more general path implementation, such the one
-// from dgt's master branch: dgt.vg.path
+// from dgt's deprecated branch: dgt.vg.path
 
 enum EdgeColor : int {
     black = 0,
@@ -16,7 +16,7 @@ enum EdgeColor : int {
     magenta = 5,
     cyan = 6,
     white = 7
-};
+}
 
 struct Edge {
     immutable(EdgeSegment) seg;

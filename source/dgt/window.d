@@ -1,16 +1,5 @@
 module dgt.window;
 
-import dgt.application : Application;
-import dgt.context : GlAttribs;
-import dgt.core.geometry;
-import dgt.core.signal;
-import dgt.platform : PlatformWindow;
-import dgt.platform.event;
-import dgt.ui : UserInterface;
-
-import std.exception;
-
-
 enum WindowState
 {
     normal,
@@ -45,8 +34,16 @@ final class CloseEvent
 
 class Window
 {
+    import dgt.core.geometry : IPoint, IRect, ISize;
+    import dgt.core.signal : Handler, Slot;
+    import dgt.platform : PlatformWindow;
+    import dgt.platform.event : PlWindowEvent;
+    import dgt.ui : UserInterface;
+    import gfx.gl3.context : GlAttribs;
+
     this(WindowFlags flags=WindowFlags.none)
     {
+        import dgt.application : Application;
         _flags = flags;
         _platformWindow = Application.platform.createWindow(this);
     }
@@ -191,6 +188,10 @@ class Window
 
     void show(WindowState state = WindowState.normal)
     {
+        import dgt.application : Application;
+        import dgt.core.geometry : area;
+
+
         if (!_platformWindow.created) {
             if (_size.area == 0) _size = ISize(640, 480);
             _platformWindow.create();
@@ -203,6 +204,9 @@ class Window
 
     void close()
     {
+        import dgt.application : Application;
+        import std.exception : enforce;
+
         enforce(_platformWindow.created, "attempt to close a non-created window");
         if (!dummy) Application.instance.unregisterWindow(this);
         _platformWindow.close();
@@ -216,11 +220,16 @@ class Window
 
     @property size_t nativeHandle() const
     {
+        import std.exception : enforce;
+
         enforce(_platformWindow.created);
         return _platformWindow.nativeHandle;
     }
 
-    void handleEvent(PlWindowEvent wEv) {
+    void handleEvent(PlWindowEvent wEv)
+    {
+        import dgt.platform.event;
+
         assert(wEv.window is this);
         switch (wEv.type)
         {
@@ -252,7 +261,11 @@ class Window
         return _ui;
     }
 
-    @property void ui(UserInterface ui) {
+    @property void ui(UserInterface ui)
+    {
+        import dgt.platform.event : PlResizeEvent;
+        import dgt.core.geometry : area;
+
         _ui = ui;
         if (_ui && size.area) {
             _ui.handleEvent(new PlResizeEvent(this, size));
@@ -261,6 +274,8 @@ class Window
 
     package(dgt)
     {
+        import dgt.platform.event : PlEventType;
+
         @property bool dummy() const
         {
             return (_flags & WindowFlags.dummy) != 0;
@@ -278,6 +293,8 @@ class Window
 
         void compressEvent(PlWindowEvent ev)
         {
+            import dgt.platform.event : PlMoveEvent, PlMouseEvent, PlResizeEvent;
+
             if (ev.type == PlEventType.move) {
                 if (_evCompress & EvCompress.move) {
                     auto prev = getEvent!PlMoveEvent(PlEventType.move);
@@ -325,6 +342,8 @@ class Window
 
         void deliverEvents()
         {
+            import dgt.platform.event : PlResizeEvent, PlShowEvent;
+
             if (_evCompress & EvCompress.fstFrame) {
                 if (!(_evCompress & EvCompress.show)) {
                     handleEvent(new PlShowEvent(this));

@@ -1,19 +1,15 @@
 /// Main application module.
 module dgt.application;
 
-import dgt;
-import dgt.context;
-import dgt.core.rc;
-import dgt.eventloop;
-import dgt.render.queue : RenderQueue;
-import dgt.platform;
-import dgt.window;
-
-import std.experimental.logger;
+import dgt.core.rc : Disposable;
+import dgt.eventloop : EventLoop;
+import dgt.platform : Platform;
 
 /// Singleton class that must be built by the client application
 class Application : EventLoop, Disposable
 {
+    import dgt.window : Window;
+
     /// Build an application. This will initialize underlying platform.
     this()
     {
@@ -29,13 +25,38 @@ class Application : EventLoop, Disposable
 
     override void dispose()
     {
+        import dgt : finalizeSubsystems;
+
         _platform.dispose();
         finalizeSubsystems();
     }
 
+    final @property string name() const
+    {
+        return _name;
+    }
+
+    final @property void name(in string name)
+    {
+        _name = name;
+    }
+
+    final @property uint[3] ver() const
+    {
+        return _ver;
+    }
+
+    final @property void ver(in uint[3] ver)
+    {
+        _ver = ver;
+    }
 
     private void initialize(Platform platform)
     {
+        import dgt : dgtTag, initializeSubsystems;
+        import dgt.render.queue : RenderQueue;
+        import gfx.core.log : info;
+
         initializeSubsystems();
 
         // init Application singleton
@@ -43,12 +64,12 @@ class Application : EventLoop, Disposable
         _instance = this;
 
         // init platform
-        log("initializing platform");
+        info(dgtTag, "initializing platform");
         if (!platform) platform = makeDefaultPlatform();
         _platform = platform;
         _platform.initialize();
 
-        log("platform initialization done");
+        info(dgtTag, "platform initialization done");
 
         // init other singletons
         {
@@ -74,18 +95,32 @@ class Application : EventLoop, Disposable
 
     private void initializeGfx(Window window)
     {
+        import dgt.context : createGlContext;
+        import dgt.render.queue : RenderQueue;
+        import dgt.render.renderer : createRenderer;
+        import gfx.graal : Backend;
+
         assert(window.created && !window.dummy);
-        RenderQueue.instance.start(createGlContext(window));
+        const tryOrder = [
+            Backend.vulkan,
+            Backend.gl3
+        ];
+        auto renderer = createRenderer(tryOrder, name, ver, createGlContext(window));
+        RenderQueue.instance.start(renderer);
     }
 
     private void finalizeGfx(Window window)
     {
+        import dgt.render.queue : RenderQueue;
+
         assert(window.created && !window.dummy);
         RenderQueue.instance.stop(window.nativeHandle);
     }
 
 
     private Platform _platform;
+    private string _name;
+    private uint[3] _ver;
 
     static __gshared
     {

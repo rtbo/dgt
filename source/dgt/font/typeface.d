@@ -3,7 +3,7 @@ module dgt.font.typeface;
 import dgt.core.image;
 import dgt.core.rc;
 import dgt.font.style;
-import dgt.math.vec : FVec2, IVec2;
+import gfx.math.vec : FVec2, IVec2;
 import dgt.text.shaping;
 
 import std.uni;
@@ -76,7 +76,7 @@ final class Glyph {
         return _glyphId;
     }
 
-    @property Image img() {
+    @property immutable(Image) img() {
         return _img;
     }
 
@@ -94,10 +94,10 @@ final class Glyph {
         return _isWhitespace;
     }
 
-    import std.typecons : Nullable;
+    import std.typecons : Nullable, Rebindable;
 
     private GlyphId _glyphId;
-    package(dgt.font) Image _img;
+    package(dgt.font) Rebindable!(immutable(Image)) _img;
     package(dgt.font) FVec2 _bearing;
     package(dgt.font) Nullable!GlyphMetrics _metrics;
     package(dgt.font) bool _isWhitespace;

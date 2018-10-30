@@ -3,15 +3,15 @@ module dgt.ui.view;
 import dgt.core.geometry;
 import dgt.core.tree;
 import dgt.css.style;
-import dgt.math.mat;
-import dgt.math.transform;
+import gfx.math.mat;
+import gfx.math.transform;
 import dgt.render.framegraph;
 import dgt.ui;
 import dgt.ui.event;
 import dgt.ui.layout;
 
 import std.exception;
-import std.experimental.logger;
+import gfx.core.log;
 
 /// Base class for all views in the user interface
 class View : StyleElement, TreeNode!View
@@ -250,13 +250,13 @@ class View : StyleElement, TreeNode!View
     /// The padding of the view, that is, how much empty space is required
     /// around the content.
     /// Padding is always within the view's rect.
-    @property FPadding padding() const
+    final @property IPadding padding() const
     {
         return _padding;
     }
 
     /// ditto
-    @property void padding(in FPadding padding)
+    final @property void padding(in IPadding padding)
     {
         _padding = padding;
     }
@@ -264,36 +264,36 @@ class View : StyleElement, TreeNode!View
     /// Ask this view to measure itself by assigning the measurement property.
     void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        measurement = FSize(widthSpec.size, heightSpec.size);
+        measurement = ISize(widthSpec.size, heightSpec.size);
     }
 
     /// Size set by the view during measure phase
-    final @property FSize measurement() const
+    final @property ISize measurement() const
     {
         return _measurement;
     }
 
     /// ditto
-    final protected @property void measurement(in FSize sz)
+    final protected @property void measurement(in ISize sz)
     {
         _measurement = sz;
     }
 
     /// Ask the view to layout itself in the given rect
     /// The default implementation assign the rect property.
-    void layout(in FRect rect)
+    void layout(in IRect rect)
     {
         this.rect = rect;
     }
     /// The position of the view relative to its parent.
     /// Does not account transforms on this view.
     /// This pos is the one of the rect property and is used in layout calculations.
-    final @property FPoint pos() const
+    final @property IPoint pos() const
     {
         return _rect.point;
     }
     /// ditto
-    final @property void pos(in FPoint pos)
+    final @property void pos(in IPoint pos)
     {
         if (pos != _rect.point) {
             _rect.point = pos;
@@ -302,12 +302,12 @@ class View : StyleElement, TreeNode!View
         }
     }
     /// The size of the view
-    final @property FSize size()
+    final @property ISize size()
     {
         return _rect.size;
     }
     /// ditto
-    final @property void size(in FSize size)
+    final @property void size(in ISize size)
     {
         _rect.size = size;
     }
@@ -316,12 +316,12 @@ class View : StyleElement, TreeNode!View
     /// the transform applied to this view.
     /// Actual bounds may differ due to use of borders, shadows or transform.
     /// This rect is the one used in layout calculations.
-    final @property FRect rect()
+    final @property IRect rect()
     {
         return _rect;
     }
     /// ditto
-    final @property void rect(in FRect rect)
+    final @property void rect(in IRect rect)
     {
         if (rect != _rect) {
             _rect = rect;
@@ -331,37 +331,37 @@ class View : StyleElement, TreeNode!View
     }
 
     /// Rect in local coordinates
-    final @property FRect localRect()
+    final @property IRect localRect()
     {
-        return FRect(0, 0, size);
+        return IRect(0, 0, size);
     }
 
     /// Position of this view as seen by parent, considering also
     /// the transform of this view.
-    final @property FPoint parentPos()
+    final @property IPoint parentPos()
     {
-        return mapToParent(fvec(0, 0));
+        return mapToParent(ivec(0, 0));
     }
 
     /// The rect of this view, as seen by parent, taking into account
     /// transform. A rect is always axis aligned, so in case of rotation,
     /// the bounding rect is returned.
-    final @property FRect parentRect()
+    final @property IRect parentRect()
     {
         return mapToParent(localRect);
     }
 
     /// Position of this view as seen by ui, considering
     /// the whole transform chain.
-    final @property FPoint uiPos()
+    final @property IPoint uiPos()
     {
-        return mapToUI(fvec(0, 0));
+        return mapToUI(ivec(0, 0));
     }
 
     /// The rect of this view, as seen by ui, taking into account
     /// the whole transform chain. A rect is always axis aligned, so in case of rotation,
     /// the bounding rect is returned.
-    final @property FRect uiRect()
+    final @property IRect uiRect()
     {
         return mapToUI(localRect);
     }
@@ -402,9 +402,9 @@ class View : StyleElement, TreeNode!View
                 _transformToParent = transform.translate(fvec(pos, 0));
             }
             else {
-                _transformToParent = translation!float(fvec(pos, 0));
+                _transformToParent = translation(fvec(pos, 0));
                 // this is cheap, let's do it now.
-                _transformFromParent = translation!float(fvec(-pos, 0));
+                _transformFromParent = translation(fvec(-pos, 0));
                 clean(Dirty.transformFromParent);
             }
             clean(Dirty.transformToParent);
@@ -415,14 +415,16 @@ class View : StyleElement, TreeNode!View
     /// Transform that maps parent coordinates to view coordinates
     final @property FMat4 transformFromParent()
     {
+        import gfx.math.inverse : inverse;
+
         if (isDirty(Dirty.transformFromParent)) {
             if (_hasTransform) {
                 _transformFromParent = inverse(transformToParent);
             }
             else {
-                _transformFromParent = translation!float(fvec(-pos, 0));
+                _transformFromParent = translation(fvec(-pos, 0));
                 // this is cheap, let's do it now.
-                _transformToParent = translation!float(fvec(pos, 0));
+                _transformToParent = translation(fvec(pos, 0));
                 clean(Dirty.transformToParent);
             }
             clean(Dirty.transformFromParent);
@@ -445,6 +447,8 @@ class View : StyleElement, TreeNode!View
     /// Transform that maps ui coordinates to view coordinates
     final @property FMat4 transformFromUI()
     {
+        import gfx.math.inverse : inverse;
+
         if (isDirty(Dirty.transformFromUI)) {
             _transformFromUI = inverse(transformToUI);
             clean(Dirty.transformFromUI);
@@ -453,89 +457,107 @@ class View : StyleElement, TreeNode!View
     }
 
     /// Map a point from ui coordinates to this view coordinates
-    final FPoint mapFromUI(in FPoint pos)
+    final IPoint mapFromUI(in IPoint pos)
     {
-        return fvec(pos, 0).transform(transformFromUI).xy;
+        import std.math : round;
+
+        const p = fvec(pos, 0).transform(transformFromUI).xy;
+        return IPoint(cast(int)round(p.x), cast(int)round(p.y));
     }
 
     /// Map a point from this view coordinates to ui coordinates
-    final FPoint mapToUI(in FPoint pos)
+    final IPoint mapToUI(in IPoint pos)
     {
-        return fvec(pos, 0).transform(transformToUI).xy;
+        import std.math : round;
+
+        const p = fvec(pos, 0).transform(transformToUI).xy;
+        return IPoint(cast(int)round(p.x), cast(int)round(p.y));
     }
 
     /// Map a point from parent coordinates to this view coordinates
-    final FPoint mapFromParent(in FPoint pos)
+    final IPoint mapFromParent(in IPoint pos)
     {
-        return fvec(pos, 0).transform(transformFromParent).xy;
+        import std.math : round;
+
+        const p = fvec(pos, 0).transform(transformFromParent).xy;
+        return IPoint(cast(int)round(p.x), cast(int)round(p.y));
     }
 
     /// Map a point from this view coordinates to parent coordinates
-    final FPoint mapToParent(in FPoint pos)
+    final IPoint mapToParent(in IPoint pos)
     {
-        return fvec(pos, 0).transform(transformToParent).xy;
+        import std.math : round;
+
+        const p = fvec(pos, 0).transform(transformToParent).xy;
+        return IPoint(cast(int)round(p.x), cast(int)round(p.y));
     }
 
     /// Map a point from the other view coordinates to this view coordinates
-    final FPoint mapFromView(View view, in FPoint pos)
+    final IPoint mapFromView(View view, in IPoint pos)
     {
-        immutable sp = view.mapToUI(pos);
-        return mapFromUI(sp);
+        const uip = view.mapToUI(pos);
+        return mapFromUI(uip);
     }
 
     /// Map a point from this view coordinates to the other view coordinates
-    final FPoint mapToView(View view, in FPoint pos)
+    final IPoint mapToView(View view, in IPoint pos)
     {
-        immutable sp = mapToUI(pos);
-        return view.mapFromUI(sp);
+        const uip = mapToUI(pos);
+        return view.mapFromUI(uip);
     }
 
-    /// Map a point from ui coordinates to this view coordinates
-    final FRect mapFromUI(in FRect rect)
+    /// Map a rect from ui coordinates to this view coordinates
+    final IRect mapFromUI(in IRect rect)
     {
-        return rect.transformBounds(transformFromUI);
+        const frect = (cast(FRect)rect).transformBounds(transformFromUI);
+        return roundRect(frect);
     }
 
-    /// Map a point from this view coordinates to ui coordinates
-    final FRect mapToUI(in FRect rect)
+    /// Map a rect from this view coordinates to ui coordinates
+    final IRect mapToUI(in IRect rect)
     {
-        return rect.transformBounds(transformToUI);
+        const frect = (cast(FRect)rect).transformBounds(transformToUI);
+        return roundRect(frect);
     }
 
-    /// Map a point from parent coordinates to this view coordinates
-    final FRect mapFromParent(in FRect rect)
+    /// Map a rect from parent coordinates to this view coordinates
+    final IRect mapFromParent(in IRect rect)
     {
-        return rect.transformBounds(transformFromParent);
+        const frect = (cast(FRect)rect).transformBounds(transformFromParent);
+        return roundRect(frect);
     }
 
-    /// Map a point from this view coordinates to parent coordinates
-    final FRect mapToParent(in FRect rect)
+    /// Map a rect from this view coordinates to parent coordinates
+    final IRect mapToParent(in IRect rect)
     {
-        return rect.transformBounds(transformToParent);
+        const frect = (cast(FRect)rect).transformBounds(transformToParent);
+        return roundRect(frect);
     }
 
-    /// Map a point from the other view coordinates to this view coordinates
-    final FRect mapFromView(View view, in FRect rect)
+    /// Map a rect from the other view coordinates to this view coordinates
+    final IRect mapFromView(View view, in IRect rect)
     {
-        return rect.transformBounds(
+        const frect = (cast(FRect)rect).transformBounds(
             view.transformToUI * transformFromUI
         );
+        return roundRect(frect);
     }
 
-    /// Map a point from this view coordinates to the other view coordinates
-    final FRect mapToView(View view, in FRect rect)
+    /// Map a rect from this view coordinates to the other view coordinates
+    final IRect mapToView(View view, in IRect rect)
     {
-        return rect.transformBounds(
+        const frect = (cast(FRect)rect).transformBounds(
             transformToUI * view.transformFromUI
         );
+        return roundRect(frect);
     }
 
     /// Get a view at position given by pos.
-    View viewAtPos(in FVec2 pos)
+    View viewAtPos(in IVec2 pos)
     {
         if (localRect.contains(pos)) {
             foreach (c; children) {
-                immutable cp = c.mapFromParent(pos);
+                const cp = c.mapFromParent(pos);
                 auto res = c.viewAtPos(cp);
                 if (res) return res;
             }
@@ -547,12 +569,12 @@ class View : StyleElement, TreeNode!View
     }
 
     /// Recursively append views that are located at pos from root to end target.
-    void viewsAtPos(in FVec2 pos, ref View[] nodes)
+    void viewsAtPos(in IVec2 pos, ref View[] nodes)
     {
         if (localRect.contains(pos)) {
             nodes ~= this;
             foreach (c; children) {
-                immutable cp = c.mapFromParent(pos);
+                const cp = c.mapFromParent(pos);
                 c.viewsAtPos(cp, nodes);
             }
         }
@@ -773,13 +795,13 @@ class View : StyleElement, TreeNode!View
     final void addPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState | flags;
-        // requestStylePass(); ??
+        requestStylePass();
     }
     /// ditto
     final void remPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState & (~flags);
-        // requestStylePass(); ??
+        requestStylePass();
     }
 
     /// Flag that causes PseudoState.hover to be set when the cursor hovers the view
@@ -966,9 +988,9 @@ class View : StyleElement, TreeNode!View
     private Dirty _dirtyState = Dirty.layoutMask | Dirty.styleMask | Dirty.renderMask;
 
     // layout
-    private FPadding        _padding;
-    private FSize           _measurement;
-    private FRect           _rect;
+    private IPadding        _padding;
+    private ISize           _measurement;
+    private IRect           _rect;
     private Layout.Params   _layoutParams;
 
     // transform
@@ -1024,40 +1046,39 @@ unittest
 }
 
 /// Testing coordinates transforms
-unittest {
-    import dgt.math.approx : approxUlp, approxUlpAndAbs;
-
+unittest
+{
     auto root = new View;
     auto child1 = new View;
     auto subchild = new View;
     auto child2 = new View;
 
-    root.rect = FRect(0, 0, 100, 100);
-    child1.rect = FRect(20, 20, 60, 40);
-    subchild.rect = FRect(5, 5, 40, 25);
-    child2.rect = FRect(10, 80, 90, 10);
+    root.rect = IRect(0, 0, 100, 100);
+    child1.rect = IRect(20, 20, 60, 40);
+    subchild.rect = IRect(5, 5, 40, 25);
+    child2.rect = IRect(10, 80, 90, 10);
 
     root.appendChild(child1);
     root.appendChild(child2);
     child1.appendChild(subchild);
 
-    immutable p = fvec(10, 10);
+    const p = ivec(10, 10);
 
-    assert(approxUlp(child1.mapFromParent(p),           fvec(-10, -10)));
-    assert(approxUlp(child1.mapFromUI(p),               fvec(-10, -10)));
-    assert(approxUlp(child1.mapToParent(p),             fvec( 30,  30)));
-    assert(approxUlp(child1.mapToUI(p),                 fvec( 30,  30)));
+    assert(child1.mapFromParent(p)         == ivec(-10, -10));
+    assert(child1.mapFromUI(p)             == ivec(-10, -10));
+    assert(child1.mapToParent(p)           == ivec( 30,  30));
+    assert(child1.mapToUI(p)               == ivec( 30,  30));
 
-    assert(approxUlp(child2.mapFromParent(p),           fvec(  0, -70)));
-    assert(approxUlp(child2.mapFromUI(p),               fvec(  0, -70)));
-    assert(approxUlp(child2.mapToParent(p),             fvec( 20,  90)));
-    assert(approxUlp(child2.mapToUI(p),                 fvec( 20,  90)));
+    assert(child2.mapFromParent(p)         == ivec(  0, -70));
+    assert(child2.mapFromUI(p)             == ivec(  0, -70));
+    assert(child2.mapToParent(p)           == ivec( 20,  90));
+    assert(child2.mapToUI(p)               == ivec( 20,  90));
 
-    assert(approxUlp(subchild.mapFromParent(p),         fvec(  5,   5)));
-    assert(approxUlp(subchild.mapFromUI(p),             fvec(-15, -15)));
-    assert(approxUlp(subchild.mapToParent(p),           fvec( 15,  15)));
-    assert(approxUlp(subchild.mapToUI(p),               fvec( 35,  35)));
+    assert(subchild.mapFromParent(p)       == ivec(  5,   5));
+    assert(subchild.mapFromUI(p)           == ivec(-15, -15));
+    assert(subchild.mapToParent(p)         == ivec( 15,  15));
+    assert(subchild.mapToUI(p)             == ivec( 35,  35));
 
-    assert(approxUlp(subchild.mapToView(child2, p),     fvec( 25,  -45)));
-    assert(approxUlp(subchild.mapFromView(child2, p),   fvec( -5,  65)));
+    assert(subchild.mapToView(child2, p)   == ivec( 25, -45));
+    assert(subchild.mapFromView(child2, p) == ivec( -5,  65));
 }

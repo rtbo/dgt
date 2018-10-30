@@ -1,89 +1,251 @@
 module dgt.platform.win32.context;
 version(Windows):
 
-import dgt.platform;
-import dgt.platform.win32;
-import dgt.platform.win32.window;
-import dgt.context;
-import dgt.window;
-import dgt.screen;
-
-import gfx.foundation.util : unsafeCast;
-
-import derelict.opengl3.gl3;
-import derelict.opengl3.wglext;
-
-import std.exception;
-import std.experimental.logger;
 import core.sys.windows.wingdi;
-import core.sys.windows.windef;
-import core.sys.windows.winuser;
+import dgt.platform : PlatformWindow;
+import dgt.screen : Screen;
+import gfx.bindings.core;
+import gfx.bindings.opengl.gl : Gl, GL_TRUE;
+import gfx.bindings.opengl.wgl;
+import gfx.gl3.context : GlAttribs, GlContext, GlProfile, glVersions;
 
-package:
+/// Helper to get an attrib list to pass to wglChoosePixelFormatARB
+public int[] getAttribList(in GlAttribs attribs) {
+    import gfx.graal.format :   formatDesc, colorBits, depthBits, stencilBits;
 
-void initWin32Gl()
-{
-    immutable attribs = GlAttribs.init;
-
-    PIXELFORMATDESCRIPTOR pfd = void;
-    setupPFD(attribs, pfd);
-
-    auto dummy = new Window("Dummy context window", WindowFlags.dummy);
-    dummy.show();
-    scope(exit) dummy.close();
-
-    auto pDummy = unsafeCast!Win32Window(dummy.platformWindow);
-    auto dc = GetDC(pDummy.handle);
-    scope(exit) ReleaseDC(pDummy.handle, dc);
-
-    auto chosen = ChoosePixelFormat(dc, &pfd);
-    SetPixelFormat(dc, chosen, &pfd);
-
-    auto glrc = wglCreateContext(dc);
-    scope(exit) wglDeleteContext(glrc);
-
-    wglMakeCurrent(dc, glrc);
-    scope(exit) wglMakeCurrent(null, null);
-
-    immutable glVer = cast(GLVersion)attribs.decimalVersion;
-    DerelictGL3.reload(GLVersion.None, glVer);
-
-    enforce(WGL_ARB_create_context && WGL_ARB_pixel_format);
-}
-
-
-GlContext createWin32GlContext(GlAttribs attribs, PlatformWindow window,
-                                   GlContext sharedCtx, Screen screen)
-{
-    auto wnd = cast(HWND)window.nativeHandle;
-    auto dc = GetDC(wnd);
-    scope(exit) ReleaseDC(wnd, dc);
+    const cd = formatDesc(attribs.colorFormat);
+    const dsd = formatDesc(attribs.depthStencilFormat);
 
     int[] attribList = [
         WGL_DRAW_TO_WINDOW_ARB,     GL_TRUE,
         WGL_SUPPORT_OPENGL_ARB,     GL_TRUE,
         WGL_DOUBLE_BUFFER_ARB,      GL_TRUE,
         WGL_PIXEL_TYPE_ARB,         WGL_TYPE_RGBA_ARB,
-        WGL_COLOR_BITS_ARB,         attribs.colorSize,
-        WGL_DEPTH_BITS_ARB,         attribs.depthSize,
-        WGL_STENCIL_BITS_ARB,       attribs.stencilSize,
+        WGL_TRANSPARENT_ARB,        GL_TRUE,
+        WGL_COLOR_BITS_ARB,         colorBits(cd.surfaceType),
+        WGL_DEPTH_BITS_ARB,         depthBits(dsd.surfaceType),
+        WGL_STENCIL_BITS_ARB,       stencilBits(dsd.surfaceType),
     ];
-    if (attribs.hasSamples) {
+    if (attribs.samples > 1) {
         attribList ~= [
             WGL_SAMPLE_BUFFERS_ARB,     GL_TRUE,
             WGL_SAMPLES_ARB,            attribs.samples,
         ];
     }
-    attribList ~= 0;
-    int pixelFormat;
-    uint numFormats;
-    wglChoosePixelFormatARB(dc, attribList.ptr, null, 1, &pixelFormat, &numFormats);
+    return attribList ~ 0;
+}
 
-    enforce(numFormats > 0);
-    PIXELFORMATDESCRIPTOR pfd = void;
-    setupPFD(attribs, pfd);
-    SetPixelFormat(dc, pixelFormat, &pfd);
+/// Helper to fill a struct for ChoosePixelFormat
+public void setupPFD(in GlAttribs attribs, PIXELFORMATDESCRIPTOR* pfd)
+{
+    pfd.nSize = PIXELFORMATDESCRIPTOR.sizeof;
+    pfd.nVersion = 1;
 
+    pfd.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
+    if (attribs.doublebuffer) pfd.dwFlags |= PFD_DOUBLEBUFFER;
+
+    pfd.iPixelType = PFD_TYPE_RGBA;
+
+    import gfx.graal.format :   formatDesc, alphaBits, redBits, greenBits,
+                                blueBits, colorBits, alphaShift, redShift,
+                                greenShift, blueShift, depthBits, stencilBits;
+
+    const cd = formatDesc(attribs.colorFormat);
+    const dsd = formatDesc(attribs.depthStencilFormat);
+
+    pfd.cColorBits = cast(ubyte)colorBits(cd.surfaceType);
+    pfd.cRedBits = cast(ubyte)redBits(cd.surfaceType);
+    pfd.cRedShift = cast(ubyte)redShift(cd.surfaceType);
+    pfd.cGreenBits = cast(ubyte)greenBits(cd.surfaceType);
+    pfd.cGreenShift = cast(ubyte)greenShift(cd.surfaceType);
+    pfd.cBlueBits = cast(ubyte)blueBits(cd.surfaceType);
+    pfd.cBlueShift = cast(ubyte)blueShift(cd.surfaceType);
+    pfd.cAlphaBits = cast(ubyte)alphaBits(cd.surfaceType);
+    pfd.cAlphaShift = cast(ubyte)alphaShift(cd.surfaceType);
+    pfd.cDepthBits = cast(ubyte)depthBits(dsd.surfaceType);
+    pfd.cStencilBits = cast(ubyte)stencilBits(dsd.surfaceType);
+
+    pfd.iLayerType = PFD_MAIN_PLANE;
+}
+
+
+GlContext createWin32GlContext(GlAttribs attribs, PlatformWindow window,
+                                   GlContext sharedCtx, Screen screen)
+{
+    import core.sys.windows.windows : HWND, HGLRC;
+
+    auto wnd = cast(HWND)window.nativeHandle;
+    auto w32glc = cast(Win32GlContext) sharedCtx;
+    HGLRC sharedGlrc = w32glc ? cast(HGLRC)w32glc._ctx : null;
+    return new Win32GlContext(attribs, wnd, sharedGlrc);
+}
+
+
+/// Wgl implementation of GlContext
+private class Win32GlContext : GlContext
+{
+    import core.sys.windows.windows;
+    import gfx.core.rc : atomicRcCode, Disposable;
+    import std.exception : enforce;
+    import gfx.core.log : tracef;
+
+    mixin(atomicRcCode);
+
+    private Wgl _wgl;
+    private Gl _gl;
+    private GlAttribs _attribs;
+    private HGLRC _ctx;
+    private int _pixelFormat;
+
+    this(in GlAttribs attribs, HWND window, HGLRC sharedGlrc)
+    {
+        _attribs = attribs;
+
+        auto dc = GetDC(window);
+        scope(exit) ReleaseDC(window, dc);
+
+        PIXELFORMATDESCRIPTOR pfd;
+        setupPFD(_attribs, &pfd);
+        const chosen = ChoosePixelFormat(dc, &pfd);
+        SetPixelFormat(dc, chosen, &pfd);
+
+        import gfx.bindings.core : loadSharedSym;
+        auto lib = loadGlLib();
+        PFN_wglGetProcAddress getProcAddress = cast(PFN_wglGetProcAddress)enforce(
+            loadSharedSym(lib, "wglGetProcAddress"), "could not load wglGetProcAddress"
+        );
+        SharedSym loader (in string symbol) {
+            import std.string : toStringz;
+            auto proc = cast(SharedSym)getProcAddress(toStringz(symbol));
+            if (!proc) {
+                proc = cast(SharedSym)loadSharedSym(lib, symbol);
+            }
+            import std.stdio;
+            //writefln("%s = %x", symbol, proc);
+            return proc;
+        }
+
+        {
+            PFN_wglCreateContext _createContext = cast(PFN_wglCreateContext)enforce(
+                loadSharedSym(lib, "wglCreateContext"), "could not load wglCreateContext"
+            );
+            PFN_wglMakeCurrent _makeCurrent = cast(PFN_wglMakeCurrent)enforce(
+                loadSharedSym(lib, "wglMakeCurrent"), "could not load wglMakeCurrent"
+            );
+            PFN_wglDeleteContext _deleteContext = cast(PFN_wglDeleteContext)enforce(
+                loadSharedSym(lib, "wglDeleteContext"), "could not load wglDeleteContext"
+            );
+            // creating and binding a dummy temporary context
+            auto ctx = enforce(_createContext(dc), "could not create legacy wgl context");
+            scope(exit) _deleteContext(ctx);
+            enforce(_makeCurrent(dc, ctx), "could not make legacy context current");
+            _wgl = new Wgl(&loader);
+        }
+
+        auto attribList = getAttribList(attribs);
+        uint nf;
+        _wgl.ChoosePixelFormatARB(dc, attribList.ptr, null, 1, &_pixelFormat, &nf);
+        enforce(nf > 0, "wglChoosePixelFormatARB failed");
+
+        GlAttribs attrs = attribs;
+        foreach (const glVer; glVersions) {
+            attrs.majorVersion = glVer / 10;
+            attrs.minorVersion = glVer % 10;
+            if (attrs.decimalVersion < attribs.decimalVersion) break;
+
+            const ctxAttribs = getCtxAttribs(attrs);
+            tracef(dgtTag, "attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+
+            _ctx = _wgl.CreateContextAttribsARB(dc, sharedGlrc, &ctxAttribs[0]);
+
+            if (_ctx) break;
+        }
+
+        enforce(_ctx, "Failed creating Wgl context");
+        tracef(dgtTag, "created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+        _attribs = attrs;
+        Win32GlContext.makeCurrent(cast(size_t)window);
+        _gl = new Gl(&loader);
+    }
+
+    override void dispose() {
+        _wgl.DeleteContext(_ctx);
+        tracef(dgtTag, "destroyed GL/WGL context");
+    }
+
+    override @property Gl gl() {
+        return _gl;
+    }
+
+    override @property GlAttribs attribs() {
+        return _attribs;
+    }
+
+    void setPixelFormat(HWND hwnd) {
+        PIXELFORMATDESCRIPTOR pfd;
+        setupPFD(attribs, &pfd);
+        auto dc = GetDC(hwnd);
+        SetPixelFormat(dc, _pixelFormat, &pfd);
+        ReleaseDC(hwnd, dc);
+    }
+
+    override bool makeCurrent(size_t nativeHandle)
+    {
+        auto wnd = cast(HWND)nativeHandle;
+        auto dc = GetDC(wnd);
+        scope(exit) ReleaseDC(wnd, dc);
+        if (!_wgl.MakeCurrent(dc, _ctx)) {
+            printLastError();
+            return false;
+        }
+        return true;
+    }
+
+    override void doneCurrent()
+    {
+        _wgl.MakeCurrent(null, null);
+    }
+
+    override @property bool current() const
+    {
+        return _wgl.GetCurrentContext() == _ctx;
+    }
+
+    override @property int swapInterval()
+    {
+        return _wgl.GetSwapIntervalEXT();
+    }
+
+    override @property void swapInterval(int interval)
+    {
+        _wgl.SwapIntervalEXT(interval);
+    }
+
+    override void swapBuffers(size_t nativeHandle)
+    {
+        auto wnd = cast(HWND)nativeHandle;
+        auto dc = GetDC(wnd);
+        scope(exit) ReleaseDC(wnd, dc);
+        if (!SwapBuffers(dc)) {
+            printLastError();
+        }
+    }
+
+    private void printLastError() {
+        import gfx.core.log : errorf;
+        const err = GetLastError();
+        LPSTR messageBuffer = null;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                    null, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), cast(LPSTR)&messageBuffer, 0, null);
+        auto buf = new char[size];
+        buf[] = messageBuffer[0 .. size];
+        errorf(buf.idup);
+        LocalFree(messageBuffer);
+    }
+
+}
+
+int[] getCtxAttribs(in GlAttribs attribs) {
     int[] ctxAttribs = [
         WGL_CONTEXT_MAJOR_VERSION_ARB, attribs.majorVersion,
         WGL_CONTEXT_MINOR_VERSION_ARB, attribs.minorVersion
@@ -97,110 +259,24 @@ GlContext createWin32GlContext(GlAttribs attribs, PlatformWindow window,
             ctxAttribs ~= WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB;
         }
     }
-    ctxAttribs ~= 0;
-
-    auto w32glc = cast(Win32GlContext) sharedCtx;
-    HGLRC sharedGlrc = w32glc ? cast(HGLRC)w32glc._glrc : null;
-    auto glrc = wglCreateContextAttribsARB(dc, sharedGlrc, ctxAttribs.ptr);
-
-    if (glrc) {
-        auto ctx = new Win32GlContext(glrc, attribs);
-        ctx.makeCurrent(window.nativeHandle);
-        scope(exit) ctx.doneCurrent();
-
-        immutable glVer = cast(GLVersion)attribs.decimalVersion;
-        DerelictGL3.reload(glVer, glVer);
-
-        return ctx;
-    }
-    else {
-        return null;
-    }
+    return ctxAttribs ~ 0;
 }
 
-
-private:
-
-final class Win32GlContext : GlContext
+private SharedLib loadGlLib()
 {
-    private HGLRC _glrc;
-    private GlAttribs _attribs;
-    private bool _current;
+    import gfx.bindings.core : openSharedLib;
 
-    this(HGLRC glrc, GlAttribs attribs) {
-        _glrc = glrc;
-        _attribs = attribs;
+    immutable glLibNames = [ "opengl32.dll" ];
+
+    foreach (ln; glLibNames) {
+        auto lib = openSharedLib(ln);
+        if (lib) {
+            import gfx.core.log : tracef;
+            tracef(dgtTag, "opening shared library %s", ln);
+            return lib;
+        }
     }
 
-    override void dispose()
-    {
-        wglDeleteContext(_glrc);
-    }
-
-    override @property GlAttribs attribs() const { return _attribs; }
-
-    override bool makeCurrent(size_t nativeHandle)
-    {
-        auto wnd = cast(HWND)nativeHandle;
-        auto dc = GetDC(wnd);
-        scope(exit) ReleaseDC(wnd, dc);
-        _current = (wglMakeCurrent(dc, _glrc) != 0);
-        return _current;
-    }
-
-    override void doneCurrent()
-    {
-        wglMakeCurrent(null, null);
-        _current = false;
-    }
-
-    override @property bool current() const
-    {
-        return _current;
-    }
-
-    override @property int swapInterval()
-    {
-        return wglGetSwapIntervalEXT();
-    }
-
-    override @property void swapInterval(int interval)
-    {
-        wglSwapIntervalEXT(interval);
-    }
-
-    override void swapBuffers(size_t nativeHandle)
-    {
-        auto wnd = cast(HWND)nativeHandle;
-        auto dc = GetDC(wnd);
-        scope(exit) ReleaseDC(wnd, dc);
-        SwapBuffers(dc);
-    }
+    import std.conv : to;
+    throw new Exception("could not load any of these libraries: " ~ glLibNames.to!string);
 }
-
-
-void setupPFD(in GlAttribs attribs, out PIXELFORMATDESCRIPTOR pfd)
-{
-    pfd.nSize = PIXELFORMATDESCRIPTOR.sizeof;
-    pfd.nVersion = 1;
-
-    pfd.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW;
-    if (attribs.doublebuffer) pfd.dwFlags |= PFD_DOUBLEBUFFER;
-
-    pfd.iPixelType = PFD_TYPE_RGBA;
-
-    pfd.cColorBits = attribs.colorSize;
-    pfd.cRedBits = attribs.redSize;
-    pfd.cRedShift = attribs.redShift;
-    pfd.cGreenBits = attribs.greenSize;
-    pfd.cGreenShift = attribs.greenShift;
-    pfd.cBlueBits = attribs.blueSize;
-    pfd.cBlueShift = attribs.blueShift;
-    pfd.cAlphaBits = attribs.alphaSize;
-    pfd.cAlphaShift = attribs.alphaShift;
-    pfd.cDepthBits = attribs.depthSize;
-    pfd.cStencilBits = attribs.stencilSize;
-
-    pfd.iLayerType = PFD_MAIN_PLANE;
-}
-

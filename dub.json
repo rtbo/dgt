@@ -11,14 +11,11 @@
 
     "stringImportPaths": [
         "views",
-        "source/dgt/render/shaders"
+        "source/dgt/render/views"
     ],
 
     "subPackages": [
         "./bindings",
-        "./bindings/cairo",
-        "./bindings/libpng",
-        "./bindings/turbojpeg",
         "./bindings/fontconfig",
         "./bindings/harfbuzz",
         "./bindings/xcb-image",
@@ -29,14 +26,15 @@
 
     "dependencies":	{
         "dgt:bindings":		"*",
-        "dgt:libpng":		"*",
-        "dgt:turbojpeg":	"*",
         "dgt:harfbuzz":	    "*",
 
-        "gfx-d": { "path": "gfx-d" },
+        "gfx":          { "path": "gfx-d" },
+        "gfx:memalloc": { "path": "gfx-d" },
+        "gfx:math":     { "path": "gfx-d" },
 
-        "derelict-ft":      "~>1.1.3",
-        "derelict-gl3":		"~>1.0.19"
+        "png-d":            "*",
+        "turbojpeg-d":      "*",
+        "freetype-d":       "*"
     },
 
     "configurations": [
@@ -44,7 +42,7 @@
             "name": "linux",
             "platforms": ["linux"],
             "dependencies": {
-                "xcb-d":			"~>2.1.0",
+                "xcb-d":			"~>2.1.1",
                 "xcb-util-wm-d":	"~>0.5.0",
                 "xkbcommon-d":      "~>0.5.1",
                 "xlib-d":           "~>0.1.1",
@@ -56,7 +54,7 @@
         {
             "name": "windows",
             "platforms": ["windows"],
-            "libs": ["gdi32", "opengl32"]
+            "libs": ["gdi32", "opengl32", "user32"]
         }
     ]
 }

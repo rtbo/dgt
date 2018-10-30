@@ -1,206 +1,423 @@
-/// module that implement font atlas generation
-/// see: https://straypixels.net/texture-packing-for-fonts/
-/// An alternative would also be the freetype-gl atlas implementation.
+/// module that produce atlases of packed images.
 module dgt.render.atlas;
 
-import dgt.core.geometry;
-import dgt.core.image;
-import dgt.core.rc;
-import dgt.font.typeface : Glyph;
-import dgt.math.vec : IVec2;
-import dgt.render.defs : Alpha8;
-import gfx.pipeline;
+import gfx.core.rc : AtomicRefCounted;
 
-// binary tree representation of a texture space
-
-final class AtlasNode
+struct AtlasSizeRange
 {
-    this (GlyphAtlas atlas, in IVec2 origin, in IVec2 size) {
-        this.atlas = atlas;
-        _origin = origin;
-        _size = size;
+    import dgt.core.geometry : ISize;
+
+    /// A delegate that define the step taken to extent current towards max.
+    /// It is called with current and must return the new value for current.
+    alias Stepper = ISize delegate (in ISize sz);
+
+    ISize current;
+    ISize max;
+    Stepper stepper;
+
+    /// The size is fixed to a single dimension
+    this (in ISize fixed)
+    {
+        this(fixed, fixed);
     }
 
-    @property IVec2 origin() const {
-        return _origin;
+    /// The size starts at start and can extend to max in a single step
+    this (in ISize start, in ISize max)
+    {
+        this (start, max, cast(Stepper) sz => max);
     }
 
-    @property IVec2 size() const {
-        return _size;
-    }
-
-    Weak!GlyphAtlas atlas;
-
-    Glyph glyph;
-
-    private IVec2 _origin;
-    private IVec2 _size;
-    private AtlasNode left;
-    private AtlasNode right;
-}
-
-final class GlyphAtlas : RefCounted
-{
-    mixin(rcCode);
-
-    this (in IVec2 startSize, in IVec2 maxSize, in int margin=0) {
-        _textureSize = startSize;
-        _maxSize = maxSize;
-        _margin = margin;
-        root = new AtlasNode(this, IVec2(margin, margin), maxSize - 2*IVec2(margin, margin));
-    }
-
-    override void dispose() {
-        _srv.unload();
-        _sampler.unload();
-        root = null;
-    }
-
-    @property IVec2 textureSize() {
-        return _textureSize;
-    }
-
-    @property Sampler sampler() {
-        return _sampler.obj;
-    }
-
-    @property ShaderResourceView!Alpha8 srv() {
-        return _srv.obj;
-    }
-
-    AtlasNode pack(in IVec2 size, Glyph glyph) {
-        auto node = pack(root, size);
-        while (!node && (_textureSize.x < _maxSize.x || _textureSize.y < _maxSize.y)) {
-            import std.algorithm : min;
-            _textureSize.x = min(_textureSize.x*2, _maxSize.x);
-            _textureSize.y = min(_textureSize.y*2, _maxSize.y);
-            node = pack(root, size);
-        }
-        if (node) {
-            node.glyph = glyph;
-            ++numNodes;
-            _realized = false;
-        }
-        else {
-            import std.algorithm : min;
-            lastFailedSize.x = min(lastFailedSize.x, size.x);
-            lastFailedSize.y = min(lastFailedSize.y, size.y);
-        }
-        return node;
-    }
-
-    bool couldPack(in IVec2 size) {
-        return size.x < lastFailedSize.x || size.y < lastFailedSize.y;
-    }
-
-    void realize() {
-        if (_realized) return;
-
-        scope(success) _realized = true;
-
-        auto img = new Image(ImageFormat.a8, ISize(_textureSize.x, _textureSize.y),
-                    alignedStrideForWidth(ImageFormat.a8, _textureSize.x));
-
-        void browse(AtlasNode node) {
-            if (node.glyph) {
-                img.blitFrom(node.glyph.img, ivec(0, 0), node.origin, node.glyph.img.size);
-            }
-            if (node.left) {
-                browse(node.left);
-            }
-            if (node.right) {
-                browse(node.right);
-            }
-        }
-
-        browse(root);
-
-        import std.format;
-        static int num = 1;
-        img.saveToFile(format("atlas%s.png", num++));
-
-        const pixels = img.data;
-        TexUsageFlags usage = TextureUsage.shaderResource;
-        auto tex = new Texture2D!Alpha8(
-            usage, 1, cast(ushort)img.width, cast(ushort)img.height, [pixels]
-        ).rc();
-        _srv = tex.viewAsShaderResource(0, 0, newSwizzle());
-        // FilterMethod.scale maps to GL_NEAREST
-        // no need to filter what is already filtered
-        _sampler = new Sampler(
-            srv, SamplerInfo(FilterMethod.scale, WrapMode.init)
-        );
-    }
-
-    /// Recursively scan the tree from node to find a space for the given size.
-    /// Returns: a new node if space was found, null otherwise.
-    private AtlasNode pack (AtlasNode node, in IVec2 size)
+    /// The size starts at start and can extend to max by successive application of stepper
+    this (in ISize start, in ISize max, Stepper stepper)
     in {
-        assert(node, "Node is null");
+        assert(max.width >= start.width);
+        assert(max.height >= start.height);
+        assert(max.width == start.width || stepper(start).width > start.width);
+        assert(max.height == start.height || stepper(start).height > start.height);
     }
     body {
-        if (node.glyph) {
-            // that one is filled, can't pack anything here.
+        this.current = start;
+        this.max = max;
+        this.stepper = stepper;
+    }
+
+    /// initialize a square size range
+    this (in uint fixed)
+    {
+        this(ISize(fixed, fixed));
+    }
+
+    /// ditto
+    this (in uint start, in uint max)
+    {
+        this(ISize(start, start), ISize(max, max));
+    }
+
+    /// ditto
+    this (in uint start, in uint max, Stepper stepper)
+    {
+        this(ISize(start, start), ISize(max, max), stepper);
+    }
+
+    @property bool canExtend() const
+    {
+        return current != max;
+    }
+
+    void extend()
+    {
+        import std.algorithm : min;
+
+        const nextSz = stepper(current);
+
+        current = ISize(
+            min(nextSz.width, max.width),
+            min(nextSz.height, max.height),
+        );
+    }
+}
+
+class AtlasNode
+{
+    import dgt.core.geometry : IRect;
+    import dgt.core.image : Image;
+    import std.typecons : Rebindable;
+
+    private Atlas _atlas;
+    private size_t _atlasInd;
+    private Rebindable!(immutable(Image)) _image;
+    private IRect _rect;
+    private AtlasNode prev;
+    private AtlasNode next;
+    private bool written;
+
+    private this (Atlas atlas, immutable(Image) image, in IRect rect)
+    {
+        _atlas = atlas;
+        _atlasInd = atlas._atlasInd;
+        _image = image;
+        _rect = rect;
+    }
+
+    @property Atlas atlas() {
+        return _atlas;
+    }
+
+    @property size_t atlasInd() {
+        return _atlasInd;
+    }
+
+    @property immutable(Image) image() {
+        return _image;
+    }
+
+    @property IRect rect() const {
+        return _rect;
+    }
+
+    void setFree() {
+        _image = null;
+        _atlas.setFree(this);
+    }
+
+    @property bool isFree() const {
+        return _image is null;
+    }
+}
+
+
+class Atlas : AtomicRefCounted
+{
+    import dgt.core.geometry : ISize;
+    import dgt.core.image : Image, ImageFormat;
+    import dgt.render.binpack : BinPack, BinPackFactory;
+    import dgt.render.services : RenderServices;
+    import gfx.core.rc : atomicRcCode, Rc;
+    import gfx.graal.cmd : CommandBuffer;
+    import gfx.graal.format : Format;
+    import gfx.graal.image : ImageView, Swizzle;
+    import gfx.memalloc : ImageAlloc;
+
+    mixin(atomicRcCode);
+
+    /// Define the invalidation state of the atlas image
+    private enum Invalidation {
+        /// the image view is up-to-date
+        upToDate,
+        /// the previous state is still valid, but new nodes were added and must
+        /// be rendered, and the image uploaded again into graphics memory
+        update,
+        /// same as update, but the image was also extended
+        extended,
+        /// the image must be entirely rebuilt
+        rebuild,
+    }
+    /// The invalidation state
+    private Invalidation _invalidation = Invalidation.rebuild;
+
+    /// the rectangle bin packing algorithm
+    private BinPack _binPack;
+
+    /// the format of the bin image
+    private ImageFormat _format;
+
+    /// the size range of the bin
+    private AtlasSizeRange _sizeRange;
+
+    /// Margin around images
+    private int _margin;
+
+    /// whether some nodes have been freed
+    /// this indicates that the atlas should repack itself if it can't pack
+    /// a new node
+    private bool _hasFreedNodes;
+
+    /// The first node of this atlas
+    private AtlasNode _first;
+    /// The last node of this atlas
+    private AtlasNode _last;
+
+    /// The image built from the set of nodes.
+    private Image _image;
+
+    /// The image in graphics memory
+    private Rc!ImageAlloc _imgAlloc;
+
+    /// The image view
+    private Rc!ImageView _imgView;
+
+    /// The index of the atlas within its collection.
+    /// Only passed verbatim to nodes.
+    private size_t _atlasInd;
+
+    /// build a new Atlas
+    /// Params:
+    ///     factory = a factory to build a bin pack for this atlas
+    ///     atlasInd = the index of this atlas within its collection.
+    ///                This is only passed verbatim to the nodes and not used otherwise
+    ///     sizeRange = the size range that sizes the atlas and define how to extend it
+    ///     format = the image format to build the atlas
+    ///     margin = the margin around each node
+    this (BinPackFactory factory, in size_t atlasInd, in AtlasSizeRange sizeRange, in ImageFormat format, int margin=0)
+    {
+        _sizeRange = sizeRange;
+        _binPack = factory(_sizeRange.current);
+        _atlasInd = atlasInd;
+        _format = format;
+        _margin = margin;
+    }
+
+    override void dispose()
+    {
+        _imgAlloc.unload();
+        _imgView.unload();
+    }
+
+    @property ISize binSize() const {
+        return _sizeRange.current;
+    }
+
+    @property ImageFormat format() const {
+        return _format;
+    }
+
+    /// Packs an image into the atlas.
+    /// Returns: whether the pack was successful.
+    AtlasNode pack (immutable(Image) image)
+    in {
+        assert(image && image.format == _format);
+    }
+    body {
+        import dgt.core.geometry : IMargins, IRect;
+        import std.algorithm : max;
+
+        const sz = image.size + IMargins(_margin);
+        IRect rect;
+        bool packed = _binPack.pack(sz, rect);
+        if (!packed && _hasFreedNodes) {
+            invalidate(Invalidation.rebuild);
+            repack();
+            packed = _binPack.pack(sz, rect);
+            _hasFreedNodes = false;
+        }
+        // checking whether bin can be extended
+        // try to extend only once
+        if (!packed && _sizeRange.canExtend && _binPack.extensible) {
+            invalidate(Invalidation.extended);
+            _sizeRange.extend();
+            _binPack.extend( _sizeRange.current );
+            packed = _binPack.pack(sz, rect);
+        }
+        if (!packed) {
             return null;
         }
-        else if (node.left && node.right) {
-            // not a leaf, we try to insert on the left, then on the right.
-            auto n = pack(node.left, size);
-            if (!n) {
-                n = pack(node.right, size);
-            }
-            return n;
+
+        invalidate(Invalidation.update);
+
+        auto n = new AtlasNode(this, image, rect - IMargins(_margin));
+        if (!_last) {
+            assert(!_first);
+            _first = n;
+            _last = n;
         }
         else {
-            // this is an unfilled leaf. let's see if it can be filled.
-            auto realSize = node.size;
-            if (node.origin.x + node.size.x == _maxSize.x - _margin) {
-                realSize.x = _textureSize.x - node.origin.x - _margin;
-            }
-            if (node.origin.y + node.size.y == _maxSize.y - _margin) {
-                realSize.y = _textureSize.y - node.origin.y - _margin;
+            assert(!_last.next);
+            _last.next = n;
+            n.prev = _last;
+            _last = n;
+        }
+        return n;
+    }
+
+    /// Realizes the assembly into a single image and get the gfx view to this image.
+    /// If the view is not the same as the previous one, true is returned.
+    /// Otherwise returns false.
+    bool realize(RenderServices services, CommandBuffer cmd)
+    {
+        import dgt.core.image : alignedStrideForWidth;
+        import gfx.graal.image : ImageAspect, ImageInfo, ImageLayout,
+                                 ImageSubresourceRange, ImageTiling, ImageType,
+                                 ImageUsage;
+        import gfx.math : ivec;
+        import gfx.memalloc : AllocFlags, AllocOptions, MemoryUsage;
+        import std.parallelism : task;
+
+        if (!_image || !_imgAlloc || !_imgView) {
+            _invalidation = Invalidation.rebuild;
+        }
+
+        if (_invalidation == Invalidation.upToDate) {
+            return false;
+        }
+
+        const makeNewImg = (cast(int)_invalidation >= cast(int)Invalidation.extended);
+        const bs = binSize;
+
+        void buildImage() {
+            auto prevImg = _image;
+
+            if (makeNewImg) {
+                _image = new Image(_format, bs, alignedStrideForWidth(_format, bs.width));
+                // data is uninitialized, but valid areas are always written so it can stay so
             }
 
-            if (node.size.x == size.x && node.size.y == size.y) {
-                // perfect fit, let's pack it here
-                return node;
+            if (_invalidation == Invalidation.extended && prevImg) {
+                _image.blitFrom(prevImg, ivec(0, 0), ivec(0, 0), prevImg.size);
             }
-            else if (realSize.x < size.x || realSize.y < size.y) {
-                // not enough space here
-                return null;
+
+            AtlasNode n = _first;
+            while (n) {
+                if (!n.written || _invalidation == Invalidation.rebuild) {
+                    const nr = n.rect;
+                    _image.blitFrom(n.image, ivec(0, 0), nr.point, nr.size);
+                    n.written = true;
+                }
+                n = n.next;
             }
-            else {
-                // large enough, let's divide space for the given size
-                const remain = realSize - size;
-                assert(remain.x >= 0 && remain.y >= 0);
-                auto vertical = remain.x < remain.y;
-                if (remain.x == 0 && remain.y == 0) {
-                    // edge case, we hit the border exactly
-                    vertical = node.size.y >= node.size.x;
-                }
-                assert(!node.left && !node.right, "always assign both left and right together");
-                if (vertical) {
-                    node.left = new AtlasNode(this, node.origin, IVec2(node.size.x, size.y));
-                    node.right = new AtlasNode(this, IVec2(node.origin.x, node.origin.y+size.y),
-                                               IVec2(node.size.x, node.size.y-size.y));
-                }
-                else {
-                    node.left = new AtlasNode(this, node.origin, IVec2(size.x, node.size.y));
-                    node.right = new AtlasNode(this, IVec2(node.origin.x+size.x, node.origin.y),
-                                               IVec2(node.size.x-size.x, node.size.y));
-                }
-                return pack(node.left, size);
-            }
+        }
+
+        auto buildImgTask = task(&buildImage);
+
+        if (makeNewImg) {
+            buildImgTask.executeInNewThread();
+
+            Swizzle swizzle;
+            const format = convertFormat(_format, swizzle);
+
+            if (_imgAlloc) services.gc(_imgAlloc.obj);
+            if (_imgView) services.gc(_imgView.obj);
+
+            _imgAlloc = services.allocator.allocateImage
+            (
+                ImageInfo.d2(bs.width, bs.height)
+                    .withFormat(format)
+                    .withUsage(ImageUsage.sampled | ImageUsage.transferDst)
+                    .withTiling(ImageTiling.optimal),
+
+                AllocOptions.forUsage(MemoryUsage.gpuOnly)
+                    .withFlags(AllocFlags.dedicated)
+            );
+
+            _imgView = _imgAlloc.image.createView(
+                ImageType.d2, ImageSubresourceRange(ImageAspect.color), swizzle
+            );
+        }
+
+        buildImgTask.spinForce();
+
+        import std.format : format;
+        static int num = 1;
+        _image.saveToFile(format("atlas%s.png", num++));
+
+        services.stageDataToImage(
+            cmd, _imgAlloc.image, ImageAspect.color, ImageLayout.undefined, _image.data
+        );
+
+        _invalidation = Invalidation.upToDate;
+
+        return makeNewImg;
+    }
+
+    /// The view to image in graphics memory for this atlas
+    @property ImageView imgView()
+    {
+        return _imgView;
+    }
+
+    private void setFree(AtlasNode node)
+    {
+        if (node is _first) {
+            _first = node.next;
+        }
+        if (node is _last) {
+            _last = node.prev;
+        }
+        if (node.prev) {
+            node.prev.next = node.next;
+        }
+        if (node.next) {
+            node.next.prev = node.prev;
+        }
+        _hasFreedNodes = true;
+    }
+
+    private void repack() {
+        _binPack.reset(binSize);
+        auto n = _first;
+        while (n) {
+            assert(n.image);
+            const packed = _binPack.pack(n.image.size, n._rect);
+            assert(packed);
+            n = n.next;
         }
     }
 
-    private AtlasNode root;
-    private IVec2 _textureSize;
-    private IVec2 _maxSize;
-    private int _margin;
-    private Rc!(ShaderResourceView!Alpha8) _srv;
-    private Rc!Sampler _sampler;
-    private IVec2 lastFailedSize=IVec2(int.max, int.max);
-    private size_t numNodes;
-    private bool _realized;
+    private void invalidate(Invalidation invalidation)
+    {
+        if (cast(int)invalidation > cast(int)_invalidation) {
+            _invalidation = invalidation;
+        }
+    }
+
+    private static Format convertFormat(in ImageFormat fmt, out Swizzle swizzle)
+    {
+        final switch (fmt) {
+        case ImageFormat.a1: assert(false, "ImageFormat.a1 is not supported");
+        case ImageFormat.a8:
+            swizzle = Swizzle.identity;
+            return Format.r8_uNorm;
+        case ImageFormat.xrgb:
+        case ImageFormat.argb:
+        case ImageFormat.argbPremult:
+            // argb swizzling
+            version(LittleEndian) {
+                swizzle = Swizzle.bgra;
+            }
+            else {
+                swizzle = Swizzle.argb;
+            }
+            // alpha specificity to be handled by shader
+            return Format.rgba8_uNorm;
+        }
+    }
 }

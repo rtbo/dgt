@@ -1,24 +1,29 @@
 /// Freetype typeface implementation module
 module dgt.font.port.ft;
 
-import derelict.freetype.ft;
-
 import dgt : Subsystem;
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
-import dgt.math.vec : FVec2, IVec2;
+import gfx.math.vec : FVec2, IVec2;
 import dgt.text.shaping;
 
+import ft.freetype;
+import ft.bitmap;
+import ft.image;
+import ft.outline;
+import ft.tttables;
+import ft.types;
+
 import std.exception;
-import std.experimental.logger;
+import gfx.core.log;
 import std.typecons : Nullable;
 import std.uni : CodepointSet;
 
 // for other modules to import without having to deal with derelict
-alias FT_Face = derelict.freetype.ft.FT_Face;
+alias FT_Face = ft.freetype.FT_Face;
 
 class FtTypeface : Typeface
 {
@@ -28,7 +33,7 @@ class FtTypeface : Typeface
     }
 
     // version that keeps the font file data in memory (needed for cloning)
-    private this (FT_Face face, const(ubyte)[] blob)
+    package this (FT_Face face, const(ubyte)[] blob)
     {
         this(face);
         _blob = blob;
@@ -131,7 +136,7 @@ FT_Face openFaceFromMemory(const(ubyte)[] data, int faceIndex) {
     FT_Open_Args args;
     args.flags = FT_OPEN_MEMORY;
     args.memory_base = data.ptr;
-    args.memory_size = data.length;
+    args.memory_size = cast(FT_Long)data.length;
     FT_Face face;
     enforce(FT_Open_Face(gFtLib, &args, faceIndex, &face) == 0,
             "Freetype cannot open font from memorty");
@@ -188,6 +193,12 @@ shared static this() {
 }
 
 class FtSubsystem : Subsystem {
+    override @property string name() const {
+        return "Freetype";
+    }
+    override @property int priority() const {
+        return int.max; // no dependency
+    }
     override @property bool running() const {
         return gFtLib !is null;
     }
@@ -262,7 +273,9 @@ final class FtScalingContext : ScalingContext
         enforce(0 == FT_Outline_Decompose(&_face.glyph.outline, &funcs, cast(void*)oa), "Could not decompose outline");
     }
 
-    override Glyph renderGlyph(in GlyphId glyphId) {
+    override Glyph renderGlyph(in GlyphId glyphId)
+    {
+        import std.typecons : Rebindable;
 
         Glyph* glp = glyphId in _glyphs;
         if (glp && (glp.img || glp._isWhitespace)) {
@@ -275,16 +288,17 @@ final class FtScalingContext : ScalingContext
         bool ownedByFT;
         auto img = renderGlyphPriv(glyphId, bearing, yReversed, ownedByFT);
 
-        Image glImg;
+        Rebindable!(immutable(Image)) glImg;
         if (img && yReversed) {
-            glImg = new Image(img.format, img.size, img.stride);
-            glImg.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
+            auto gi = new Image(img.format, img.size, img.stride);
+            gi.blitFrom(img, IPoint(0, 0), IPoint(0, 0), img.size, yReversed);
+            glImg = assumeUnique(gi);
         }
         else if (img && ownedByFT) {
-            glImg = img.dup;
+            glImg = img.idup;
         }
         else if (img) {
-            glImg = img;
+            glImg = assumeUnique(img);
         }
 
         // if (glImg) {

@@ -3,10 +3,10 @@ module dgt.font.msdfgen.coloring;
 import dgt.font.msdfgen.arithmetic;
 import dgt.font.msdfgen.edges;
 import dgt.font.msdfgen.shape;
-import dgt.math.vec : FVec2;
+import gfx.math.vec : FVec2;
 
 void edgeColoringSimple(Shape shape, in float angleThreshold, ulong seed=0) {
-    import dgt.math.vec : normalize;
+    import gfx.math.vec : normalize;
     import std.algorithm : each;
     import std.math : sin;
 
@@ -96,7 +96,7 @@ void edgeColoringSimple(Shape shape, in float angleThreshold, ulong seed=0) {
 }
 
 private bool isCorner(in FVec2 aDir, in FVec2 bDir, in float crossThreshold) {
-    import dgt.math.vec : dot;
+    import gfx.math.vec : dot;
     import std.math : abs;
     return dot(aDir, bDir) <= 0 || abs(cross2d(aDir, bDir)) > crossThreshold;
 }

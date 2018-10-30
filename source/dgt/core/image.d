@@ -236,6 +236,16 @@ class Image
         return _stride;
     }
 
+    /// clear the image content with zeros
+    void clear(T=ubyte)(uint val)
+    in {
+        assert((_data.length % T.sizeof) == 0);
+    }
+    body {
+        auto d = cast(T[])_data;
+        d[] = cast(T)val;
+    }
+
     /// blit pixels from src into this image.
     /// The two formats must be identical and this must be big enough in both directions
     /// Unimplemented for ImageFormat.a1.
@@ -749,8 +759,8 @@ Nullable!ImageFileFormat checkImgSig(const(ubyte)[] data) pure
 
 private
 {
-    import dgt.bindings.libpng;
-    import dgt.bindings.turbojpeg;
+    import libpng.png;
+    import turbojpeg.turbojpeg;
     import std.path;
     import std.string;
     import std.uni : toLower;
@@ -909,9 +919,9 @@ private
         }
 
 
-        string errorMsg() {
+        string errorMsg(tjhandle jpeg) {
             import core.stdc.string : strlen;
-            char* msg = tjGetErrorStr();
+            char* msg = tjGetErrorStr2(jpeg);
             auto len = strlen(msg);
             return msg[0..len].idup;
         }
@@ -935,12 +945,11 @@ private
             tjhandle jpeg = tjInitDecompress();
             scope(exit) tjDestroy(jpeg);
 
-            // const cast needed.  arrgh!
-            int width, height, jpegsubsamp;
-            if (tjDecompressHeader2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length,
-                                    &width, &height, &jpegsubsamp) != 0)
+            int width, height, jpegsubsamp, colorspace;
+            if (tjDecompressHeader3(jpeg, bytes.ptr, cast(c_ulong)bytes.length,
+                                    &width, &height, &jpegsubsamp, &colorspace) != 0)
             {
-                throw new Exception("could not read from memory: "~errorMsg());
+                throw new Exception("could not read from memory: "~errorMsg(jpeg));
             }
 
             immutable rowStride = alignedStrideForWidth(ImageFormat.argb, width);
@@ -948,7 +957,7 @@ private
             if(tjDecompress2(jpeg, cast(ubyte*)bytes.ptr, cast(c_ulong)bytes.length, data.ptr,
                             width, cast(int)rowStride, height, jpegFormat(readFmt), 0) != 0)
             {
-                throw new Exception("could not read from memory: "~errorMsg());
+                throw new Exception("could not read from memory: "~errorMsg(jpeg));
             }
 
             auto img = new Image(data, ImageFormat.argb, width, rowStride);
@@ -976,7 +985,7 @@ private
             if (tjCompress2(jpeg, cast(ubyte*)img.data.ptr, img.width, 0, img.height,
                        jpegFormat(img.format), &bytes, &len, TJSAMP.TJSAMP_444, 100,
                        TJFLAG_FASTDCT) != 0) {
-                throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg());
+                throw new Exception("could not encode to jpeg "~filename.baseName~": "~errorMsg(jpeg));
             }
             scope(exit) tjFree(bytes);
             write(filename, cast(void[])bytes[0..cast(uint)len]);

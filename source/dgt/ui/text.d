@@ -87,7 +87,7 @@ class TextView : View {
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
         if (_text.length) {
-            measurement = FSize(cast(FVec2)metrics.size);
+            measurement = ISize(cast(IVec2)metrics.size);
         }
         else {
             super.measure(widthSpec, heightSpec);

@@ -9,7 +9,7 @@
 	"license": "MIT",
 
   "dependencies":	{
-		"xcb-d":			"~>2.1.0"
+		"xcb-d":			"~>2.1.1"
   },
 
 	"libs": ["xcb", "xcb-shm", "xcb-image"]

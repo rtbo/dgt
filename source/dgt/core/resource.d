@@ -1,11 +1,7 @@
 
 module dgt.core.resource;
 
-import core.sync.mutex;
-
-import std.regex;
-import std.uri;
-
+import core.sync.mutex : Mutex;
 
 /// Exception thrown when attempting to obtain a resource with a wrong identifier.
 class UnavailableResourceException : Exception {
@@ -133,6 +129,8 @@ struct Registry {
 /// passed to this function should not be encoded.
 Resource retrieveResource(in string uri)
 {
+    import std.regex : ctRegex, matchFirst;
+
     auto regex = ctRegex!(uriRegex);
     const m = matchFirst(uri, regex);
 
@@ -167,7 +165,10 @@ Mutex mutex;
 
 enum uriRegex = `^(\w+)://(.+)`;
 
-unittest {
+unittest
+{
+    import std.regex : ctRegex, matchFirst;
+
     auto regex = ctRegex!(uriRegex);
 
     string testUri = "http://this.uri/is.awesome";

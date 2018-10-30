@@ -6,6 +6,7 @@
 ///    The snapshot 2017 was used as reference.
 module dgt.css.parse;
 
+import dgt : dgtTag;
 import dgt.css.om;
 import dgt.css.selector;
 import dgt.css.style;

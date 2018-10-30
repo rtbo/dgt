@@ -3,7 +3,7 @@ module dgt.font.msdfgen.edges;
 import dgt.font.msdfgen.algebra;
 import dgt.font.msdfgen.arithmetic;
 import dgt.font.msdfgen.sd;
-import dgt.math.vec : FVec2;
+import gfx.math.vec : FVec2;
 
 abstract class EdgeSegment {
 
@@ -14,7 +14,7 @@ abstract class EdgeSegment {
     SignedDistance distanceToPseudoDistance(in SignedDistance distance,
                                             in FVec2 origin,
                                             in float param) const {
-        import dgt.math.vec : dot, normalize;
+        import gfx.math.vec : dot, normalize;
         import std.math : abs;
         if (param < 0) {
             const dir = normalize(direction(0));
@@ -73,7 +73,7 @@ final class LinearSegment : EdgeSegment {
     }
 
     override SignedDistance signedDistance(in FVec2 origin, out float param) const {
-        import dgt.math.vec : dot, magnitude, normalize;
+        import gfx.math.vec : dot, magnitude, normalize;
         import std.math : abs;
         const aq = origin-start;
         const ab = end - start;
@@ -145,7 +145,7 @@ final class QuadraticSegment : EdgeSegment {
     }
 
     override SignedDistance signedDistance(in FVec2 origin, out float param) const {
-        import dgt.math.vec : dot, magnitude, normalize;
+        import gfx.math.vec : dot, magnitude, normalize;
         import std.math : abs;
         const qa = p[0]-origin;
         const ab = p[1]-p[0];
@@ -262,7 +262,7 @@ final class CubicSegment : EdgeSegment {
     }
 
     override SignedDistance signedDistance(in FVec2 origin, out float param) const {
-        import dgt.math.vec : dot, magnitude, normalize;
+        import gfx.math.vec : dot, magnitude, normalize;
         import std.math : abs;
 
         enum searchStarts = 4;

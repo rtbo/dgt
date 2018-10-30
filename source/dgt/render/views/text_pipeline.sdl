@@ -1,0 +1,43 @@
+graal:DescriptorSetLayout {
+    store "text_dsl"
+    bindings {
+        // MVP
+        0 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="vertex"
+        // Locals
+        1 descriptorType="uniformBufferDynamic" descriptorCount=1 stages="fragment"
+        // Alpha Mask
+        2 descriptorType="combinedImageSampler" descriptorCount=1 stages="fragment"
+    }
+}
+graal:PipelineLayout {
+    store "text_layout"
+    layouts {
+        "store:text_dsl"
+    }
+}
+graal:Pipeline {
+    store "text_pl"
+    shaders {
+        vertex source="view:text.vert.spv"
+        fragment source="view:text.frag.spv"
+    }
+    inputBindings {
+        0 stride="sizeof:P2T2Vertex" instanced=off
+    }
+    inputAttribs {
+        0 binding=0 member="P2T2Vertex.position"
+        1 binding=0 member="P2T2Vertex.texCoord"
+    }
+    assembly primitive="triangleList" primitiveRestart=off
+    rasterizer polygonMode="fill"
+    blendInfo {
+        attachments {
+            blend colorMask="rgba" {
+                state op="add" srcFactor="one" dstFactor="oneMinusSrcAlpha"
+            }
+        }
+    }
+    dynamicStates "viewport" "scissor"
+    layout "store:text_layout"
+    renderPass "store:renderPass" subpass=0
+}
