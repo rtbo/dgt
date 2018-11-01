@@ -18,6 +18,8 @@ import core.sys.windows.windows;
 
 private __gshared Win32Platform _w32Inst;
 
+package immutable string dgtW32Tag = "DGT-W32";
+
 /// Win32 platform implementation
 class Win32Platform : Platform
 {
@@ -131,7 +133,7 @@ class Win32Platform : Platform
                     QS_ALLINPUT);
 
         if (code == WAIT_FAILED) {
-            errorf(dgtTag, "win32 wait failed with code: %s", GetLastError());
+            errorf(dgtW32Tag, "win32 wait failed with code: %s", GetLastError());
             return Wait.none;
         }
         Wait wait = Wait.none;
@@ -330,7 +332,7 @@ private LRESULT win32WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     catch(Exception ex)
     {
-        try { errorf(dgtTag, "Win32 Proc exception: %s", ex.msg); }
+        try { errorf(dgtW32Tag, "Win32 Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return res;
@@ -348,7 +350,7 @@ private BOOL win32MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprc
     }
     catch(Exception ex)
     {
-        try { errorf(dgtTag, "Win32 Monitor Proc exception: %s", ex.msg); }
+        try { errorf(dgtW32Tag, "Win32 Monitor Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return TRUE;

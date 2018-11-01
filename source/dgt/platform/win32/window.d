@@ -10,10 +10,10 @@ import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32;
 import dgt.window;
+import gfx.core.log;
 
 import core.sys.windows.windows;
 import std.exception : enforce;
-import gfx.core.log;
 import std.utf : toUTF16z;
 
 /// Win32 window implementation
@@ -338,7 +338,7 @@ class Win32Window : PlatformWindow
             assert(msg == WM_KEYDOWN || msg == WM_KEYUP,
                    "current code assumes either keydown or keyup");
             if (wParam < 0 || wParam >= 256) {
-                warningf(dgtTag, "key %s received a virtual key out of byte boundary: %s",
+                warningf(dgtW32Tag, "key %s received a virtual key out of byte boundary: %s",
                          msg == WM_KEYDOWN?"down":"up", wParam);
                 return false;
             }

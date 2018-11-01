@@ -3,6 +3,7 @@ version(Windows):
 
 import core.sys.windows.wingdi;
 import dgt.platform : PlatformWindow;
+import dgt.platform.win32 : dgtW32Tag;
 import dgt.screen : Screen;
 import gfx.bindings.core;
 import gfx.bindings.opengl.gl : Gl, GL_TRUE;
@@ -154,7 +155,7 @@ private class Win32GlContext : GlContext
             if (attrs.decimalVersion < attribs.decimalVersion) break;
 
             const ctxAttribs = getCtxAttribs(attrs);
-            tracef(dgtTag, "attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+            tracef(dgtW32Tag, "attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
 
             _ctx = _wgl.CreateContextAttribsARB(dc, sharedGlrc, &ctxAttribs[0]);
 
@@ -162,7 +163,7 @@ private class Win32GlContext : GlContext
         }
 
         enforce(_ctx, "Failed creating Wgl context");
-        tracef(dgtTag, "created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+        tracef(dgtW32Tag, "created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
         _attribs = attrs;
         Win32GlContext.makeCurrent(cast(size_t)window);
         _gl = new Gl(&loader);
@@ -170,7 +171,7 @@ private class Win32GlContext : GlContext
 
     override void dispose() {
         _wgl.DeleteContext(_ctx);
-        tracef(dgtTag, "destroyed GL/WGL context");
+        tracef(dgtW32Tag, "destroyed GL/WGL context");
     }
 
     override @property Gl gl() {
@@ -239,7 +240,7 @@ private class Win32GlContext : GlContext
                                     null, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), cast(LPSTR)&messageBuffer, 0, null);
         auto buf = new char[size];
         buf[] = messageBuffer[0 .. size];
-        errorf(buf.idup);
+        errorf(dgtW32Tag, buf.idup);
         LocalFree(messageBuffer);
     }
 
@@ -272,7 +273,7 @@ private SharedLib loadGlLib()
         auto lib = openSharedLib(ln);
         if (lib) {
             import gfx.core.log : tracef;
-            tracef(dgtTag, "opening shared library %s", ln);
+            tracef(dgtW32Tag, "opening shared library %s", ln);
             return lib;
         }
     }
