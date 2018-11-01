@@ -12,6 +12,6 @@
 		"dgt:bindings": {
 			"path": ".."
 		},
-		"freetype-d": "*"
+		"freetype-d": "~>0.0.2"
   }
 }

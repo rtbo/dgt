@@ -32,9 +32,9 @@
         "gfx:memalloc": { "path": "gfx-d" },
         "gfx:math":     { "path": "gfx-d" },
 
-        "png-d":            "*",
-        "turbojpeg-d":      "*",
-        "freetype-d":       "*"
+        "png-d":            "~>0.0.2",
+        "turbojpeg-d":      "~>0.0.2",
+        "freetype-d":       "~>0.0.2"
     },
 
     "configurations": [
