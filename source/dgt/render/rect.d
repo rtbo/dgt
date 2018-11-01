@@ -533,8 +533,8 @@ final class RectColRenderer : RectRendererBase
         mvpCursor = 0;
         colStopsCursor = 0;
         vertexCursor = 0;
-        uniformBuf.releaseMap();
-        vertexBuf.releaseMap();
+        if (uniformBuf) uniformBuf.releaseMap();
+        if (vertexBuf) vertexBuf.releaseMap();
     }
 }
 
@@ -826,8 +826,8 @@ final class RectImgRenderer : RectRendererBase
         mvpCursor = 0;
         localsCursor = 0;
         vertexCursor = 0;
-        uniformBuf.releaseMap();
-        vertexBuf.releaseMap();
+        if (uniformBuf) uniformBuf.releaseMap();
+        if (vertexBuf) vertexBuf.releaseMap();
     }
 
     void feedAtlas(immutable(FGRectNode) rn)
