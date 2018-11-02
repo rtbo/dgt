@@ -97,10 +97,10 @@ class EventLoop
 
     package void registerWindow(Window w)
     {
-        import gfx.core.log : infof;
+        import gfx.core.log : tracef;
 
         assert(!hasWindow(w), "tentative to register registered window");
-        infof(dgtTag, `register window: 0x%08x "%s"`, cast(void*)w, w.title);
+        tracef(dgtTag, `register window: "%s"`, w.title);
         _windows ~= w;
 
         onRegisterWindow(w);
@@ -109,18 +109,18 @@ class EventLoop
     package void unregisterWindow(Window w)
     {
         import std.algorithm : remove, SwapStrategy;
-        import gfx.core.log : infof;
+        import gfx.core.log : tracef;
 
         assert(hasWindow(w), "tentative to unregister unregistered window");
 
         onUnregisterWindow(w);
 
         _windows = _windows.remove!(win => win is w, SwapStrategy.unstable)();
-        infof(dgtTag, `unregister window: 0x%08x "%s"`, cast(void*)w, w.title);
+        tracef(dgtTag, `unregister window: "%s"`, w.title);
 
         if (!_windows.length && !_exitFlag)
         {
-            infof(dgtTag, "last window exit!");
+            tracef(dgtTag, "last window exit!");
             exit(0);
         }
     }
