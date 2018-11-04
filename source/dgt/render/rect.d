@@ -386,32 +386,6 @@ final class RectColRenderer : RectRendererBase
         if (uniformBuf) uniformBuf.retainMap();
         if (vertexBuf) vertexBuf.retainMap();
 
-        // if (mustReallocBuffer(uniformBuf, unifSize)) {
-        //     if (uniformBuf) services.gc(uniformBuf.obj);
-        //     uniformBuf = services.allocator.allocateBuffer(
-        //         BufferUsage.uniform, unifSize, AllocOptions.forUsage(
-        //             MemoryUsage.cpuToGpu
-        //         )
-        //     );
-        //     updateUnifDesc = true;
-        // }
-
-        // if (mustReallocBuffer(vertexBuf, vertexCursor)) {
-        //     if (vertexBuf) services.gc(vertexBuf.obj);
-        //     vertexBuf = services.allocator.allocateBuffer(
-        //         BufferUsage.vertex, vertexCursor, AllocOptions.forUsage(
-        //             MemoryUsage.cpuToGpu
-        //         )
-        //     );
-        // }
-
-        // if (updateUnifDesc) {
-        //     updateDescriptorSet();
-        // }
-
-        // uniformBuf.retainMap();
-        // vertexBuf.retainMap();
-
         mvpLen = mvpCursor;
         mvpCursor = 0;
         colStopsCursor = 0;
@@ -753,7 +727,6 @@ final class RectImgRenderer : RectRendererBase
     {
         import dgt.core.image : ImageFormat;
         import dgt.render.framegraph : RectBorder;
-        import gfx.core.log : tracef;
         import gfx.core.typecons : ifNone, ifSome;
         import gfx.graal.buffer : IndexType;
         import gfx.graal.cmd : PipelineBindPoint, VertexBinding;
@@ -762,8 +735,6 @@ final class RectImgRenderer : RectRendererBase
 
         auto atlasNode = imgNodes[node.cookie];
         auto atlas = atlasNode.atlas;
-
-        tracef(dgtRenderTag, "Rendering Img node %s", node.rect);
 
         ImgRectLocals irl = void;
         node.border
