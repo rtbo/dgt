@@ -362,7 +362,7 @@ class Win32Window : PlatformWindow
             else
             {
                 auto ev = new PlKeyEvent(
-                    PlEventType.keyDown, _win, sym, code, keyMods,
+                    PlEventType.keyUp, _win, sym, code, keyMods,
                     "", scancode, cast(uint)wParam
                 );
                 collector(ev);
