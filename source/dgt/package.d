@@ -4,6 +4,9 @@ module dgt;
 import core.sync.mutex : Mutex;
 
 package immutable string dgtTag = "DGT";
+package immutable string dgtStyleTag = "DGT-STYLE";
+package immutable string dgtLayoutTag = "DGT-LAYOUT";
+package immutable string dgtFrameTag = "DGT-FRAME";
 
 interface Subsystem
 {
