@@ -1,6 +1,6 @@
 module dgt.ui;
 
-import dgt : dgtTag;
+import dgt : dgtTag, dgtLayoutTag, dgtStyleTag;
 import dgt.core.geometry;
 import dgt.core.color;
 import dgt.core.paint;
@@ -108,12 +108,16 @@ final class UserInterface : StyleElement {
         return (_dirtyPass & UIPass.render) == UIPass.render;
     }
 
-    void stylePass () {
-        if (!_size.area) return;
-
+    void stylePass () 
+    {
         import dgt.css.cascade : cssCascade;
         import dgt.css.parse : parseCSS;
         import dgt.css.style : Origin;
+        import gfx.core.log : trace;
+
+        if (!_size.area) return;
+
+        trace(dgtStyleTag, "Starting style pass");
 
         if (!_dgtCSS) {
             _dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
@@ -123,9 +127,14 @@ final class UserInterface : StyleElement {
         _dirtyPass &= ~UIPass.style;
     }
 
-    void layoutPass () {
+    void layoutPass () 
+    {
+        import gfx.core.log : trace;
+
         if (!_root) return;
         if (!_size.area) return;
+
+        trace(dgtLayoutTag, "Starting layout pass");
 
         import dgt.ui.layout : MeasureSpec;
         _root.measure(
