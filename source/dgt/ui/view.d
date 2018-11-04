@@ -263,7 +263,7 @@ class View : StyleElement, TreeNode!View
 
     /// Ask this view to measure itself by assigning the measurement property.
     void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
-    {
+    { 
         measurement = ISize(widthSpec.size, heightSpec.size);
     }
 
@@ -846,7 +846,8 @@ class View : StyleElement, TreeNode!View
     }
 
 
-    immutable(FGNode) render(FrameContext fc) {
+    immutable(FGNode) render(FrameContext fc) 
+    {
         import std.algorithm : filter, map;
         import std.array : array;
         return new immutable FGGroupNode (

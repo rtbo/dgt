@@ -53,8 +53,8 @@ struct MeasureSpec
     }
 
     /// make an unspecified spec
-    static MeasureSpec makeUnspecified(in int size=0) pure {
-        return MeasureSpec(Mode.unspecified, size);
+    static MeasureSpec makeUnspecified() pure {
+        return MeasureSpec(Mode.unspecified, 0);
     }
 
     /// make an atMost spec

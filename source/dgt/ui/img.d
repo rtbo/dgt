@@ -4,11 +4,11 @@ module dgt.ui.img;
 import dgt.core.geometry;
 import dgt.core.image;
 import dgt.core.paint;
-import gfx.math;
 import dgt.ui.layout;
 import dgt.ui.view;
 import dgt.render.framegraph;
 import gfx.core.typecons;
+import gfx.math;
 
 import std.typecons;
 
@@ -24,8 +24,9 @@ class ImageView : View
     final @property void image(immutable(Image) image)
     {
         _img = image;
-        _dirty = true;
+        _dirty |= ImgDirty.img;
         invalidate();
+        requestLayoutPass();
     }
 
     override @property string cssType()
@@ -43,24 +44,40 @@ class ImageView : View
         }
     }
 
-    override immutable(FGNode) render(FrameContext fc) {
-        if (_dirty && _fgNode) {
-            immutable node = _fgNode.get;
-            fc.prune(node.cookie);
-            _fgNode = null;
-        }
-        if (_dirty && _img) {
+    override void layout(in IRect rect)
+    {
+        _dirty |= ImgDirty.layout;
+        super.layout(rect);
+    }
+
+    override immutable(FGNode) render(FrameContext fc) 
+    {
+        if (_dirty.img) {
+            if (_fgNode) fc.prune(_fgNode.cookie);
             immutable img = _img.get;
-            _fgNode = new immutable(FGRectNode)(
-                cast(FRect)localRect, 0, new immutable(ImagePaint)(img),
+            _fgNode = new immutable FGRectNode (
+                cast(FRect)localRect, 0, new immutable ImagePaint(img),
                 none!RectBorder, CacheCookie.next()
             );
-            _dirty = false;
         }
+        else if (_dirty.layout) {
+            immutable img = _img.get;
+            const cookie = _fgNode ? _fgNode.cookie : CacheCookie.next();
+            _fgNode = new immutable FGRectNode (
+                cast(FRect)localRect, 0, new immutable ImagePaint(img),
+                none!RectBorder, cookie
+            );
+        }
+        _dirty = BitFlags!ImgDirty.init;
+
         return _fgNode.get;
     }
 
     private Rebindable!(immutable(FGRectNode)) _fgNode;
     private Rebindable!(immutable(Image)) _img;
-    bool _dirty;
+    private enum ImgDirty {
+        img     = 1,
+        layout  = 2,
+    }
+    private BitFlags!ImgDirty _dirty;
 }

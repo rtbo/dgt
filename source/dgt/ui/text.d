@@ -94,7 +94,8 @@ class TextView : View {
         }
     }
 
-    override immutable(FGNode) render(FrameContext fc) {
+    override immutable(FGNode) render(FrameContext fc) 
+    {
         ensureLayout();
         return new immutable(FGTextNode) (
             _layout.metrics.bearing,

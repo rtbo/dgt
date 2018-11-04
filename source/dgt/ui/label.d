@@ -77,13 +77,30 @@ class Label : View
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
-        measurement = computeMeasurement();
+        _textNode.measure(MeasureSpec.makeUnspecified(), MeasureSpec.makeUnspecified());
+        _iconNode.measure(MeasureSpec.makeUnspecified(), MeasureSpec.makeUnspecified());
+
+        int width, height;
+        if (text.length) {
+            const m = _textNode.measurement;
+            width += m.width;
+            height += m.height;
+        }
+        if (icon) {
+            import std.algorithm : max;
+            const m = _iconNode.measurement;
+            width += m.width;
+            height = max(m.height, height);
+            if (text.length) {
+                width += spacing;
+            }
+        }
+        measurement = ISize(width+padding.horizontal, height+padding.vertical);
     }
 
     override void layout(in IRect rect)
     {
-        // might differ from actual measurement because subclass have larger content
-        const mes = computeMeasurement();
+        const mes = measurement;
 
         // mes includes padding
         int left;
@@ -113,34 +130,17 @@ class Label : View
         }
 
         if (icon) {
-            const top = topAlignment(icon.height);
-            _iconNode.rect = IRect(left, top, icon.size);
+            const m = _iconNode.measurement;
+            const top = topAlignment(m.height);
+            _iconNode.layout(IRect(left, top, m));
             left += icon.width + spacing;
         }
         if (text.length) {
-            const ms = _textNode.metrics.size;
-            const top = topAlignment(cast(int)ms.y);
-            _textNode.rect = IRect(left, top, cast(int)ms.x, cast(int)ms.y);
+            const m = _textNode.measurement;
+            const top = topAlignment(m.height);
+            _textNode.layout(IRect(left, top, m));
         }
         this.rect = rect;
-    }
-
-    private ISize computeMeasurement()
-    {
-        int width, height;
-        if (text.length) {
-            width += cast(int)_textNode.metrics.size.x;
-            height += cast(int)_textNode.metrics.size.y;
-        }
-        if (icon) {
-            import std.algorithm : max;
-            width += icon.width;
-            height = max(icon.height, height);
-            if (text.length) {
-                width += spacing;
-            }
-        }
-        return ISize(width+padding.horizontal, height+padding.vertical);
     }
 
     private Alignment _alignment = Alignment.top | Alignment.left;
