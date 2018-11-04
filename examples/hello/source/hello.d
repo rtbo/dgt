@@ -77,33 +77,33 @@ int main()
 
     ui.root = layout;
 
-    // import dgt.ui.animation : SmoothTransitionAnimation;
-    // auto anim = new SmoothTransitionAnimation(ui, dur!"seconds"(3));
-    // anim.name = "hello rotate";
-    // anim.onTick = (float phase) {
-    //     import gfx.math.transform : rotation, scale, translation;
-    //     import std.math : PI, sin;
-    //     const size = label.size.asVec;
-    //     const center = fvec(size/2, 0);
-    //     const factor = 1 + cast(float)sin(phase*PI);
-    //     const transform =
-    //             translation(center) *
-    //             rotation(phase*2*PI, fvec(0, 0, 1)) *
-    //             scale(factor, factor, 1) *
-    //             translation(-center);
-    //     label.transform = transform;
-    // };
+    import dgt.ui.animation : SmoothTransitionAnimation;
+    auto anim = new SmoothTransitionAnimation(ui, dur!"seconds"(3));
+    anim.name = "hello rotate";
+    anim.onTick = (float phase) {
+        import gfx.math.transform : rotation, scale, translation;
+        import std.math : PI, sin;
+        const size = label.size.asVec;
+        const center = fvec(size/2, 0);
+        const factor = 1 + cast(float)sin(phase*PI);
+        const transform =
+                translation(center) *
+                rotation(phase*2*PI, fvec(0, 0, 1)) *
+                scale(factor, factor, 1) *
+                translation(-center);
+        label.transform = transform;
+    };
 
     auto win = new Window("Hello DGT");
     win.ui = ui;
     win.show();
 
-    // auto timer = Application.platform.createTimer();
-    // scope(exit) timer.dispose();
-    // timer.duration = dur!"seconds"(1);
-    // timer.mode = PlatformTimer.Mode.singleShot;
-    // timer.handler = &anim.start;
-    // timer.start();
+    auto timer = Application.platform.createTimer();
+    scope(exit) timer.dispose();
+    timer.duration = dur!"seconds"(1);
+    timer.mode = PlatformTimer.Mode.singleShot;
+    timer.handler = &anim.start;
+    timer.start();
 
     return app.loop();
 }
