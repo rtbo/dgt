@@ -3,14 +3,12 @@ module dgt.font.port.fc;
 
 version(linux):
 
-import dgt : dgtTag;
 import dgt.bindings.fontconfig;
 import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
-import gfx.core.log;
 
 import std.string;
 import std.typecons : Nullable;
@@ -343,13 +341,23 @@ class FcTypeface : FtTypeface
 
     private FcPattern* _font;
 
-    this(FT_Face face, FcPattern* font) {
+    this(FT_Face face, FcPattern* font)
+    {
+        import dgt : dgtTextTag;
+        import gfx.core.log : infof;
+
         super(face);
         _font = font;
         FcPatternReference(_font);
+        infof(dgtTextTag, `loading font family "%s"`, family);
     }
 
-    override void dispose() {
+    override void dispose()
+    {
+        import dgt : dgtTextTag;
+        import gfx.core.log : infof;
+
+        infof(dgtTextTag, `disposing font family "%s"`, family);
         super.dispose();
         FcPatternDestroy(_font);
     }
@@ -362,13 +370,17 @@ class FcTypeface : FtTypeface
         return fcPatternToFontStyle(_font);
     }
 
-    override CodepointSet buildCoverage() {
+    override CodepointSet buildCoverage()
+    {
+        import dgt : dgtTextTag;
+        import gfx.core.log : errorf;
+
         FcCharSet* csval;
         if (FcPatternGetCharSet(_font, FC_CHARSET, 0, &csval) == FcResultMatch) {
             return fcCharsetToCoverage(csval);
         }
         else {
-            errorf(dgtTag, "Cannot find charset in font %s to build coverage", family);
+            errorf(dgtTextTag, "Cannot find charset in font %s to build coverage", family);
             return CodepointSet.init;
         }
     }
@@ -439,6 +451,9 @@ int slantToFcSlant(in FontSlant slant)
 
 FontSlant fcSlantToSlant(in int slant)
 {
+    import dgt : dgtTextTag;
+    import gfx.core.log : warningf;
+
     switch(slant)
     {
         case FC_SLANT_ROMAN:
@@ -448,7 +463,7 @@ FontSlant fcSlantToSlant(in int slant)
         case FC_SLANT_OBLIQUE:
             return FontSlant.oblique;
         default:
-            warningf(dgtTag, "fontconfig slant %d do not match a FontSlant", slant);
+            warningf(dgtTextTag, "fontconfig slant %d do not match a FontSlant", slant);
             return FontSlant.normal;
     }
 }
