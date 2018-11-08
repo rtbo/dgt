@@ -309,16 +309,18 @@ class RendererBase : Renderer
             }
         }
 
+        enum numPrerenderCmds = 4;
+
         prerenderCmdInd++;
-        if (prerenderCmdInd == 4) prerenderCmdInd = 0;
+        if (prerenderCmdInd == numPrerenderCmds) prerenderCmdInd = 0;
 
         if (!prerenderCmds.length) {
             import gfx.core.rc : retainArr;
             import std.algorithm : map;
             import std.array : array;
             import std.range : iota;
-            prerenderCmds = prerenderPool.allocate(4);
-            prerenderFences = iota(4).map!(i => device.createFence(Yes.signaled)).array();
+            prerenderCmds = prerenderPool.allocate(numPrerenderCmds);
+            prerenderFences = iota(numPrerenderCmds).map!(i => device.createFence(Yes.signaled)).array();
             retainArr(prerenderFences);
             prerenderCmdInd = 0;
         }
