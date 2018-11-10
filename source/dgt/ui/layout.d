@@ -202,27 +202,27 @@ class Layout : View
     /// Build a new layout
     this() {}
 
-    public final void appendView(View view)
+    public override void appendView(View view)
     {
         ensureLayout(view);
-        super.appendChild(view);
+        super.appendView(view);
     }
 
-    public final void prependView(View view)
+    public override void prependView(View view)
     {
         ensureLayout(view);
-        super.prependChild(view);
+        super.prependView(view);
     }
 
-    public final void insertViewBefore(View view, View child)
+    public override void insertViewBefore(View view, View child)
     {
         ensureLayout(view);
-        super.insertChildBefore(view, child);
+        super.insertViewBefore(view, child);
     }
 
-    public final void removeView(View view)
+    public override void removeView(View view)
     {
-        super.removeChild(view);
+        super.removeView(view);
     }
 
     public final auto childViews()

@@ -24,8 +24,8 @@ class Label : View
         _textNode = new TextView;
         _textNode.name = "txt";
 
-        appendChild(_iconNode);
-        appendChild(_textNode);
+        appendView(_iconNode);
+        appendView(_textNode);
     }
 
     override @property string cssType()
