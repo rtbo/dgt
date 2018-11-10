@@ -26,7 +26,7 @@ class Button : Label
     /// build a new button
     this()
     {
-        padding = IPadding(6);
+        padding = FPadding(6);
         _onClick = new FireableSignal!();
         hoverSensitive = true;
         _backgroundProperty = addStyleSupport(this, BackgroundMetaProperty.instance);
@@ -83,7 +83,7 @@ class Button : Label
             immutable ip = cast(immutable(ImagePaint))bg;
             immutable img = ip.image;
             auto m = measurement;
-            m = ISize(max(m.width, img.width), max(m.height, img.height));
+            m = FSize(max(m.width, img.width), max(m.height, img.height));
             measurement = m;
         }
     }
@@ -109,7 +109,7 @@ class Button : Label
                     border = some(RectBorder(bcol.asVec, _bss.borderWidth.value));
                 }
 
-                _bgNode = new immutable FGRectNode(cast(FRect)localRect,
+                _bgNode = new immutable FGRectNode(localRect,
                         _bss.borderRadius.value, bg, border, CacheCookie.next());
 
             }

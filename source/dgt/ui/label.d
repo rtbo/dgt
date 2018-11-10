@@ -18,7 +18,7 @@ class Label : View
     /// build a new label
     this()
     {
-        padding = IPadding(6);
+        padding = FPadding(6);
         _iconNode = new ImageView;
         _iconNode.name = "img";
         _textNode = new TextView;
@@ -73,14 +73,14 @@ class Label : View
     }
 
     /// Space between text and icon
-    enum spacing = 6;
+    enum spacing = 6f;
 
     override void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
     {
         _textNode.measure(MeasureSpec.makeUnspecified(), MeasureSpec.makeUnspecified());
         _iconNode.measure(MeasureSpec.makeUnspecified(), MeasureSpec.makeUnspecified());
 
-        int width, height;
+        float width=0f, height=0f;
         if (text.length) {
             const m = _textNode.measurement;
             width += m.width;
@@ -95,17 +95,17 @@ class Label : View
                 width += spacing;
             }
         }
-        measurement = ISize(width+padding.horizontal, height+padding.vertical);
+        measurement = FSize(width+padding.horizontal, height+padding.vertical);
     }
 
-    override void layout(in IRect rect)
+    override void layout(in FRect rect)
     {
         const mes = measurement;
 
         // mes includes padding
-        int left;
+        float left=void;
         if (alignment & Alignment.centerH) {
-            left = padding.left + (rect.width - mes.width) / 2;
+            left = padding.left + (rect.width - mes.width) / 2f;
         }
         else if (alignment & Alignment.right) {
             left = padding.left + (rect.width - mes.width);
@@ -114,11 +114,11 @@ class Label : View
             left = padding.left;
         }
 
-        int topAlignment(in int height) {
+        float topAlignment(in float height) {
             // height does not include padding
-            int top;
+            float top=void;
             if (alignment & Alignment.centerV) {
-                top = (rect.height - height + padding.top - padding.bottom) / 2;
+                top = (rect.height - height + padding.top - padding.bottom) / 2f;
             }
             else if (alignment & Alignment.bottom) {
                 top = rect.height - height - padding.bottom;
@@ -132,13 +132,13 @@ class Label : View
         if (icon) {
             const m = _iconNode.measurement;
             const top = topAlignment(m.height);
-            _iconNode.layout(IRect(left, top, m));
+            _iconNode.layout(FRect(left, top, m));
             left += icon.width + spacing;
         }
         if (text.length) {
             const m = _textNode.measurement;
             const top = topAlignment(m.height);
-            _textNode.layout(IRect(left, top, m));
+            _textNode.layout(FRect(left, top, m));
         }
         this.rect = rect;
     }

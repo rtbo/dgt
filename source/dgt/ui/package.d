@@ -108,7 +108,7 @@ final class UserInterface : StyleElement {
         return (_dirtyPass & UIPass.render) == UIPass.render;
     }
 
-    void stylePass () 
+    void stylePass ()
     {
         import dgt.css.cascade : cssCascade;
         import dgt.css.parse : parseCSS;
@@ -127,7 +127,7 @@ final class UserInterface : StyleElement {
         _dirtyPass &= ~UIPass.style;
     }
 
-    void layoutPass () 
+    void layoutPass ()
     {
         import gfx.core.log : trace;
 
@@ -137,11 +137,12 @@ final class UserInterface : StyleElement {
         trace(dgtLayoutTag, "Starting layout pass");
 
         import dgt.ui.layout : MeasureSpec;
+        auto fs = cast(FSize) _size;
         _root.measure(
-            MeasureSpec.makeAtMost(_size.width),
-            MeasureSpec.makeAtMost(_size.height)
+            MeasureSpec.makeAtMost(fs.width),
+            MeasureSpec.makeAtMost(fs.height)
         );
-        _root.layout(IRect(0, 0, _size));
+        _root.layout(FRect(0, 0, fs));
         _dirtyPass &= ~UIPass.layout;
     }
 
@@ -326,7 +327,7 @@ final class UserInterface : StyleElement {
     {
         void handleResize(PlResizeEvent ev)
         {
-            immutable newSize = ev.size;
+            const newSize = ev.size;
             _size = newSize;
             // FIXME: style and viewport size
             requestPass(UIPass.layout | UIPass.render);
@@ -338,7 +339,7 @@ final class UserInterface : StyleElement {
             if (_root) {
                 import std.typecons : scoped;
 
-                const pos = ev.point;
+                const pos = cast(FVec2)ev.point;
 
                 if (!_mouseViews.length) {
                     errorf(dgtTag, "mouse down without prior move");
@@ -373,7 +374,7 @@ final class UserInterface : StyleElement {
                 import std.algorithm : swap;
                 import std.typecons : scoped;
 
-                const pos = ev.point;
+                const pos = cast(FPoint)ev.point;
 
                 assert(!_tempViews.length);
                 _root.viewsAtPos(pos, _tempViews);
@@ -410,7 +411,7 @@ final class UserInterface : StyleElement {
             if (_root) {
                 import std.typecons : scoped;
 
-                const pos = ev.point;
+                const pos = cast(FVec2)ev.point;
 
                 if (_dragChain.length) {
                     auto upEv = scoped!MouseEvent(
@@ -454,7 +455,7 @@ final class UserInterface : StyleElement {
         {
             if (_root) {
                 import std.algorithm : swap;
-                const pos = ev.point;
+                const pos = cast(FPoint)ev.point;
 
                 if (_mouseViews.length) {
                     errorf(dgtTag, "Enter window while having already nodes under mouse??");
@@ -470,7 +471,7 @@ final class UserInterface : StyleElement {
         {
             if (_root) {
                 import std.algorithm : swap;
-                immutable pos = cast(FPoint)ev.point;
+                const pos = cast(FPoint)ev.point;
 
                 assert(!_tempViews.length);
                 checkEnterLeave(_mouseViews, _tempViews, ev);
@@ -483,7 +484,7 @@ final class UserInterface : StyleElement {
         static void emitEnterLeave(View view, EventType type, PlMouseEvent src)
         {
             import std.typecons : scoped;
-            const uiPos = src.point;
+            const uiPos = cast(FPoint)src.point;
             auto ev = scoped!MouseEvent(
                 type, [view], uiPos - view.uiPos, uiPos, src.button, src.state, src.modifiers
             );

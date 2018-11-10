@@ -17,54 +17,36 @@ import std.exception;
 /// Specifies how a widget should measure itself
 struct MeasureSpec
 {
-    enum Mode {
+    enum {
         /// widget should measure its content
-        unspecified = 0,
+        unspecified =0,
         /// widget should measure its content bounded to the given size
-        atMost      = 0x1000_0000,
+        atMost      =1,
         /// widget should assign its measurement to the given size regardless of its content
-        exactly     = 0x2000_0000,
+        exactly     =2,
     }
 
-    private int _size;
+    int mode;
+    float size=0f;
 
-    this (Mode mode, int size) pure {
-        _size = cast(int)mode | size;
-    }
-
-    @property Mode mode() const pure
-    {
-        return cast(Mode)(_size & 0xf000_0000);
-    }
-
-    @property void mode(in Mode mode) pure
-    {
-        _size = cast(int)mode | this.size;
-    }
-
-    @property int size() const pure
-    {
-        return _size & 0x0fff_ffff;
-    }
-
-    @property void size(in int size) pure
-    {
-        _size = cast(int)this.mode | size;
+    this (int mode, float size) pure {
+        this.mode = mode;
+        this.size = size;
     }
 
     /// make an unspecified spec
     static MeasureSpec makeUnspecified() pure {
-        return MeasureSpec(Mode.unspecified, 0);
+        return MeasureSpec(unspecified, 0f);
     }
 
     /// make an atMost spec
-    static MeasureSpec makeAtMost(in int size) pure {
-        return MeasureSpec(Mode.atMost, size);
+    static MeasureSpec makeAtMost(in float size) pure {
+        return MeasureSpec(atMost, size);
     }
 
     /// make an exactly spec
-    static MeasureSpec makeExactly(in int size) pure {
-        return MeasureSpec(Mode.exactly, size);
+    static MeasureSpec makeExactly(in float size) pure {
+        return MeasureSpec(exactly, size);
     }
 }
 
@@ -165,9 +147,9 @@ interface HasGravity
 }
 
 /// Special value for Layout.Params.width and height.
-enum int wrapContent = 0xffff_ffff;
+enum float wrapContent = -1f;
 /// ditto
-enum int matchParent = 0xffff_fffe;
+enum float matchParent = -2f;
 
 /// general layout class
 class Layout : View
@@ -187,16 +169,16 @@ class Layout : View
             assert(v.styleProperty("layout-height") is _height);
         }
         /// Either an actual dimension in pixels, or special values wrapContent or matchParent
-        @property int width() {
+        @property float width() {
             return _width.value;
         }
         /// Either an actual dimension in pixels, or special values wrapContent or matchParent
-        @property int height() {
+        @property float height() {
             return _height.value;
         }
 
-        private StyleProperty!int _width;
-        private StyleProperty!int _height;
+        private StyleProperty!float _width;
+        private StyleProperty!float _height;
     }
 
     /// Build a new layout
@@ -239,13 +221,13 @@ class Layout : View
     /// by other children.
     protected void measureChild(View child, in MeasureSpec parentWidthSpec,
                                 in MeasureSpec parentHeightSpec,
-                                in int usedWidth, in int usedHeight)
+                                in float usedWidth=0f, in float usedHeight=0f)
     {
         auto lp = cast(Layout.Params)child.layoutParams;
 
-        immutable ws = childMeasureSpec(parentWidthSpec,
+        const ws = childMeasureSpec(parentWidthSpec,
                     padding.left+padding.right+usedWidth, lp.width);
-        immutable hs = childMeasureSpec(parentHeightSpec,
+        const hs = childMeasureSpec(parentHeightSpec,
                     padding.top+padding.bottom+usedHeight, lp.height);
 
         child.measure(ws, hs);
@@ -360,13 +342,13 @@ class LinearLayout : Layout
     }
 
     /// The spacing between the elements of this layout.
-    @property int spacing() const
+    @property float spacing() const
     {
         return _spacing;
     }
 
     /// ditto
-    @property void spacing(in int spacing)
+    @property void spacing(in float spacing)
     {
         _spacing = spacing;
     }
@@ -381,18 +363,17 @@ class LinearLayout : Layout
     {
         import gfx.math.approx : approxUlpAndAbs;
         import std.algorithm : max;
-        import std.math : round;
         import std.range : enumerate;
 
-        int totalHeight = 0;
-        int largestWidth = 0;
-        float totalWeight = 0f;
+        float totalHeight = 0;
+        float largestWidth = 0;
+        float totalWeight = 0;
 
         // compute vertical space that all children want to have
         foreach(i, v; enumerate(children)) {
             if (i != 0) totalHeight += spacing;
 
-            measureChild(v, widthSpec, heightSpec, 0, totalHeight);
+            measureChild(v, widthSpec, heightSpec, 0f, totalHeight);
             totalHeight += v.measurement.height;
             largestWidth = max(largestWidth, v.measurement.width);
 
@@ -403,15 +384,16 @@ class LinearLayout : Layout
 
         bool wTooSmall, hTooSmall;
         const finalHeight = resolveSize(totalHeight, heightSpec, hTooSmall);
-        int remainExcess = finalHeight - totalHeight;
+        auto remainExcess = finalHeight - totalHeight;
+        enum pixelTol = 0.1f;
         // share remain excess (positive or negative) between all weighted children
-        if (remainExcess != 0 && totalWeight > 0f) {
-            totalHeight = 0;
+        if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
+            totalHeight = 0f;
             foreach(v; children) {
                 auto lp = cast(LinearLayout.Params)layoutParams;
                 const weight = lp ? lp.weight : 0f;
-                if (weight > 0f && totalWeight >= weight) {
-                    const share = cast(int)round(remainExcess * weight / totalWeight);
+                if (weight > 0f) {
+                    const share = remainExcess * weight / totalWeight;
                     totalWeight -= weight;
                     remainExcess -= share;
                     const childHeight = v.measurement.height + share;
@@ -426,7 +408,7 @@ class LinearLayout : Layout
         }
 
         largestWidth += padding.left + padding.right;
-        measurement = ISize(
+        measurement = FSize(
             resolveSize(largestWidth, widthSpec, wTooSmall),
             resolveSize(totalHeight, heightSpec, hTooSmall),
         );
@@ -441,18 +423,17 @@ class LinearLayout : Layout
     {
         import gfx.math.approx : approxUlpAndAbs;
         import std.algorithm : max;
-        import std.math : round;
         import std.range : enumerate;
 
-        int totalWidth = 0;
-        int largestHeight = 0;
-        float totalWeight = 0f;
+        float totalWidth = 0;
+        float largestHeight = 0;
+        float totalWeight = 0;
 
         // compute horizontal space that all children want to have
         foreach(i, v; enumerate(children)) {
             if (i != 0) totalWidth += spacing;
 
-            measureChild(v, widthSpec, heightSpec, totalWidth, 0);
+            measureChild(v, widthSpec, heightSpec, totalWidth, 0f);
             totalWidth += v.measurement.width;
             largestHeight = max(largestHeight, v.measurement.height);
 
@@ -463,15 +444,16 @@ class LinearLayout : Layout
 
         bool wTooSmall, hTooSmall;
         const finalWidth = resolveSize(totalWidth, widthSpec, wTooSmall);
-        int remainExcess = finalWidth - totalWidth;
+        auto remainExcess = finalWidth - totalWidth;
+        enum pixelTol = 0.1f;
         // share remain excess (positive or negative) between all weighted children
-        if (remainExcess != 0 && totalWeight > 0f) {
-            totalWidth = 0;
+        if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
+            totalWidth = 0f;
             foreach(v; children) {
                 auto lp = cast(Params)layoutParams;
                 const weight = lp ? lp.weight : 0f;
-                if (weight > 0f && totalWeight >= weight) {
-                    const share = cast(int)round(remainExcess * weight / totalWeight);
+                if (weight > 0f) {
+                    const share = remainExcess * weight / totalWeight;
                     totalWeight -= weight;
                     remainExcess -= share;
                     const childWidth = v.measurement.height + share;
@@ -486,7 +468,7 @@ class LinearLayout : Layout
         }
 
         largestHeight += padding.top + padding.bottom;
-        measurement = ISize(
+        measurement = FSize(
             resolveSize(totalWidth, widthSpec, wTooSmall),
             resolveSize(largestHeight, heightSpec, hTooSmall),
         );
@@ -497,27 +479,27 @@ class LinearLayout : Layout
         _totalLength = totalWidth;
     }
 
-    override void layout(in IRect rect)
+    override void layout(in FRect rect)
     {
         if (isVertical) layoutVertical(rect);
         else layoutHorizontal(rect);
         this.rect = rect;
     }
 
-    private void layoutVertical(in IRect rect)
+    private void layoutVertical(in FRect rect)
     {
         import std.range : enumerate;
 
-        immutable childRight = rect.width - padding.right;
-        immutable childSpace = rect.width - padding.right - padding.left;
+        const childRight = rect.width - padding.right;
+        const childSpace = rect.width - padding.right - padding.left;
 
-        int childTop;
+        float childTop=void;
         switch (_gravity & Gravity.verMask) {
         case Gravity.bottom:
             childTop = padding.top + rect.height - _totalLength;
             break;
         case Gravity.centerVer:
-            childTop = padding.top + (rect.height - _totalLength) / 2;
+            childTop = padding.top + (rect.height - _totalLength) / 2f;
             break;
         case Gravity.top:
         default:
@@ -532,13 +514,13 @@ class LinearLayout : Layout
                     lp.gravity : _gravity;
 
             const mes = v.measurement;
-            int childLeft;
+            float childLeft=void;
             switch (og & Gravity.horMask) {
             case Gravity.right:
                 childLeft = childRight - mes.width;
                 break;
             case Gravity.centerHor:
-                childLeft = padding.left + (childSpace - mes.width) / 2;
+                childLeft = padding.left + (childSpace - mes.width) / 2f;
                 break;
             case Gravity.left:
             default:
@@ -547,25 +529,25 @@ class LinearLayout : Layout
             }
 
             if (i != 0) childTop += spacing;
-            v.layout(IRect(IPoint(childLeft, childTop), mes));
+            v.layout(FRect(FPoint(childLeft, childTop), mes));
             childTop += mes.height;
         }
     }
 
-    private void layoutHorizontal(in IRect rect)
+    private void layoutHorizontal(in FRect rect)
     {
         import std.range : enumerate;
 
         const childBottom = rect.height - padding.bottom;
         const childSpace = rect.height - padding.bottom - padding.top;
 
-        int childLeft;
+        float childLeft=void;
         switch (_gravity & Gravity.horMask) {
         case Gravity.right:
             childLeft = padding.left + rect.width - _totalLength;
             break;
         case Gravity.centerHor:
-            childLeft = padding.left + (rect.width - _totalLength) / 2;
+            childLeft = padding.left + (rect.width - _totalLength) / 2f;
             break;
         case Gravity.left:
         default:
@@ -580,13 +562,13 @@ class LinearLayout : Layout
                     lp.gravity : _gravity;
 
             const mes = v.measurement;
-            int childTop;
+            float childTop=void;
             switch (og & Gravity.verMask) {
             case Gravity.bottom:
                 childTop = childBottom - mes.height;
                 break;
             case Gravity.centerVer:
-                childTop = padding.top + (childSpace - mes.height) / 2;
+                childTop = padding.top + (childSpace - mes.height) / 2f;
                 break;
             case Gravity.top:
             default:
@@ -595,15 +577,16 @@ class LinearLayout : Layout
             }
 
             if (i != 0) childLeft += spacing;
-            v.layout(IRect(IPoint(childLeft, childTop), mes));
+            v.layout(FRect(FPoint(childLeft, childTop), mes));
             childLeft += mes.width;
         }
     }
 
     private Orientation _orientation;
-    private Gravity _gravity = Gravity.left | Gravity.top;
-    private int _spacing;
-    private int _totalLength;
+    private Gravity _gravity            = Gravity.left | Gravity.top;
+    private float _spacing              = 0f;
+
+    private float _totalLength          = 0f;
 }
 
 
@@ -612,20 +595,20 @@ class LinearLayout : Layout
 ///     parentSpec      =   the measure spec of the parent
 ///     removed         =   how much has been consumed so far from the parent space
 ///     childLayoutSize =   the child size given in layout params
-public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in int removed, in int childLayoutSize) pure
+public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in float removed, in float childLayoutSize) pure
 {
     import std.algorithm : max;
 
-    if (childLayoutSize < 0xffff_fff0) {
+    if (childLayoutSize >= 0f) {
         return MeasureSpec.makeExactly(childLayoutSize);
     }
     enforce(childLayoutSize == wrapContent || childLayoutSize == matchParent,
             "childMeasureSpec: invalid childLayoutSize");
 
-    const size = max(0, parentSpec.size - removed);
+    const size = max(0f, parentSpec.size - removed);
 
     switch (parentSpec.mode) {
-    case MeasureSpec.Mode.exactly:
+    case MeasureSpec.exactly:
         if (childLayoutSize == wrapContent) {
             return MeasureSpec.makeAtMost(size);
         }
@@ -633,9 +616,9 @@ public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in int removed, i
             assert(childLayoutSize == matchParent);
             return MeasureSpec.makeExactly(size);
         }
-    case MeasureSpec.Mode.atMost:
+    case MeasureSpec.atMost:
         return MeasureSpec.makeAtMost(size);
-    case MeasureSpec.Mode.unspecified:
+    case MeasureSpec.unspecified:
         return MeasureSpec.makeUnspecified();
     default:
         assert(false);
@@ -644,10 +627,10 @@ public MeasureSpec childMeasureSpec(in MeasureSpec parentSpec, in int removed, i
 
 /// Reconciliate a measure spec and children dimensions.
 /// This will give the final dimension to be shared amoung the children.
-int resolveSize(in int size, in MeasureSpec measureSpec, out bool tooSmall) pure
+float resolveSize(in float size, in MeasureSpec measureSpec, out bool tooSmall) pure
 {
     switch (measureSpec.mode) {
-    case MeasureSpec.Mode.atMost:
+    case MeasureSpec.atMost:
         if (size > measureSpec.size) {
             tooSmall = true;
             return measureSpec.size;
@@ -655,9 +638,9 @@ int resolveSize(in int size, in MeasureSpec measureSpec, out bool tooSmall) pure
         else {
             return size;
         }
-    case MeasureSpec.Mode.exactly:
+    case MeasureSpec.exactly:
         return measureSpec.size;
-    case MeasureSpec.Mode.unspecified:
+    case MeasureSpec.unspecified:
         return size;
     default:
         assert(false);
