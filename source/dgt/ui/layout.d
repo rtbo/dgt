@@ -225,12 +225,6 @@ class Layout : View
         super.removeView(view);
     }
 
-    public final auto childViews()
-    {
-        import std.algorithm : map;
-        return children.map!(c => cast(View)c);
-    }
-
     /// Ensure that this child has layout params and that they are compatible
     /// with this layout. If not, default params are assigned.
     protected void ensureLayout(View child)
@@ -395,7 +389,7 @@ class LinearLayout : Layout
         float totalWeight = 0f;
 
         // compute vertical space that all children want to have
-        foreach(i, v; enumerate(childViews)) {
+        foreach(i, v; enumerate(children)) {
             if (i != 0) totalHeight += spacing;
 
             measureChild(v, widthSpec, heightSpec, 0, totalHeight);
@@ -413,7 +407,7 @@ class LinearLayout : Layout
         // share remain excess (positive or negative) between all weighted children
         if (remainExcess != 0 && totalWeight > 0f) {
             totalHeight = 0;
-            foreach(v; childViews) {
+            foreach(v; children) {
                 auto lp = cast(LinearLayout.Params)layoutParams;
                 const weight = lp ? lp.weight : 0f;
                 if (weight > 0f && totalWeight >= weight) {
@@ -455,7 +449,7 @@ class LinearLayout : Layout
         float totalWeight = 0f;
 
         // compute horizontal space that all children want to have
-        foreach(i, v; enumerate(childViews)) {
+        foreach(i, v; enumerate(children)) {
             if (i != 0) totalWidth += spacing;
 
             measureChild(v, widthSpec, heightSpec, totalWidth, 0);
@@ -473,7 +467,7 @@ class LinearLayout : Layout
         // share remain excess (positive or negative) between all weighted children
         if (remainExcess != 0 && totalWeight > 0f) {
             totalWidth = 0;
-            foreach(v; childViews) {
+            foreach(v; children) {
                 auto lp = cast(Params)layoutParams;
                 const weight = lp ? lp.weight : 0f;
                 if (weight > 0f && totalWeight >= weight) {
@@ -531,7 +525,7 @@ class LinearLayout : Layout
             break;
         }
 
-        foreach(i, v; enumerate(childViews)) {
+        foreach(i, v; enumerate(children)) {
 
             auto lp = cast(Params)v.layoutParams;
             const og = (lp && (lp.gravity != Gravity.none)) ?
@@ -579,7 +573,7 @@ class LinearLayout : Layout
             break;
         }
 
-        foreach(i, v; enumerate(childViews)) {
+        foreach(i, v; enumerate(children)) {
 
             auto lp = cast(Params)v.layoutParams;
             const og = (lp && (lp.gravity != Gravity.none)) ?
