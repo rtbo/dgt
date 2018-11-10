@@ -14,7 +14,7 @@ import std.exception;
 import gfx.core.log;
 
 /// Base class for all views in the user interface
-class View : StyleElement, TreeNode!View
+class View : StyleElement
 {
 
     this() { }
@@ -26,7 +26,7 @@ class View : StyleElement, TreeNode!View
     }
 
     /// The root of this user interface
-    final override @property View root()
+    final @property View root()
     {
         if (!_parent) return this;
         View p = _parent;
@@ -35,19 +35,19 @@ class View : StyleElement, TreeNode!View
     }
 
     /// This view's parent.
-    final override @property View parent()
+    final @property View parent()
     {
         return _parent;
     }
 
     /// This view's previous sibling.
-    final override @property View prevSibling()
+    final @property View prevSibling()
     {
         return _prevSibling;
     }
 
     /// This view's next sibling.
-    final override @property View nextSibling()
+    final @property View nextSibling()
     {
         return _nextSibling;
     }
@@ -65,13 +65,13 @@ class View : StyleElement, TreeNode!View
     }
 
     /// This view's first child.
-    final override @property View firstChild()
+    final @property View firstChild()
     {
         return _firstChild;
     }
 
     /// This view's last child.
-    final override @property View lastChild()
+    final @property View lastChild()
     {
         return _lastChild;
     }
@@ -263,7 +263,7 @@ class View : StyleElement, TreeNode!View
 
     /// Ask this view to measure itself by assigning the measurement property.
     void measure(in MeasureSpec widthSpec, in MeasureSpec heightSpec)
-    { 
+    {
         measurement = ISize(widthSpec.size, heightSpec.size);
     }
 
@@ -846,7 +846,7 @@ class View : StyleElement, TreeNode!View
     }
 
 
-    immutable(FGNode) render(FrameContext fc) 
+    immutable(FGNode) render(FrameContext fc)
     {
         import std.algorithm : filter, map;
         import std.array : array;
