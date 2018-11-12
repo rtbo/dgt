@@ -44,7 +44,7 @@ abstract class Animation
         _running = true;
         _startTime = MonoTime.currTime;
         _lastTick = MonoTime.zero;
-        _ui.requestPass(UIPass.render);
+        _ui.requestPass(UIPass.frame);
         _ui.animManager.register(this);
         if (_onStart) _onStart.fire();
     }

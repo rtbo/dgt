@@ -50,7 +50,7 @@ class ImageView : View
         super.layout(rect);
     }
 
-    override immutable(FGNode) render(FrameContext fc)
+    override immutable(FGNode) frame(FrameContext fc)
     {
         if (_dirty.img) {
             if (_fgNode) fc.prune(_fgNode.cookie);

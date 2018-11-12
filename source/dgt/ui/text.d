@@ -94,7 +94,7 @@ class TextView : View {
         }
     }
 
-    override immutable(FGNode) render(FrameContext fc) 
+    override immutable(FGNode) frame(FrameContext fc)
     {
         ensureLayout();
         return new immutable(FGTextNode) (

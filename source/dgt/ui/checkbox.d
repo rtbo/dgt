@@ -209,7 +209,7 @@ private class CheckBoxIndicator : View
         measurement = defaultSize;
     }
 
-    override immutable(FGNode) render(FrameContext fc)
+    override immutable(FGNode) frame(FrameContext fc)
     {
         import dgt.core.color : Color;
         import dgt.core.paint : ColorPaint;

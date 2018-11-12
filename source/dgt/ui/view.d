@@ -168,10 +168,10 @@ class View : StyleElement
     }
 
 
-    /// Invalidate the view rendering. This triggers rendering.
+    /// Invalidate the view rendering. This triggers a frame pass.
     final void invalidate()
     {
-        dirty(Dirty.render);
+        dirty(Dirty.frame);
     }
 
     /// Request a layout pass
@@ -196,7 +196,7 @@ class View : StyleElement
     {
         _dirtyState |= flags;
 
-        enum mask = Dirty.styleMask | Dirty.layoutMask | Dirty.renderMask;
+        enum mask = Dirty.styleMask | Dirty.layoutMask | Dirty.frameMask;
         if ((flags & mask) == Dirty.clean) return;
 
         auto ui = this.ui;
@@ -211,10 +211,10 @@ class View : StyleElement
                 ui.requestPass(UIPass.layout);
             if (parent) parent.dirty(Dirty.childrenLayout);
         }
-        if (flags & Dirty.renderMask) {
-            if (flags & Dirty.render && ui)
-                ui.requestPass(UIPass.render);
-            if (parent) parent.dirty(Dirty.childrenRender);
+        if (flags & Dirty.frameMask) {
+            if (flags & Dirty.frame && ui)
+                ui.requestPass(UIPass.frame);
+            if (parent) parent.dirty(Dirty.childrenFrame);
         }
     }
     /// Reset some dirty flags
@@ -224,9 +224,9 @@ class View : StyleElement
 
         if (!parent) return;
 
-        if ((flags & Dirty.render && !isDirty(Dirty.childrenRender)) ||
-                (flags & Dirty.childrenRender && !isDirty(Dirty.childrenRender))) {
-            parent.clean(Dirty.childrenRender);
+        if ((flags & Dirty.frame && !isDirty(Dirty.childrenFrame)) ||
+                (flags & Dirty.childrenFrame && !isDirty(Dirty.childrenFrame))) {
+            parent.clean(Dirty.childrenFrame);
         }
     }
     package(dgt.ui) void recursClean(in Dirty flags)
@@ -390,7 +390,7 @@ class View : StyleElement
     {
         _transform = transform;
         _hasTransform = transform != FMat4.identity;
-        dirty(Dirty.transformMask | Dirty.render);
+        dirty(Dirty.transformMask | Dirty.frame);
     }
 
     /// Transform that maps view coordinates to parent coordinates
@@ -827,13 +827,13 @@ class View : StyleElement
     }
 
 
-    immutable(FGNode) render(FrameContext fc)
+    immutable(FGNode) frame (FrameContext fc)
     {
         import std.algorithm : filter, map;
         import std.array : array;
         return new immutable FGGroupNode (
             children
-                .map!(c => c.transformRender(fc))
+                .map!(c => c.transformFrame(fc))
                 .filter!(n => n !is null)
                 .array
         );
@@ -845,9 +845,9 @@ class View : StyleElement
         static Color wireframeColor = Color.black;
     }
 
-    final immutable(FGNode) transformRender(FrameContext fc)
+    final immutable(FGNode) transformFrame(FrameContext fc)
     {
-        immutable fgn = render(fc);
+        immutable fgn = frame(fc);
         immutable transformed = fgn ?
             new immutable FGTransformNode( transformToParent, fgn ) :
             null;
@@ -902,12 +902,12 @@ class View : StyleElement
         /// One children or descendant has its style dirty.
         childrenStyle       = 0x0020,
 
-        /// A render pass is needed
-        renderMask          = render | childrenRender,
+        /// A frame pass is needed
+        frameMask           = frame | childrenFrame,
         /// Content is dirty
-        render              = 0x0040,
+        frame               = 0x0040,
         /// One or more descendant have dirty content
-        childrenRender      = 0x0080,
+        childrenFrame      = 0x0080,
 
         /// transform was changed
         transformMask       = 0x0f00,
@@ -928,7 +928,7 @@ class View : StyleElement
         childrenLayout      = 0x2000,
 
         /// All bits set
-        all                 = styleMask | renderMask | transformMask | layoutMask
+        all                 = styleMask | frameMask | transformMask | layoutMask
     }
 
     private static struct MaskedFilter
@@ -967,7 +967,7 @@ class View : StyleElement
     private size_t _childCount;
 
     // dirty state
-    private Dirty _dirtyState = Dirty.layoutMask | Dirty.styleMask | Dirty.renderMask;
+    private Dirty _dirtyState = Dirty.layoutMask | Dirty.styleMask | Dirty.frameMask;
 
     // layout
     private FPadding        _padding;

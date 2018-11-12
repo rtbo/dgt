@@ -88,9 +88,9 @@ class Button : Label
         }
     }
 
-    override immutable(FGNode) render(FrameContext fc)
+    override immutable(FGNode) frame(FrameContext fc)
     {
-        immutable lblNode = Label.render(fc);
+        immutable lblNode = Label.frame(fc);
 
         if (_bgDirty) {
             immutable bg = _backgroundProperty.value.get;

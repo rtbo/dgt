@@ -57,7 +57,7 @@ final class UserInterface : StyleElement {
         switch (wEv.type)
         {
         case PlEventType.expose:
-            requestPass(UIPass.render);
+            requestPass(UIPass.frame);
             break;
         case PlEventType.resize:
             handleResize(cast(PlResizeEvent) wEv);
@@ -105,7 +105,7 @@ final class UserInterface : StyleElement {
     }
 
     @property bool needRenderPass() {
-        return (_dirtyPass & UIPass.render) == UIPass.render;
+        return (_dirtyPass & UIPass.frame) == UIPass.frame;
     }
 
     void stylePass ()
@@ -181,7 +181,7 @@ final class UserInterface : StyleElement {
             _bgDirty = false;
         }
 
-        Rebindable!(immutable(FGNode)) rootNode = _root ? _root.transformRender(fc) : null;
+        Rebindable!(immutable(FGNode)) rootNode = _root ? _root.transformFrame(fc) : null;
 
         if (_bgNode) {
             immutable viewNode = rootNode.get;
@@ -190,7 +190,7 @@ final class UserInterface : StyleElement {
             ]);
         }
 
-        _dirtyPass &= ~UIPass.render;
+        _dirtyPass &= ~UIPass.frame;
 
         return new immutable FGFrame (
             windowHandle, IRect(0, 0, _size),
@@ -330,7 +330,7 @@ final class UserInterface : StyleElement {
             const newSize = ev.size;
             _size = newSize;
             // FIXME: style and viewport size
-            requestPass(UIPass.layout | UIPass.render);
+            requestPass(UIPass.layout | UIPass.frame);
         }
 
         void handleMouseDown(PlMouseEvent ev)
@@ -561,6 +561,6 @@ enum UIPass {
     none    = 0,
     style   = 1,
     layout  = 2,
-    render  = 4,
-    all     = style | layout | render,
+    frame   = 4,
+    all     = style | layout | frame,
 }
