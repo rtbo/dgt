@@ -771,19 +771,18 @@ class View : StyleElement
     {
         if (state != _pseudoState) {
             _pseudoState = state;
+            requestStylePass();
         }
     }
     /// ditto
     final void addPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState | flags;
-        requestStylePass();
     }
     /// ditto
     final void remPseudoState(in PseudoState flags)
     {
         pseudoState = _pseudoState & (~flags);
-        requestStylePass();
     }
 
     /// Flag that causes PseudoState.hover to be set when the cursor hovers the view
