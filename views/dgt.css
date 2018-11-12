@@ -16,3 +16,20 @@ button:active {
 button:hover {
     background: linear-gradient(#ddd, #ccc, #bbb);
 }
+
+
+checkbox-indicator {
+    background: linear-gradient(#ddd, #bbb, #999);
+    border-color:       #444;
+    border-radius:      2px;
+    border-width:       1px;
+}
+
+checkbox-indicator:active {
+    background: linear-gradient(#555, #777, #999);
+}
+
+checkbox-indicator:hover {
+    background: linear-gradient(#ddd, #ccc, #bbb);
+}
+

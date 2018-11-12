@@ -11,6 +11,7 @@ import dgt.core.rc : rc;
 import dgt.platform;
 import dgt.ui : UserInterface;
 import dgt.ui.button;
+import dgt.ui.checkbox;
 import dgt.ui.label;
 import dgt.ui.layout;
 import dgt.window;
@@ -62,17 +63,24 @@ int main()
     // }
 
     auto btn = new Button;
-    btn.text = "Exit";
+    btn.text = "Exit?";
     btn.alignment = Alignment.center;
     btn.id = "button";
+
+    auto cb = new CheckBox;
+    cb.text = "Exit";
+    cb.alignment = Alignment.center;
+    cb.id = "checkbox";
+
     btn.onClick += {
-        app.exit(0);
+        if (cb.checked) app.exit(0);
     };
 
     auto layout = new LinearLayout;
     layout.setVertical();
     layout.appendView(label);
     layout.appendView(btn);
+    layout.appendView(cb);
     layout.gravity = Gravity.center;
 
     ui.root = layout;
@@ -103,7 +111,7 @@ int main()
     timer.duration = dur!"seconds"(1);
     timer.mode = PlatformTimer.Mode.singleShot;
     timer.handler = &anim.start;
-    timer.start();
+    //timer.start();
 
     return app.loop();
 }
