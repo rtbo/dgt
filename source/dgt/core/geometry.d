@@ -66,6 +66,19 @@ struct Size(T) if (isNumeric!T)
         return ret;
     }
 
+    ref Size!T opOpAssign(string op)(in Padding!T rhs) if (op == "+" || op == "-")
+    {
+        mixin("width "~op~"= rhs.horizontal;");
+        mixin("height "~op~"= rhs.vertical;");
+        return this;
+    }
+
+    Size!T opBinary(string op)(in Padding!T rhs) const if (op == "+" || op == "-")
+    {
+        Size!T ret = this;
+        mixin("ret " ~ op ~ "= rhs;");
+        return ret;
+    }
 }
 
 unittest
