@@ -1012,8 +1012,8 @@ unittest
     root.name = "root";
     c1.name = "c1";
     c2.name = "c2";
-    root.appendChild(c1);
-    root.appendChild(c2);
+    root.appendView(c1);
+    root.appendView(c2);
 
     assert(c1.parent is root);
     assert(c2.parent is root);
@@ -1041,9 +1041,9 @@ unittest {
     subchild.rect = FRect(5, 5, 40, 25);
     child2.rect = FRect(10, 80, 90, 10);
 
-    root.appendChild(child1);
-    root.appendChild(child2);
-    child1.appendChild(subchild);
+    root.appendView(child1);
+    root.appendView(child2);
+    child1.appendView(subchild);
 
     immutable p = fvec(10, 10);
 
