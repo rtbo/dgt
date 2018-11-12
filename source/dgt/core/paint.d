@@ -62,6 +62,12 @@ abstract immutable class Paint
         return _type;
     }
 
+    string toString() const
+    {
+        import std.format : format;
+        return format("Paint [ type = %s ]", _type);
+    }
+
     private immutable PaintType _type;
 }
 
@@ -86,10 +92,10 @@ immutable class ColorPaint : Paint
         return _color;
     }
 
-    string toString()
+    override string toString() const
     {
         import std.format : format;
-        return format("ColorPaint [ color = %s ]");
+        return format("ColorPaint [ color = %s ]", _color);
     }
 
     private Color _color;
@@ -200,7 +206,7 @@ immutable class LinearGradientPaint : GradientPaint
         }
     }
 
-    string toString()
+    override string toString() const
     {
         import std.format : format;
         string res = format("LinearGradientPaint ( dir=%s, angle=%s, stops=[", _direction, _angle);
