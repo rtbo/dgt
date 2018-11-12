@@ -294,10 +294,10 @@ final class RectColRenderer : RectRendererBase
     Rc!PipelineLayout layout;
     Rc!Pipeline pipeline;
 
-    size_t mvpLen;
     size_t mvpCursor;
-    size_t colStopsCursor;
+    size_t localsCursor;
     size_t vertexCursor;
+    size_t localsBufStart;
 
     override void dispose()
     {
@@ -335,13 +335,13 @@ final class RectColRenderer : RectRendererBase
 
         mvpCursor += MVP.sizeof;
 
-        colStopsCursor += ColRectLocals.sizeof;
+        localsCursor += ColRectLocals.sizeof;
         // if (pt == PaintType.color) {
-        //     colStopsCursor += ColStop.sizeof;
+        //     localsCursor += ColStop.sizeof;
         // }
         // else if (pt == PaintType.linearGradient) {
         //     immutable lgp = cast(immutable(LinearGradientPaint))rn.paint;
-        //     colStopsCursor += lgp.stops.length * ColStop.sizeof;
+        //     localsCursor += lgp.stops.length * ColStop.sizeof;
         // }
 
         vertexCursor += rn.radius > 0f ?
@@ -357,7 +357,7 @@ final class RectColRenderer : RectRendererBase
 
         bool updateUnifDesc;
 
-        const unifSize = mvpCursor + colStopsCursor;
+        const unifSize = mvpCursor + localsCursor;
 
         uniformBuf = services.reallocIfNeeded(
             uniformBuf, unifSize,
@@ -380,15 +380,15 @@ final class RectColRenderer : RectRendererBase
         );
 
         if (updateUnifDesc) {
+            localsBufStart = mvpCursor;
             updateDescriptorSet();
         }
 
         if (uniformBuf) uniformBuf.retainMap();
         if (vertexBuf) vertexBuf.retainMap();
 
-        mvpLen = mvpCursor;
         mvpCursor = 0;
-        colStopsCursor = 0;
+        localsCursor = 0;
         vertexCursor = 0;
     }
 
@@ -406,7 +406,7 @@ final class RectColRenderer : RectRendererBase
             [ BufferRange(uniformBuf.buffer, 0, MVP.sizeof) ]
         ));
         wds[1] = WriteDescriptorSet(ds, 1, 0, new UniformBufferDynamicDescWrites(
-            [ BufferRange(uniformBuf.buffer, mvpCursor, ColRectLocals.sizeof) ]
+            [ BufferRange(uniformBuf.buffer, localsBufStart, ColRectLocals.sizeof) ]
         ));
         device.updateDescriptorSets(wds[], []);
     }
@@ -471,7 +471,7 @@ final class RectColRenderer : RectRendererBase
                 );
             }
             {
-                auto view = unifMap.view!(ColRectLocals[])(mvpLen+colStopsCursor, 1);
+                auto view = unifMap.view!(ColRectLocals[])(localsBufStart+localsCursor, 1);
                 view[0] = crl;
             }
         }
@@ -488,7 +488,7 @@ final class RectColRenderer : RectRendererBase
         cmd.bindPipeline(pipeline.obj);
 
         DescriptorSet[1] ds = [ this.ds.get ];
-        size_t[2] dynOffsets = [ mvpCursor, colStopsCursor ];
+        size_t[2] dynOffsets = [ mvpCursor, localsCursor ];
         VertexBinding[1] vb = [ VertexBinding(vertexBuf.buffer, vertexCursor) ];
         const indInterval = node.radius > 0 ? indexBuf.rounded : indexBuf.sharp;
 
@@ -498,14 +498,14 @@ final class RectColRenderer : RectRendererBase
         cmd.drawIndexed(cast(uint)indInterval.length, 1, 0, 0, 0);
 
         mvpCursor += MVP.sizeof;
-        colStopsCursor += ColRectLocals.sizeof;
+        localsCursor += ColRectLocals.sizeof;
         vertexCursor += numVerts * RectColVertex.sizeof;
     }
 
     void postrender()
     {
         mvpCursor = 0;
-        colStopsCursor = 0;
+        localsCursor = 0;
         vertexCursor = 0;
         if (uniformBuf) uniformBuf.releaseMap();
         if (vertexBuf) vertexBuf.releaseMap();
@@ -540,10 +540,10 @@ final class RectImgRenderer : RectRendererBase
     Atlas[] atlases;
     AtlasNode[CacheCookie] imgNodes;
 
-    size_t mvpLen;
     size_t mvpCursor;
     size_t localsCursor;
     size_t vertexCursor;
+    size_t localsBufStart;
 
     override void dispose()
     {
@@ -651,7 +651,6 @@ final class RectImgRenderer : RectRendererBase
         if (uniformBuf) uniformBuf.retainMap();
         if (vertexBuf) vertexBuf.retainMap();
 
-        mvpLen = mvpCursor;
         mvpCursor = 0;
         localsCursor = 0;
         vertexCursor = 0;
@@ -697,6 +696,7 @@ final class RectImgRenderer : RectRendererBase
 
         if (updateUnif)
         {
+            localsBufStart = mvpCursor;
             foreach (ref ds; dss) {
                 ds.prepareUpdate();
                 writes ~= [
@@ -704,7 +704,7 @@ final class RectImgRenderer : RectRendererBase
                         BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
                     ])),
                     WriteDescriptorSet(ds.get, 1, 0, new UniformBufferDynamicDescWrites([
-                        BufferRange(uniformBuf.buffer, mvpLen, ImgRectLocals.sizeof),
+                        BufferRange(uniformBuf.buffer, localsBufStart, ImgRectLocals.sizeof),
                     ])),
                 ];
             }
@@ -756,7 +756,7 @@ final class RectImgRenderer : RectRendererBase
                 );
             }
             {
-                auto view = unifMap.view!(ImgRectLocals[])(mvpLen+localsCursor, 1);
+                auto view = unifMap.view!(ImgRectLocals[])(localsBufStart+localsCursor, 1);
                 view[0] = irl;
             }
         }
