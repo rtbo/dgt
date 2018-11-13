@@ -94,7 +94,8 @@ class Button : Label
 
         if (_bgDirty) {
             immutable bg = _backgroundProperty.value.get;
-            immutable bcol = _bss.borderColor.value;
+            const bcol = _bss.borderColor.value;
+            const bwidth = _bss.borderWidth.value;
 
             if (_bgNode) {
                 // release resource held by previous frame node
@@ -105,8 +106,8 @@ class Button : Label
             if (bg || !bcol.isTransparent) {
 
                 Option!RectBorder border;
-                if (!bcol.isTransparent) {
-                    border = some(RectBorder(bcol.asVec, _bss.borderWidth.value));
+                if (bwidth > 0 && !bcol.isTransparent) {
+                    border = some(RectBorder(bcol.asVec, bwidth));
                 }
 
                 _bgNode = new immutable FGRectNode(localRect,
