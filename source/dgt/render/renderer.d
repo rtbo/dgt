@@ -229,11 +229,14 @@ class RendererBase : Renderer
         debug {
             import gfx.graal : Severity;
             instance.setDebugCallback((Severity sev, string msg) {
+                import gfx.core.log : errorf, warningf;
                 import std.stdio : writefln;
-                if (sev == Severity.warning || sev == Severity.error) {
-                    writefln("Gfx backend %s message: %s", sev, msg);
+
+                if (sev == Severity.warning) {
+                    warningf(dgtRenderTag, "Gfx backend message: %s", msg);
                 }
-                if (sev == Severity.error) {
+                else if (sev == Severity.error) {
+                    errorf(dgtRenderTag, "Gfx backend message: %s", msg);
                     // debug break;
                     asm { int 0x03; }
                 }
