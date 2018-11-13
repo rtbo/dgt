@@ -300,7 +300,7 @@ void setImageLayout(CommandBuffer cmd, Image img, in ImageSubresourceRange range
 /// each time an update is needed. The descriptor sets are provided in
 /// a circular way with a predefined size.
 /// Helpful when descriptor sets must be updated every frame to avoid
-/// updating an a descriptor set that is in use in a command buffer.
+/// updating a descriptor set that is in use in a command buffer.
 class CircularDescriptorPool : AtomicRefCounted
 {
     import gfx.core.rc : atomicRcCode, Rc;

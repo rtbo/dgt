@@ -659,6 +659,9 @@ final class RectImgRenderer : RectRendererBase
     void allocateDescriptorPool()
     {
         import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
+        import std.array : array;
+        import std.range : repeat;
+
         if (dsPool) {
             services.gc(dsPool.obj);
             dsPool.unload();
@@ -670,10 +673,10 @@ final class RectImgRenderer : RectRendererBase
             DescriptorPoolSize(DescriptorType.uniformBufferDynamic, 2*numAtlases),
             DescriptorPoolSize(DescriptorType.combinedImageSampler, 1*numAtlases),
         ];
-        DescriptorSetLayout[1] dsl = [ this.dsl.obj ];
+        dsPool = new CircularDescriptorPool(device, numAtlases, dps[]);
 
-        dsPool = new CircularDescriptorPool(device, 1, dps[]);
-        dss = dsPool.allocate(dsl[]);
+        DescriptorSetLayout[] dsls = repeat(this.dsl.obj, numAtlases).array;
+        dss = dsPool.allocate(dsls);
     }
 
     void updateDescriptorSets(in bool updateUnif, in bool updateAtlas)
