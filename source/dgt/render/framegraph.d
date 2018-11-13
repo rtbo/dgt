@@ -191,13 +191,14 @@ final class FGRectNode : FGNode
     private CacheCookie _cookie;
 
     immutable this(in FRect rect, in float radius, immutable Paint paint,
-                   in Option!RectBorder border, in CacheCookie=nullCookie)
+                   in Option!RectBorder border, in CacheCookie cookie=nullCookie)
     {
         super(fgType);
         _rect = rect;
         _radius = radius;
         _paint = paint;
         _border = border;
+        _cookie = cookie;
     }
 
     @property FRect rect() immutable {
