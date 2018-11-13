@@ -523,14 +523,15 @@ immutable(Paint) parseImageFromUri(in string uri)
             }
         }
 
-        tracef(`decoding image from "%s"`, uri);
+        tracef(dgtTag, `decoding image from "%s"`, uri);
         immutable img = assumeUnique(
             Image.loadFromMemory(data, ImageFormat.argbPremult)
         );
         return new immutable ImagePaint(img);
     }
     catch(Exception ex) {
-        errorf(dgtTag, "could not get paint image from url %s\nError msg:%s", uri, ex.msg);
+        errorf(dgtTag, "could not get paint image from url %s", uri);
+        errorf(dgtTag, "Error msg:%s", ex.msg);
         return null;
     }
 }
