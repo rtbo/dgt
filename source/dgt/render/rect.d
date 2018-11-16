@@ -642,6 +642,7 @@ final class RectImgRenderer : RectRendererBase
 
         atlases.each!((Atlas atlas) {
             if (atlas.realize(services, cmd)) {
+                updateUnifDesc = true;
                 updateAtlasDesc = true;
             }
         });
@@ -819,6 +820,8 @@ final class RectImgRenderer : RectRendererBase
 
             AtlasNode node;
             foreach (a; atlases.filter!(a => a.format == paint.image.format)) {
+                // TODO: the same image can be referenced under several cookies
+                // ==> try to find it in the atlas before packing
                 node = a.pack(paint.image);
                 if (node) break;
             }
@@ -842,8 +845,8 @@ final class RectImgRenderer : RectRendererBase
                 atlases ~= retainObj(atlas);
                 node = enforce(atlas.pack(paint.image),
                     "could not pack an image into a new atlas.");
-                imgNodes[rn.cookie] = node;
             }
+            imgNodes[rn.cookie] = node;
         }
     }
 }
