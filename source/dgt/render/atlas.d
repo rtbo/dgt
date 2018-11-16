@@ -274,13 +274,13 @@ class Atlas : AtomicRefCounted
     /// Otherwise returns false.
     bool realize(RenderServices services, CommandBuffer cmd)
     {
+        import core.thread : Thread;
         import dgt.core.image : alignedStrideForWidth;
         import gfx.graal.image : ImageAspect, ImageInfo, ImageLayout,
                                  ImageSubresourceRange, ImageTiling, ImageType,
                                  ImageUsage;
         import gfx.math : ivec;
         import gfx.memalloc : AllocFlags, AllocOptions, MemoryUsage;
-        import std.parallelism : task;
 
         if (!_image || !_imgAlloc || !_imgView) {
             _invalidation = Invalidation.rebuild;
@@ -316,10 +316,9 @@ class Atlas : AtomicRefCounted
             }
         }
 
-        auto buildImgTask = task(&buildImage);
-
         if (makeNewImg) {
-            buildImgTask.executeInNewThread();
+            auto th = new Thread(&buildImage);
+            th.start();
 
             Swizzle swizzle;
             const format = convertFormat(_format, swizzle);
@@ -341,9 +340,12 @@ class Atlas : AtomicRefCounted
             _imgView = _imgAlloc.image.createView(
                 ImageType.d2, ImageSubresourceRange(ImageAspect.color), swizzle
             );
-        }
 
-        buildImgTask.spinForce();
+            th.join();
+        }
+        else {
+            buildImage();
+        }
 
         import std.format : format;
         static int num = 1;
