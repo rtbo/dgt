@@ -347,6 +347,7 @@ class RendererBase : Renderer
     override void render(immutable(FGFrame)[] frames)
     {
         import dgt.core.geometry : FRect;
+        import gfx.core.log : tracef;
         import gfx.core.types : Rect, Viewport;
         import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
         import gfx.graal.error : OutOfDateException;
@@ -373,6 +374,8 @@ class RendererBase : Renderer
         scope(exit) {
             services.incrFrameNum();
         }
+
+        tracef(dgtRenderTag, "rendering frame %s", services.frameNum);
 
         // TODO: retained mode for gl3 such as only queue submission
         // and presentation are required on the same thread
