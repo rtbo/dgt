@@ -100,15 +100,12 @@ class Label : View
 
     override void layout(in FRect rect)
     {
-        const mes = measurement;
-
-        // mes includes padding
         float left=void;
         if (alignment & Alignment.centerH) {
-            left = padding.left + (rect.width - mes.width) / 2f;
+            left = (rect.width - contentWidth) / 2f;
         }
         else if (alignment & Alignment.right) {
-            left = padding.left + (rect.width - mes.width);
+            left = (rect.width - contentWidth) - padding.right;
         }
         else {
             left = padding.left;
@@ -143,7 +140,19 @@ class Label : View
         this.rect = rect;
     }
 
-    private Alignment _alignment = Alignment.top | Alignment.left;
+    private @property float contentWidth()
+    {
+        float w = icon && text.length ? spacing : 0f;
+        if (icon) {
+            w += _iconNode.measurement.width;
+        }
+        if (text.length) {
+            w += _textNode.measurement.width;
+        }
+        return w;
+    }
+
+    private Alignment _alignment = Alignment.topLeft;
     private ImageView _iconNode;
     private TextView _textNode;
 }
