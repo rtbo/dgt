@@ -132,6 +132,7 @@ class StyleProperty(T) : IStyleProperty
         _value = metaProperty.convert(
             (cast(SMP.CSSValue)metaProperty.initial).value, style
         );
+        _onChanged = new FireableSignal!();
     }
 
     @property StyleElement style() {
@@ -189,7 +190,7 @@ class StyleProperty(T) : IStyleProperty
     private string _name;
     private Origin _origin;
     private T _value;
-    private FireableSignal!() _onChanged = new FireableSignal!();
+    private FireableSignal!() _onChanged;
 }
 
 interface IStyleMetaProperty
