@@ -1,13 +1,12 @@
 support API:
- - [ ] text subpixel
-       (might require to ship freetype binaries)
+ - [ ] text subpixel (might require to ship freetype binaries)
  - [X] font fallback
  - [X] windows font support (GDI, freetype and harfbuzz)
  - [X] windows font support (GDI, directwrite and uniscribe)
  - [X] UI events (and plug window to ui)
  - [X] animations
  - [X] port of msdfgen
- - [-] scalable text (using msdfgen)
+ - [ ] scalable text (using msdfgen)
  - [ ] bidi
  - [ ] text effects (outline, paint etc.)
  - [ ] typecons
@@ -17,7 +16,8 @@ style support:
  - [X] css cascade
  - [X] background
  - [X] linear-gradient
- - [-] image url (net or resource)
+ - [X] image url (resource)
+ - [ ] image url (download)
  - [ ] font-face
  - [ ] box
  - [ ] var()
