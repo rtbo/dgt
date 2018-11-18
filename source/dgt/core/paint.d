@@ -501,12 +501,17 @@ immutable(GradientStop)[] parseColorStops(Tokens)(ref Tokens tokens)
     return assumeUnique(stops);
 }
 
+RPaint[string] imageCache;
+
 immutable(Paint) parseImageFromUri(in string uri)
 {
     import dgt.core.image : assumeUnique, Image, ImageFormat;
     import dgt.core.resource : Registry, Resource, retrieveResource;
     import std.algorithm : startsWith;
     import gfx.core.log : errorf, tracef;
+
+    auto cached = uri in imageCache;
+    if (cached) return *cached;
 
     try {
 
@@ -527,7 +532,9 @@ immutable(Paint) parseImageFromUri(in string uri)
         immutable img = assumeUnique(
             Image.loadFromMemory(data, ImageFormat.argbPremult)
         );
-        return new immutable ImagePaint(img);
+        auto pnt = new immutable ImagePaint(img);
+        imageCache[uri] = pnt;
+        return pnt;
     }
     catch(Exception ex) {
         errorf(dgtTag, "could not get paint image from url %s", uri);
