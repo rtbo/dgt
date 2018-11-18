@@ -23,13 +23,15 @@ style support:
  - [ ] var()
  - [ ] paint()
 
-render API:
+render API/impl:
  - [X] rounded rect
  - [ ] circle/ellipse
  - [ ] z-position (z-buffer or sorting?)
- - [ ] vg painting (start with cairo)
+ - [ ] vg painting (start with cairo into image/texture)
  - [ ] vg buffer
  - [ ] ~~shader paint assembly~~
+ - [ ] releasing resources
+ - [ ] custom geometry rendering?
 
 views:
  - [X] image view
