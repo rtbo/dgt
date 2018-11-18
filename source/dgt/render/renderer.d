@@ -346,6 +346,7 @@ class RendererBase : Renderer
     // frames is one frame per window, not several frames of the same window at once
     override void render(immutable(FGFrame)[] frames)
     {
+        import dgt.core.future;
         import dgt.core.geometry : FRect;
         import gfx.core.log : tracef;
         import gfx.core.types : Rect, Viewport;
@@ -357,7 +358,6 @@ class RendererBase : Renderer
         import std.algorithm : map;
         import std.array : array;
         import std.range : chain;
-        import std.parallelism : task;
         import std.typecons : No, scoped;
 
         if (!initialized) {
@@ -379,11 +379,16 @@ class RendererBase : Renderer
 
         // TODO: retained mode for gl3 such as only queue submission
         // and presentation are required on the same thread
-        auto prerenderTask = task(&prerender, frames);
-        if (backend == Backend.gl3)
-            prerender(frames);
-        else
-            prerenderTask.executeInNewThread();
+        Future!void prerenderFuture;
+
+        if (backend == Backend.gl3) {
+            auto t = task(&prerender);
+            prerenderFuture = t.future;
+            t.call(frames);
+        }
+        else {
+            prerenderFuture = async(&prerender, frames);
+        }
 
         Semaphore[] waitSems;
         PresentRequest[] prs;
@@ -406,7 +411,7 @@ class RendererBase : Renderer
                 // being resized, and frame.viewport size is out of date
                 // will render next one
                 window.mustRebuildSwapchain = true;
-                if (fi == 0) prerenderTask.yieldForce();
+                if (fi == 0) prerenderFuture.resolve();
                 continue;
             }
             auto cmd = window.cmdBufs[imgInd];
@@ -431,7 +436,7 @@ class RendererBase : Renderer
                 renderPass, img.framebuffer, Rect(0, 0, wsz[0], wsz[1]), cvs
             );
 
-            if (fi == 0 && backend != Backend.gl3) prerenderTask.yieldForce();
+            if (fi == 0) prerenderFuture.resolve();
 
             if (frame.root) {
                 import gfx.math.proj : ortho;
