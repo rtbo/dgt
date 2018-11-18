@@ -77,6 +77,11 @@ final class RenderServices : AtomicRefCounted
         return _queue;
     }
 
+    /// The frame number
+    @property size_t frameNum() {
+        return _frameNum;
+    }
+
     /// Returns a RAII command buffer that will be submitted to a queue when it
     /// goes out of scope
     auto autoCmd()
