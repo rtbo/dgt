@@ -29,15 +29,23 @@ enum Orientation
 
 enum Alignment
 {
-    none        = 0x00,
+    none            = 0x00,
 
-    left        = 0x01,
-    right       = 0x02,
-    centerH     = 0x04,
+    left            = 0x01,
+    right           = 0x02,
+    centerH         = 0x04,
 
-    top         = 0x10,
-    bottom      = 0x20,
-    centerV     = 0x40,
+    top             = 0x10,
+    bottom          = 0x20,
+    centerV         = 0x40,
 
-    center      = centerH | centerV,
+    topLeft         = left    | top,
+    topCenter       = centerH | top,
+    topRight        = right   | top,
+    centerLeft      = left    | centerV,
+    center          = centerH | centerV,
+    centerRight     = right   | centerV,
+    bottomLeft      = left    | bottom,
+    bottomCenter    = centerH | bottom,
+    bottomRight     = right   | bottom,
 }
