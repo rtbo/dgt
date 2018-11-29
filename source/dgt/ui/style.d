@@ -1,7 +1,7 @@
 /// Module gathering CSS properties implemented by DGT for views
 module dgt.ui.style;
 
-import dgt : dgtTag;
+import dgt : dgtStyleTag;
 import dgt.core.color;
 import dgt.core.paint;
 import dgt.css.style;
@@ -366,7 +366,7 @@ final class FontWeightMetaProperty : StyleMetaProperty!(FontWeight, ParsedFontWe
                 return fw.rel == ParsedFontWeight.RelKwd.lighter ? FontWeight.bold : FontWeight.extraLarge;
             }
             else {
-                warningf(dgtTag, "out of range font-weight: %s", pfw);
+                warningf(dgtStyleTag, "out of range font-weight: %s", pfw);
                 return getProperty(target).value;
             }
         }
@@ -644,6 +644,189 @@ final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
     }
 }
 
+final class MarginTopMetaProperty : MarginBaseMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("margin-top"); }
+}
+
+final class MarginRightMetaProperty : MarginBaseMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("margin-right"); }
+}
+
+final class MarginBottomMetaProperty : MarginBaseMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("margin-bottom"); }
+}
+
+final class MarginLeftMetaProperty : MarginBaseMetaProperty
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this() { super("margin-left"); }
+}
+
+abstract class MarginBaseMetaProperty : StyleMetaProperty!(float, Length)
+{
+    this(string name)
+    {
+        super(name, false, Length(0f, Length.Unit.px), true);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out Length len)
+    {
+        popSpaces(tokens);
+        if (!tokens.empty && tokens.front.tok == Tok.dimension) {
+            if (parseLength(tokens.front, len)) {
+                tokens.popFront();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    override float convert(Length len, StyleElement target)
+    {
+        const lenVal = len.val;
+        final switch (len.unit) {
+        case Length.Unit.em:
+        case Length.Unit.ex:
+        case Length.Unit.ch:
+        case Length.Unit.rem:
+        case Length.Unit.vw:
+            const width = target.viewportSize.width;
+            return lenVal * width * 0.01f;
+        case Length.Unit.vh:
+            const height = target.viewportSize.height;
+            return lenVal * height * 0.01f;
+        case Length.Unit.vmin:
+            import std.algorithm : min;
+            const size = target.viewportSize;
+            return lenVal * min(size.width, size.height) * 0.01f;
+        case Length.Unit.vmax:
+            import std.algorithm : max;
+            const size = target.viewportSize;
+            return lenVal * max(size.width, size.height) * 0.01f;
+        case Length.Unit.cm:
+            const dens = target.dpi / 2.54f;
+            return dens * lenVal;
+        case Length.Unit.mm:
+            const dens = target.dpi / 25.4f;
+            return dens * lenVal;
+        case Length.Unit.q:
+            const dens = target.dpi / (4*25.4f);
+            return dens * lenVal;
+        case Length.Unit.inch:
+            const dens = target.dpi;
+            return dens * lenVal;
+        case Length.Unit.pc:
+            const dens = target.dpi / 6f;
+            return dens * lenVal;
+        case Length.Unit.pt:
+            const dens = target.dpi / 72f;
+            return dens * lenVal;
+        case Length.Unit.px:
+            return lenVal;
+        }
+    }
+}
+
+private struct ParsedMargin
+{
+    uint num;
+    Length[4] margins;
+}
+
+final class MarginMetaProperty : StyleShorthandProperty!ParsedMargin
+{
+    mixin StyleSingleton!(typeof(this));
+
+    this()
+    {
+        super("margin", false, [
+            cast(IStyleMetaProperty)MarginTopMetaProperty.instance,
+            cast(IStyleMetaProperty)MarginRightMetaProperty.instance,
+            cast(IStyleMetaProperty)MarginBottomMetaProperty.instance,
+            cast(IStyleMetaProperty)MarginRightMetaProperty.instance,
+        ]);
+    }
+
+    override bool parseValueImpl(ref Token[] tokens, out ParsedMargin pm)
+    {
+        foreach (i; 0 .. 4) {
+            popSpaces(tokens);
+            if (!tokens.empty && tokens.front.tok == Tok.dimension) {
+                if (parseLength(tokens.front, pm.margins[i])) {
+                    tokens.popFront();
+                    pm.num++;
+                    continue;
+                }
+            }
+            break;
+        }
+        return pm.num > 0;
+    }
+
+    final void applyFromValue(StyleElement target, CSSValueBase val, Origin origin)
+    {
+        auto tsp = cast(StyleProperty!float)target.styleProperty("margin-top");
+        auto rsp = cast(StyleProperty!float)target.styleProperty("margin-right");
+        auto bsp = cast(StyleProperty!float)target.styleProperty("margin-bottom");
+        auto lsp = cast(StyleProperty!float)target.styleProperty("margin-left");
+
+        void setTop(Length val) {
+            tsp.setValue(MarginTopMetaProperty.instance.convert(val, target), origin);
+        }
+        void setRight(Length val) {
+            rsp.setValue(MarginRightMetaProperty.instance.convert(val, target), origin);
+        }
+        void setBottom(Length val) {
+            bsp.setValue(MarginBottomMetaProperty.instance.convert(val, target), origin);
+        }
+        void setLeft(Length val) {
+            lsp.setValue(MarginLeftMetaProperty.instance.convert(val, target), origin);
+        }
+
+        const pm = (cast(CSSValue)val).value;
+
+        switch (pm.num)
+        {
+        case 1:
+            setTop(pm.margins[0]);
+            setRight(pm.margins[0]);
+            setBottom(pm.margins[0]);
+            setLeft(pm.margins[0]);
+            break;
+        case 2:
+            setTop(pm.margins[0]);
+            setRight(pm.margins[1]);
+            setBottom(pm.margins[0]);
+            setLeft(pm.margins[1]);
+            break;
+        case 3:
+            setTop(pm.margins[0]);
+            setRight(pm.margins[1]);
+            setBottom(pm.margins[2]);
+            setLeft(pm.margins[1]);
+            break;
+        case 4:
+            setTop(pm.margins[0]);
+            setRight(pm.margins[1]);
+            setBottom(pm.margins[2]);
+            setLeft(pm.margins[3]);
+            break;
+        default:
+            assert(false, "invalid number of margins parsed");
+        }
+    }
+}
+
 class LayoutWidthMetaProperty : LayoutSizeMetaProperty
 {
     mixin StyleSingleton!(typeof(this));
@@ -767,3 +950,4 @@ class LayoutGravityMetaProperty : StyleMetaProperty!Gravity
         return Gravity.none;
     }
 }
+

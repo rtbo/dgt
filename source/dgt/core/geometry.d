@@ -221,6 +221,7 @@ unittest
     auto md = FMargins(3, 5, 5, 6);
     auto mi = IMargins(4, 15, 2, 5);
 
+    assert(FMargins.init.left == 0f);
     static assert(__traits(compiles, md = cast(FMargins) mi));
     static assert(__traits(compiles, mi = cast(IMargins) md));
 }

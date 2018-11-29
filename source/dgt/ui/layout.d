@@ -158,15 +158,26 @@ class Layout : View
     static class Params {
         this(View v)
         {
+            import std.typecons : No;
+
             _width = addStyleSupport(v, LayoutWidthMetaProperty.instance);
             _height = addStyleSupport(v, LayoutHeightMetaProperty.instance);
+            addShorthandStyleSupport(v, MarginMetaProperty.instance);
+            _marginTop = addStyleSupport(v, MarginTopMetaProperty.instance, No.ignoresShorthand);
+            _marginRight = addStyleSupport(v, MarginRightMetaProperty.instance, No.ignoresShorthand);
+            _marginBottom = addStyleSupport(v, MarginBottomMetaProperty.instance, No.ignoresShorthand);
+            _marginLeft = addStyleSupport(v, MarginLeftMetaProperty.instance, No.ignoresShorthand);
         }
         this(View v, Params p)
         {
             _width = p._width;
             _height = p._height;
+            _marginTop = p._marginTop;
+            _marginRight = p._marginRight;
+            _marginBottom = p._marginBottom;
+            _marginLeft = p._marginLeft;
             assert(v.styleProperty("layout-width") is _width);
-            assert(v.styleProperty("layout-height") is _height);
+            assert(v.styleProperty("margin-top") is _marginTop);
         }
         /// Either an actual dimension in pixels, or special values wrapContent or matchParent
         @property float width() {
@@ -176,9 +187,33 @@ class Layout : View
         @property float height() {
             return _height.value;
         }
+        /// Margin to be applied at the top of the view
+        @property float marginTop() {
+            return _marginTop.value;
+        }
+        /// Margin to be applied at the right of the view
+        @property float marginRight() {
+            return _marginRight.value;
+        }
+        /// Margin to be applied at the bottom of the view
+        @property float marginBottom() {
+            return _marginBottom.value;
+        }
+        /// Margin to be applied at the left of the view
+        @property float marginLeft() {
+            return _marginLeft.value;
+        }
+        /// Get the margins to be applied to the view
+        @property FMargins margins() {
+            return FMargins(marginLeft, marginTop, marginBottom, marginRight);
+        }
 
         private StyleProperty!float _width;
         private StyleProperty!float _height;
+        private StyleProperty!float _marginTop;
+        private StyleProperty!float _marginRight;
+        private StyleProperty!float _marginBottom;
+        private StyleProperty!float _marginLeft;
     }
 
     /// Build a new layout
@@ -373,12 +408,16 @@ class LinearLayout : Layout
         foreach(i, v; enumerate(children)) {
             if (i != 0) totalHeight += spacing;
 
-            measureChild(v, widthSpec, heightSpec, 0f, totalHeight);
-            totalHeight += v.measurement.height;
-            largestWidth = max(largestWidth, v.measurement.width);
+            auto lp = v.layoutParams;
+            auto llp = cast(LinearLayout.Params)lp;
 
-            auto lp = cast(Params)layoutParams;
-            if (lp) totalWeight += lp.weight;
+            const margins = lp ? lp.margins : FMargins.init;
+
+            measureChild(v, widthSpec, heightSpec, 0f, totalHeight);
+            totalHeight += v.measurement.height + margins.vertical;
+            largestWidth = max(largestWidth, v.measurement.width+margins.horizontal);
+
+            if (llp) totalWeight += llp.weight;
         }
         totalHeight += padding.top + padding.bottom;
 
@@ -390,19 +429,22 @@ class LinearLayout : Layout
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalHeight = 0f;
             foreach(v; children) {
-                auto lp = cast(LinearLayout.Params)layoutParams;
-                const weight = lp ? lp.weight : 0f;
+                auto lp = v.layoutParams;
+                auto llp = cast(LinearLayout.Params)lp;
+                const weight = llp ? llp.weight : 0f;
+                const margins = lp ? lp.margins : FMargins.init;
+
                 if (weight > 0f) {
                     const share = remainExcess * weight / totalWeight;
                     totalWeight -= weight;
                     remainExcess -= share;
-                    const childHeight = v.measurement.height + share;
+                    const childHeight = v.measurement.height + margins.vertical + share;
                     const childHeightSpec = MeasureSpec.makeExactly(childHeight);
                     const childWidthSpec = childMeasureSpec(widthSpec, padding.left + padding.right, lp.width);
                     v.measure(childHeightSpec, childWidthSpec);
                 }
-                totalHeight += v.measurement.height;
-                largestWidth = max(largestWidth, v.measurement.width);
+                totalHeight += v.measurement.height + margins.vertical;
+                largestWidth = max(largestWidth, v.measurement.width + margins.horizontal);
             }
             totalHeight += padding.top + padding.bottom;
         }
@@ -433,12 +475,16 @@ class LinearLayout : Layout
         foreach(i, v; enumerate(children)) {
             if (i != 0) totalWidth += spacing;
 
-            measureChild(v, widthSpec, heightSpec, totalWidth, 0f);
-            totalWidth += v.measurement.width;
-            largestHeight = max(largestHeight, v.measurement.height);
+            auto lp = v.layoutParams;
+            auto llp = cast(LinearLayout.Params)lp;
 
-            auto lp = cast(LinearLayout.Params)layoutParams;
-            if (lp) totalWeight += lp.weight;
+            const margins = lp ? lp.margins : FMargins.init;
+
+            measureChild(v, widthSpec, heightSpec, totalWidth, 0f);
+            totalWidth += v.measurement.width+margins.horizontal;
+            largestHeight = max(largestHeight, v.measurement.height+margins.vertical);
+
+            if (llp) totalWeight += llp.weight;
         }
         totalWidth += padding.left + padding.right;
 
@@ -450,19 +496,22 @@ class LinearLayout : Layout
         if (!approxUlpAndAbs(remainExcess, 0f, pixelTol) && totalWeight > 0f) {
             totalWidth = 0f;
             foreach(v; children) {
-                auto lp = cast(Params)layoutParams;
-                const weight = lp ? lp.weight : 0f;
+                auto lp = cast(Layout.Params)v.layoutParams;
+                auto llp = cast(LinearLayout.Params)lp;
+                const weight = llp ? llp.weight : 0f;
+                const margins = lp ? lp.margins : FMargins.init;
+
                 if (weight > 0f) {
                     const share = remainExcess * weight / totalWeight;
                     totalWeight -= weight;
                     remainExcess -= share;
-                    const childWidth = v.measurement.height + share;
+                    const childWidth = v.measurement.width + margins.horizontal + share;
                     const childWidthSpec = MeasureSpec.makeExactly(childWidth);
                     const childHeightSpec = childMeasureSpec(heightSpec, padding.top + padding.bottom, lp.height);
                     v.measure(childWidthSpec, childHeightSpec);
                 }
-                totalWidth += v.measurement.width;
-                largestHeight = max(largestHeight, v.measurement.height);
+                totalWidth += v.measurement.width + margins.horizontal;
+                largestHeight = max(largestHeight, v.measurement.height+margins.vertical);
             }
             totalWidth += padding.left + padding.right;
         }
@@ -514,13 +563,15 @@ class LinearLayout : Layout
                     lp.gravity : _gravity;
 
             const mes = v.measurement;
+            const margins = lp ? lp.margins : FMargins.init;
+
             float childLeft=void;
             switch (og & Gravity.horMask) {
             case Gravity.right:
-                childLeft = childRight - mes.width;
+                childLeft = childRight - mes.width - margins.horizontal;
                 break;
             case Gravity.centerHor:
-                childLeft = padding.left + (childSpace - mes.width) / 2f;
+                childLeft = padding.left + (childSpace - mes.width - margins.horizontal) / 2f;
                 break;
             case Gravity.left:
             default:
@@ -529,8 +580,8 @@ class LinearLayout : Layout
             }
 
             if (i != 0) childTop += spacing;
-            v.layout(FRect(FPoint(childLeft, childTop), mes));
-            childTop += mes.height;
+            v.layout(FRect(FPoint(childLeft+margins.left, childTop+margins.top), mes));
+            childTop += mes.height + margins.vertical;
         }
     }
 
@@ -558,6 +609,7 @@ class LinearLayout : Layout
         foreach(i, v; enumerate(children)) {
 
             auto lp = cast(Params)v.layoutParams;
+            const margins = lp ? lp.margins :  FMargins.init;
             const og = (lp && (lp.gravity != Gravity.none)) ?
                     lp.gravity : _gravity;
 
@@ -565,10 +617,10 @@ class LinearLayout : Layout
             float childTop=void;
             switch (og & Gravity.verMask) {
             case Gravity.bottom:
-                childTop = childBottom - mes.height;
+                childTop = childBottom - mes.height - margins.vertical;
                 break;
             case Gravity.centerVer:
-                childTop = padding.top + (childSpace - mes.height) / 2f;
+                childTop = padding.top + (childSpace - mes.height - margins.vertical) / 2f;
                 break;
             case Gravity.top:
             default:
@@ -577,7 +629,7 @@ class LinearLayout : Layout
             }
 
             if (i != 0) childLeft += spacing;
-            v.layout(FRect(FPoint(childLeft, childTop), mes));
+            v.layout(FRect(FPoint(childLeft+margins.left, childTop+margins.top), mes));
             childLeft += mes.width;
         }
     }

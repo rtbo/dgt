@@ -7,6 +7,7 @@ button {
     border-color:       #444;
     border-radius:      4px;
     border-width:       1px;
+    margin: 3px;
 }
 
 button:active {

@@ -426,7 +426,8 @@ abstract class StyleMetaProperty(V, PV=V) : StyleMetaPropertyBase!PV
 
 
     static if (is(PV == V)) {
-        final Value convert(ParsedValue v, StyleElement target) { return v; }
+        pragma(inline, true)
+        final Value convert(ParsedValue v, StyleElement) { return v; }
     }
     else {
         abstract Value convert(ParsedValue v, StyleElement target);
