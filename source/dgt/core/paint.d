@@ -28,21 +28,6 @@ struct GradientStop
     Color color;
 }
 
-/// Spread mode for gradient paints.
-/// Defines how is specified gradient color outside of range [0, 1].
-enum SpreadMode
-{
-    /// The color is fully transparent.
-    none,
-    /// The color is padded to the color at 0 or to the color at 1.
-    pad,
-    /// The pattern is repeated beyond 0 or beyond 1.
-    repeat,
-    /// The pattern is reflected beyond 0 or beyond 1.
-    reflect,
-}
-
-
 /// Paint defines a coloring material.
 /// It can hold one of the different paint types.
 /// While Paint are mutable references, they only have immutable members.
@@ -259,7 +244,6 @@ immutable class RadialGradientPaint : GradientPaint
 }
 
 /// A Paint that will paint image data
-/// Not supported yet.
 alias RImagePaint = Rebindable!(immutable(ImagePaint));
 /// ditto
 immutable class ImagePaint : Paint
