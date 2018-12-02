@@ -16,6 +16,7 @@
 
     "subPackages": [
         "./bindings",
+        "./bindings/cairo",
         "./bindings/fontconfig",
         "./bindings/harfbuzz",
         "./bindings/xcb-image",
@@ -26,6 +27,7 @@
 
     "dependencies":	{
         "dgt:bindings":		"*",
+        "dgt:cairo":	    "*",
         "dgt:harfbuzz":	    "*",
 
         "gfx":          { "path": "gfx-d" },
