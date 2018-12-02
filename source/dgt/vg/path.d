@@ -3,8 +3,9 @@ module dgt.vg.path;
 
 import dgt.core.geometry : FPoint, FRect;
 
-import std.range.primitives;
 import std.exception : enforce;
+import std.range.primitives;
+import std.typecons : Rebindable;
 
 /// Path segments
 enum PathSeg
@@ -34,18 +35,14 @@ size_t numComponents(in PathSeg seg)
     }
 }
 
-/// Vector graphics path
-class Path
+/// Vector graphics path builder
+struct PathBuilder
 {
-    // FIXME: enforce path consistence
     private PathSeg[] _segments;
     private float[] _data;
     private float[2] _lastControl;
     private float[2] _lastPoint;
-    private FRect _bounds;
-    private bool _boundsDirty=true;
-
-    this() {}
+    private size_t _lastMoveTo = size_t.max;
 
     this(in float[2] moveToPoint)
     {
@@ -53,6 +50,25 @@ class Path
         _data = moveToPoint.dup;
         _lastControl[] = float.nan;
         _lastPoint = moveToPoint;
+        _lastMoveTo = 0;
+    }
+
+    private this (PathSeg[] segs, float[] data, float[2] lastC, float[2] lastP, size_t lastMT)
+    {
+        _segments = segs;
+        _data = data;
+        _lastControl = lastC;
+        _lastPoint = lastP;
+        _lastMoveTo = lastMT;
+    }
+
+    @disable this(this);
+
+    PathBuilder dup() const
+    {
+        return PathBuilder(
+            _segments.dup, _data.dup, _lastControl, _lastPoint, _lastMoveTo
+        );
     }
 
     @property const(PathSeg)[] segments() const
@@ -75,111 +91,107 @@ class Path
         return _lastPoint;
     }
 
-    @property auto segmentRange() const
+    ref PathBuilder moveTo(in float[2] point)
     {
-        return SegmentDataRange(_segments, _data);
-    }
-
-    void moveTo(in float[2] point)
-    {
+        _lastMoveTo = _segments.length;
         _segments ~= PathSeg.moveTo;
-        _data ~= point.dup;
-        _lastControl[] = float.nan;
+        _data ~= [ point[0], point[1] ];
+        _lastControl = (float[2]).init;
         _lastPoint = point;
-        _boundsDirty = true;
+        return this;
     }
 
-    void moveToRel(in float[2] vec)
+    ref PathBuilder moveToRel(in float[2] vec)
     {
         enforce(hasLastPoint);
-        moveTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
+        return moveTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
     }
 
-    void lineTo(in float[2] point)
+    ref PathBuilder lineTo(in float[2] point)
     {
         _segments ~= PathSeg.lineTo;
-        _data ~= point.dup;
-        _lastControl[] = float.nan;
+        _data ~= [ point[0], point[1] ];
+        _lastControl = _lastPoint;
         _lastPoint = point;
-        _boundsDirty = true;
+        return this;
     }
 
-    void lineToRel(in float[2] vec)
+    ref PathBuilder lineToRel(in float[2] vec)
     {
         enforce(hasLastPoint);
-        lineTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
+        return lineTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
     }
 
-    void horLineTo(in float xPoint)
+    ref PathBuilder horLineTo(in float xPoint)
     {
         enforce(hasLastPoint);
-        lineTo([xPoint, _lastPoint[1]]);
+        return lineTo([xPoint, _lastPoint[1]]);
     }
 
-    void horLineToRel(in float xVec)
+    ref PathBuilder horLineToRel(in float xVec)
     {
         enforce(hasLastPoint);
-        lineTo([_lastPoint[0] + xVec, _lastPoint[1]]);
+        return lineTo([_lastPoint[0] + xVec, _lastPoint[1]]);
     }
 
-    void verLineTo(in float yPoint)
+    ref PathBuilder verLineTo(in float yPoint)
     {
         enforce(hasLastPoint);
-        lineTo([_lastPoint[0], yPoint]);
+        return lineTo([_lastPoint[0], yPoint]);
     }
 
-    void verLineToRel(in float yVec)
+    ref PathBuilder verLineToRel(in float yVec)
     {
         enforce(hasLastPoint);
-        lineTo([_lastPoint[0], _lastPoint[1] + yVec]);
+        return lineTo([_lastPoint[0], _lastPoint[1] + yVec]);
     }
 
-    void quadTo(in float[2] control, in float[2] point)
+    ref PathBuilder quadTo(in float[2] control, in float[2] point)
     {
         _segments ~= PathSeg.quadTo;
         _data ~= [control[0], control[1], point[0], point[1]];
         _lastControl = control;
         _lastPoint = point;
-        _boundsDirty = true;
+        return this;
     }
 
-    void cubicTo(float[2] control1, float[2] control2, float[2] point)
+    ref PathBuilder cubicTo(float[2] control1, float[2] control2, float[2] point)
     {
         _segments ~= PathSeg.cubicTo;
         _data ~= [control1[0], control1[1], control2[0], control2[1], point[0], point[1]];
         _lastControl = control2;
         _lastPoint = point;
-        _boundsDirty = true;
+        return this;
     }
 
-    void smoothQuadTo(float[2] point)
+    ref PathBuilder smoothQuadTo(float[2] point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        quadTo([2 * _lastPoint[0] - _lastControl[0], 2 * _lastPoint[1] - _lastControl[1]], point);
+        return quadTo([2 * _lastPoint[0] - _lastControl[0], 2 * _lastPoint[1] - _lastControl[1]], point);
     }
 
-    void smoothCubicTo(float[2] control2, float[2] point)
+    ref PathBuilder smoothCubicTo(float[2] control2, float[2] point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        cubicTo([2 * _lastPoint[0] - _lastControl[0],
+        return cubicTo([2 * _lastPoint[0] - _lastControl[0],
                 2 * _lastPoint[1] - _lastControl[1]], control2, point);
     }
 
-    void shortCcwArcTo(float rh, float rv, float rot, float[2] point)
+    ref PathBuilder shortCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    void shortCwArcTo(float rh, float rv, float rot, float[2] point)
+    ref PathBuilder shortCwArcTo(float rh, float rv, float rot, float[2] point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    void largeCcwArcTo(float rh, float rv, float rot, float[2] point)
+    ref PathBuilder largeCcwArcTo(float rh, float rv, float rot, float[2] point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
@@ -192,58 +204,87 @@ class Path
     }
 
     /// Throws: Exception if no moveTo can be found before this call.
-    void close()
+    ref PathBuilder close()
     {
-        import std.range : retro;
-        _segments ~= PathSeg.close;
-        _lastControl[] = float.nan;
-        // reverse search for the last move to or throw
+        import std.exception : enforce;
+
+        enforce(_segments.length > _lastMoveTo);
+
         size_t offset = 0;
-        foreach(seg; retro(_segments[0 .. $-1]))
-        {
+        foreach (seg; _segments[0 .. _lastMoveTo]) {
             offset += seg.numComponents;
-            if (seg == PathSeg.moveTo)
-            {
-                assert(offset <= _data.length && offset >= 2);
-                _lastPoint = _data[$-offset .. $-(offset-2)];
-                return;
-            }
         }
-        enforce(false, "close without moveTo segment");
+        assert(_data.length > offset+2);
+
+        _segments ~= PathSeg.close;
+        _lastPoint = _data[offset .. offset+2];
+        _lastControl[] = float.nan;
+
+        return this;
     }
 
-    /// Axis-aligned bounds
-    @property FRect bounds() const
+    immutable(Path) done()
     {
-        if (!_boundsDirty) return _bounds;
-        else return computeBounds();
+        import std.exception : assumeUnique;
+
+        // FIXME: enforce path consistence
+        immutable segs = assumeUnique(_segments);
+        immutable data = assumeUnique(_data);
+        return new immutable(Path)(segs, data);
     }
 
-    /// ditto
-    @property FRect bounds()
-    {
-        if (_boundsDirty) {
-            _bounds = computeBounds();
-            _boundsDirty = false;
-        }
-        return _bounds;
-    }
-
-    private @property hasLastPoint() const
+    private bool hasLastPoint() const
     {
         import std.math : isNaN;
 
-        return !isNaN(_lastPoint[0]) && !isNaN(_lastPoint[1]);
+        return !isNaN(_lastPoint[0]);
     }
 
-    private @property hasLastControl() const
+    private bool hasLastControl() const
     {
         import std.math : isNaN;
 
-        return !isNaN(_lastControl[0]) && !isNaN(_lastControl[1]);
+        return !isNaN(_lastControl[0]);
+    }
+}
+
+alias RPath = Rebindable!(immutable(Path));
+
+immutable final class Path
+{
+    this (immutable(PathSeg)[] segments, immutable(float)[] data)
+    {
+        _segments = segments;
+        _data = data;
     }
 
-    private FRect computeBounds() const
+    static PathBuilder build()
+    {
+        return PathBuilder.init;
+    }
+
+    static PathBuilder build(in float[2] moveToPoint)
+    {
+        return PathBuilder(moveToPoint);
+    }
+
+    immutable(PathSeg)[] segments() immutable
+    {
+        return _segments;
+    }
+
+    immutable(float)[] data() immutable
+    {
+        return _data;
+    }
+
+    auto segmentRange() const
+    {
+        return SegmentDataRange(_segments, _data);
+    }
+
+
+    FRect computeBounds() immutable
     {
         import dgt.core.geometry : extend;
 
@@ -298,7 +339,11 @@ class Path
         }
         return res;
     }
+
+    private immutable(PathSeg)[] _segments;
+    private immutable(float)[] _data;
 }
+
 
 /// Aggregates the data of a Path segment
 struct SegmentData
@@ -306,7 +351,7 @@ struct SegmentData
     /// The segment type.
     PathSeg seg;
     /// The data of this segment.
-    const(float)[] data;
+    immutable(float)[] data;
     /// The last control point of the previous segment.
     float[2] previousControl;
     /// The end point of the previous segment.
@@ -317,18 +362,18 @@ struct SegmentData
 /// Allow lazy iteration over the segments of a path.
 struct SegmentDataRange
 {
-    private const(PathSeg)[] segments;
-    private const(float)[] data;
+    private immutable(PathSeg)[] segments;
+    private immutable(float)[] data;
     private float[2] previousControl;
     private float[2] previousPoint;
 
-    this(const(PathSeg)[] segments, const(float)[] data)
+    this(immutable(PathSeg)[] segments, immutable(float)[] data)
     {
         this.segments = segments;
         this.data = data;
     }
 
-    private this(const(PathSeg)[] segments, const(float)[] data,
+    private this(immutable(PathSeg)[] segments, immutable(float)[] data,
             in float[2] previousControl, in float[2] previousPoint)
     {
         this.segments = segments;
