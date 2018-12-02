@@ -5,7 +5,7 @@ import dgt.core.geometry;
 import dgt.core.rc;
 
 import std.exception;
-import std.typecons : Nullable, Flag, Yes, No;
+import std.typecons : Nullable, Flag, Yes, No, Rebindable;
 
 /// Internal representation of an image.
 enum ImageFormat
@@ -109,6 +109,9 @@ enum ImageFileFormat
     png,
     jpeg,
 }
+
+/// an rebindable immutable image
+alias RImage = Rebindable!(immutable(Image));
 
 /// In-memory representation of an image.
 class Image
