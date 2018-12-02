@@ -2,6 +2,7 @@
 module dgt.vg.path;
 
 import dgt.core.geometry : FPoint, FRect;
+import gfx.math : FVec2;
 
 import std.exception : enforce;
 import std.range.primitives;
@@ -23,13 +24,13 @@ size_t numComponents(in PathSeg seg)
     final switch (seg)
     {
     case PathSeg.moveTo:
-        return 2;
+        return 1;
     case PathSeg.lineTo:
-        return 2;
+        return 1;
     case PathSeg.quadTo:
-        return 4;
+        return 2;
     case PathSeg.cubicTo:
-        return 6;
+        return 3;
     case PathSeg.close:
         return 0;
     }
@@ -39,21 +40,21 @@ size_t numComponents(in PathSeg seg)
 struct PathBuilder
 {
     private PathSeg[] _segments;
-    private float[] _data;
-    private float[2] _lastControl;
-    private float[2] _lastPoint;
-    private size_t _lastMoveTo = size_t.max;
+    private FVec2[] _data;
+    private FVec2 _lastControl = FVec2.nan;
+    private FVec2 _lastPoint = FVec2.nan;
+    private size_t _lastMoveTo = size_t.max; // data offset of last moveTo
 
-    this(in float[2] moveToPoint)
+    this(in FVec2 moveToPoint)
     {
-        _segments = [PathSeg.moveTo];
-        _data = moveToPoint.dup;
-        _lastControl[] = float.nan;
+        _segments = [ PathSeg.moveTo ];
+        _data = [ moveToPoint ];
+        _lastControl = FVec2.nan;
         _lastPoint = moveToPoint;
         _lastMoveTo = 0;
     }
 
-    private this (PathSeg[] segs, float[] data, float[2] lastC, float[2] lastP, size_t lastMT)
+    private this (PathSeg[] segs, FVec2[] data, FVec2 lastC, FVec2 lastP, size_t lastMT)
     {
         _segments = segs;
         _data = data;
@@ -76,128 +77,127 @@ struct PathBuilder
         return _segments;
     }
 
-    @property const(float)[] data() const
+    @property const(FVec2)[] data() const
     {
         return _data;
     }
 
-    @property float[2] lastControl() const
+    @property FVec2 lastControl() const
     {
         return _lastControl;
     }
 
-    @property float[2] lastPoint() const
+    @property FVec2 lastPoint() const
     {
         return _lastPoint;
     }
 
-    ref PathBuilder moveTo(in float[2] point)
+    ref PathBuilder moveTo(in FVec2 point)
     {
-        _lastMoveTo = _segments.length;
+        _lastMoveTo = _data.length;
         _segments ~= PathSeg.moveTo;
-        _data ~= [ point[0], point[1] ];
-        _lastControl = (float[2]).init;
+        _data ~= point;
+        _lastControl = FVec2.nan;
         _lastPoint = point;
         return this;
     }
 
-    ref PathBuilder moveToRel(in float[2] vec)
+    ref PathBuilder moveToRel(in FVec2 vec)
     {
         enforce(hasLastPoint);
-        return moveTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
+        return moveTo(_lastPoint + vec);
     }
 
-    ref PathBuilder lineTo(in float[2] point)
+    ref PathBuilder lineTo(in FVec2 point)
     {
         _segments ~= PathSeg.lineTo;
-        _data ~= [ point[0], point[1] ];
+        _data ~= point;
         _lastControl = _lastPoint;
         _lastPoint = point;
         return this;
     }
 
-    ref PathBuilder lineToRel(in float[2] vec)
+    ref PathBuilder lineToRel(in FVec2 vec)
     {
         enforce(hasLastPoint);
-        return lineTo([_lastPoint[0] + vec[0], _lastPoint[1] + vec[1]]);
+        return lineTo(_lastPoint + vec);
     }
 
     ref PathBuilder horLineTo(in float xPoint)
     {
         enforce(hasLastPoint);
-        return lineTo([xPoint, _lastPoint[1]]);
+        return lineTo(FVec2(xPoint, _lastPoint.y));
     }
 
     ref PathBuilder horLineToRel(in float xVec)
     {
         enforce(hasLastPoint);
-        return lineTo([_lastPoint[0] + xVec, _lastPoint[1]]);
+        return lineTo(FVec2(_lastPoint.x + xVec, _lastPoint.y));
     }
 
     ref PathBuilder verLineTo(in float yPoint)
     {
         enforce(hasLastPoint);
-        return lineTo([_lastPoint[0], yPoint]);
+        return lineTo(FVec2(_lastPoint[0], yPoint));
     }
 
     ref PathBuilder verLineToRel(in float yVec)
     {
         enforce(hasLastPoint);
-        return lineTo([_lastPoint[0], _lastPoint[1] + yVec]);
+        return lineTo(FVec2(_lastPoint.x, _lastPoint.y + yVec));
     }
 
-    ref PathBuilder quadTo(in float[2] control, in float[2] point)
+    ref PathBuilder quadTo(in FVec2 control, in FVec2 point)
     {
         _segments ~= PathSeg.quadTo;
-        _data ~= [control[0], control[1], point[0], point[1]];
+        _data ~= [ control, point ];
         _lastControl = control;
         _lastPoint = point;
         return this;
     }
 
-    ref PathBuilder cubicTo(float[2] control1, float[2] control2, float[2] point)
+    ref PathBuilder cubicTo(in FVec2 control1, in FVec2 control2, in FVec2 point)
     {
         _segments ~= PathSeg.cubicTo;
-        _data ~= [control1[0], control1[1], control2[0], control2[1], point[0], point[1]];
+        _data ~= [ control1, control2, point ];
         _lastControl = control2;
         _lastPoint = point;
         return this;
     }
 
-    ref PathBuilder smoothQuadTo(float[2] point)
+    ref PathBuilder smoothQuadTo(FVec2 point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        return quadTo([2 * _lastPoint[0] - _lastControl[0], 2 * _lastPoint[1] - _lastControl[1]], point);
+        return quadTo( 2 * _lastPoint - _lastControl, point );
     }
 
-    ref PathBuilder smoothCubicTo(float[2] control2, float[2] point)
+    ref PathBuilder smoothCubicTo(in FVec2 control2, in FVec2 point)
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
-        return cubicTo([2 * _lastPoint[0] - _lastControl[0],
-                2 * _lastPoint[1] - _lastControl[1]], control2, point);
+        return cubicTo( 2 * _lastPoint - _lastControl, control2, point );
     }
 
-    ref PathBuilder shortCcwArcTo(float rh, float rv, float rot, float[2] point)
+    ref PathBuilder shortCcwArcTo(float rh, float rv, float rot, in FVec2 point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    ref PathBuilder shortCwArcTo(float rh, float rv, float rot, float[2] point)
+    ref PathBuilder shortCwArcTo(float rh, float rv, float rot, in FVec2 point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    ref PathBuilder largeCcwArcTo(float rh, float rv, float rot, float[2] point)
+    ref PathBuilder largeCcwArcTo(float rh, float rv, float rot, in FVec2 point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    void largeCwArcTo(float rh, float rv, float rot, float[2] point)
+    void largeCwArcTo(float rh, float rv, float rot, in FVec2 point)
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
@@ -208,17 +208,11 @@ struct PathBuilder
     {
         import std.exception : enforce;
 
-        enforce(_segments.length > _lastMoveTo);
-
-        size_t offset = 0;
-        foreach (seg; _segments[0 .. _lastMoveTo]) {
-            offset += seg.numComponents;
-        }
-        assert(_data.length > offset+2);
+        enforce(_data.length > _lastMoveTo, "Cannot close an empty path");
 
         _segments ~= PathSeg.close;
-        _lastPoint = _data[offset .. offset+2];
-        _lastControl[] = float.nan;
+        _lastPoint = _data[_lastMoveTo];
+        _lastControl = FVec2.nan;
 
         return this;
     }
@@ -237,14 +231,14 @@ struct PathBuilder
     {
         import std.math : isNaN;
 
-        return !isNaN(_lastPoint[0]);
+        return !isNaN(_lastPoint.x);
     }
 
     private bool hasLastControl() const
     {
         import std.math : isNaN;
 
-        return !isNaN(_lastControl[0]);
+        return !isNaN(_lastControl.x);
     }
 }
 
@@ -252,7 +246,7 @@ alias RPath = Rebindable!(immutable(Path));
 
 immutable final class Path
 {
-    this (immutable(PathSeg)[] segments, immutable(float)[] data)
+    this (immutable(PathSeg)[] segments, immutable(FVec2)[] data)
     {
         _segments = segments;
         _data = data;
@@ -263,7 +257,7 @@ immutable final class Path
         return PathBuilder.init;
     }
 
-    static PathBuilder build(in float[2] moveToPoint)
+    static PathBuilder build(in FVec2 moveToPoint)
     {
         return PathBuilder(moveToPoint);
     }
@@ -273,7 +267,7 @@ immutable final class Path
         return _segments;
     }
 
-    immutable(float)[] data() immutable
+    immutable(FVec2)[] data() immutable
     {
         return _data;
     }
@@ -290,7 +284,7 @@ immutable final class Path
 
         bool firstSet;
         FRect res;
-        void addPoint(in FPoint point) {
+        void addPoint(in FVec2 point) {
             if (firstSet) {
                 res.extend(point);
             }
@@ -303,35 +297,35 @@ immutable final class Path
             }
         }
 
-        FPoint lastP;
-        const(float)[] data = _data;
+        FVec2 lastP;
+        immutable(FVec2)[] data = _data;
 
         foreach(seg; _segments) {
             final switch (seg) {
             case PathSeg.moveTo:
             case PathSeg.lineTo:
-                lastP = FPoint(data[0 .. 2]);
+                lastP = _data[0];
                 addPoint(lastP);
-                data = data[2 .. $];
+                data = data[1 .. $];
                 break;
             case PathSeg.quadTo:
-                immutable p0 = lastP;
-                immutable p1 = FPoint(data[0 .. 2]);
-                immutable p2 = FPoint(data[2 .. 4]);
+                const p0 = lastP;
+                const p1 = data[0];
+                const p2 = data[1];
                 addPoint(p2);
                 res.extendWithQuad(p0, p1, p2);
                 lastP = p2;
-                data = data[4 .. $];
+                data = data[2 .. $];
                 break;
             case PathSeg.cubicTo:
-                immutable p0 = lastP;
-                immutable p1 = FPoint(data[0 .. 2]);
-                immutable p2 = FPoint(data[2 .. 4]);
-                immutable p3 = FPoint(data[4 .. 6]);
+                const p0 = lastP;
+                const p1 = data[0];
+                const p2 = data[1];
+                const p3 = data[2];
                 addPoint(p3);
                 res.extendWithCubic(p0, p1, p2, p3);
                 lastP = p3;
-                data = data[6 .. $];
+                data = data[3 .. $];
                 break;
             case PathSeg.close:
                 break;
@@ -341,7 +335,7 @@ immutable final class Path
     }
 
     private immutable(PathSeg)[] _segments;
-    private immutable(float)[] _data;
+    private immutable(FVec2)[] _data;
 }
 
 
@@ -351,11 +345,11 @@ struct SegmentData
     /// The segment type.
     PathSeg seg;
     /// The data of this segment.
-    immutable(float)[] data;
+    immutable(FVec2)[] data;
     /// The last control point of the previous segment.
-    float[2] previousControl;
+    FVec2 previousControl;
     /// The end point of the previous segment.
-    float[2] previousPoint;
+    FVec2 previousPoint;
 }
 
 /// Segment data forward range.
@@ -363,18 +357,18 @@ struct SegmentData
 struct SegmentDataRange
 {
     private immutable(PathSeg)[] segments;
-    private immutable(float)[] data;
-    private float[2] previousControl;
-    private float[2] previousPoint;
+    private immutable(FVec2)[] data;
+    private FVec2 previousControl;
+    private FVec2 previousPoint;
 
-    this(immutable(PathSeg)[] segments, immutable(float)[] data)
+    this(immutable(PathSeg)[] segments, immutable(FVec2)[] data)
     {
         this.segments = segments;
         this.data = data;
     }
 
-    private this(immutable(PathSeg)[] segments, immutable(float)[] data,
-            in float[2] previousControl, in float[2] previousPoint)
+    private this(immutable(PathSeg)[] segments, immutable(FVec2)[] data,
+            in FVec2 previousControl, in FVec2 previousPoint)
     {
         this.segments = segments;
         this.data = data;
@@ -401,30 +395,30 @@ struct SegmentDataRange
         import std.math : isNaN;
 
         assert(segments.length);
-        immutable seg = segments[0];
-        immutable numComps = seg.numComponents;
+        const seg = segments[0];
+        const numComps = seg.numComponents;
         assert(data.length >= numComps);
 
         final switch (seg)
         {
         case PathSeg.moveTo:
-            previousControl[] = float.nan;
-            previousPoint = data[0 .. 2];
+            previousControl = FVec2.nan;
+            previousPoint = data[0];
             break;
         case PathSeg.lineTo:
-            previousControl[] = float.nan;
-            previousPoint = data[0 .. 2];
+            previousControl = FVec2.nan;
+            previousPoint = data[0];
             break;
         case PathSeg.quadTo:
-            previousControl = data[0 .. 2];
-            previousPoint = data[2 .. 4];
+            previousControl = data[0];
+            previousPoint = data[1];
             break;
         case PathSeg.cubicTo:
-            previousControl = data[2 .. 4];
-            previousPoint = data[4 .. 6];
+            previousControl = data[1];
+            previousPoint = data[2];
             break;
         case PathSeg.close:
-            previousControl[] = float.nan;
+            previousControl = FVec2.nan;
             break;
         }
 
@@ -539,12 +533,16 @@ private void extendWithCubic(ref FRect r, in FPoint p0, in FPoint p1, in FPoint 
 
 unittest
 {
-    import dgt.math.approx : approxUlp;
-    auto p = new Path;
-    p.moveTo([5, 5]);
-    p.cubicTo([5, 25], [25, 25], [25, 5]);
+    import gfx.math : fvec;
+    import gfx.math.approx : approxUlp;
 
-    immutable b = p.bounds;
+    immutable p = Path.build()
+        .moveTo(fvec(5, 5))
+        .cubicTo(fvec(5, 25), fvec(25, 25), fvec(25, 5))
+        .done();
+
+    const b = p.computeBounds();
+
     assert(approxUlp(b.left, 5f));
     assert(approxUlp(b.top, 5f));
     assert(approxUlp(b.right, 25f));
