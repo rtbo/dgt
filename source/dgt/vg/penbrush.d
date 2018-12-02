@@ -2,6 +2,8 @@
 module dgt.vg.penbrush;
 
 import dgt.core.paint;
+import dgt.core.color;
+import std.typecons : Rebindable;
 
 enum LineCap
 {
@@ -20,66 +22,124 @@ enum LineJoin
 struct Dash
 {
     float offset=0f;
-    float[] values;
-
-    immutable this(in float offset, immutable(float)[] values)
-    {
-        this.offset = offset;
-        this.values = values;
-    }
-
-    this(in float offset, float[] values)
-    {
-        this.offset = offset;
-        this.values = values;
-    }
-
-    @property Dash dup() const
-    {
-        return Dash(offset, values.dup);
-    }
-
-    @property immutable(Dash) idup() const {
-        return immutable(Dash)(offset, values.idup);
-    }
+    immutable(float)[] values;
 }
 
-
-final class Pen
+struct PenBuilder
 {
-    this()
-    {}
-
-    this(in float width, in LineCap cap, in LineJoin join,
-                Dash dash, immutable(Paint) paint)
+    ref PenBuilder width(in float width)
     {
+        _width = width;
+        return this;
+    }
+
+    ref PenBuilder cap(in LineCap cap)
+    {
+        _cap = cap;
+        return this;
+    }
+
+    ref PenBuilder join(in LineJoin join)
+    {
+        _join = join;
+        return this;
+    }
+
+    ref PenBuilder dash(in Dash dash)
+    {
+        _dash = dash;
+        return this;
+    }
+
+    ref PenBuilder paint(immutable(Paint) paint)
+    {
+        _paint = _paint;
+        return this;
+    }
+
+    ref PenBuilder color(Color color)
+    {
+        _paint = new immutable ColorPaint(color);
+        return this;
+    }
+
+    immutable(Pen) done()
+    {
+        return new immutable Pen (_paint, _width, _cap, _join, _dash);
+    }
+
+    private float _width = 1f;
+    private RPaint _paint;
+    private LineCap _cap;
+    private LineJoin _join;
+    private Dash _dash;
+}
+
+alias RPen = Rebindable!(immutable(Pen));
+
+final immutable class Pen
+{
+    this (immutable(Paint) paint, float width=1f)
+    {
+        _paint = paint;
+        _width = width;
+        _cap = LineCap.init;
+        _join = LineJoin.init;
+        _dash = Dash.init;
+    }
+
+    this (Color color, in float width=1f)
+    {
+        _paint = new immutable ColorPaint(color);
+        _width = width;
+        _cap = LineCap.init;
+        _join = LineJoin.init;
+        _dash = Dash.init;
+    }
+
+    this(immutable(Paint) paint, in float width, in LineCap cap, in LineJoin join, in Dash dash)
+    {
+        _paint = paint;
         _width = width;
         _cap = cap;
         _join = join;
         _dash = dash;
-        _paint = paint;
     }
 
-    @property float width() const { return _width; }
-    @property void width(in float width) { _width = width; }
+    static PenBuilder build()
+    {
+        return PenBuilder.init;
+    }
 
-    @property LineCap cap() const { return _cap; }
-    @property void cap(in LineCap cap) { _cap = cap; }
+    float width() immutable
+    {
+        return _width;
+    }
 
-    @property LineJoin join() const { return _join; }
-    @property void join(in LineJoin join) { _join = join; }
+    immutable(Paint) paint() immutable
+    {
+        return _paint;
+    }
+    LineCap cap() immutable
+    {
+        return _cap;
+    }
 
-    @property const(Dash) dash() const { return _dash; }
-    @property void dash(in Dash dash) { _dash = dash.dup; }
+    LineJoin join() immutable
+    {
+        return _join;
+    }
 
-    @property immutable(Paint) paint() const { return _paint; }
-    @property void paint(immutable(Paint) paint) { _paint = _paint; }
+    Dash dash() immutable
+    {
+        return _dash;
+    }
 
+    private immutable(Paint) _paint;
     private float _width = 1f;
     private LineCap _cap;
     private LineJoin _join;
     private Dash _dash;
-    private RPaint _paint;
 }
 
 
@@ -89,23 +149,19 @@ enum FillRule
     EvenOdd,
 }
 
-final class Brush
-{
-    this()
-    {}
+alias RBrush = Rebindable!(immutable(Brush));
 
+final immutable class Brush
+{
     this(in FillRule rule, immutable(Paint) paint)
     {
         _rule = rule;
         _paint = paint;
     }
 
-    @property FillRule rule() const { return _rule; }
-    @property void rule(in FillRule rule) { _rule = rule; }
-
-    @property immutable(Paint) paint() const { return _paint; }
-    @property void paint(immutable(Paint) paint) { _paint = paint; }
+    @property FillRule rule() immutable { return _rule; }
+    @property immutable(Paint) paint() immutable { return _paint; }
 
     private FillRule _rule;
-    private RPaint _paint;
+    private immutable(Paint) _paint;
 }
