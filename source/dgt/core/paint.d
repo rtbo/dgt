@@ -64,6 +64,32 @@ immutable class ColorPaint : Paint
 {
     import dgt.core.color : Color;
 
+    /// Prebuilt common colors
+    static immutable ColorPaint black;
+    /// ditto
+    static immutable ColorPaint white;
+    /// ditto
+    static immutable ColorPaint red;
+    /// ditto
+    static immutable ColorPaint green;
+    /// ditto
+    static immutable ColorPaint blue;
+
+    /// Build a new ColorPaint from a css color name
+    static immutable(ColorPaint) opDispatch(string name)()
+    {
+        return new immutable ColorPaint(mixin("Color."~name));
+    }
+
+    private shared static this()
+    {
+        ColorPaint.black = new immutable ColorPaint(Color.black);
+        ColorPaint.white = new immutable ColorPaint(Color.white);
+        ColorPaint.red = new immutable ColorPaint(Color.red);
+        ColorPaint.green = new immutable ColorPaint(Color.green);
+        ColorPaint.blue = new immutable ColorPaint(Color.blue);
+    }
+
     /// Initialize with color
     immutable this (in Color color)
     {
@@ -85,6 +111,7 @@ immutable class ColorPaint : Paint
 
     private Color _color;
 }
+
 
 /// Abstract base for gradient paints.
 alias RGradientPaint = Rebindable!(immutable(GradientPaint));
