@@ -23,6 +23,8 @@ struct Dash
 {
     float offset=0f;
     immutable(float)[] values;
+
+    enum Dash solid = Dash.init;
 }
 
 struct PenBuilder
@@ -79,22 +81,31 @@ alias RPen = Rebindable!(immutable(Pen));
 
 final immutable class Pen
 {
+    private this()
+    {
+        _paint = ColorPaint.black;
+        _width = 1f;
+        _cap = LineCap.butt;
+        _join = LineJoin.miter;
+        _dash = Dash.solid;
+    }
+
     this (immutable(Paint) paint, float width=1f)
     {
         _paint = paint;
         _width = width;
-        _cap = LineCap.init;
-        _join = LineJoin.init;
-        _dash = Dash.init;
+        _cap = LineCap.butt;
+        _join = LineJoin.miter;
+        _dash = Dash.solid;
     }
 
     this (Color color, in float width=1f)
     {
         _paint = new immutable ColorPaint(color);
         _width = width;
-        _cap = LineCap.init;
-        _join = LineJoin.init;
-        _dash = Dash.init;
+        _cap = LineCap.butt;
+        _join = LineJoin.miter;
+        _dash = Dash.solid;
     }
 
     this(immutable(Paint) paint, in float width, in LineCap cap, in LineJoin join, in Dash dash)
@@ -145,23 +156,48 @@ final immutable class Pen
 
 enum FillRule
 {
-    NonZero,
-    EvenOdd,
+    nonZero,
+    evenOdd,
 }
 
 alias RBrush = Rebindable!(immutable(Brush));
 
 final immutable class Brush
 {
-    this(in FillRule rule, immutable(Paint) paint)
+    private this()
     {
-        _rule = rule;
-        _paint = paint;
+        _paint = ColorPaint.black;
+        _rule = FillRule.nonZero;
     }
 
-    @property FillRule rule() immutable { return _rule; }
-    @property immutable(Paint) paint() immutable { return _paint; }
+    this(immutable(Paint) paint, in FillRule fillFule)
+    {
+        _paint = paint;
+        _rule = rule;
+    }
 
-    private FillRule _rule;
+    @property immutable(Paint) paint() immutable { return _paint; }
+    @property FillRule rule() immutable { return _rule; }
+
     private immutable(Paint) _paint;
+    private FillRule _rule;
+}
+
+/// The default pen for stroking:
+///     - black color
+///     - 1px width
+///     - butt end cap
+///     - miter joins
+///     - solid line (no dash)
+immutable Pen defaultPen;
+
+/// The default brush for filling:
+///     - black color
+///     - non-zero fill rule
+immutable Brush defaultBrush;
+
+shared static this()
+{
+    defaultPen = new immutable Pen;
+    defaultBrush = new immutable Brush;
 }
