@@ -460,11 +460,11 @@ private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p
 
     foreach(x; extrema(0)) {
         if (x < r.left) r.left = x;
-        else if (x > r.right) r.right = x;
+        else if (x > r.right) r.width = x - r.left;
     }
     foreach(y; extrema(1)) {
         if (y < r.top) r.top = y;
-        else if (y > r.bottom) r.bottom = y;
+        else if (y > r.bottom) r.height = y - r.top;
     }
 }
 
@@ -523,11 +523,11 @@ private void extendWithCubic(ref FRect r, in FPoint p0, in FPoint p1, in FPoint 
 
     foreach(x; extremas(0)) {
         if (x < r.left) r.left = x;
-        else if (x > r.right) r.right = x;
+        else if (x > r.right) r.width = x - r.left;
     }
     foreach(y; extremas(1)) {
         if (y < r.top) r.top = y;
-        else if (y > r.bottom) r.bottom = y;
+        else if (y > r.bottom) r.height = y - r.top;
     }
 }
 

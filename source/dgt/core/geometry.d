@@ -237,7 +237,7 @@ static assert(  isMargins!FMargins);
 static assert(  isMargins!IMargins);
 static assert(! isMargins!FPadding);
 
-/// Represents a rectangular area, defined by a position and a size
+/// A rectangular area, represented by its top-left position and its size
 struct Rect(T) if (isNumeric!T)
 {
     private
@@ -249,11 +249,6 @@ struct Rect(T) if (isNumeric!T)
     }
 
     alias Scalar = T;
-
-    invariant()
-    {
-        //assert(_w >= 0 && _h >= 0);
-    }
 
     this(in T x, in T y, in T w, in T h)
     {
@@ -280,10 +275,12 @@ struct Rect(T) if (isNumeric!T)
 
     this(Point!T topLeft, Point!T bottomRight)
     {
+        assert(bottomRight.x >= topLeft.x);
+        assert(bottomRight.y >= topLeft.y);
         _x = topLeft.x;
         _y = topLeft.y;
-        _w = cast(T)(bottomRight.x - topLeft.x);
-        _h = cast(T)(bottomRight.y - topLeft.y);
+        _w = bottomRight.x - topLeft.x;
+        _h = bottomRight.y - topLeft.y;
     }
 
     @property T x() const
@@ -348,8 +345,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void size(Size!T s)
     {
-        width = s.width;
-        height = s.height;
+        _w = s.width;
+        _h = s.height;
     }
 
     @property T left() const
@@ -357,11 +354,9 @@ struct Rect(T) if (isNumeric!T)
         return _x;
     }
 
+    // Set the left coordinate without changing the width. (moves the right coordinate)
     @property void left(T val)
     {
-        import std.algorithm : max;
-
-        _w = cast(T)max(0, _w - (val - _x));
         _x = val;
     }
 
@@ -370,11 +365,9 @@ struct Rect(T) if (isNumeric!T)
         return _y;
     }
 
+    // Set the left coordinate without changing the height. (moves the bottom coordinate)
     @property void top(T val)
     {
-        import std.algorithm : max;
-
-        _h = cast(T)max(0, _h - (val - _y));
         _y = val;
     }
 
@@ -383,6 +376,7 @@ struct Rect(T) if (isNumeric!T)
         return cast(T)(_x + _w);
     }
 
+    // Set the right coordinate by adjusting the width.
     @property void right(T val)
     in {
         assert(val >= _x);
@@ -396,14 +390,6 @@ struct Rect(T) if (isNumeric!T)
         return cast(T)(_y + _h);
     }
 
-    @property void bottom(T val)
-    in {
-        assert(val >= _y);
-    }
-    body {
-        _h = cast(T)(val - _y);
-    }
-
     @property Point!T topLeft() const
     {
         return Point!T(left, top);
@@ -411,8 +397,8 @@ struct Rect(T) if (isNumeric!T)
 
     @property void topLeft(Point!T p)
     {
-        left = p.x;
-        top = p.y;
+        _x = p.x;
+        _y = p.y;
     }
 
     @property Point!T topRight() const
@@ -420,32 +406,14 @@ struct Rect(T) if (isNumeric!T)
         return Point!T(right, top);
     }
 
-    @property void topRight(Point!T p)
-    {
-        right = p.x;
-        top = p.y;
-    }
-
     @property Point!T bottomLeft() const
     {
         return Point!T(left, bottom);
     }
 
-    @property void bottomLeft(Point!T p)
-    {
-        left = p.x;
-        bottom = p.y;
-    }
-
     @property Point!T bottomRight() const
     {
         return Point!T(right, bottom);
-    }
-
-    @property void bottomRight(Point!T p)
-    {
-        right = p.x;
-        bottom = p.y;
     }
 
     @property Point!T center() const
@@ -634,11 +602,11 @@ if (isRect!R1 && isRect!R2)
     import std.algorithm : max, min;
     import std.traits : CommonType;
 
-    Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
+    Rect!(CommonType!(R1.Scalar, R2.Scalar)) r = void;
     r.left = max(r1.left, r2.left);
-    r.right = max(min(r1.right, r2.right), r.left);
+    r.width = max(min(r1.right, r2.right), r.left) - r.left;
     r.top = max(r1.top, r2.top);
-    r.bottom = max(min(r1.bottom, r2.bottom), r.top);
+    r.height = max(min(r1.bottom, r2.bottom), r.top) - r.top;
     return r;
 }
 
@@ -649,22 +617,30 @@ if (isRect!R1 && isRect!R2)
     import std.algorithm : max, min;
     import std.traits : CommonType;
 
-    Rect!(CommonType!(R1.Scalar, R2.Scalar)) r;
+    Rect!(CommonType!(R1.Scalar, R2.Scalar)) r = void;
     r.left = min(r1.left, r2.left);
-    r.right = max(r1.right, r2.right);
+    r.width = max(r1.right, r2.right) - r.left;
     r.top = min(r1.top, r2.top);
-    r.bottom = max(r1.bottom, r2.bottom);
+    r.height = max(r1.bottom, r2.bottom) - r.top;
     return r;
 }
 
-/// Extend a rect with the given point
+/// Extend a rect to englobe the given point
 void extend(R, P)(ref R r, in P p)
 if (isRect!R && isPoint!P)
 {
     if (r.left > p.x) r.left = p.x;
-    else if (r.right < p.x) r.right = p.x;
+    else if (r.right < p.x) r.width = p.x - r.left;
     if (r.top > p.y) r.top = p.y;
-    else if (r.bottom < p.y) r.bottom = p.y;
+    else if (r.bottom < p.y) r.height = p.y - r.top;
+}
+
+/// Extend a rect to englobe the given rect
+void extend(R)(ref R rect, in R r)
+if (isRect!R)
+{
+    extend(rect, r.topLeft);
+    extend(rect, r.bottomRight);
 }
 
 /// The area of size s

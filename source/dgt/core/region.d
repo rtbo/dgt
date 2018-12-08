@@ -215,12 +215,7 @@ Region unite(in Region lhs, in Region rhs)
         immutable rects = assumeUnique (
             operator(lhs.rects, rhs.rects, true, true, &unionOp)
         );
-        IRect extents = void;
-        extents.top = min(lhs.extents.top, rhs.extents.top);
-        extents.bottom = max(lhs.extents.bottom, rhs.extents.bottom);
-        extents.left = min(lhs.extents.left, rhs.extents.left);
-        extents.right = max(lhs.extents.right, rhs.extents.right);
-        return new Region(extents, rects);
+        return new Region(extents(lhs.extents, rhs.extents), rects);
     }
 }
 
@@ -387,9 +382,9 @@ body
     }
 
     // let's merge
-    immutable bottom = cur[0].bottom;
+    const bottom = cur[0].bottom;
     foreach (ref r; prev)
-        r.bottom = bottom;
+        r.height = bottom - r.top;
     rects = rects[0 .. curBand];
 
     return prevBand;
@@ -548,10 +543,7 @@ IRect computeExtents(in IRect[] rects)
     else {
         IRect ext = rects[0];
         foreach (r; rects[1 .. $]) {
-            if (r.top < ext.top) ext.top = r.top;
-            if (r.bottom > ext.bottom) ext.bottom = r.bottom;
-            if (r.left < ext.left) ext.left = r.left;
-            if (r.right > ext.right) ext.right = r.right;
+            ext.extend(r);
         }
         return ext;
     }
