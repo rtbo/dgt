@@ -507,11 +507,11 @@ class MallocImage : Disposable
         import std.algorithm : max;
         import core.stdc.stdlib : malloc;
         enforce(size.isValidImageSize);
-        immutable width = cast(ushort)size.width;
-        immutable height = cast(ushort)size.height;
-        immutable stride = max(minStride, format.alignedStrideForWidth(width));
+        const width = cast(ushort)size.width;
+        const height = cast(ushort)size.height;
+        const stride = max(minStride, format.alignedStrideForWidth(width));
 
-        immutable dataSize = height * stride;
+        const dataSize = height * stride;
         auto data = cast(ubyte[])(malloc(dataSize)[0 .. dataSize]);
 
         _img = new Image(data, format, width, height, stride);
@@ -553,9 +553,10 @@ body
 
 /// Apply in-place the conversion function to each 4 bytes group of data.
 /// If the image has 4 bytes component, each pixel will be processed individually.
-/// Image.stride is always 4 bytes aligned.
+/// Image.stride must be 4 bytes aligned.
 void apply(alias convFn)(Image img)
 if (is(typeof(convFn(uint.init)) == uint))
+in (img.stride % 4 == 0)
 {
     foreach (l; 0 .. img.height)
     {

@@ -167,20 +167,20 @@ final immutable class Brush
     private this()
     {
         _paint = ColorPaint.black;
-        _rule = FillRule.nonZero;
+        _fillRule = FillRule.nonZero;
     }
 
     this(immutable(Paint) paint, in FillRule fillFule)
     {
         _paint = paint;
-        _rule = rule;
+        _fillRule = fillRule;
     }
 
     @property immutable(Paint) paint() immutable { return _paint; }
-    @property FillRule rule() immutable { return _rule; }
+    @property FillRule fillRule() immutable { return _fillRule; }
 
     private immutable(Paint) _paint;
-    private FillRule _rule;
+    private FillRule _fillRule;
 }
 
 /// The default pen for stroking:

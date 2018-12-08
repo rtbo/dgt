@@ -202,7 +202,7 @@ immutable class LinearGradientPaint : GradientPaint
     }
 
     /// Returns: The angle of the gradient line in radians.
-    final float computeAngle(in FSize size)
+    final float computeAngle(in FSize size) const
     {
         import std.math : atan, PI;
         final switch (_direction) {

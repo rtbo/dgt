@@ -19,7 +19,6 @@ struct VgCmd
 
         clear,
         clip,
-        resetClip,
         mask,
         drawImg,
         stroke,
@@ -109,12 +108,6 @@ struct VgCmdBufBuilder
         VgCmd.Data data = void;
         data.path = path;
         _cmds ~= VgCmd(VgCmd.Type.clip, data);
-        return this;
-    }
-
-    ref VgCmdBufBuilder resetClip()
-    {
-        _cmds ~= VgCmd(VgCmd.Type.resetClip);
         return this;
     }
 

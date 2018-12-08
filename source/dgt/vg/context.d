@@ -25,21 +25,15 @@ interface VgContext : Disposable
     void restore();
 
     /// Get/Set the transform of the context.
-    FMat2x3 transform() const;
+    @property FMat2x3 transform() const;
     /// ditto
-    void transform(const ref FMat2x3 transform);
+    @property void transform(const ref FMat2x3 transform);
 
-    /// Multiply the current transform by the given matrix
-    void pushTransform(const ref FMat2x3 transform);
-    /// Undo the last pushTransform operation.
-    /// The current transform is reset to the one before the last pushTransform
-    /// call, regardless if the transform was set by other means in between.
-    void popTransform();
+    /// Multiply current transform by the given one
+    void mulTransform(const ref FMat2x3 transform);
 
     /// Intersects the current clip path with path
     void clip(immutable(Path) path);
-    /// Resets the clip region to the whole surface
-    void resetClip();
 
     /// Mask the surface with the alpha plane of the image and paint it
     /// with the current brush paint. img.format must be either ImageFormat.a1 or

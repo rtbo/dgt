@@ -11,8 +11,11 @@ private:
 import dgt : registerSubsystem, Subsystem;
 import dgt.bindings.cairo;
 import dgt.core.color : Color;
+import dgt.core.container : GrowableStack;
+import dgt.core.geometry : FRect;
 import dgt.core.image : Image, ImageFormat;
 import dgt.core.paint;
+import gfx.core.log;
 import gfx.math : FMat2x3, FMat3, FVec2;
 
 final class CairoBackend : VgBackend
@@ -28,40 +31,47 @@ final class CairoBackend : VgBackend
     }
 }
 
+struct State
+{
+    RPen pen;
+    RBrush brush;
+    FMat2x3 transform;
+    CairoSource source;
+
+    this (immutable(Pen) pen, immutable(Brush) brush)
+    {
+        this.pen = pen;
+        this.brush = brush;
+        transform = FMat2x3.identity;
+    }
+}
 
 final class CairoContext : VgContext
 {
     private Image _img;
-    private RPen _pen;
-    private RBrush _brush;
-    private RPath _path;
-    private FMat2x3 _ctm;
-
     private cairo_surface_t* _surf;
     private cairo_t* _cr;
 
-    private struct State
-    {
-        RPen pen;
-        RBrush brush;
-        FMat2x3 ctm;
-    }
+    private RPath _path;
+
+    private State _current;
+    private GrowableStack!State _state;
 
     this (Image image)
     {
         _img = image;
         _surf = makeCairoSurface(_img);
         _cr = cairo_create(_surf);
-        _ctm = FMat2x3.identity;
         // cairo happens to have the same default parameter as dgt, except
         // for the line width
         cairo_set_line_width(_cr, 1.0);
-        _pen = defaultPen;
-        _brush = defaultBrush;
+        _current = State ( defaultPen, defaultBrush );
     }
 
     override void dispose()
     {
+        _current = State.init;
+        _state.clear();
         cairo_surface_flush(_surf);
         cairo_destroy(_cr);
         cairo_surface_destroy(_surf);
@@ -73,78 +83,91 @@ final class CairoContext : VgContext
     }
 
     override void save()
-    {}
+    {
+        _state.push(_current);
+        cairo_save(_cr);
+    }
     override void restore()
-    {}
+    {
+        cairo_save(_cr);
+        _current = _state.pop();
+    }
 
     override FMat2x3 transform() const
     {
-        return FMat2x3.init;
+        return _current.transform;
     }
-    override void transform(const ref FMat2x3 transform)
-    {}
 
-    override void pushTransform(const ref FMat2x3 transform)
-    {}
-    override void popTransform()
-    {}
+    override void transform(const ref FMat2x3 transform)
+    {
+        _current.transform = transform;
+        setCairoTransform(transform);
+    }
+
+    override void mulTransform(const ref FMat2x3 transform)
+    {
+        import gfx.math : affineMult;
+
+        _current.transform = affineMult(_current.transform, transform);
+        setCairoTransform(_current.transform);
+    }
 
     override void clip(immutable(Path) path)
-    {}
-    override void resetClip()
-    {}
+    {
+        setPath(path);
+        cairo_clip_preserve(_cr);
+    }
 
     override void mask(immutable(Image) mask, immutable(Paint) paint)
-    {}
+    {
+        setSource(paint);
+        auto maskSrc = CairoSource(mask);
+
+        cairo_mask(_cr, maskSrc.patt);
+    }
 
     override void drawImage(immutable(Image) img)
-    {}
+    {
+        setSource(img);
+
+        cairo_paint(_cr);
+    }
 
     override void clear(in Color color)
-    {}
+    {
+        const c = color.asFloats;
+        cairo_save(_cr);
+        if (c[3] == 1) {
+            cairo_set_source_rgba(_cr, c[0], c[1], c[2], c[3]);
+        }
+        else if (c[3] == 0) {
+            cairo_set_operator(_cr, CAIRO_OPERATOR_CLEAR);
+        }
+        else {
+            cairo_set_source_rgba(_cr, c[0], c[1], c[2], c[3]);
+            cairo_set_operator(_cr, CAIRO_OPERATOR_SOURCE);
+        }
+        cairo_paint(_cr);
+        cairo_restore(_cr);
+    }
 
     override void stroke(immutable(Path) path, immutable(Pen) pen=null)
     {
         setPen(pen ? pen : defaultPen);
         setPath(path);
+        cairo_stroke_preserve(_cr);
     }
 
     override void fill(immutable(Path) path, immutable(Brush) brush=null)
-    {}
-
-    private void setCairoTransform(in FMat2x3 tr)
     {
-        // cairo matrix is column major
-        const cm = cairo_matrix_t (
-            tr[0, 0], tr[1, 0],
-            tr[0, 1], tr[1, 1],
-            tr[0, 2], tr[1, 2],
-        );
-        cairo_set_matrix(_cr, &cm);
+        setBrush(brush ? brush : defaultBrush);
+        setPath(path);
+        cairo_fill_preserve(_cr);
     }
 
-    private void setPen(immutable(Pen) pen)
+    private ref State state()
     {
-        if (pen is _pen.get) return;
-
-        cairo_set_line_width(_cr, pen.width);
-        cairo_set_line_cap(_cr, cairoLineCap(pen.cap));
-        cairo_set_line_join(_cr, cairoLineJoin(pen.join));
-        setDash(pen.dash);
-        _pen = pen;
-    }
-
-    private void setDash(in Dash dash)
-    {
-        if (dash.values.length) {
-            static double[] dashes;
-            dashes.length = dash.values.length;
-            foreach(i, v; dash.values) dashes[i] = v;
-            cairo_set_dash(_cr, &dashes[0], cast(int)dash.values.length, dash.offset);
-        }
-        else {
-            cairo_set_dash(_cr, null, 0, 0f);
-        }
+        return _state.peek;
     }
 
     private void setPath(immutable(Path) path)
@@ -179,6 +202,177 @@ final class CairoContext : VgContext
                 break;
             }
         }
+
+        _path = path;
+    }
+
+    private void setCairoTransform(in ref FMat2x3 tr)
+    {
+        // cairo matrix is column major
+        const cm = CairoMatrix(tr);
+        cairo_set_matrix(_cr, &cm.mat);
+    }
+
+    private void setPen(immutable(Pen) pen)
+    {
+        setSource(pen.paint);
+
+        if (pen is _current.pen.get) return;
+
+        cairo_set_line_width(_cr, pen.width);
+        cairo_set_line_cap(_cr, cairoLineCap(pen.cap));
+        cairo_set_line_join(_cr, cairoLineJoin(pen.join));
+        setDash(pen.dash);
+
+        _current.pen = pen;
+    }
+
+    private void setBrush(immutable(Brush) brush)
+    {
+        setSource(brush.paint);
+
+        if (brush is _current.brush.get) return;
+
+        cairo_set_fill_rule(_cr, cairoFillRule(brush.fillRule));
+
+        _current.brush = brush;
+    }
+
+    private void setDash(in Dash dash)
+    {
+        if (dash.values.length) {
+            static double[] dashes;
+            dashes.length = dash.values.length;
+            foreach(i, v; dash.values) dashes[i] = v;
+            cairo_set_dash(_cr, &dashes[0], cast(int)dash.values.length, dash.offset);
+        }
+        else {
+            cairo_set_dash(_cr, null, 0, 0f);
+        }
+    }
+
+    private void setSource(immutable(Paint) paint)
+    {
+        if (_current.source.paint is paint) return;
+
+        _current.source = CairoSource(paint);
+        cairo_set_source(_cr, _current.source.patt);
+    }
+
+    private void setSource(immutable(Image) img)
+    {
+        if (_current.source.image is img) return;
+
+        _current.source = CairoSource(img);
+        cairo_set_source(_cr, _current.source.patt);
+    }
+}
+
+struct CairoMatrix
+{
+    cairo_matrix_t mat;
+
+    this (in ref FMat2x3 m)
+    {
+        // cairo matrix is column major
+        mat = cairo_matrix_t (
+            m[0, 0], m[1, 0],
+            m[0, 1], m[1, 1],
+            m[0, 2], m[1, 2],
+        );
+    }
+}
+
+struct CairoSource
+{
+    import dgt.core.image : RImage;
+
+    RPaint paint;
+    RImage image;
+    cairo_pattern_t* patt;
+
+    this(immutable(Paint) paint)
+    {
+        import gfx.core.util : unsafeCast;
+
+        this.paint = paint;
+        image = null;
+
+        switch (paint.type)
+        {
+        case PaintType.color:
+            const cp = unsafeCast!(immutable ColorPaint)(paint);
+            const c = cp.color.asFloats;
+            patt = cairo_pattern_create_rgba(c[0], c[1], c[2], c[3]);
+            break;
+        case PaintType.linearGradient:
+            const lgp = unsafeCast!(immutable LinearGradientPaint)(paint);
+            // line is between (-1, 0) (1, 0) in pattern space
+            // this will be adjusted using matrix for each shape bounds
+            patt = cairo_pattern_create_linear(-1.0, 0.0, 1.0, 0.0);
+            patternAddStops(patt, lgp.stops);
+            break;
+        case PaintType.radialGradient:
+            const rgp = unsafeCast!(immutable RadialGradientPaint)(paint);
+            const f = rgp.focal;
+            const c = rgp.center;
+            const r = rgp.radius;
+            patt = cairo_pattern_create_radial(f[0], f[1], 0.0, c[0], c[1], r);
+            patternAddStops(patt, rgp.stops);
+            break;
+        case PaintType.image:
+            const ip =  unsafeCast!(immutable ImagePaint)(paint);
+            // Casting immutable away. Not nice, but necessary in this case to avoid
+            // a copy of the image. The pattern must be used readonly.
+            image = makeVgCompatible(ip.image);
+            auto surf = makeCairoSurface(cast(Image)image.get);
+            patt = cairo_pattern_create_for_surface(surf);
+            cairo_surface_destroy(surf);
+            break;
+        default:
+            assert(false, "unimplemented");
+        }
+    }
+
+    this (immutable(Image) img)
+    {
+        image = makeVgCompatible(img);
+        auto surf = makeCairoSurface(cast(Image)image.get);
+        patt = cairo_pattern_create_for_surface(surf);
+        cairo_surface_destroy(surf);
+    }
+
+    this (in Color color)
+    {
+        const c = color.asFloats;
+        patt = cairo_pattern_create_rgba(c[0], c[1], c[2], c[3]);
+    }
+
+    this(this)
+    {
+        if (patt) cairo_pattern_reference(patt);
+    }
+
+    ~this()
+    {
+        if (patt) cairo_pattern_destroy(patt);
+    }
+
+    void adaptToPath(immutable(Path) path)
+    {
+        import gfx.core.util : unsafeCast;
+        import std.math : PI;
+
+        if (!patt || !path || !paint) return;
+        if (paint.type != PaintType.linearGradient) return;
+
+        immutable lgp = unsafeCast!(immutable(LinearGradientPaint))(paint.get);
+        const bounds = path.computeBounds();
+        const angle = PI/2.0 - lgp.computeAngle(bounds.size); // from horizontal
+
+        const m = linearGradientMatrix(angle, bounds);
+        const cm = CairoMatrix(m);
+        cairo_pattern_set_matrix(patt, &cm.mat);
     }
 }
 
@@ -189,6 +383,120 @@ in (image && image.vgCompatible)
         image.data.ptr, cairoFormat(image.format),
         image.width, image.height, cast(int)image.stride
     );
+}
+
+void patternAddStops(cairo_pattern_t* patt, in GradientStop[] stops)
+{
+    foreach (stop; stops)
+    {
+        const col = stop.color.asFloats;
+        cairo_pattern_add_color_stop_rgba(patt, stop.position,
+                col[0], col[1], col[2], col[3]);
+    }
+}
+
+/// Compute transform from a line that goes from (-1, 0) to (1, 0) to a line that
+/// follows the angle and bounds
+FMat2x3 linearGradientMatrix(in float angle, in ref FRect bounds)
+{
+    import gfx.math : dot, fvec, squaredMag;
+    import gfx.math.transform;
+    import std.algorithm : max;
+    import std.math : abs, cos, PI, sin, sqrt, tan;
+
+    // 3 cases: horizontal, vertical and general
+    // all 3 are solved with bounds centered around 0, 0, then translated to bounds.center
+
+    const w2 = bounds.width / 2f;
+    const h2 = bounds.height / 2f;
+
+    const c = cos(angle);
+    const absC = abs(c);
+
+    // horizontal / vertical threshold
+    enum thres = 0.001f;
+
+    if (absC > (1f - thres)) {
+        // horizontal
+        return affineScale(c > 0 ? w2 : -w2, 1f)
+            .translate(bounds.center);
+    }
+
+    else if (absC < thres) {
+        // vertical
+        return affineRotation!float(sin(angle) > 0 ? PI/2f : -PI/2f)
+            .scale(1f, h2)
+            .translate(bounds.center);
+    }
+
+    // General case
+
+    // unit ascent of the line
+    const tanA = tan(angle);
+    // vector along the line
+    const l = fvec(1, tanA);
+    const ll = dot(l, l);
+
+    // projection of one point on the line
+    FVec2 proj (FVec2 v) {
+        return (dot(v, l) / ll) * l;
+    }
+
+    // Testing top-right and bottom-right.
+    // The right line end has greatest magnitude. This will give the scale factor.
+    const tr = proj(fvec(w2, h2));
+    const br = proj(fvec(w2, -h2));
+
+    const mag = sqrt(max(squaredMag(tr), squaredMag(br)));
+
+    return affineScale(mag, 1f)
+        .rotate(angle)
+        .translate(bounds.center);
+}
+
+unittest
+{
+    import gfx.math : fvec, transform;
+    import gfx.math.approx;
+    import std.math : PI;
+    import std.stdio;
+
+    const v1 = fvec(-1, 0);
+    const v2 = fvec(1, 0);
+    const bounds = FRect(40, 60, 80, 60);
+
+    const east = linearGradientMatrix(0f, bounds);
+    assert(approxUlpAndAbs(v1.transform(east), fvec(40, 90)));
+    assert(approxUlpAndAbs(v2.transform(east), fvec(120, 90)));
+
+    const south = linearGradientMatrix(PI/2, bounds);
+    assert(approxUlpAndAbs(v1.transform(south), fvec(80, 60)));
+    assert(approxUlpAndAbs(v2.transform(south), fvec(80, 120)));
+
+    const west = linearGradientMatrix(PI, bounds);
+    assert(approxUlpAndAbs(v1.transform(west), fvec(120, 90)));
+    assert(approxUlpAndAbs(v2.transform(west), fvec(40, 90)));
+
+    const north = linearGradientMatrix(-PI/2, bounds);
+    assert(approxUlpAndAbs(v1.transform(north), fvec(80, 120)));
+    assert(approxUlpAndAbs(v2.transform(north), fvec(80, 60)));
+
+    const southEast = linearGradientMatrix(PI/4, bounds);
+    assert(approxUlpAndAbs(v1.transform(southEast), fvec(45, 55)));
+    assert(approxUlpAndAbs(v2.transform(southEast), fvec(115, 125)));
+
+    const southWest = linearGradientMatrix(3*PI/4, bounds);
+    assert(approxUlpAndAbs(v1.transform(southWest), fvec(115, 55)));
+    assert(approxUlpAndAbs(v2.transform(southWest), fvec(45, 125)));
+
+    const northWest = linearGradientMatrix(-3*PI/4, bounds);
+    assert(approxUlpAndAbs(v1.transform(northWest), fvec(115, 125)));
+    assert(approxUlpAndAbs(v2.transform(northWest), fvec(45, 55)));
+
+    const northEast = linearGradientMatrix(-PI/4, bounds);
+    assert(approxUlpAndAbs(v1.transform(northEast), fvec(45, 125)));
+    assert(approxUlpAndAbs(v2.transform(northEast), fvec(115, 55)));
+
 }
 
 pure @safe
