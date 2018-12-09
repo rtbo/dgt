@@ -2,152 +2,310 @@
 module dgt.vg.cmdbuf;
 
 import dgt.core.color : Color;
+import dgt.core.geometry : FMargins, FRect, FPoint;
 import dgt.core.image : Image, ImageFormat, RImage;
+import dgt.core.paint : Paint, RPaint;
 import dgt.vg.path : Path, RPath;
 import dgt.vg.penbrush;
 import gfx.math : FMat2x3;
 
-struct VgCmd
+struct CmdBuf
 {
-    enum Type {
-        save,
-        restore,
+    private Cmd[] cmds;
+    private FRect _bounds;
+    private bool _boundsCached;
 
-        pen,
-        brush,
-        transform,
-
-        clear,
-        clip,
-        mask,
-        drawImg,
-        stroke,
-        fill,
+    this (Cmd[] cmds) {
+        this.cmds = cmds;
+        _boundsCached = false;
     }
 
-    union Data {
-        RPen pen;
-        RBrush brush;
-        FMat2x3 transform;
-        Color color;
-        RImage image;
-        RPath path;
+    this (Cmd[] cmds, in FRect bounds) {
+        this.cmds = cmds;
+        _bounds = bounds;
+        _boundsCached = true;
     }
 
-    Type type;
-    Data data;
-}
+    immutable this (immutable(Cmd)[] cmds) {
+        this.cmds = cmds;
+        _boundsCached = false;
+    }
 
-immutable struct VgCmdBuf
-{
-    immutable(VgCmd[]) cmds;
+    immutable this (immutable(Cmd)[] cmds, in FRect bounds) {
+        this.cmds = cmds;
+        _bounds = bounds;
+        _boundsCached = true;
+    }
 
-    static VgCmdBufBuilder build()
+    @property bool boundsCached() const
     {
-        return VgCmdBufBuilder.init;
+        return _boundsCached;
+    }
+
+    @property FRect bounds() const
+    {
+        if (_boundsCached) return _bounds;
+        else return computeBufBounds(cmds);
+    }
+
+    @property FRect bounds()
+    {
+        if (!_boundsCached) {
+            _bounds = computeBufBounds(cmds);
+            _boundsCached = true;
+        }
+        return _bounds;
+    }
+
+    static CmdBufBuilder build()
+    {
+        return CmdBufBuilder.init;
     }
 }
 
-struct VgCmdBufBuilder
+struct CmdBufBuilder
 {
-    private VgCmd[] _cmds;
+    private Cmd[] _cmds;
+    private FRect _bounds;
+    private bool _boundsSet;
 
     @disable this(this);
 
-    VgCmdBufBuilder dup()
+    CmdBufBuilder dup()
     {
-        return VgCmdBufBuilder(_cmds.dup);
+        return CmdBufBuilder(_cmds.dup);
     }
 
-    ref VgCmdBufBuilder save()
+    ref CmdBufBuilder save()
     {
-        _cmds ~= VgCmd(VgCmd.Type.save);
+        _cmds ~= Cmd(CmdType.save);
         return this;
     }
 
-    ref VgCmdBufBuilder restore()
+    ref CmdBufBuilder restore()
     {
-        _cmds ~= VgCmd(VgCmd.Type.restore);
+        _cmds ~= Cmd(CmdType.restore);
         return this;
     }
 
-    ref VgCmdBufBuilder pen(immutable Pen pen)
+    ref CmdBufBuilder transform(in FMat2x3 transform)
     {
-        VgCmd.Data data = void;
-        data.pen = pen;
-        _cmds ~= VgCmd(VgCmd.Type.pen, data);
-        return this;
-    }
-
-    ref VgCmdBufBuilder brush(immutable Brush brush)
-    {
-        VgCmd.Data data = void;
-        data.brush = brush;
-        _cmds ~= VgCmd(VgCmd.Type.brush, data);
-        return this;
-    }
-
-    ref VgCmdBufBuilder transform(const ref FMat2x3 transform)
-    {
-        VgCmd.Data data = void;
+        CmdData data = void;
         data.transform = transform;
-        _cmds ~= VgCmd(VgCmd.Type.transform, data);
+        _cmds ~= Cmd(CmdType.transform, data);
         return this;
     }
 
-    ref VgCmdBufBuilder clear(const ref Color color)
+    ref CmdBufBuilder mulTransform(in FMat2x3 transform)
     {
-        VgCmd.Data data = void;
-        data.color = color;
-        _cmds ~= VgCmd(VgCmd.Type.clear, data);
+        CmdData data = void;
+        data.transform = transform;
+        _cmds ~= Cmd(CmdType.mulTransform, data);
         return this;
     }
 
-    ref VgCmdBufBuilder clip(immutable(Path) path)
+    ref CmdBufBuilder clip(immutable(Path) path)
     {
-        VgCmd.Data data = void;
-        data.path = path;
-        _cmds ~= VgCmd(VgCmd.Type.clip, data);
+        CmdData data = void;
+        data.clipPath = path;
+        _cmds ~= Cmd(CmdType.clip, data);
         return this;
     }
 
-    ref VgCmdBufBuilder mask(immutable(Image) image)
+    ref CmdBufBuilder mask(immutable(Image) image, immutable(Paint) paint)
     in (image && (image.format == ImageFormat.a1 || image.format == ImageFormat.a8))
     {
-        VgCmd.Data data = void;
-        data.image = image;
-        _cmds ~= VgCmd(VgCmd.Type.mask, data);
+        CmdData data = void;
+        data.mask.mask = image;
+        data.mask.paint = paint;
+        _cmds ~= Cmd(CmdType.mask, data);
         return this;
     }
 
-    ref VgCmdBufBuilder drawImg(immutable(Image) image)
+    ref CmdBufBuilder drawImg(immutable(Image) image)
     {
-        VgCmd.Data data = void;
-        data.image = image;
-        _cmds ~= VgCmd(VgCmd.Type.drawImg, data);
+        CmdData data = void;
+        data.drawImg = image;
+        _cmds ~= Cmd(CmdType.drawImage, data);
         return this;
     }
 
-    ref VgCmdBufBuilder stroke(immutable(Path) path)
+    ref CmdBufBuilder stroke(immutable(Path) path, immutable(Pen) pen=null)
     {
-        VgCmd.Data data = void;
-        data.path = path;
-        _cmds ~= VgCmd(VgCmd.Type.stroke, data);
+        CmdData data = void;
+        data.stroke.path = path;
+        data.stroke.pen = pen ? pen : defaultPen;
+        _cmds ~= Cmd(CmdType.stroke, data);
         return this;
     }
 
-    ref VgCmdBufBuilder fill(immutable(Path) path)
+    ref CmdBufBuilder fill(immutable(Path) path, immutable(Brush) brush=null)
     {
-        VgCmd.Data data = void;
-        data.path = path;
-        _cmds ~= VgCmd(VgCmd.Type.fill, data);
+        CmdData data = void;
+        data.fill.path = path;
+        data.fill.brush = brush ? brush : defaultBrush;
+        _cmds ~= Cmd(CmdType.fill, data);
         return this;
     }
 
-    VgCmdBuf done()
+    ref CmdBufBuilder bounds(in FRect bounds)
+    {
+        _bounds = bounds;
+        _boundsSet = true;
+        return this;
+    }
+
+    immutable(CmdBuf) done()
     {
         import std.exception : assumeUnique;
 
-        return VgCmdBuf(assumeUnique(_cmds));
+        if (_boundsSet) {
+            return immutable CmdBuf( assumeUnique(_cmds) );
+        }
+        else {
+            return immutable CmdBuf( assumeUnique(_cmds), _bounds );
+        }
     }
+
+    CmdBuf doneMut()
+    {
+        if (_boundsSet) {
+            return CmdBuf( _cmds );
+        }
+        else {
+            return CmdBuf( _cmds, _bounds );
+        }
+    }
+}
+
+private struct Cmd
+{
+    CmdType type;
+    CmdData data;
+}
+
+private enum CmdType
+{
+    save,
+    restore,
+    transform,
+    mulTransform,
+    clip,
+    mask,
+    drawImage,
+    stroke,
+    fill,
+}
+
+private union CmdData
+{
+    FMat2x3 transform;
+    Color color;
+    RPath clipPath;
+    RImage drawImg;
+    MaskData mask;
+    StrokeData stroke;
+    FillData fill;
+}
+
+private struct MaskData
+{
+    RImage mask;
+    RPaint paint;
+}
+
+private struct StrokeData
+{
+    RPath path;
+    RPen pen;
+}
+
+private struct FillData
+{
+    RPath path;
+    RBrush brush;
+}
+
+private struct BoundsCalc
+{
+    const(Cmd)[] cmds;
+    size_t cmdCursor;
+    FRect bounds = void;
+    bool set;
+
+    void add(FPoint point)
+    {
+        import dgt.core.geometry : extend;
+
+        if (set) {
+            bounds.extend(point);
+        }
+        else {
+            bounds = FRect(point, 0f, 0f);
+            set = true;
+        }
+    }
+
+    void add(FRect rect)
+    {
+        import dgt.core.geometry : extend;
+
+        if (set) {
+            bounds.extend(rect);
+        }
+        else {
+            bounds = rect;
+            set = true;
+        }
+    }
+
+    void frame(FMat2x3 mat)
+    {
+        import dgt.core.geometry : FSize;
+        import gfx.math : affineMult;
+
+        while (cmdCursor < cmds.length) {
+            const cmd = cmds[cmdCursor++];
+            final switch (cmd.type)
+            {
+            case CmdType.save:
+                frame(mat);
+                break;
+            case CmdType.restore:
+                return;
+            case CmdType.transform:
+                frame(cmd.data.transform);
+                break;
+            case CmdType.mulTransform:
+                frame(affineMult(mat, cmd.data.transform));
+                break;
+            case CmdType.clip:
+                break;
+            case CmdType.mask:
+                add( FRect(0f, 0f, cast(FSize)cmd.data.mask.mask.size) );
+                break;
+            case CmdType.drawImage:
+                add( FRect(0f, 0f, cast(FSize)cmd.data.drawImg.size) );
+                break;
+            case CmdType.stroke:
+                const margins = FMargins(cmd.data.stroke.pen.width / 2f);
+                add( cmd.data.stroke.path.bounds + margins );
+                break;
+            case CmdType.fill:
+                add( cmd.data.fill.path.bounds );
+                break;
+            }
+        }
+    }
+}
+
+private FRect computeBufBounds(const(Cmd)[] cmds)
+{
+    import dgt.core.geometry : extend;
+
+    auto calc = BoundsCalc(cmds, 0);
+
+    calc.frame(FMat2x3.identity);
+
+    return calc.bounds;
 }
