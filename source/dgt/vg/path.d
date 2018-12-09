@@ -2,7 +2,7 @@
 module dgt.vg.path;
 
 import dgt.core.geometry : FPoint, FRect;
-import gfx.math : FVec2;
+import gfx.math : FMat2x3, FVec2;
 
 import std.exception : enforce;
 import std.range.primitives;
@@ -358,60 +358,23 @@ final class Path
         return _bounds;
     }
 
-    private FRect computeBounds() const
+    FRect computeBounds(in FMat2x3 mat) const
     {
         import dgt.core.geometry : extend;
+        import gfx.math : transform;
 
-        bool firstSet;
-        FRect res;
-        void addPoint(in FVec2 point) {
-            if (firstSet) {
-                res.extend(point);
-            }
-            else {
-                res.x = point.x;
-                res.y = point.y;
-                res.width = 0;
-                res.height = 0;
-                firstSet = true;
-            }
+        if (mat == FMat2x3.identity) return bounds;
+
+        FVec2 transformVec (in FVec2 v) {
+            return transform(v, mat);
         }
 
-        FVec2 lastP;
-        const(FVec2)[] data = _data;
+        return computeBoundsImpl!transformVec(this);
+    }
 
-        foreach(seg; _segments) {
-            final switch (seg) {
-            case PathSeg.moveTo:
-            case PathSeg.lineTo:
-                lastP = _data[0];
-                addPoint(lastP);
-                data = data[1 .. $];
-                break;
-            case PathSeg.quadTo:
-                const p0 = lastP;
-                const p1 = data[0];
-                const p2 = data[1];
-                addPoint(p2);
-                res.extendWithQuad(p0, p1, p2);
-                lastP = p2;
-                data = data[2 .. $];
-                break;
-            case PathSeg.cubicTo:
-                const p0 = lastP;
-                const p1 = data[0];
-                const p2 = data[1];
-                const p3 = data[2];
-                addPoint(p3);
-                res.extendWithCubic(p0, p1, p2, p3);
-                lastP = p3;
-                data = data[3 .. $];
-                break;
-            case PathSeg.close:
-                break;
-            }
-        }
-        return res;
+    private FRect computeBounds() const
+    {
+        return computeBoundsImpl!vecIdent(this);
     }
 
     private PathSeg[] _segments;
@@ -516,6 +479,63 @@ struct SegmentDataRange
 
 static assert(isForwardRange!SegmentDataRange);
 
+private FVec2 vecIdent(in FVec2 vec)
+{
+    return vec;
+}
+
+private FRect computeBoundsImpl(alias vecMap)(const(Path) path)
+{
+    import dgt.core.geometry : extend;
+
+    bool firstSet;
+    FRect res;
+    void addPoint(in FVec2 vec) {
+        if (firstSet) {
+            res.extend(vec);
+        }
+        else {
+            res = FRect(vec, 0f, 0f);
+            firstSet = true;
+        }
+    }
+
+    FVec2 lastP;
+    const(FVec2)[] data = path._data;
+
+    foreach(seg; path._segments) {
+        final switch (seg) {
+        case PathSeg.moveTo:
+        case PathSeg.lineTo:
+            lastP = vecMap(data[0]);
+            addPoint(lastP);
+            data = data[1 .. $];
+            break;
+        case PathSeg.quadTo:
+            const p0 = lastP;
+            const p1 = vecMap(data[0]);
+            const p2 = vecMap(data[1]);
+            addPoint(p2);
+            res.extendWithQuad(p0, p1, p2);
+            lastP = p2;
+            data = data[2 .. $];
+            break;
+        case PathSeg.cubicTo:
+            const p0 = lastP;
+            const p1 = vecMap(data[0]);
+            const p2 = vecMap(data[1]);
+            const p3 = vecMap(data[2]);
+            addPoint(p3);
+            res.extendWithCubic(p0, p1, p2, p3);
+            lastP = p3;
+            data = data[3 .. $];
+            break;
+        case PathSeg.close:
+            break;
+        }
+    }
+    return res;
+}
 
 private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p2)
 {
