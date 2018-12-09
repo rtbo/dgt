@@ -7,7 +7,7 @@ import dgt.core.image : Image, ImageFormat, RImage;
 import dgt.core.paint : Paint, RPaint;
 import dgt.vg.path : Path, RPath;
 import dgt.vg.penbrush;
-import gfx.math : FMat2x3;
+import gfx.math : FMat2x3, FVec2;
 
 struct CmdBuf
 {
@@ -178,6 +178,70 @@ struct CmdBufBuilder
     }
 }
 
+
+void execute(const(CmdBuf) cmdBuf, Image dest, in FVec2 orig)
+{
+    import dgt.vg : makeVgContext;
+    import gfx.math : affineMult, affineTranslation;
+    import std.exception : enforce;
+
+    const bounds = cmdBuf.bounds;
+    const tl = orig + bounds.topLeft;
+    const br = orig + bounds.bottomRight;
+    const destSize = dest.size;
+
+    enforce(tl.x >= 0 &&  tl.y >= 0, "VG buf bounds exceed destination");
+    enforce(br.x < destSize.width &&  br.y < destSize.height, "VG buf bounds exceed destination");
+
+    auto ctx = makeVgContext(dest);
+    scope(exit) ctx.dispose();
+
+    const origMat = affineTranslation(orig);
+    ctx.transform = origMat;
+    int stackNb = 0;
+
+    foreach (ref cmd; cmdBuf.cmds)
+    {
+        final switch (cmd.type) {
+        case CmdType.save:
+            ctx.save();
+            stackNb++;
+            break;
+        case CmdType.restore:
+            ctx.restore();
+            stackNb--;
+            break;
+        case CmdType.transform:
+            if (stackNb == 0) {
+                ctx.transform = affineMult(origMat, cmd.data.transform);
+            }
+            else {
+                ctx.transform = cmd.data.transform;
+            }
+            break;
+        case CmdType.mulTransform:
+            ctx.mulTransform(cmd.data.transform);
+            break;
+        case CmdType.clip:
+            ctx.clip(cmd.data.clipPath);
+            break;
+        case CmdType.mask:
+            ctx.mask(cmd.data.mask.mask, cmd.data.mask.paint);
+            break;
+        case CmdType.drawImage:
+            ctx.drawImage(cmd.data.drawImg);
+            break;
+        case CmdType.stroke:
+            ctx.stroke(cmd.data.stroke.path, cmd.data.stroke.pen);
+            break;
+        case CmdType.fill:
+            ctx.fill(cmd.data.fill.path, cmd.data.fill.brush);
+            break;
+        }
+    }
+}
+
+
 private struct Cmd
 {
     CmdType type;
@@ -261,7 +325,7 @@ private struct BoundsCalc
 
     void frame(FMat2x3 mat)
     {
-        import dgt.core.geometry : FSize;
+        import dgt.core.geometry : FSize, transformBounds;
         import gfx.math : affineMult;
 
         while (cmdCursor < cmds.length) {
@@ -274,25 +338,25 @@ private struct BoundsCalc
             case CmdType.restore:
                 return;
             case CmdType.transform:
-                frame(cmd.data.transform);
+                mat = cmd.data.transform;
                 break;
             case CmdType.mulTransform:
-                frame(affineMult(mat, cmd.data.transform));
+                mat = affineMult(mat, cmd.data.transform);
                 break;
             case CmdType.clip:
                 break;
             case CmdType.mask:
-                add( FRect(0f, 0f, cast(FSize)cmd.data.mask.mask.size) );
+                add( transformBounds(FRect(0f, 0f, cast(FSize)cmd.data.mask.mask.size), mat) );
                 break;
             case CmdType.drawImage:
-                add( FRect(0f, 0f, cast(FSize)cmd.data.drawImg.size) );
+                add( transformBounds(FRect(0f, 0f, cast(FSize)cmd.data.drawImg.size), mat) );
                 break;
             case CmdType.stroke:
                 const margins = FMargins(cmd.data.stroke.pen.width / 2f);
-                add( cmd.data.stroke.path.bounds + margins );
+                add( cmd.data.stroke.path.computeBounds(mat) + margins );
                 break;
             case CmdType.fill:
-                add( cmd.data.fill.path.bounds );
+                add( cmd.data.fill.path.computeBounds(mat) );
                 break;
             }
         }
