@@ -215,6 +215,9 @@ Region unite(in Region lhs, in Region rhs)
         immutable rects = assumeUnique (
             operator(lhs.rects, rhs.rects, true, true, &unionOp)
         );
+
+        import dgt.core.geometry : extents;
+
         return new Region(extents(lhs.extents, rhs.extents), rects);
     }
 }
@@ -537,6 +540,8 @@ IRect[] downsize(IRect[] rects)
 
 IRect computeExtents(in IRect[] rects)
 {
+    import dgt.core.geometry : extend;
+
     if (rects.length == 0) {
         return IRect.init;
     }
