@@ -27,10 +27,10 @@ interface VgContext : Disposable
     /// Get/Set the transform of the context.
     @property FMat2x3 transform() const;
     /// ditto
-    @property void transform(const ref FMat2x3 transform);
+    @property void transform(in FMat2x3 transform);
 
     /// Multiply current transform by the given one
-    void mulTransform(const ref FMat2x3 transform);
+    void mulTransform(in FMat2x3 transform);
 
     /// Intersects the current clip path with path
     void clip(immutable(Path) path);

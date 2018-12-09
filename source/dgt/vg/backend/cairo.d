@@ -98,13 +98,13 @@ final class CairoContext : VgContext
         return _current.transform;
     }
 
-    override void transform(const ref FMat2x3 transform)
+    override void transform(in FMat2x3 transform)
     {
         _current.transform = transform;
         setCairoTransform(transform);
     }
 
-    override void mulTransform(const ref FMat2x3 transform)
+    override void mulTransform(in FMat2x3 transform)
     {
         import gfx.math : affineMult;
 
