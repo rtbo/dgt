@@ -17,7 +17,8 @@ interface VgBackend
 {
     string name();
 
-    VgContext makeContext(Image image);
+    VgContext makeContext(Image image)
+    in (image.vgCompatible, "Invalid image for vector graphics");
 }
 
 
