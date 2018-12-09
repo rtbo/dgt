@@ -44,6 +44,8 @@ struct PathBuilder
     private FVec2 _lastControl = FVec2.nan;
     private FVec2 _lastPoint = FVec2.nan;
     private size_t _lastMoveTo = size_t.max; // data offset of last moveTo
+    private FRect _bounds;
+    private bool _boundsSet = false;
 
     this(in FVec2 moveToPoint)
     {
@@ -54,13 +56,15 @@ struct PathBuilder
         _lastMoveTo = 0;
     }
 
-    private this (PathSeg[] segs, FVec2[] data, FVec2 lastC, FVec2 lastP, size_t lastMT)
+    private this (PathSeg[] segs, FVec2[] data, FVec2 lastC, FVec2 lastP, size_t lastMT, FRect bounds, bool boundsSet)
     {
         _segments = segs;
         _data = data;
         _lastControl = lastC;
         _lastPoint = lastP;
         _lastMoveTo = lastMT;
+        _bounds = bounds;
+        _boundsSet = boundsSet;
     }
 
     @disable this(this);
@@ -68,7 +72,7 @@ struct PathBuilder
     PathBuilder dup() const
     {
         return PathBuilder(
-            _segments.dup, _data.dup, _lastControl, _lastPoint, _lastMoveTo
+            _segments.dup, _data.dup, _lastControl, _lastPoint, _lastMoveTo, _bounds, _boundsSet
         );
     }
 
@@ -217,6 +221,13 @@ struct PathBuilder
         return this;
     }
 
+    ref PathBuilder bounds(in FRect bounds)
+    {
+        _bounds = bounds;
+        _boundsSet = true;
+        return this;
+    }
+
     immutable(Path) done()
     {
         import std.exception : assumeUnique;
@@ -224,7 +235,23 @@ struct PathBuilder
         // FIXME: enforce path consistence
         immutable segs = assumeUnique(_segments);
         immutable data = assumeUnique(_data);
-        return new immutable(Path)(segs, data);
+        if (_boundsSet) {
+            return new immutable Path(segs, data, _bounds);
+        }
+        else {
+            return new immutable Path(segs, data);
+        }
+    }
+
+    Path doneMut()
+    {
+        // FIXME: enforce path consistence
+        if (_boundsSet) {
+            return new Path(_segments, _data, _bounds);
+        }
+        else {
+            return new Path(_segments, _data);
+        }
     }
 
     private bool hasLastPoint() const
@@ -244,12 +271,36 @@ struct PathBuilder
 
 alias RPath = Rebindable!(immutable(Path));
 
-immutable final class Path
+/// A Path represent a vector graphics path, that is an assembly
+/// of line primitives related to each other
+final class Path
 {
-    this (immutable(PathSeg)[] segments, immutable(FVec2)[] data)
+    immutable this (immutable(PathSeg)[] segments, immutable(FVec2)[] data)
     {
         _segments = segments;
         _data = data;
+    }
+
+    immutable this (immutable(PathSeg)[] segments, immutable(FVec2)[] data, in FRect bounds)
+    {
+        _segments = segments;
+        _data = data;
+        _bounds = bounds;
+        _boundsCached = true;
+    }
+
+    this (PathSeg[] segments, FVec2[] data)
+    {
+        _segments = segments;
+        _data = data;
+    }
+
+    this (PathSeg[] segments, FVec2[] data, in FRect bounds)
+    {
+        _segments = segments;
+        _data = data;
+        _bounds = bounds;
+        _boundsCached = true;
     }
 
     static PathBuilder build()
@@ -262,9 +313,20 @@ immutable final class Path
         return PathBuilder(moveToPoint);
     }
 
+    const(PathSeg)[] segments() const
+    {
+        return _segments;
+    }
+
     immutable(PathSeg)[] segments() immutable
     {
         return _segments;
+    }
+
+
+    const(FVec2)[] data() const
+    {
+        return _data;
     }
 
     immutable(FVec2)[] data() immutable
@@ -277,8 +339,26 @@ immutable final class Path
         return SegmentDataRange(_segments, _data);
     }
 
+    @property FRect bounds() const
+    {
+        if (_boundsCached) {
+            return _bounds;
+        }
+        else {
+            return computeBounds();
+        }
+    }
 
-    FRect computeBounds() immutable
+    @property FRect bounds()
+    {
+        if (!_boundsCached) {
+            _bounds = computeBounds();
+            _boundsCached = true;
+        }
+        return _bounds;
+    }
+
+    private FRect computeBounds() const
     {
         import dgt.core.geometry : extend;
 
@@ -298,7 +378,7 @@ immutable final class Path
         }
 
         FVec2 lastP;
-        immutable(FVec2)[] data = _data;
+        const(FVec2)[] data = _data;
 
         foreach(seg; _segments) {
             final switch (seg) {
@@ -334,8 +414,10 @@ immutable final class Path
         return res;
     }
 
-    private immutable(PathSeg)[] _segments;
-    private immutable(FVec2)[] _data;
+    private PathSeg[] _segments;
+    private FVec2[] _data;
+    private FRect _bounds;
+    private bool _boundsCached;
 }
 
 
@@ -345,7 +427,7 @@ struct SegmentData
     /// The segment type.
     PathSeg seg;
     /// The data of this segment.
-    immutable(FVec2)[] data;
+    const(FVec2)[] data;
     /// The last control point of the previous segment.
     FVec2 previousControl;
     /// The end point of the previous segment.
@@ -356,18 +438,18 @@ struct SegmentData
 /// Allow lazy iteration over the segments of a path.
 struct SegmentDataRange
 {
-    private immutable(PathSeg)[] segments;
-    private immutable(FVec2)[] data;
+    private const(PathSeg)[] segments;
+    private const(FVec2)[] data;
     private FVec2 previousControl;
     private FVec2 previousPoint;
 
-    this(immutable(PathSeg)[] segments, immutable(FVec2)[] data)
+    this(const(PathSeg)[] segments, const(FVec2)[] data)
     {
         this.segments = segments;
         this.data = data;
     }
 
-    private this(immutable(PathSeg)[] segments, immutable(FVec2)[] data,
+    private this(const(PathSeg)[] segments, const(FVec2)[] data,
             in FVec2 previousControl, in FVec2 previousPoint)
     {
         this.segments = segments;
@@ -541,7 +623,7 @@ unittest
         .cubicTo(fvec(5, 25), fvec(25, 25), fvec(25, 5))
         .done();
 
-    const b = p.computeBounds();
+    const b = p.bounds();
 
     assert(approxUlp(b.left, 5f));
     assert(approxUlp(b.top, 5f));

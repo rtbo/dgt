@@ -367,7 +367,7 @@ struct CairoSource
         if (paint.type != PaintType.linearGradient) return;
 
         immutable lgp = unsafeCast!(immutable(LinearGradientPaint))(paint.get);
-        const bounds = path.computeBounds();
+        const bounds = path.bounds();
         const angle = PI/2.0 - lgp.computeAngle(bounds.size); // from horizontal
 
         const m = linearGradientMatrix(angle, bounds);
