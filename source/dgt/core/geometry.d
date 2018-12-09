@@ -706,22 +706,22 @@ if (isRect!R && isMat!M &&  (is(typeof(transform(bounds.topLeft, mat))) ||
     import std.algorithm : max, min;
 
     static if (is(typeof(transform(bounds.topLeft, mat)))) {
-        immutable tl = transform(bounds.topLeft, mat).xy;
-        immutable tr = transform(bounds.topRight, mat).xy;
-        immutable bl = transform(bounds.bottomLeft, mat).xy;
-        immutable br = transform(bounds.bottomRight, mat).xy;
+        const tl = transform(bounds.topLeft, mat).xy;
+        const tr = transform(bounds.topRight, mat).xy;
+        const bl = transform(bounds.bottomLeft, mat).xy;
+        const br = transform(bounds.bottomRight, mat).xy;
     }
     else {
-        immutable tl = transform(fvec(bounds.topLeft, 0), mat).xy;
-        immutable tr = transform(fvec(bounds.topRight, 0), mat).xy;
-        immutable bl = transform(fvec(bounds.bottomLeft, 0), mat).xy;
-        immutable br = transform(fvec(bounds.bottomRight, 0), mat).xy;
+        const tl = transform(fvec(bounds.topLeft, 0), mat).xy;
+        const tr = transform(fvec(bounds.topRight, 0), mat).xy;
+        const bl = transform(fvec(bounds.bottomLeft, 0), mat).xy;
+        const br = transform(fvec(bounds.bottomRight, 0), mat).xy;
     }
 
-    immutable minX = min(tl.x, tr.x, bl.x, br.x);
-    immutable maxX = max(tl.x, tr.x, bl.x, br.x);
-    immutable minY = min(tl.y, tr.y, bl.y, br.y);
-    immutable maxY = max(tl.y, tr.y, bl.y, br.y);
+    const minX = min(tl.x, tr.x, bl.x, br.x);
+    const maxX = max(tl.x, tr.x, bl.x, br.x);
+    const minY = min(tl.y, tr.y, bl.y, br.y);
+    const maxY = max(tl.y, tr.y, bl.y, br.y);
 
     return R(minX, minY, maxX-minX, maxY-minY);
 }
