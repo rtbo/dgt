@@ -55,7 +55,7 @@ struct PenBuilder
 
     ref PenBuilder paint(immutable(Paint) paint)
     {
-        _paint = _paint;
+        _paint = paint;
         return this;
     }
 
@@ -67,7 +67,7 @@ struct PenBuilder
 
     immutable(Pen) done()
     {
-        return new immutable Pen (_paint, _width, _cap, _join, _dash);
+        return new immutable Pen (_paint ? _paint : ColorPaint.black, _width, _cap, _join, _dash);
     }
 
     private float _width = 1f;
@@ -170,7 +170,7 @@ final immutable class Brush
         _fillRule = FillRule.nonZero;
     }
 
-    this(immutable(Paint) paint, in FillRule fillFule)
+    this(immutable(Paint) paint, in FillRule fillFule=FillRule.nonZero)
     {
         _paint = paint;
         _fillRule = fillRule;
