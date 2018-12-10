@@ -2,7 +2,7 @@
 module dgt.vg.cmdbuf;
 
 import dgt.core.color : Color;
-import dgt.core.geometry : FMargins, FRect, FPoint;
+import dgt.core.geometry : FMargins, FRect, FPoint, IRect;
 import dgt.core.image : Image, ImageFormat, RImage;
 import dgt.core.paint : Paint, RPaint;
 import dgt.vg.path : Path, RPath;
@@ -160,38 +160,80 @@ struct CmdBufBuilder
         import std.exception : assumeUnique;
 
         if (_boundsSet) {
-            return immutable CmdBuf( assumeUnique(_cmds) );
+            return immutable CmdBuf( assumeUnique(_cmds), _bounds );
         }
         else {
-            return immutable CmdBuf( assumeUnique(_cmds), _bounds );
+            return immutable CmdBuf( assumeUnique(_cmds) );
         }
     }
 
     CmdBuf doneMut()
     {
         if (_boundsSet) {
-            return CmdBuf( _cmds );
+            return CmdBuf( _cmds, _bounds );
         }
         else {
-            return CmdBuf( _cmds, _bounds );
+            return CmdBuf( _cmds );
         }
     }
 }
 
+struct AnchoredImage
+{
+    FVec2 orig;
+    immutable(Image) image;
+}
+
+private IRect ceiledRect(in FRect rect)
+{
+    import std.math : ceil, floor;
+
+    const l = cast(int)floor(rect.x);
+    const t = cast(int)floor(rect.y);
+    const r = cast(int)ceil(rect.right);
+    const b = cast(int)ceil(rect.bottom);
+
+    return IRect(l, t, r-l, b-t);
+}
+
+AnchoredImage execute(const(CmdBuf) cmdBuf)
+{
+    import dgt.core.image : alignedStrideForWidth, assumeUnique, ImageFormat;
+
+    const bounds = cmdBuf.bounds;
+    const imgBounds = ceiledRect(bounds);
+    const orig = cast(FVec2)-imgBounds.topLeft;
+    const fmt = ImageFormat.argbPremult;
+    const stride = alignedStrideForWidth(fmt, imgBounds.width);
+    auto data = new ubyte[stride * imgBounds.height];
+    auto dest = new Image(data, fmt, imgBounds.width, stride);
+
+    executeImpl(cmdBuf, dest, orig);
+
+    return AnchoredImage(orig, assumeUnique(dest));
+}
 
 void execute(const(CmdBuf) cmdBuf, Image dest, in FVec2 orig)
 {
-    import dgt.vg : makeVgContext;
-    import gfx.math : affineMult, affineTranslation;
-    import std.exception : enforce;
+    executeImpl(cmdBuf, dest, orig);
+}
 
+private bool fitsImage(const(CmdBuf) cmdBuf, Image dest, in FVec2 orig)
+{
     const bounds = cmdBuf.bounds;
     const tl = orig + bounds.topLeft;
     const br = orig + bounds.bottomRight;
     const destSize = dest.size;
 
-    enforce(tl.x >= 0 &&  tl.y >= 0, "VG buf bounds exceed destination");
-    enforce(br.x < destSize.width &&  br.y < destSize.height, "VG buf bounds exceed destination");
+    return tl.x >= 0 &&  tl.y >= 0 && br.x < destSize.width && br.y < destSize.height;
+}
+
+private void executeImpl(const(CmdBuf) cmdBuf, Image dest, in FVec2 orig)
+{
+    import dgt.vg : makeVgContext;
+    import gfx.math : affineMult, affineTranslation;
+
+    assert(fitsImage(cmdBuf, dest, orig), "VG command buffer does not fit in image");
 
     auto ctx = makeVgContext(dest);
     scope(exit) ctx.dispose();
@@ -240,7 +282,6 @@ void execute(const(CmdBuf) cmdBuf, Image dest, in FVec2 orig)
         }
     }
 }
-
 
 private struct Cmd
 {
