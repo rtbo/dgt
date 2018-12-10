@@ -539,6 +539,8 @@ private FRect computeBoundsImpl(alias vecMap)(const(Path) path)
 
 private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p2)
 {
+    import dgt.core.geometry : extendHor, extendVer;
+
     // find t for B'(t) = 0
     // with B(t) = (1-t)²p0 + 2t(1-t)p1 + t²p2    with t ∊ [0, 1]
     //     B'(t) = 2t(p0 - 2p1 + p2) + 2p1 - 2p0
@@ -559,17 +561,17 @@ private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p
 
     float val;
     if (extrema(0, val)) {
-        if (val < r.left) r.left = val;
-        else if (val > r.right) r.width = val - r.left;
+        r.extendHor(val);
     }
     if (extrema(1, val)) {
-        if (val < r.top) r.top = val;
-        else if (val > r.bottom) r.height = val - r.top;
+        r.extendVer(val);
     }
 }
 
 private void extendWithCubic(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p2, in FPoint p3)
 {
+    import dgt.core.geometry : extendHor, extendVer;
+
     // find t for B'(t) = 0
     // with B(t) = (1-t)³p0 + 3t(1-t)²p1 + 3t²(1-t)p2 + t³p3   with t ∊ [0, 1]
     //      B'(t) = 3(3p1-3p2+p3-p0)t² + 6(p0-2p1+p2)t + 3p1 - 3p0
@@ -622,12 +624,10 @@ private void extendWithCubic(ref FRect r, in FPoint p0, in FPoint p1, in FPoint 
     }
 
     foreach(x; extremas(0)) {
-        if (x < r.left) r.left = x;
-        else if (x > r.right) r.width = x - r.left;
+        r.extendHor(x);
     }
     foreach(y; extremas(1)) {
-        if (y < r.top) r.top = y;
-        else if (y > r.bottom) r.height = y - r.top;
+        r.extendVer(y);
     }
 }
 

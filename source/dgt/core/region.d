@@ -387,7 +387,7 @@ body
     // let's merge
     const bottom = cur[0].bottom;
     foreach (ref r; prev)
-        r.height = bottom - r.top;
+        r.bottom = bottom;
     rects = rects[0 .. curBand];
 
     return prevBand;

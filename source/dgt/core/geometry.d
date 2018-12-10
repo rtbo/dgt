@@ -309,10 +309,9 @@ struct Rect(T) if (isNumeric!T)
     }
 
     @property void width(T val)
+    in (val >= 0)
     {
-        import std.algorithm : max;
-
-        _w = cast(T)max(0, val);
+        _w = val;
     }
 
     @property T height() const
@@ -321,10 +320,9 @@ struct Rect(T) if (isNumeric!T)
     }
 
     @property void height(T val)
+    in (val >= 0)
     {
-        import std.algorithm : max;
-
-        _h = cast(T)max(0, val);
+        _h = val;
     }
 
     @property Point!T point() const
@@ -343,40 +341,53 @@ struct Rect(T) if (isNumeric!T)
         return Size!T(width, height);
     }
 
+    /// Set the size (moving the bottom right corner)
     @property void size(Size!T s)
     {
         _w = s.width;
         _h = s.height;
     }
 
+    /// Get the left coordinate
     @property T left() const
     {
         return _x;
     }
 
-    // Set the left coordinate without changing the width. (moves the right coordinate)
+    /// Set the left coordinate by changing the width.
+    /// Does not affect right coordinate
     @property void left(T val)
+    in (val <= right)
     {
+        const r = right;
         _x = val;
+        _w = r - val;
     }
 
+    /// Get the top coordinate
     @property T top() const
     {
         return _y;
     }
 
-    // Set the left coordinate without changing the height. (moves the bottom coordinate)
+    /// Set the top coordinate by changing the height.
+    /// Does not affect the bottom coordinate
     @property void top(T val)
+    in (val <= bottom)
     {
+        const b = bottom;
         _y = val;
+        _h = b - val;
     }
 
+    /// Get the right coordinate
     @property T right() const
     {
         return cast(T)(_x + _w);
     }
 
-    // Set the right coordinate by adjusting the width.
+    /// Set the right coordinate by adjusting the width.
+    /// Does not affect the left coordinate
     @property void right(T val)
     in {
         assert(val >= _x);
@@ -385,35 +396,72 @@ struct Rect(T) if (isNumeric!T)
         _w = cast(T)(val - _x);
     }
 
+    /// Get the bottom coordinate
     @property T bottom() const
     {
         return cast(T)(_y + _h);
     }
 
+    /// Set the bottom coordinate by adjusting the height.
+    /// Does not affect the bottom coordinate.
+    @property void bottom(T val)
+    in {
+        assert(val >= _y);
+    }
+    body {
+        _h = cast(T)(val - _y);
+    }
+
+    /// Get the top left corner position
     @property Point!T topLeft() const
     {
         return Point!T(left, top);
     }
 
+    /// Set the top left corner position without affecting the bottom right corner.
     @property void topLeft(Point!T p)
     {
-        _x = p.x;
-        _y = p.y;
+        left = p.x;
+        top = p.y;
     }
 
+    /// Get the top right corner position
     @property Point!T topRight() const
     {
         return Point!T(right, top);
     }
 
+    /// Set the top right corner position without affecting the bottom left corner.
+    @property void topRight(Point!T p)
+    {
+        right = p.x;
+        top = p.y;
+    }
+
+    /// Get the bottom left corner position
     @property Point!T bottomLeft() const
     {
         return Point!T(left, bottom);
     }
 
+    /// Set the bottom left corner position without affecting the top right corner.
+    @property void bottomLeft(Point!T p)
+    {
+        left = p.x;
+        bottom = p.y;
+    }
+
+    /// Get the bottom right corner position
     @property Point!T bottomRight() const
     {
         return Point!T(right, bottom);
+    }
+
+    /// Set the bottom right corner position without affecting the top left corner.
+    @property void bottomRight(Point!T p)
+    {
+        right = p.x;
+        bottom = p.y;
     }
 
     @property Point!T center() const
@@ -421,14 +469,30 @@ struct Rect(T) if (isNumeric!T)
         return Point!T(centerX, centerY);
     }
 
+    @property void center(in Point!T p)
+    {
+        _x = p.x - _w/2;
+        _y = p.y - _h/2;
+    }
+
     @property T centerX() const
     {
         return cast(T)(_x + _w/2);
     }
 
+    @property void centerX(in T x)
+    {
+        _x = x - _w/2;
+    }
+
     @property T centerY() const
     {
         return cast(T)(_y + _h/2);
+    }
+
+    @property void centerY(in T y)
+    {
+        _y = y - _h/2;
     }
 
     ref Rect!T opOpAssign(string op)(in Margins!T rhs) if (op == "+")
@@ -653,6 +717,36 @@ if (isRect!R && is(T : R.Scalar))
     }
 }
 
+/// Extend rect horizontally to the given coordinate (either to the left or to the right)
+void extendHor(R, T)(ref R rect, in T x)
+if (isRect!R && is(T : R.Scalar))
+{
+    if (rect._x > x) {
+        rect._x = x;
+    }
+    else {
+        const r = rect.right;
+        if (r < x) {
+            rect._w += x - r;
+        }
+    }
+}
+
+/// Extend rect vertically to the given coordinate (either towards top or towards bottom)
+void extendVer(R, T)(ref R rect, in T y)
+if (isRect!R && is(T : R.Scalar))
+{
+    if (rect._y > y) {
+        rect._y = y;
+    }
+    else {
+        const b = rect.bottom;
+        if (b < y) {
+            rect._h += y - b;
+        }
+    }
+}
+
 /// Extend rect.bottom to y if y is lower than rect.bottom.
 /// Does not affect the top side of rect.
 void extendBottom(R, T)(ref R rect, in T y)
@@ -728,28 +822,28 @@ if (isRect!R)
 
 unittest
 {
-    // auto rd = FRect(3, 5, 5, 6);
-    // auto ri = IRect(4, 15, 2, 5);
+    auto rd = FRect(3, 5, 5, 6);
+    auto ri = IRect(4, 15, 2, 5);
 
-    // static assert(__traits(compiles, rd = cast(FRect) ri));
-    // static assert(__traits(compiles, ri = cast(IRect) rd));
+    static assert(__traits(compiles, rd = cast(FRect) ri));
+    static assert(__traits(compiles, ri = cast(IRect) rd));
 
-    // ri.left = 2;
-    // assert(ri == IRect(2, 15, 4, 5));
+    ri.left = 2;
+    assert(ri == IRect(2, 15, 4, 5));
 
-    // ri.topLeft = ri.topLeft + IPoint(3, 2);
-    // assert(ri == IRect(5, 17, 1, 3));
+    ri.topLeft = ri.topLeft + IPoint(3, 2);
+    assert(ri == IRect(5, 17, 1, 3));
 
-    // ri -= IPoint(5, 10);
-    // assert(ri == IRect(0, 7, 1, 3));
+    ri -= IPoint(5, 10);
+    assert(ri == IRect(0, 7, 1, 3));
 
-    // ri.size = ri.size + IMargins(0, 0, 5, 3);
-    // assert(ri == IRect(0, 7, 6, 6));
+    ri.size = ri.size + IMargins(0, 0, 5, 3);
+    assert(ri == IRect(0, 7, 6, 6));
 
-    // assert(ri.overlaps(IRect(5, 5, 3, 3)));
-    // assert(!ri.overlaps(IRect(5, 14, 3, 3)));
-    // assert(!ri.overlaps(IRect(7, 5, 3, 3)));
-    // assert(ri.intersection(IRect(5, 5, 3, 3)) == IRect(5, 7, 1, 1));
+    assert(ri.overlaps(IRect(5, 5, 3, 3)));
+    assert(!ri.overlaps(IRect(5, 14, 3, 3)));
+    assert(!ri.overlaps(IRect(7, 5, 3, 3)));
+    assert(ri.intersection(IRect(5, 5, 3, 3)) == IRect(5, 7, 1, 1));
 }
 
 
