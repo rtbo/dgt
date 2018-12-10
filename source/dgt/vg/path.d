@@ -541,32 +541,30 @@ private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p
 {
     // find t for B'(t) = 0
     // with B(t) = (1-t)²p0 + 2t(1-t)p1 + t²p2    with t ∊ [0, 1]
-    //     B'(t) = 2t(p0 + 2p1 + p2) + 2p1 - 2p0
+    //     B'(t) = 2t(p0 - 2p1 + p2) + 2p1 - 2p0
     //     B'(t) = 0 for t = -b/a    with
-    //     a = p0 + 2p1 + p2    and    b = p1 - p0
+    //     a = p0 - 2p1 + p2    and    b = p1 - p0
 
-    float[2] buf;
-    float[] extrema (size_t i) {
-        immutable size_t bs = i; // buf start
-        size_t bp = bs; // buf pos
-
-        immutable real a = p0[i] + 2*p1[i] + p2[i];
-        immutable real b = p1[i] - p0[i];
-        immutable t = -b/a;
+    bool extrema (size_t i, out float val) {
+        const real a = p0[i] - 2*p1[i] + p2[i];
+        const real b = p1[i] - p0[i];
+        const t = -b/a;
         if (t > 0 && t < 1) {
-            immutable t1 = 1-t;
-            buf[bp++] = cast(float)(t1*t1*p0[i] + 2*t*t1*p1[i] + t*t*p2[i]);
+            const t1 = 1-t;
+            val = cast(float)(t1*t1*p0[i] + 2*t*t1*p1[i] + t*t*p2[i]);
+            return true;
         }
-        return buf[bs .. bp];
+        else return false;
     }
 
-    foreach(x; extrema(0)) {
-        if (x < r.left) r.left = x;
-        else if (x > r.right) r.width = x - r.left;
+    float val;
+    if (extrema(0, val)) {
+        if (val < r.left) r.left = val;
+        else if (val > r.right) r.width = val - r.left;
     }
-    foreach(y; extrema(1)) {
-        if (y < r.top) r.top = y;
-        else if (y > r.bottom) r.height = y - r.top;
+    if (extrema(1, val)) {
+        if (val < r.top) r.top = val;
+        else if (val > r.bottom) r.height = val - r.top;
     }
 }
 
@@ -632,6 +630,26 @@ private void extendWithCubic(ref FRect r, in FPoint p0, in FPoint p1, in FPoint 
         else if (y > r.bottom) r.height = y - r.top;
     }
 }
+
+unittest
+{
+    import gfx.math : fvec;
+    import gfx.math.approx : approxUlp;
+
+    immutable path = Path.build(fvec(0, 50))
+        .quadTo(fvec(0, 0), fvec(70, 0))
+        .quadTo(fvec(100, 0), fvec(50, 50))
+        .close()
+        .done();
+
+    const b = path.bounds();
+
+    assert(approxUlp(b.left, 0f));
+    assert(approxUlp(b.top, 0f));
+    assert(approxUlp(b.right, 81.25f));
+    assert(approxUlp(b.bottom, 50f));
+}
+
 
 unittest
 {
