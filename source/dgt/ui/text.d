@@ -8,8 +8,8 @@ import dgt.css.style;
 import dgt.font.style;
 import dgt.render.framegraph;
 import dgt.text.layout;
+import dgt.style.support;
 import dgt.ui.layout;
-import dgt.ui.stylesupport;
 import dgt.ui.view;
 
 class TextView : View {

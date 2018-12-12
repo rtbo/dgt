@@ -1,8 +1,8 @@
-module dgt.ui.stylesupport;
+module dgt.style.support;
 
 import dgt.core.color;
 import dgt.css.style;
-import dgt.ui.style;
+import dgt.style;
 import dgt.ui.view;
 
 import std.typecons : Flag, Yes, No;

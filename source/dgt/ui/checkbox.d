@@ -5,9 +5,9 @@ import dgt.core.geometry;
 import dgt.core.signal;
 import dgt.css.style;
 import dgt.render.framegraph;
+import dgt.style.support;
 import dgt.ui.event;
 import dgt.ui.layout : MeasureSpec;
-import dgt.ui.stylesupport;
 import dgt.ui.text;
 import dgt.ui.view;
 

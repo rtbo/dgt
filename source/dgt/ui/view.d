@@ -991,8 +991,8 @@ class View : StyleElement
     private PseudoState _pseudoState;
     private bool _hoverSensitive;
     // style properties
-    package(dgt.ui) IStyleMetaProperty[]        _styleMetaProperties;
-    package(dgt.ui) IStyleProperty[string]      _styleProperties;
+    package(dgt) IStyleMetaProperty[]        _styleMetaProperties;
+    package(dgt) IStyleProperty[string]      _styleProperties;
 
     // events
     private MaskedFilter[] _evFilters;

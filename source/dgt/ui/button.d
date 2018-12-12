@@ -7,11 +7,11 @@ import dgt.core.paint;
 import dgt.core.signal;
 import dgt.css.style;
 import dgt.render.framegraph;
+import dgt.style;
+import dgt.style.support;
 import dgt.ui.event;
 import dgt.ui.label;
 import dgt.ui.layout;
-import dgt.ui.style;
-import dgt.ui.stylesupport;
 
 import gfx.core.typecons : Option, some;
 

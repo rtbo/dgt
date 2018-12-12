@@ -8,9 +8,9 @@ import dgt.css.om : Stylesheet;
 import dgt.css.style;
 import dgt.platform.event;
 import dgt.render.framegraph;
+import dgt.style;
 import dgt.ui.animation;
 import dgt.ui.event;
-import dgt.ui.style;
 import dgt.ui.view : View;
 
 import gfx.core.typecons : option, Option, none;

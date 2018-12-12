@@ -1,5 +1,5 @@
 /// Module gathering CSS properties implemented by DGT for views
-module dgt.ui.style;
+module dgt.style;
 
 import dgt : dgtStyleTag;
 import dgt.core.color;
@@ -26,6 +26,8 @@ final class BackgroundMetaProperty : StyleMetaProperty!(RPaint)
 
     override bool parseValueImpl(ref Token[] tokens, out RPaint paint)
     {
+        import dgt.style.paint : parsePaint;
+
         immutable p = parsePaint(tokens);
         if (p is null) return false;
         paint = rebindable(p);
@@ -42,7 +44,10 @@ final class BackgroundColorMetaProperty : StyleMetaProperty!(Color)
         super("background-color", false, Color(ColorName.transparent), false);
     }
 
-    override bool parseValueImpl(ref Token[] tokens, out Color color) {
+    override bool parseValueImpl(ref Token[] tokens, out Color color)
+    {
+        import dgt.style.color : parseColor;
+
         return parseColor(tokens, color);
     }
 }
@@ -56,7 +61,10 @@ final class BorderColorMetaProperty : StyleMetaProperty!(Color)
         super("border-color", false, Color(ColorName.transparent), false);
     }
 
-    override bool parseValueImpl(ref Token[] tokens, out Color color) {
+    override bool parseValueImpl(ref Token[] tokens, out Color color)
+    {
+        import dgt.style.color : parseColor;
+
         return parseColor(tokens, color);
     }
 }
