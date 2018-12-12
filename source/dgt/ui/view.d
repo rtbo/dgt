@@ -14,7 +14,7 @@ import std.exception;
 import gfx.core.log;
 
 /// Base class for all views in the user interface
-class View : StyleElement
+class View : StyleElement, TreeNode!View
 {
 
     this() { }
