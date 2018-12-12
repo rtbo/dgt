@@ -349,11 +349,11 @@ class RendererBase : Renderer
         import dgt.core.future;
         import dgt.core.geometry : FRect;
         import gfx.core.log : tracef;
-        import gfx.core.types : Rect, Viewport;
         import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
         import gfx.graal.error : OutOfDateException;
         import gfx.graal.queue : PresentRequest, Submission, StageWait;
         import gfx.graal.sync : Semaphore;
+        import gfx.graal.types : Rect, Viewport;
         import gfx.math.vec : FVec4;
         import std.algorithm : map;
         import std.array : array;

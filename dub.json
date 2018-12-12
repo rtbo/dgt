@@ -31,8 +31,11 @@
         "dgt:harfbuzz":	    "*",
 
         "gfx":          { "path": "gfx-d" },
+        "gfx:decl":     { "path": "gfx-d" },
         "gfx:memalloc": { "path": "gfx-d" },
         "gfx:math":     { "path": "gfx-d" },
+        "gfx:gl3":      { "path": "gfx-d" },
+        "gfx:vulkan":   { "path": "gfx-d" },
 
         "png-d":            "~>0.0.2",
         "turbojpeg-d":      "~>0.0.2",
