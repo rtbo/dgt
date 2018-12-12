@@ -3,7 +3,6 @@
 /// build from/convert to various forms (including CSS).
 module dgt.core.color;
 
-import dgt : dgtTag;
 import gfx.math.vec : FVec3;
 
 /// A Color construct that has a uint representation with ARGB components of
