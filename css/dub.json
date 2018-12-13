@@ -1,0 +1,16 @@
+{
+    "name": "css",
+    "authors": [
+        "Rémi Thebault"
+    ],
+    "description": "D GUI Toolkit - CSS modules",
+    "copyright": "Copyright © 2016-2018, Rémi Thebault",
+    "license": "MIT",
+
+    "buildRequirements": [ "disallowDeprecations" ],
+
+    "dependencies":	{
+        "dgt:core": { "path": "../core" },
+        "gfx:core": { "path": "../gfx-d" }
+    }
+}

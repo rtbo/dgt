@@ -1,8 +1,8 @@
 /// Module that contains main style related interfaces and base classes
 module dgt.css.style;
 
-import dgt : dgtTag;
-import dgt.core.geometry;
+import dgt.css : dgtCssTag;
+//import dgt.core.geometry;
 import dgt.core.signal;
 import dgt.css.om;
 import dgt.css.token;
@@ -77,7 +77,7 @@ interface StyleElement
 
     /// Get the size of the viewport the style appears in. Used for sizes
     /// relative to view port (e.g. 12vmin)
-    @property FSize viewportSize();
+    @property float[2] viewportSize();
     /// Get the DPI of this style. Used for absolute sizes in inch, or centimeters
     @property float dpi();
 
@@ -279,7 +279,7 @@ abstract class StyleMetaPropertyBase(PV) : IStyleMetaProperty
             winningVal = parseValue(winning.valueTokens);
             winning.value = winningVal;
             if (!winningVal) {
-                warningf(dgtTag, "could not parse winning declaration "~winning.property);
+                warningf(dgtCssTag, "could not parse winning declaration "~winning.property);
                 applyInitial(target, winning.origin);
                 return;
             }

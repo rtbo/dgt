@@ -796,10 +796,16 @@ class View : StyleElement, TreeNode!View
         }
     }
 
-    override @property FSize viewportSize()
+    override @property float[2] viewportSize()
     {
         auto ui = this.ui;
-        return ui ? cast(FSize)ui.size : FSize(0, 0);
+        if (ui) {
+            const sz = cast(FSize)ui.size;
+            return [ sz.width, sz.height ];
+        }
+        else {
+            return [ 0f, 0f ];
+        }
     }
 
     override @property float dpi()

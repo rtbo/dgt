@@ -614,19 +614,19 @@ final class FontSizeMetaProperty : StyleMetaProperty!(int, ParsedFontSize)
                 immutable rfs = fontSizeOrInitial(target.styleRoot);
                 return cast(int)round(lenVal * rfs);
             case Length.Unit.vw:
-                immutable width = target.viewportSize.width;
+                immutable width = target.viewportSize[0];
                 return cast(int)round(lenVal * width * 0.01f);
             case Length.Unit.vh:
-                immutable height = target.viewportSize.height;
+                immutable height = target.viewportSize[1];
                 return cast(int)round(lenVal * height * 0.01f);
             case Length.Unit.vmin:
                 import std.algorithm : min;
                 immutable size = target.viewportSize;
-                return cast(int)round(lenVal * min(size.width, size.height) * 0.01f);
+                return cast(int)round(lenVal * min(size[0], size[1]) * 0.01f);
             case Length.Unit.vmax:
                 import std.algorithm : max;
                 immutable size = target.viewportSize;
-                return cast(int)round(lenVal * max(size.width, size.height) * 0.01f);
+                return cast(int)round(lenVal * max(size[0], size[1]) * 0.01f);
             case Length.Unit.cm:
                 immutable dens = target.dpi / 2.54f;
                 return cast(int)round(dens * lenVal);
@@ -708,19 +708,19 @@ abstract class MarginBaseMetaProperty : StyleMetaProperty!(float, Length)
         case Length.Unit.ch:
         case Length.Unit.rem:
         case Length.Unit.vw:
-            const width = target.viewportSize.width;
+            const width = target.viewportSize[0];
             return lenVal * width * 0.01f;
         case Length.Unit.vh:
-            const height = target.viewportSize.height;
+            const height = target.viewportSize[1];
             return lenVal * height * 0.01f;
         case Length.Unit.vmin:
             import std.algorithm : min;
             const size = target.viewportSize;
-            return lenVal * min(size.width, size.height) * 0.01f;
+            return lenVal * min(size[0], size[1]) * 0.01f;
         case Length.Unit.vmax:
             import std.algorithm : max;
             const size = target.viewportSize;
-            return lenVal * max(size.width, size.height) * 0.01f;
+            return lenVal * max(size[0], size[1]) * 0.01f;
         case Length.Unit.cm:
             const dens = target.dpi / 2.54f;
             return dens * lenVal;

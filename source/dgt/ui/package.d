@@ -293,8 +293,8 @@ final class UserInterface : StyleElement {
         return sp ? *sp : null;
     }
 
-    override @property FSize viewportSize() {
-        return cast(FSize)_size;
+    override @property float[2] viewportSize() {
+        return [ cast(float)_size.width, cast(float)_size.height ];
     }
 
     override @property float dpi() {

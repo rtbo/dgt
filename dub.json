@@ -22,16 +22,19 @@
         "./bindings/xcb-image",
 
         "./core",
+        "./css",
 
         "./examples/hello",
         "./examples/proverbs"
     ],
 
     "dependencies":	{
-        "dgt:core":     "*",
         "dgt:bindings": "*",
         "dgt:cairo":    "*",
         "dgt:harfbuzz": "*",
+
+        "dgt:core":     "*",
+        "dgt:css":      "*",
 
         "gfx":          { "path": "gfx-d" },
         "gfx:decl":     { "path": "gfx-d" },

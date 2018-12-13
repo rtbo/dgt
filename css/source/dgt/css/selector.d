@@ -1,7 +1,7 @@
 /// CSS Selectors
 module dgt.css.selector;
 
-import dgt : dgtTag;
+import dgt.css : dgtCssTag;
 import dgt.css.token;
 import dgt.css.style;
 import gfx.core.log;
@@ -70,7 +70,7 @@ PseudoState translatePseudoClass(string pseudoClass)
 {
     immutable ps = _pseudoClassTranslator.translate(pseudoClass);
     if (ps == PseudoState.def && pseudoClass.length) {
-        warningf(dgtTag, "unrecognized pseudoClass: "~pseudoClass);
+        warningf(dgtCssTag, "unrecognized pseudoClass: "~pseudoClass);
     }
     return ps;
 }
