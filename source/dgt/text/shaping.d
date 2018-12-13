@@ -1,7 +1,7 @@
 module dgt.text.shaping;
 
-import dgt.core.rc;
 import dgt.font.typeface;
+import gfx.core.rc;
 import gfx.math.vec;
 
 /// Per glyph info issued from the text shaper

@@ -1,11 +1,11 @@
 module dgt.text.port.hb;
 
 import dgt.bindings.harfbuzz;
-import dgt.core.rc;
 import dgt.font.port.ft;
 import dgt.font.typeface;
-import gfx.math.vec;
 import dgt.text.shaping;
+import gfx.core.rc;
+import gfx.math.vec;
 
 
 class HbTextShapingContext : TextShapingContext {

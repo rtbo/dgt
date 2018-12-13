@@ -4,11 +4,12 @@ module dgt.font.port.fc;
 version(linux):
 
 import dgt.bindings.fontconfig;
-import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
+
+import gfx.core.rc;
 
 import std.string;
 import std.typecons : Nullable;

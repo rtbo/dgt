@@ -1,18 +1,18 @@
 /// Rendering cache module
 module dgt.render.cache;
 
-import dgt.core.rc : Disposable;
 import dgt.render : dgtRenderTag;
 import dgt.render.framegraph : CacheCookie;
 
 import gfx.core.log;
+import gfx.core.rc : Disposable;
 
 class RenderCache : Disposable
 {
-    import dgt.core.rc : AtomicRefCounted;
+    import gfx.core.rc : AtomicRefCounted;
 
     override void dispose() {
-        import dgt.core.rc : releaseAA;
+        import gfx.core.rc : releaseAA;
         releaseAA(_cache);
     }
 

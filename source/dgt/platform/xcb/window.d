@@ -5,7 +5,6 @@ package:
 
 import dgt.context;
 import dgt.core.geometry;
-import dgt.core.rc;
 import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;
@@ -16,6 +15,7 @@ import dgt.screen;
 import dgt.window;
 
 import gfx.bindings.opengl.glx : GLXFBConfig;
+import gfx.core.rc;
 
 import xcb.xcb;
 import xcb.xcb_icccm;

@@ -1,9 +1,9 @@
 module dgt.font.library;
 
-import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
 
+import gfx.core.rc;
 
 /// system font library
 class FontLibrary : AtomicRefCounted {

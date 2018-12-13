@@ -5,14 +5,15 @@ version(Windows):
 import core.sys.windows.windows;
 import core.sys.windows.wingdi;
 
-import dgt.core.rc;
 import dgt.font.library;
 import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
 
-import std.exception;
 import gfx.core.log;
+import gfx.core.rc;
+
+import std.exception;
 import std.string;
 import std.stdio;
 

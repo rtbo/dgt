@@ -1,10 +1,11 @@
 module dgt.font.typeface;
 
 import dgt.core.image;
-import dgt.core.rc;
 import dgt.font.style;
-import gfx.math.vec : FVec2, IVec2;
 import dgt.text.shaping;
+
+import gfx.core.rc;
+import gfx.math.vec : FVec2, IVec2;
 
 import std.uni;
 

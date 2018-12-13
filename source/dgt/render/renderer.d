@@ -1,8 +1,8 @@
 module dgt.render.renderer;
 
-import dgt.core.rc : Disposable;
 import dgt.render : dgtRenderTag;
 import dgt.render.framegraph;
+import gfx.core.rc : Disposable;
 import gfx.gl3.context : GlContext;
 import gfx.graal : Instance, Backend;
 
@@ -361,7 +361,7 @@ class RendererBase : Renderer
         import std.typecons : No, scoped;
 
         if (!initialized) {
-            import dgt.core.rc : rc;
+            import gfx.core.rc : rc;
             const wh = frames[0].windowHandle;
             auto s = makeSurface(wh).rc;
             initialize(s);
@@ -639,7 +639,7 @@ class VulkanRenderer : RendererBase
 
 class OpenGLRenderer : RendererBase
 {
-    import dgt.core.rc : Rc;
+    import gfx.core.rc : Rc;
     import gfx.graal.presentation : Surface;
 
     Rc!GlContext _context;

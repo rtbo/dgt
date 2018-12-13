@@ -4,11 +4,11 @@ module dgt.font.port.ft;
 import dgt : Subsystem;
 import dgt.core.geometry;
 import dgt.core.image;
-import dgt.core.rc;
 import dgt.font.style;
 import dgt.font.typeface;
-import gfx.math.vec : FVec2, IVec2;
 import dgt.text.shaping;
+import gfx.core.rc;
+import gfx.math.vec : FVec2, IVec2;
 
 import ft.freetype;
 import ft.bitmap;

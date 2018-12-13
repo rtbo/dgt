@@ -1,12 +1,12 @@
 module dgt.text.layout;
 
 import dgt.core.paint;
-import dgt.core.rc;
 import dgt.core.sync;
 import dgt.font.style;
 import dgt.font.typeface;
-import gfx.math.vec : fvec, FVec2;
 import dgt.text.shaping : GlyphInfo;
+import gfx.core.rc;
+import gfx.math.vec : fvec, FVec2;
 
 import std.exception : enforce;
 
