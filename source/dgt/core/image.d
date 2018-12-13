@@ -2,7 +2,8 @@
 module dgt.core.image;
 
 import dgt.core.geometry;
-import dgt.core.rc;
+
+import gfx.core.rc;
 
 import std.exception;
 import std.typecons : Nullable, Flag, Yes, No, Rebindable;

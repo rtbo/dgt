@@ -1,9 +1,10 @@
 /// Main application module.
 module dgt.application;
 
-import dgt.core.rc : Disposable;
 import dgt.eventloop : EventLoop;
 import dgt.platform : Platform;
+
+import gfx.core.rc : Disposable;
 
 /// Singleton class that must be built by the client application
 class Application : EventLoop, Disposable

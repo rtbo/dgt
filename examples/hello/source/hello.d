@@ -7,7 +7,6 @@ import dgt.core.color : Color;
 import dgt.core.enums : Alignment;
 import dgt.core.geometry;
 import dgt.core.image;
-import dgt.core.rc : rc;
 import dgt.platform;
 import dgt.ui : UserInterface;
 import dgt.ui.button;
@@ -16,6 +15,7 @@ import dgt.ui.label;
 import dgt.ui.layout;
 import dgt.window;
 
+import gfx.core.rc : rc;
 import gfx.core.typecons;
 
 import std.exception;

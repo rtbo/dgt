@@ -1,7 +1,7 @@
 /// The obligatory junk module with unsortable and essential utilities.
 module dgt.core.util;
 
-import dgt : dgtTag;
+import dgt.core : dgtCoreTag;
 
 /// Computes a string hash at compile time.
 template hash(string s, size_t sofar=0)
@@ -116,7 +116,7 @@ string getUniqueTempFile(string model)
     while(attempts < maxAttempts && (!exists(result) || isDir(result)));
 
     if (attempts >= maxAttempts)
-        error(dgtTag, "Cannot generate a unique file name");
+        error(dgtCoreTag, "Cannot generate a unique file name");
 
     return result;
 }

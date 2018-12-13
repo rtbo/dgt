@@ -21,14 +21,17 @@
         "./bindings/harfbuzz",
         "./bindings/xcb-image",
 
+        "./core",
+
         "./examples/hello",
         "./examples/proverbs"
     ],
 
     "dependencies":	{
-        "dgt:bindings":		"*",
-        "dgt:cairo":	    "*",
-        "dgt:harfbuzz":	    "*",
+        "dgt:core":     "*",
+        "dgt:bindings": "*",
+        "dgt:cairo":    "*",
+        "dgt:harfbuzz": "*",
 
         "gfx":          { "path": "gfx-d" },
         "gfx:decl":     { "path": "gfx-d" },

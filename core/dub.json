@@ -1,0 +1,17 @@
+{
+    "name": "core",
+    "authors": [
+        "Rémi Thebault"
+    ],
+    "description": "D GUI Toolkit - Core modules",
+    "copyright": "Copyright © 2016-2018, Rémi Thebault",
+    "license": "MIT",
+
+    "buildRequirements": [ "disallowDeprecations" ],
+
+    "dependencies":	{
+        "gfx:core": { "path": "../gfx-d" },
+        "gfx:math": { "path": "../gfx-d" }
+    }
+
+}

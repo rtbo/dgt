@@ -6,12 +6,12 @@ import dgt.application;
 import dgt.core.color : Color;
 import dgt.core.geometry;
 import dgt.core.image;
-import dgt.core.rc : rc;
 import dgt.ui : UserInterface;
 import dgt.ui.layout;
 import dgt.ui.text;
 import dgt.window;
 
+import gfx.core.rc : rc;
 import gfx.core.typecons : some;
 
 import std.exception;
