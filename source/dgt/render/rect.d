@@ -99,7 +99,7 @@ class RectRenderer : FGNodeRenderer
 
     override void prerender(immutable(FGNode) node)
     {
-        import dgt.core.paint : PaintType;
+        import dgt.gfx.paint : PaintType;
         import dgt.render.defs : MVP;
 
         immutable rn = cast(immutable(FGRectNode))node;
@@ -124,7 +124,7 @@ class RectRenderer : FGNodeRenderer
 
     override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
     {
-        import dgt.core.paint : PaintType;
+        import dgt.gfx.paint : PaintType;
 
         immutable rn = cast(immutable(FGRectNode))node;
         const pt = rn.paint.type;
@@ -329,7 +329,7 @@ final class RectColRenderer : RectRendererBase
 
     void prerender(immutable(FGRectNode) rn)
     {
-        import dgt.core.paint : LinearGradientPaint, PaintType;
+        import dgt.gfx.paint : LinearGradientPaint, PaintType;
 
         const pt = rn.paint.type;
 
@@ -413,7 +413,7 @@ final class RectColRenderer : RectRendererBase
 
     void render(immutable(FGRectNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
     {
-        import dgt.core.paint : ColorPaint, LinearGradientPaint, PaintType;
+        import dgt.gfx.paint : ColorPaint, LinearGradientPaint, PaintType;
         import dgt.render.framegraph : RectBorder;
         import gfx.core.typecons : ifSome, ifNone;
         import gfx.graal.buffer : IndexType;
@@ -729,7 +729,7 @@ final class RectImgRenderer : RectRendererBase
 
     void render(immutable(FGRectNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
     {
-        import dgt.core.image : ImageFormat;
+        import dgt.gfx.image : ImageFormat;
         import dgt.render.framegraph : RectBorder;
         import gfx.core.typecons : ifNone, ifSome;
         import gfx.graal.buffer : IndexType;
@@ -811,7 +811,7 @@ final class RectImgRenderer : RectRendererBase
 
     void feedAtlas(immutable(FGRectNode) rn)
     {
-        import dgt.core.paint : ImagePaint;
+        import dgt.gfx.paint : ImagePaint;
         import std.algorithm : filter;
 
         if (!(rn.cookie in imgNodes))
@@ -827,8 +827,8 @@ final class RectImgRenderer : RectRendererBase
             }
             if (!node) {
                 // could not pack (includes no atlas with right format in the list)
-                import dgt.core.geometry : ISize;
-                import dgt.core.image : ImageFormat;
+                import dgt.gfx.geometry : ISize;
+                import dgt.gfx.image : ImageFormat;
                 import dgt.render.atlas : Atlas, AtlasSizeRange;
                 import dgt.render.binpack : maxRectsBinPackFactory, MaxRectsBinPack;
                 import gfx.core.rc : retainObj;
@@ -884,7 +884,7 @@ ushort[] roundedIndices() {
 
 size_t buildVertices(V)(immutable(FGRectNode) node, V[] verts)
 {
-    import dgt.core.geometry : FMargins, FPadding;
+    import dgt.gfx.geometry : FMargins, FPadding;
     import gfx.math : fvec;
     import std.algorithm : min;
     import gfx.core.log : warning;
@@ -990,7 +990,7 @@ size_t buildVertices(V)(immutable(FGRectNode) node, V[] verts)
 // set the gradient pos of the vertices
 void setGPos(immutable(FGRectNode) node, RectColVertex[] verts)
 {
-    import dgt.core.paint : LinearGradientPaint;
+    import dgt.gfx.paint : LinearGradientPaint;
     import gfx.math : dot, fvec;
     import std.algorithm : max;
     import std.math : cos, sin;
@@ -1027,7 +1027,7 @@ void setGPos(immutable(FGRectNode) node, RectColVertex[] verts)
 
 struct CoordInfo
 {
-    import dgt.core.geometry : FRect, IRect, ISize;
+    import dgt.gfx.geometry : FRect, IRect, ISize;
 
     FRect viewRect;
     IRect imgRect;

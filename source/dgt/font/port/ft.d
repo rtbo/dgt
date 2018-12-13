@@ -2,8 +2,8 @@
 module dgt.font.port.ft;
 
 import dgt : Subsystem;
-import dgt.core.geometry;
-import dgt.core.image;
+import dgt.gfx.geometry;
+import dgt.gfx.image;
 import dgt.font.style;
 import dgt.font.typeface;
 import dgt.text.shaping;

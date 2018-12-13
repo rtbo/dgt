@@ -1,6 +1,6 @@
 module dgt.font.msdfgen;
 
-import dgt.core.image;
+import dgt.gfx.image;
 import dgt.font.msdfgen.arithmetic;
 import dgt.font.msdfgen.edges;
 import dgt.font.msdfgen.shape;
@@ -39,7 +39,7 @@ Image renderGlyphMSDF(ScalingContext sc, in GlyphId glyphId, out IVec2 bearing, 
 
     const irange = cast(int)ceil(range);
 
-    import dgt.core.geometry : ISize;
+    import dgt.gfx.geometry : ISize;
     const size = ISize(ir-il + 2*irange, it-ib + 2*irange);
     bearing = IVec2(il + irange, it + irange);
 

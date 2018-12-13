@@ -270,7 +270,7 @@ final class TextRenderer : FGNodeRenderer
 
     override void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd)
     {
-        import dgt.core.geometry : FRect, FSize;
+        import dgt.gfx.geometry : FRect, FSize;
         import dgt.render.defs : P2T2Vertex;
         import dgt.render.framegraph : FGTextNode;
         import gfx.graal.buffer : IndexType;
@@ -421,8 +421,8 @@ final class TextRenderer : FGNodeRenderer
                         if (node) break;
                     }
                     if (!node) {
-                        import dgt.core.geometry : ISize;
-                        import dgt.core.image : ImageFormat;
+                        import dgt.gfx.geometry : ISize;
+                        import dgt.gfx.image : ImageFormat;
                         import dgt.render.atlas : Atlas, AtlasSizeRange;
                         import dgt.render.binpack : maxRectsBinPackFactory, MaxRectsBinPack;
                         import gfx.core.rc : retainObj;

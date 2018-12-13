@@ -2,7 +2,7 @@
 module dgt.platform.event;
 
 import dgt.core.enums;
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.core.signal;
 import dgt.input;
 import dgt.window;

@@ -3,8 +3,8 @@
 module dgt.ui.label;
 
 import dgt.core.enums;
-import dgt.core.geometry;
-import dgt.core.image;
+import dgt.gfx.geometry;
+import dgt.gfx.image;
 import dgt.ui.img;
 import dgt.ui.layout;
 import dgt.ui.text;

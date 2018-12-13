@@ -3,7 +3,7 @@ module dgt.screen;
 
 interface Screen
 {
-    import dgt.core.geometry : IRect;
+    import dgt.gfx.geometry : IRect;
 
     @property int num() const;
     @property IRect rect() const;

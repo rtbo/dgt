@@ -347,7 +347,7 @@ class RendererBase : Renderer
     override void render(immutable(FGFrame)[] frames)
     {
         import dgt.core.future;
-        import dgt.core.geometry : FRect;
+        import dgt.gfx.geometry : FRect;
         import gfx.core.log : tracef;
         import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
         import gfx.graal.error : OutOfDateException;

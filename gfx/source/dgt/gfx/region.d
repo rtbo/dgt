@@ -1,7 +1,7 @@
 /// Screen region manipulation.
-module dgt.core.region;
+module dgt.gfx.region;
 
-import dgt.core.geometry : IRect;
+import dgt.gfx.geometry : IRect;
 
 /// An immutable screen region.
 alias Region = immutable(_Region);
@@ -17,7 +17,7 @@ Region subtract(in Region lhs, in Region rhs);
 // Top is lower y and bottom is higher y
 class _Region
 {
-    import dgt.core.geometry : IPoint;
+    import dgt.gfx.geometry : IPoint;
 
     private IRect _extents;
     private IRect[] _rects;
@@ -56,7 +56,7 @@ class _Region
 
     bool contains(in IPoint p) const
     {
-        import dgt.core.geometry : contains;
+        import dgt.gfx.geometry : contains;
 
         if (!_extents.contains(p)) return false;
         else if (rects.length == 1) return true;
@@ -71,7 +71,7 @@ class _Region
 
 Region intersect(in Region lhs, in Region rhs)
 {
-    import dgt.core.geometry : contains, intersection, IPoint;
+    import dgt.gfx.geometry : contains, intersection, IPoint;
     import std.algorithm : min, max;
     import std.exception : assumeUnique;
 
@@ -119,7 +119,7 @@ Region intersect(in Region lhs, in Region rhs)
 
 unittest
 {
-    import dgt.core.geometry : IPoint, ISize;
+    import dgt.gfx.geometry : IPoint, ISize;
 
     immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
     immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
@@ -138,7 +138,7 @@ unittest
 
 Region unite(in Region lhs, in Region rhs)
 {
-    import dgt.core.geometry : contains, IPoint;
+    import dgt.gfx.geometry : contains, IPoint;
     import std.algorithm : min, max;
     import std.exception : assumeUnique;
 
@@ -216,7 +216,7 @@ Region unite(in Region lhs, in Region rhs)
             operator(lhs.rects, rhs.rects, true, true, &unionOp)
         );
 
-        import dgt.core.geometry : extents;
+        import dgt.gfx.geometry : extents;
 
         return new Region(extents(lhs.extents, rhs.extents), rects);
     }
@@ -225,7 +225,7 @@ Region unite(in Region lhs, in Region rhs)
 
 unittest
 {
-    import dgt.core.geometry : IPoint, ISize;
+    import dgt.gfx.geometry : IPoint, ISize;
 
     immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
     immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
@@ -245,7 +245,7 @@ unittest
 
 Region subtract(in Region lhs, in Region rhs)
 {
-    import dgt.core.geometry : IPoint, overlaps;
+    import dgt.gfx.geometry : IPoint, overlaps;
     import std.exception : assumeUnique;
     import std.range : empty;
 
@@ -335,7 +335,7 @@ Region subtract(in Region lhs, in Region rhs)
 
 unittest
 {
-    import dgt.core.geometry : IPoint, ISize;
+    import dgt.gfx.geometry : IPoint, ISize;
 
     immutable reg1 = new Region(IRect(IPoint(2, 3), ISize(5, 4)));
     immutable reg2 = new Region(IRect(IPoint(4, 5), ISize(5, 4)));
@@ -413,7 +413,7 @@ body
 void appendNonOverlap(ref IRect[] rects, in IRect[] addedRects,
                                 in int top, in int bottom)
 {
-    import dgt.core.geometry : IPoint;
+    import dgt.gfx.geometry : IPoint;
 
     rects.reserve(addedRects.length);
     foreach (r; addedRects) {
@@ -540,7 +540,7 @@ IRect[] downsize(IRect[] rects)
 
 IRect computeExtents(in IRect[] rects)
 {
-    import dgt.core.geometry : extend;
+    import dgt.gfx.geometry : extend;
 
     if (rects.length == 0) {
         return IRect.init;

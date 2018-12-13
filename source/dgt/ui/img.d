@@ -1,12 +1,12 @@
 /// Image view module
 module dgt.ui.img;
 
-import dgt.core.geometry;
-import dgt.core.image;
-import dgt.core.paint;
+import dgt.gfx.geometry;
+import dgt.gfx.image;
+import dgt.gfx.paint;
+import dgt.render.framegraph;
 import dgt.ui.layout;
 import dgt.ui.view;
-import dgt.render.framegraph;
 import gfx.core.typecons;
 import gfx.math;
 

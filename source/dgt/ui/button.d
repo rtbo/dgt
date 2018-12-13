@@ -2,10 +2,10 @@
 module dgt.ui.button;
 
 import dgt.core.color;
-import dgt.core.geometry;
-import dgt.core.paint;
 import dgt.core.signal;
 import dgt.css.style;
+import dgt.gfx.geometry;
+import dgt.gfx.paint;
 import dgt.render.framegraph;
 import dgt.style;
 import dgt.style.support;

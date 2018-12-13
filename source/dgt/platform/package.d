@@ -4,8 +4,8 @@ module dgt.platform;
 import core.time : Duration, MonoTime;
 
 import dgt.context;
-import dgt.core.geometry;
 import dgt.core.signal;
+import dgt.gfx.geometry;
 import dgt.platform.event;
 import dgt.screen;
 import dgt.window;

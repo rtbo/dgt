@@ -2,14 +2,14 @@
 /// SeeAlso: https://github.com/juj/RectangleBinPack
 module dgt.render.binpack;
 
-import dgt.core.geometry : ISize;
+import dgt.gfx.geometry : ISize;
 
 
 /// Interface that packs rectangles in a rectangular bin using a defined algorithm.
 /// The low coordinates X and Y of packed rectangles are respectively left and top.
 interface BinPack
 {
-    import dgt.core.geometry : IRect;
+    import dgt.gfx.geometry : IRect;
 
     /// The size of the bin
     @property ISize binSize() const;
@@ -71,7 +71,7 @@ private enum int boundCoord = 1024 * 1024;
 /// Maximum rectangles BinPack implementation
 class MaxRectsBinPack : BinPack
 {
-    import dgt.core.geometry : IRect;
+    import dgt.gfx.geometry : IRect;
 
     private Heuristic _heuristic;
     private ISize _binSize;
@@ -216,7 +216,7 @@ class MaxRectsBinPack : BinPack
 
     override @property float occupancy() const
     {
-        import dgt.core.geometry : area;
+        import dgt.gfx.geometry : area;
         import std.algorithm : map, sum;
 
         const ulong packedArea = _packedRects
@@ -253,7 +253,7 @@ private:
 
     bool noCollision() const
     {
-        import dgt.core.geometry : overlaps;
+        import dgt.gfx.geometry : overlaps;
         import std.stdio : writeln;
 
         bool res = true;
@@ -345,7 +345,7 @@ private:
 
     IRect findPosBestTopLeft(in ISize sz, out int bestY, out int bestX) const
     {
-        import dgt.core.geometry : contains;
+        import dgt.gfx.geometry : contains;
         import std.algorithm : map, max, min;
 
         IRect bestRect;
@@ -383,7 +383,7 @@ private:
 
     IRect findPosBestShortSideFit(in ISize sz, out int bestShortSideFit, out int bestLongSideFit) const
     {
-        import dgt.core.geometry : contains;
+        import dgt.gfx.geometry : contains;
         import std.algorithm : map, max, min;
 
         IRect bestRect;
@@ -430,7 +430,7 @@ private:
 
     IRect findPosBestLongSideFit(in ISize sz, out int bestLongSideFit, out int bestShortSideFit) const
     {
-        import dgt.core.geometry : contains;
+        import dgt.gfx.geometry : contains;
         import std.algorithm : map, max, min;
 
         IRect bestRect;
@@ -477,7 +477,7 @@ private:
 
     IRect findPosBestAreaFit(in ISize sz, out int bestAreaFit, out int bestShortSideFit) const
     {
-        import dgt.core.geometry : area, contains;
+        import dgt.gfx.geometry : area, contains;
         import std.algorithm : map, max, min;
 
         IRect bestRect;
@@ -559,7 +559,7 @@ private:
 
     IRect findPosContactPoint(in ISize sz, out int bestContactScore) const
     {
-        import dgt.core.geometry : area, contains;
+        import dgt.gfx.geometry : area, contains;
         import std.algorithm : map, max, min;
 
         IRect bestRect;
@@ -598,7 +598,7 @@ private:
 
     bool splitFreeRect(in IRect freeRect, in IRect rect)
     {
-        import dgt.core.geometry : overlaps;
+        import dgt.gfx.geometry : overlaps;
 
         if (!freeRect.overlaps(rect))
             return false;
@@ -642,7 +642,7 @@ private:
 
     void pruneFreeList()
     {
-        import dgt.core.geometry : contains;
+        import dgt.gfx.geometry : contains;
         import std.algorithm : remove, SwapStrategy;
 
         for (size_t i = 0; i < _freeRects.length; ++i)

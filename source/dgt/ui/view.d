@@ -1,6 +1,6 @@
 module dgt.ui.view;
 
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.core.tree;
 import dgt.css.style;
 import gfx.math.mat;

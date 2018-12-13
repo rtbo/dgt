@@ -1,7 +1,7 @@
 /// Vector graphics path module.
 module dgt.vg.path;
 
-import dgt.core.geometry : FPoint, FRect;
+import dgt.gfx.geometry : FPoint, FRect;
 import gfx.math : FMat2x3, FVec2;
 
 import std.exception : enforce;
@@ -360,7 +360,7 @@ final class Path
 
     FRect computeBounds(in FMat2x3 mat) const
     {
-        import dgt.core.geometry : extend;
+        import dgt.gfx.geometry : extend;
         import gfx.math : transform;
 
         if (mat == FMat2x3.identity) return bounds;
@@ -486,7 +486,7 @@ private FVec2 vecIdent(in FVec2 vec)
 
 private FRect computeBoundsImpl(alias vecMap)(const(Path) path)
 {
-    import dgt.core.geometry : extend;
+    import dgt.gfx.geometry : extend;
 
     bool firstSet;
     FRect res;
@@ -539,7 +539,7 @@ private FRect computeBoundsImpl(alias vecMap)(const(Path) path)
 
 private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p2)
 {
-    import dgt.core.geometry : extendHor, extendVer;
+    import dgt.gfx.geometry : extendHor, extendVer;
 
     // find t for B'(t) = 0
     // with B(t) = (1-t)²p0 + 2t(1-t)p1 + t²p2    with t ∊ [0, 1]
@@ -570,7 +570,7 @@ private void extendWithQuad(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p
 
 private void extendWithCubic(ref FRect r, in FPoint p0, in FPoint p1, in FPoint p2, in FPoint p3)
 {
-    import dgt.core.geometry : extendHor, extendVer;
+    import dgt.gfx.geometry : extendHor, extendVer;
 
     // find t for B'(t) = 0
     // with B(t) = (1-t)³p0 + 3t(1-t)²p1 + 3t²(1-t)p2 + t³p3   with t ∊ [0, 1]

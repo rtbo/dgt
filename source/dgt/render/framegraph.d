@@ -3,9 +3,9 @@
 /// a different thread than the views)
 module dgt.render.framegraph;
 
-import dgt.core.geometry;
-import dgt.core.image;
-import dgt.core.paint;
+import dgt.gfx.geometry;
+import dgt.gfx.image;
+import dgt.gfx.paint;
 import dgt.text.layout : TextShape;
 
 import gfx.core.typecons : Option;

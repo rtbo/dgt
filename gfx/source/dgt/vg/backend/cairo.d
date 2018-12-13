@@ -8,13 +8,12 @@ package(dgt.vg) __gshared VgBackend cairoBackend = null;
 
 private:
 
-import dgt : registerSubsystem, Subsystem;
 import dgt.bindings.cairo;
 import dgt.core.color : Color;
 import dgt.core.container : GrowableStack;
-import dgt.core.geometry : FRect;
-import dgt.core.image : Image, ImageFormat;
-import dgt.core.paint;
+import dgt.gfx.geometry : FRect;
+import dgt.gfx.image : Image, ImageFormat;
+import dgt.gfx.paint;
 import gfx.core.log;
 import gfx.math : FMat2x3, FMat3, FVec2;
 
@@ -285,7 +284,7 @@ struct CairoMatrix
 
 struct CairoSource
 {
-    import dgt.core.image : RImage;
+    import dgt.gfx.image : RImage;
 
     RPaint paint;
     RImage image;
@@ -607,32 +606,9 @@ pure @safe
     }
 }
 
-final class CairoSubsystem : Subsystem
-{
-    override @property string name() const
-    {
-        return "Cairo Vector Graphics";
-    }
-    override @property bool running() const {
-        return cairoBackend !is null;
-    }
-    override @property int priority() const {
-        return 0;
-    }
-    override void initialize()
-    {
-        import dgt.bindings.cairo.load : loadCairoSymbols;
-
-        loadCairoSymbols();
-        cairoBackend = new CairoBackend;
-    }
-    override void finalize()
-    {
-        cairoBackend = null;
-    }
-}
-
 shared static this()
 {
-    registerSubsystem(new CairoSubsystem);
+    import dgt.bindings.cairo.load : loadCairoSymbols;
+    loadCairoSymbols();
+    cairoBackend = new CairoBackend;
 }

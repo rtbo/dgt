@@ -1,7 +1,7 @@
 module dgt.ui.checkbox;
 
 import dgt.core.enums;
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.core.signal;
 import dgt.css.style;
 import dgt.render.framegraph;
@@ -212,7 +212,7 @@ private class CheckBoxIndicator : View
     override immutable(FGNode) frame(FrameContext fc)
     {
         import dgt.core.color : Color;
-        import dgt.core.paint : ColorPaint;
+        import dgt.gfx.paint : ColorPaint;
         import gfx.core.typecons : none;
         import std.typecons : Rebindable;
 

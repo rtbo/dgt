@@ -1,9 +1,9 @@
 module dgt.text.layout;
 
-import dgt.core.paint;
 import dgt.core.sync;
 import dgt.font.style;
 import dgt.font.typeface;
+import dgt.gfx.paint;
 import dgt.text.shaping : GlyphInfo;
 import gfx.core.rc;
 import gfx.math.vec : fvec, FVec2;

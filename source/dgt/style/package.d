@@ -3,11 +3,11 @@ module dgt.style;
 
 import dgt : dgtStyleTag;
 import dgt.core.color;
-import dgt.core.paint;
+import dgt.font.style;
+import dgt.gfx.paint;
 import dgt.css.style;
 import dgt.css.token;
 import dgt.css.value;
-import dgt.font.style;
 import dgt.ui.layout;
 import dgt.ui.view;
 import gfx.core.log;

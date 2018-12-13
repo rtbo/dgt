@@ -4,8 +4,8 @@ import core.time : dur;
 
 import dgt.application;
 import dgt.core.color : Color;
-import dgt.core.geometry;
-import dgt.core.image;
+import dgt.gfx.geometry;
+import dgt.gfx.image;
 import dgt.ui : UserInterface;
 import dgt.ui.layout;
 import dgt.ui.text;

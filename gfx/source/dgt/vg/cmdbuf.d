@@ -2,9 +2,9 @@
 module dgt.vg.cmdbuf;
 
 import dgt.core.color : Color;
-import dgt.core.geometry : FMargins, FRect, FPoint, IRect;
-import dgt.core.image : Image, ImageFormat, RImage;
-import dgt.core.paint : Paint, RPaint;
+import dgt.gfx.geometry : FMargins, FRect, FPoint, IRect;
+import dgt.gfx.image : Image, ImageFormat, RImage;
+import dgt.gfx.paint : Paint, RPaint;
 import dgt.vg.path : Path, RPath;
 import dgt.vg.penbrush;
 import gfx.math : FMat2x3, FVec2;
@@ -198,7 +198,7 @@ private IRect ceiledRect(in FRect rect)
 
 AnchoredImage execute(const(CmdBuf) cmdBuf)
 {
-    import dgt.core.image : alignedStrideForWidth, assumeUnique, ImageFormat;
+    import dgt.gfx.image : alignedStrideForWidth, assumeUnique, ImageFormat;
 
     const bounds = cmdBuf.bounds;
     const imgBounds = ceiledRect(bounds);
@@ -340,7 +340,7 @@ private struct BoundsCalc
 
     void add(FPoint point)
     {
-        import dgt.core.geometry : extend;
+        import dgt.gfx.geometry : extend;
 
         if (set) {
             bounds.extend(point);
@@ -353,7 +353,7 @@ private struct BoundsCalc
 
     void add(FRect rect)
     {
-        import dgt.core.geometry : extend;
+        import dgt.gfx.geometry : extend;
 
         if (set) {
             bounds.extend(rect);
@@ -366,7 +366,7 @@ private struct BoundsCalc
 
     void frame(FMat2x3 mat)
     {
-        import dgt.core.geometry : FSize, transformBounds;
+        import dgt.gfx.geometry : FSize, transformBounds;
         import gfx.math : affineMult;
 
         while (cmdCursor < cmds.length) {
@@ -406,7 +406,7 @@ private struct BoundsCalc
 
 private FRect computeBufBounds(const(Cmd)[] cmds)
 {
-    import dgt.core.geometry : extend;
+    import dgt.gfx.geometry : extend;
 
     auto calc = BoundsCalc(cmds, 0);
 

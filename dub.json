@@ -23,6 +23,7 @@
 
         "./core",
         "./css",
+        "./gfx",
 
         "./examples/hello",
         "./examples/proverbs"
@@ -30,11 +31,11 @@
 
     "dependencies":	{
         "dgt:bindings": "*",
-        "dgt:cairo":    "*",
         "dgt:harfbuzz": "*",
 
         "dgt:core":     "*",
         "dgt:css":      "*",
+        "dgt:gfx":      "*",
 
         "gfx":          { "path": "gfx-d" },
         "gfx:decl":     { "path": "gfx-d" },
@@ -43,8 +44,6 @@
         "gfx:gl3":      { "path": "gfx-d" },
         "gfx:vulkan":   { "path": "gfx-d" },
 
-        "png-d":            "~>0.0.2",
-        "turbojpeg-d":      "~>0.0.2",
         "freetype-d":       "~>0.0.2"
     },
 

@@ -78,8 +78,8 @@ struct BorderStyleSupport
 
 struct BackgroundBorderStyleSupport
 {
-    import dgt.core.geometry : FRect;
-    import dgt.core.paint : RPaint;
+    import dgt.gfx.geometry : FRect;
+    import dgt.gfx.paint : RPaint;
     import dgt.render.framegraph;
     import std.typecons : Rebindable;
 

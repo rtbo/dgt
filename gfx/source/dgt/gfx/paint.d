@@ -1,7 +1,6 @@
 /// Paint module describes the stroke and fill paint used during rendering.
-module dgt.core.paint;
+module dgt.gfx.paint;
 
-import dgt : dgtTag;
 import std.typecons : Rebindable;
 
 /// The type of a paint.
@@ -139,7 +138,7 @@ alias RLinearGradientPaint = Rebindable!(immutable(LinearGradientPaint));
 /// ditto
 immutable class LinearGradientPaint : GradientPaint
 {
-    import dgt.core.geometry : FSize, FVec2;
+    import dgt.gfx.geometry : FSize, FVec2;
 
     /// gradient line direction
     enum Direction
@@ -242,7 +241,7 @@ alias RRadialGradientPaint = Rebindable!(immutable(RadialGradientPaint));
 /// ditto
 immutable class RadialGradientPaint : GradientPaint
 {
-    import dgt.core.geometry : FVec2;
+    import dgt.gfx.geometry : FVec2;
 
     this (in FVec2 focal, in FVec2 center, in float radius, immutable GradientStop[] stops)
     {
@@ -275,7 +274,7 @@ alias RImagePaint = Rebindable!(immutable(ImagePaint));
 /// ditto
 immutable class ImagePaint : Paint
 {
-    import dgt.core.image : Image;
+    import dgt.gfx.image : Image;
 
     this(immutable(Image) image)
     {

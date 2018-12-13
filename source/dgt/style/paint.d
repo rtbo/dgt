@@ -1,7 +1,7 @@
 module dgt.style.paint;
 
 import dgt : dgtTag;
-import dgt.core.paint;
+import dgt.gfx.paint;
 import dgt.css.token;
 import std.range;
 
@@ -228,7 +228,7 @@ RPaint[string] imageCache;
 
 immutable(Paint) parseImageFromUri(in string uri)
 {
-    import dgt.core.image : assumeUnique, Image, ImageFormat;
+    import dgt.gfx.image : assumeUnique, Image, ImageFormat;
     import dgt.core.resource : Registry, Resource, retrieveResource;
     import gfx.core.log : errorf, tracef;
     import std.algorithm : startsWith;

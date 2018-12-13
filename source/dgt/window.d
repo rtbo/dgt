@@ -34,7 +34,7 @@ final class CloseEvent
 
 class Window
 {
-    import dgt.core.geometry : IPoint, IRect, ISize;
+    import dgt.gfx.geometry : IPoint, IRect, ISize;
     import dgt.core.signal : Handler, Slot;
     import dgt.platform : PlatformWindow;
     import dgt.platform.event : PlWindowEvent;
@@ -189,7 +189,7 @@ class Window
     void show(WindowState state = WindowState.normal)
     {
         import dgt.application : Application;
-        import dgt.core.geometry : area;
+        import dgt.gfx.geometry : area;
 
 
         if (!_platformWindow.created) {
@@ -264,7 +264,7 @@ class Window
     @property void ui(UserInterface ui)
     {
         import dgt.platform.event : PlResizeEvent;
-        import dgt.core.geometry : area;
+        import dgt.gfx.geometry : area;
 
         _ui = ui;
         if (_ui && size.area) {

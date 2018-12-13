@@ -1,7 +1,7 @@
 /// In-memory pixel images.
-module dgt.core.image;
+module dgt.gfx.image;
 
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 
 import gfx.core.rc;
 

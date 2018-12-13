@@ -2,7 +2,7 @@ module dgt.platform.win32.window;
 
 version(Windows):
 
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.input.keys;
 import dgt.input.mouse;
 import dgt.platform;

@@ -3,7 +3,7 @@ module dgt.platform.win32;
 version(Windows):
 
 import dgt.context;
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32.context;

@@ -1,7 +1,7 @@
 // UI event module
 module dgt.ui.event;
 
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.input;
 import dgt.ui.view : View;
 

@@ -2,7 +2,7 @@ module dgt.platform.xcb.screen;
 
 version(linux):
 
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.screen;
 
 import xcb.xcb;

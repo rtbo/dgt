@@ -6,7 +6,7 @@ public import dgt.vg.context;
 public import dgt.vg.path;
 public import dgt.vg.penbrush;
 
-import dgt.core.image : Image;
+import dgt.gfx.image : Image;
 
 import std.traits : Unqual;
 import std.typecons : Flag, No;
@@ -32,7 +32,7 @@ VgContext makeVgContext(Image image)
 /// Check whether img is compatible for vg
 @property bool vgCompatible(const(Image) img)
 {
-    import dgt.core.image : ImageFormat;
+    import dgt.gfx.image : ImageFormat;
 
     return img.format != ImageFormat.argb && img.stride % 4 == 0;
 }
@@ -42,7 +42,7 @@ Image makeVgCompatible(Image img, Flag!"allowInPlace" allowInPlace=No.allowInPla
 in(img)
 out(res; res.vgCompatible)
 {
-    import dgt.core.image : alignedStrideForWidth, apply, ImageFormat, premultiply;
+    import dgt.gfx.image : alignedStrideForWidth, apply, ImageFormat, premultiply;
 
     if (img.vgCompatible) return img;
 
@@ -80,7 +80,7 @@ out(res; res.vgCompatible)
 private ImgT makeVgCompatiblePriv(ImgT)(ImgT img)
 if (is(Unqual!ImgT == Image))
 {
-    import dgt.core.image : alignedStrideForWidth, apply, ImageFormat, premultiply;
+    import dgt.gfx.image : alignedStrideForWidth, apply, ImageFormat, premultiply;
 
     const fmt = img.format;
     const ifmt = fmt == ImageFormat.argb ? ImageFormat.argbPremult : fmt;

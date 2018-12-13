@@ -4,7 +4,7 @@ version(linux):
 package:
 
 import dgt.context;
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.input.mouse;
 import dgt.platform;
 import dgt.platform.event;

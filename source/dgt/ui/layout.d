@@ -3,7 +3,7 @@ module dgt.ui.layout;
 
 import dgt : dgtTag;
 import dgt.core.enums;
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.css.style;
 import dgt.style;
 import dgt.style.support;

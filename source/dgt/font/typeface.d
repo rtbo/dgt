@@ -1,6 +1,6 @@
 module dgt.font.typeface;
 
-import dgt.core.image;
+import dgt.gfx.image;
 import dgt.font.style;
 import dgt.text.shaping;
 

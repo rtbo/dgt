@@ -2,7 +2,7 @@
 module dgt.css.style;
 
 import dgt.css : dgtCssTag;
-//import dgt.core.geometry;
+//import dgt.gfx.geometry;
 import dgt.core.signal;
 import dgt.css.om;
 import dgt.css.token;

@@ -1,5 +1,5 @@
 /// Geometric primitives module
-module dgt.core.geometry;
+module dgt.gfx.geometry;
 
 import gfx.math.mat : isMat;
 import gfx.math.transform : transform;

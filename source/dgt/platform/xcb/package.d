@@ -6,7 +6,7 @@ import core.stdc.stdlib : free;
 import core.sys.posix.poll : pollfd;
 
 import dgt.context;
-import dgt.core.geometry;
+import dgt.gfx.geometry;
 import dgt.input.keys;
 import dgt.input.mouse;
 import dgt.platform;

@@ -2,10 +2,10 @@
 module dgt.ui.text;
 
 import dgt.core.color;
-import dgt.core.geometry;
-import dgt.core.paint;
 import dgt.css.style;
 import dgt.font.style;
+import dgt.gfx.geometry;
+import dgt.gfx.paint;
 import dgt.render.framegraph;
 import dgt.text.layout;
 import dgt.style.support;

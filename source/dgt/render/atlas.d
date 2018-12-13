@@ -5,7 +5,7 @@ import gfx.core.rc : AtomicRefCounted;
 
 struct AtlasSizeRange
 {
-    import dgt.core.geometry : ISize;
+    import dgt.gfx.geometry : ISize;
 
     /// A delegate that define the step taken to extent current towards max.
     /// It is called with current and must return the new value for current.
@@ -79,8 +79,8 @@ struct AtlasSizeRange
 
 class AtlasNode
 {
-    import dgt.core.geometry : IRect;
-    import dgt.core.image : Image;
+    import dgt.gfx.geometry : IRect;
+    import dgt.gfx.image : Image;
     import std.typecons : Rebindable;
 
     private Atlas _atlas;
@@ -128,8 +128,8 @@ class AtlasNode
 
 class Atlas : AtomicRefCounted
 {
-    import dgt.core.geometry : ISize;
-    import dgt.core.image : Image, ImageFormat;
+    import dgt.gfx.geometry : ISize;
+    import dgt.gfx.image : Image, ImageFormat;
     import dgt.render.binpack : BinPack, BinPackFactory;
     import dgt.render.services : RenderServices;
     import gfx.core.rc : atomicRcCode, Rc;
@@ -228,7 +228,7 @@ class Atlas : AtomicRefCounted
         assert(image && image.format == _format);
     }
     body {
-        import dgt.core.geometry : IMargins, IRect;
+        import dgt.gfx.geometry : IMargins, IRect;
         import std.algorithm : max;
 
         const sz = image.size + IMargins(_margin);
@@ -275,7 +275,7 @@ class Atlas : AtomicRefCounted
     bool realize(RenderServices services, CommandBuffer cmd)
     {
         import core.thread : Thread;
-        import dgt.core.image : alignedStrideForWidth;
+        import dgt.gfx.image : alignedStrideForWidth;
         import gfx.graal.image : ImageAspect, ImageInfo, ImageLayout,
                                  ImageSubresourceRange, ImageTiling, ImageType,
                                  ImageUsage;

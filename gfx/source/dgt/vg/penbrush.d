@@ -1,8 +1,8 @@
 /// Aggregates what is necessary to stroke and fill.
 module dgt.vg.penbrush;
 
-import dgt.core.paint;
 import dgt.core.color;
+import dgt.gfx.paint;
 import std.typecons : Rebindable;
 
 enum LineCap
