@@ -10,8 +10,6 @@ import dgt.ui.layout;
 import dgt.ui.text;
 import dgt.ui.view;
 
-import gfx.core.log;
-
 /// Label is a widget to display a line of text and/or an icon
 class Label : View
 {

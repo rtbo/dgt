@@ -1,6 +1,6 @@
 module dgt.render.renderer;
 
-import dgt.render : dgtRenderTag;
+import dgt.render : dgtRenderLog;
 import dgt.render.framegraph;
 import gfx.core.rc : Disposable;
 import gfx.gl3.context : GlContext;
@@ -33,8 +33,7 @@ Renderer createRenderer(in Backend[] tryOrder, lazy string appName,
             }
         }
         catch(Exception e) {
-            import gfx.core.log : warningf;
-            warningf(dgtRenderTag, "Failed to create %s backend: %s", backend, e.msg);
+            dgtRenderLog.warningf("Failed to create %s backend: %s", backend, e.msg);
             ex = e;
         }
     }
@@ -229,14 +228,13 @@ class RendererBase : Renderer
         debug {
             import gfx.graal : Severity;
             instance.setDebugCallback((Severity sev, string msg) {
-                import gfx.core.log : errorf, warningf;
                 import std.stdio : writefln;
 
                 if (sev == Severity.warning) {
-                    warningf(dgtRenderTag, "Gfx backend message: %s", msg);
+                    dgtRenderLog.warningf("Gfx backend message: %s", msg);
                 }
                 else if (sev == Severity.error) {
-                    errorf(dgtRenderTag, "Gfx backend message: %s", msg);
+                    dgtRenderLog.errorf("Gfx backend message: %s", msg);
                     // debug break;
                     asm { int 0x03; }
                 }
@@ -247,8 +245,7 @@ class RendererBase : Renderer
     override void finalize(size_t windowHandle)
     {
         import gfx.core.rc : disposeObj, disposeArr, releaseArr;
-        import gfx.core.log : trace;
-        trace(dgtRenderTag, "finalizing renderer");
+        dgtRenderLog.trace("finalizing renderer");
 
         device.waitIdle();
 
@@ -348,7 +345,6 @@ class RendererBase : Renderer
     {
         import dgt.core.future;
         import dgt.gfx.geometry : FRect;
-        import gfx.core.log : tracef;
         import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
         import gfx.graal.error : OutOfDateException;
         import gfx.graal.queue : PresentRequest, Submission, StageWait;
@@ -375,7 +371,7 @@ class RendererBase : Renderer
             services.incrFrameNum();
         }
 
-        tracef(dgtRenderTag, "rendering frame %s", services.frameNum);
+        dgtRenderLog.tracef("rendering frame %s", services.frameNum);
 
         // TODO: retained mode for gl3 such as only queue submission
         // and presentation are required on the same thread
@@ -773,7 +769,6 @@ final class WindowContext : Disposable
         import std.algorithm : clamp, map, max;
         import std.array : array;
         import std.exception : enforce;
-        import gfx.core.log : tracef;
 
         if (swapchain && newSize == size && !mustRebuildSwapchain) return;
 
@@ -802,7 +797,7 @@ final class WindowContext : Disposable
             sz[i] = clamp(newSize[i], surfCaps.minSize[i], surfCaps.maxSize[i]);
         }
 
-        tracef(dgtRenderTag, "creating swapchain for size %s", sz);
+        dgtRenderLog.tracef("creating swapchain for size %s", sz);
 
         const usage = ImageUsage.colorAttachment;
         const pm = PresentMode.fifo;

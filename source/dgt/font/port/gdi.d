@@ -10,7 +10,6 @@ import dgt.font.port.ft;
 import dgt.font.style;
 import dgt.font.typeface;
 
-import gfx.core.log;
 import gfx.core.rc;
 
 import std.exception;

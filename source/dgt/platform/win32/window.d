@@ -9,7 +9,6 @@ import dgt.platform;
 import dgt.platform.event;
 import dgt.platform.win32;
 import dgt.window;
-import gfx.core.log;
 import gfx.core.rc;
 
 import core.sys.windows.windows;
@@ -338,7 +337,7 @@ class Win32Window : PlatformWindow
             assert(msg == WM_KEYDOWN || msg == WM_KEYUP,
                    "current code assumes either keydown or keyup");
             if (wParam < 0 || wParam >= 256) {
-                warningf(dgtW32Tag, "key %s received a virtual key out of byte boundary: %s",
+                dgtW32Log.warningf("key %s received a virtual key out of byte boundary: %s",
                          msg == WM_KEYDOWN?"down":"up", wParam);
                 return false;
             }

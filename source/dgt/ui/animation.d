@@ -3,11 +3,9 @@ module dgt.ui.animation;
 
 import core.time;
 
-import dgt : dgtTag;
+import dgt : dgtLog;
 import dgt.core.signal;
 import dgt.ui;
-
-import gfx.core.log;
 
 abstract class Animation
 {
@@ -37,10 +35,10 @@ abstract class Animation
     final void start()
     {
         if (_running) {
-            warningf(dgtTag, "try to start a running animation: %s", name);
+            dgtLog.warningf("try to start a running animation: %s", name);
             return;
         }
-        tracef(dgtTag, "starting animation %s", name);
+        dgtLog.tracef("starting animation %s", name);
         _running = true;
         _startTime = MonoTime.currTime;
         _lastTick = MonoTime.zero;
@@ -52,10 +50,10 @@ abstract class Animation
     final void stop()
     {
         if (!_running) {
-            warningf(dgtTag, "try to stop a non-running animation: %s", name);
+            dgtLog.warningf("try to stop a non-running animation: %s", name);
             return;
         }
-        tracef(dgtTag, "stopping animation %s", name);
+        dgtLog.tracef("stopping animation %s", name);
         _running = false;
         _ui.animManager.unregister(this);
         if (_onStop) _onStop.fire();
@@ -134,7 +132,7 @@ class TransitionAnimation : Animation
 
     final @property void onTick(Slot!float handler) {
         if (_tickHandler.engaged) {
-            warningf(dgtTag, "overriding animation tick handler: %s", name);
+            dgtLog.warningf("overriding animation tick handler: %s", name);
         }
         _tickHandler = handler;
     }

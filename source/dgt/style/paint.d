@@ -1,6 +1,6 @@
 module dgt.style.paint;
 
-import dgt : dgtTag;
+import dgt : dgtLog;
 import dgt.gfx.paint;
 import dgt.css.token;
 import std.range;
@@ -230,7 +230,6 @@ immutable(Paint) parseImageFromUri(in string uri)
 {
     import dgt.gfx.image : assumeUnique, Image, ImageFormat;
     import dgt.core.resource : Registry, Resource, retrieveResource;
-    import gfx.core.log : errorf, tracef;
     import std.algorithm : startsWith;
     import std.typecons : Rebindable;
 
@@ -252,7 +251,7 @@ immutable(Paint) parseImageFromUri(in string uri)
             }
         }
 
-        tracef(dgtTag, `decoding image from "%s"`, uri);
+        dgtLog.tracef(`decoding image from "%s"`, uri);
         immutable img = assumeUnique(
             Image.loadFromMemory(data, ImageFormat.argbPremult)
         );
@@ -261,8 +260,8 @@ immutable(Paint) parseImageFromUri(in string uri)
         return pnt;
     }
     catch(Exception ex) {
-        errorf(dgtTag, "could not get paint image from url %s", uri);
-        errorf(dgtTag, "Error msg:%s", ex.msg);
+        dgtLog.errorf("could not get paint image from url %s", uri);
+        dgtLog.errorf("Error msg:%s", ex.msg);
         return null;
     }
 }

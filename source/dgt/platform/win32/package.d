@@ -12,13 +12,15 @@ import dgt.platform.win32.window;
 import dgt.screen;
 import dgt.window;
 
-import gfx.core.log;
+import gfx.core.log : LogTag;
+
 import core.sys.windows.winuser;
 import core.sys.windows.windows;
 
 private __gshared Win32Platform _w32Inst;
 
-package immutable string dgtW32Tag = "DGT-W32";
+enum dgtW32LogMask = 0x0100_0000;
+package immutable dgtW32Log = LogTag("DGT-W32", dgtW32LogMask);
 
 /// Win32 platform implementation
 class Win32Platform : Platform
@@ -133,7 +135,7 @@ class Win32Platform : Platform
                     QS_ALLINPUT);
 
         if (code == WAIT_FAILED) {
-            errorf(dgtW32Tag, "win32 wait failed with code: %s", GetLastError());
+            dgtW32Log.errorf("win32 wait failed with code: %s", GetLastError());
             return Wait.none;
         }
         Wait wait = Wait.none;
@@ -332,7 +334,7 @@ private LRESULT win32WndProc (HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     catch(Exception ex)
     {
-        try { errorf(dgtW32Tag, "Win32 Proc exception: %s", ex.msg); }
+        try { dgtW32Log.errorf("Win32 Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return res;
@@ -350,7 +352,7 @@ private BOOL win32MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprc
     }
     catch(Exception ex)
     {
-        try { errorf(dgtW32Tag, "Win32 Monitor Proc exception: %s", ex.msg); }
+        try { dgtW32Log.errorf("Win32 Monitor Proc exception: %s", ex.msg); }
         catch(Exception) {}
     }
     return TRUE;

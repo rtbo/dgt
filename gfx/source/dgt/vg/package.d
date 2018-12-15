@@ -7,11 +7,13 @@ public import dgt.vg.path;
 public import dgt.vg.penbrush;
 
 import dgt.gfx.image : Image;
+import gfx.core.log : LogTag;
 
 import std.traits : Unqual;
 import std.typecons : Flag, No;
 
-enum dgtVgTag = "DGT-VG";
+enum dgtVgLogMask = 0x0200_0000;
+package immutable dgtVgLog = LogTag("DGT-VG", dgtVgLogMask);
 
 interface VgBackend
 {
@@ -20,7 +22,6 @@ interface VgBackend
     VgContext makeContext(Image image)
     in (image.vgCompatible, "Invalid image for vector graphics");
 }
-
 
 VgContext makeVgContext(Image image)
 {
@@ -75,7 +76,6 @@ out(res; res.vgCompatible)
     if (img.vgCompatible) return img;
     return makeVgCompatible(img);
 }
-
 
 private ImgT makeVgCompatiblePriv(ImgT)(ImgT img)
 if (is(Unqual!ImgT == Image))

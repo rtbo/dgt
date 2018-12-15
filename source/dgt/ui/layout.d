@@ -1,14 +1,13 @@
 /// layout module
 module dgt.ui.layout;
 
-import dgt : dgtTag;
+import dgt : dgtLog;
 import dgt.core.enums;
 import dgt.gfx.geometry;
 import dgt.css.style;
 import dgt.style;
 import dgt.style.support;
 import dgt.ui.view;
-import gfx.core.log;
 import gfx.math;
 
 import std.exception;
@@ -455,7 +454,7 @@ class LinearLayout : Layout
             resolveSize(totalHeight, heightSpec, hTooSmall),
         );
         if (wTooSmall || hTooSmall) {
-            warningf(dgtTag, "layout too small for '%s'", name);
+            dgtLog.warningf("layout too small for '%s'", name);
         }
 
         _totalLength = totalHeight;
@@ -522,7 +521,7 @@ class LinearLayout : Layout
             resolveSize(largestHeight, heightSpec, hTooSmall),
         );
         if (wTooSmall || hTooSmall) {
-            warningf(dgtTag, "layout too small for '%s'", name);
+            dgtLog.warningf("layout too small for '%s'", name);
         }
 
         _totalLength = totalWidth;

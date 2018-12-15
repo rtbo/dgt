@@ -3,7 +3,7 @@ version(Windows):
 
 import core.sys.windows.wingdi;
 import dgt.platform : PlatformWindow;
-import dgt.platform.win32 : dgtW32Tag;
+import dgt.platform.win32 : dgtW32Log;
 import dgt.screen : Screen;
 import gfx.bindings.core;
 import gfx.bindings.opengl.gl : Gl, GL_TRUE;
@@ -88,7 +88,6 @@ private class Win32GlContext : GlContext
     import core.sys.windows.windows;
     import gfx.core.rc : atomicRcCode, Disposable;
     import std.exception : enforce;
-    import gfx.core.log : tracef;
 
     mixin(atomicRcCode);
 
@@ -155,7 +154,7 @@ private class Win32GlContext : GlContext
             if (attrs.decimalVersion < attribs.decimalVersion) break;
 
             const ctxAttribs = getCtxAttribs(attrs);
-            tracef(dgtW32Tag, "attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+            dgtW32Log.tracef("attempting to create OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
 
             _ctx = _wgl.CreateContextAttribsARB(dc, sharedGlrc, &ctxAttribs[0]);
 
@@ -163,7 +162,7 @@ private class Win32GlContext : GlContext
         }
 
         enforce(_ctx, "Failed creating Wgl context");
-        tracef(dgtW32Tag, "created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
+        dgtW32Log.tracef("created OpenGL %s.%s context", attrs.majorVersion, attrs.minorVersion);
         _attribs = attrs;
         Win32GlContext.makeCurrent(cast(size_t)window);
         _gl = new Gl(&loader);
@@ -171,7 +170,7 @@ private class Win32GlContext : GlContext
 
     override void dispose() {
         _wgl.DeleteContext(_ctx);
-        tracef(dgtW32Tag, "destroyed GL/WGL context");
+        dgtW32Log.tracef("destroyed GL/WGL context");
     }
 
     override @property Gl gl() {
@@ -232,21 +231,22 @@ private class Win32GlContext : GlContext
         }
     }
 
-    private void printLastError() {
-        import gfx.core.log : errorf;
+    private void printLastError()
+    {
         const err = GetLastError();
         LPSTR messageBuffer = null;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                                     null, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), cast(LPSTR)&messageBuffer, 0, null);
         auto buf = new char[size];
         buf[] = messageBuffer[0 .. size];
-        errorf(dgtW32Tag, buf.idup);
+        dgtW32Log.errorf(buf.idup);
         LocalFree(messageBuffer);
     }
 
 }
 
-int[] getCtxAttribs(in GlAttribs attribs) {
+int[] getCtxAttribs(in GlAttribs attribs)
+{
     int[] ctxAttribs = [
         WGL_CONTEXT_MAJOR_VERSION_ARB, attribs.majorVersion,
         WGL_CONTEXT_MINOR_VERSION_ARB, attribs.minorVersion
@@ -272,8 +272,7 @@ private SharedLib loadGlLib()
     foreach (ln; glLibNames) {
         auto lib = openSharedLib(ln);
         if (lib) {
-            import gfx.core.log : tracef;
-            tracef(dgtW32Tag, "opening shared library %s", ln);
+            dgtW32Log.tracef("opening shared library %s", ln);
             return lib;
         }
     }

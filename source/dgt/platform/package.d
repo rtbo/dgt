@@ -10,9 +10,13 @@ import dgt.platform.event;
 import dgt.screen;
 import dgt.window;
 
+import gfx.core.log : LogTag;
 import gfx.core.rc;
 
 import std.typecons : BitFlags;
+
+enum dgtPlatformLogMask = 0x0100_0000;
+package immutable dgtPlatformLog = LogTag("DGT-PLATFORM", dgtPlatformLogMask);
 
 /// Kind of event to wait for
 enum Wait

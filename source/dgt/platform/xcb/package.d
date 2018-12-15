@@ -18,6 +18,7 @@ import dgt.platform.xcb.timer;
 import dgt.platform.xcb.window;
 import dgt.screen;
 import dgt.window;
+import gfx.core.log : LogTag;
 import gfx.graal : Instance;
 import gfx.graal.presentation : Surface;
 
@@ -30,11 +31,11 @@ import X11.Xlib;
 
 import std.container : DList;
 import std.exception : enforce;
-import gfx.core.log;
 import std.string : toStringz;
 import std.typecons : scoped;
 
-package immutable string dgtXcbTag = "DGT-XCB";
+enum dgtXcbLogMask = 0x0100_0000;
+package immutable dgtXcbLog = LogTag("DGT-XCB", dgtXcbLogMask);
 
 alias Window = dgt.window.Window;
 alias Screen = dgt.screen.Screen;
@@ -199,7 +200,7 @@ class XcbPlatform : Platform
                 import core.stdc.string : strerror;
                 import std.string : fromStringz;
                 if (errno == EINTR) continue;
-                infof(dgtXcbTag, "error during poll: %s", fromStringz(strerror(errno)));
+                dgtXcbLog.infof("error during poll: %s", fromStringz(strerror(errno)));
             }
             break;
         }

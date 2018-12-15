@@ -2,12 +2,17 @@
 module dgt;
 
 import core.sync.mutex : Mutex;
+import gfx.core.log : LogTag;
 
-package immutable string dgtTag = "DGT";
-package immutable string dgtTextTag = "DGT-TEXT";
-package immutable string dgtStyleTag = "DGT-STYLE";
-package immutable string dgtLayoutTag = "DGT-LAYOUT";
-package immutable string dgtFrameTag = "DGT-FRAME";
+enum dgtLogMask = 0x0FE0_0000;
+enum dgtStyleLogMask = 0x0080_0000;
+enum dgtLayoutLogMask = 0x0080_0000;
+enum dgtFrameLogMask = 0x0080_0000;
+
+package immutable dgtLog = LogTag("DGT", dgtLogMask);
+package immutable dgtStyleLog = LogTag("DGT-STYLE", dgtStyleLogMask);
+package immutable dgtLayoutLog = LogTag("DGT-LAYOUT", dgtLayoutLogMask);
+package immutable dgtFrameLog = LogTag("DGT-FRAME", dgtFrameLogMask);
 
 interface Subsystem
 {
@@ -45,21 +50,20 @@ void registerSubsystem(Subsystem ss)
 
 void initializeSubsystems()
 {
-    import gfx.core.log : trace;
     import std.algorithm : each, filter, sort;
 
     gMut.lock();
     scope(exit) gMut.unlock();
 
-    trace(dgtTag, "loading dynamic bindings");
+    dgtLog.trace("loading dynamic bindings");
     loadBindings();
 
-    trace(dgtTag, "initializing subsystems");
+    dgtLog.trace("initializing subsystems");
 
     auto ss = gSubsystems.dup;
     ss.sort!"a.priority > b.priority"();
     foreach (s; ss.filter!(s => !s.running)) {
-        trace(dgtTag, "Initialize subsystem "~s.name);
+        dgtLog.trace("Initialize subsystem "~s.name);
         s.initialize();
     }
 }
@@ -67,7 +71,6 @@ void initializeSubsystems()
 void finalizeSubsystems()
 {
     import std.algorithm : each, filter, sort;
-    import gfx.core.log : trace;
 
     gMut.lock();
     scope(exit) gMut.unlock();
@@ -75,12 +78,12 @@ void finalizeSubsystems()
     auto ss = gSubsystems.dup;
     ss.sort!"a.priority < b.priority"();
     foreach (s; ss.filter!(s => s.running)) {
-        trace(dgtTag, "Finalize subsystem "~s.name);
+        dgtLog.trace("Finalize subsystem "~s.name);
         s.finalize();
     }
     gSubsystems = [];
 
-    trace(dgtTag, "finalized subsystems");
+    dgtLog.trace("finalized subsystems");
 }
 
 private:

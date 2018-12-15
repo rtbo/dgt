@@ -14,7 +14,6 @@ import dgt.core.container : GrowableStack;
 import dgt.gfx.geometry : FRect;
 import dgt.gfx.image : Image, ImageFormat;
 import dgt.gfx.paint;
-import gfx.core.log;
 import gfx.math : FMat2x3, FMat3, FVec2;
 
 final class CairoBackend : VgBackend

@@ -1,8 +1,6 @@
 /// The obligatory junk module with unsortable and essential utilities.
 module dgt.core.util;
 
-import dgt.core : dgtCoreTag;
-
 /// Computes a string hash at compile time.
 template hash(string s, size_t sofar=0)
 {
@@ -93,7 +91,7 @@ version (unittest)
 /// The function checks that the proposed filename does not exist.
 string getUniqueTempFile(string model)
 {
-    import gfx.core.log : error;
+    import dgt.core : dgtCoreLog;
     import std.file : tempDir, exists, isDir;
     import std.path : chainPath;
     import std.conv : to;
@@ -116,7 +114,7 @@ string getUniqueTempFile(string model)
     while(attempts < maxAttempts && (!exists(result) || isDir(result)));
 
     if (attempts >= maxAttempts)
-        error(dgtCoreTag, "Cannot generate a unique file name");
+        dgtCoreLog.error("Cannot generate a unique file name");
 
     return result;
 }

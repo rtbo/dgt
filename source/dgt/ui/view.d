@@ -3,15 +3,14 @@ module dgt.ui.view;
 import dgt.gfx.geometry;
 import dgt.core.tree;
 import dgt.css.style;
-import gfx.math.mat;
-import gfx.math.transform;
 import dgt.render.framegraph;
 import dgt.ui;
 import dgt.ui.event;
 import dgt.ui.layout;
+import gfx.math.mat;
+import gfx.math.transform;
 
 import std.exception;
-import gfx.core.log;
 
 /// Base class for all views in the user interface
 class View : StyleElement, TreeNode!View

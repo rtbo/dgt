@@ -12,7 +12,6 @@ import dgt.platform;
 import dgt.platform.win32;
 
 import std.exception;
-import gfx.core.log;
 
 class Win32Timer : PlatformTimer
 {

@@ -344,21 +344,19 @@ class FcTypeface : FtTypeface
 
     this(FT_Face face, FcPattern* font)
     {
-        import dgt : dgtTextTag;
-        import gfx.core.log : infof;
+        import dgt.text : dgtTextLog;
 
         super(face);
         _font = font;
         FcPatternReference(_font);
-        infof(dgtTextTag, `loading font family "%s"`, family);
+        dgtTextLog.infof(`loading font family "%s"`, family);
     }
 
     override void dispose()
     {
-        import dgt : dgtTextTag;
-        import gfx.core.log : infof;
+        import dgt.text : dgtTextLog;
 
-        infof(dgtTextTag, `disposing font family "%s"`, family);
+        dgtTextLog.infof(`disposing font family "%s"`, family);
         super.dispose();
         FcPatternDestroy(_font);
     }
@@ -373,15 +371,14 @@ class FcTypeface : FtTypeface
 
     override CodepointSet buildCoverage()
     {
-        import dgt : dgtTextTag;
-        import gfx.core.log : errorf;
+        import dgt.text : dgtTextLog;
 
         FcCharSet* csval;
         if (FcPatternGetCharSet(_font, FC_CHARSET, 0, &csval) == FcResultMatch) {
             return fcCharsetToCoverage(csval);
         }
         else {
-            errorf(dgtTextTag, "Cannot find charset in font %s to build coverage", family);
+            dgtTextLog.errorf("Cannot find charset in font %s to build coverage", family);
             return CodepointSet.init;
         }
     }
@@ -452,8 +449,7 @@ int slantToFcSlant(in FontSlant slant)
 
 FontSlant fcSlantToSlant(in int slant)
 {
-    import dgt : dgtTextTag;
-    import gfx.core.log : warningf;
+    import dgt.text : dgtTextLog;
 
     switch(slant)
     {
@@ -464,7 +460,7 @@ FontSlant fcSlantToSlant(in int slant)
         case FC_SLANT_OBLIQUE:
             return FontSlant.oblique;
         default:
-            warningf(dgtTextTag, "fontconfig slant %d do not match a FontSlant", slant);
+            dgtTextLog.warningf("fontconfig slant %d do not match a FontSlant", slant);
             return FontSlant.normal;
     }
 }

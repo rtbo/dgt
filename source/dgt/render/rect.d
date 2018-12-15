@@ -8,7 +8,7 @@
 /// https://mortoray.com/2015/06/05/quickly-drawing-a-rounded-rectangle-with-a-gl-shader/
 module dgt.render.rect;
 
-import dgt.render : dgtRenderTag;
+import dgt.render : dgtRenderLog;
 import dgt.render.framegraph : FGRectNode;
 import dgt.render.renderer : FGNodeRenderer;
 import gfx.core.rc : Disposable;
@@ -887,7 +887,6 @@ size_t buildVertices(V)(immutable(FGRectNode) node, V[] verts)
     import dgt.gfx.geometry : FMargins, FPadding;
     import gfx.math : fvec;
     import std.algorithm : min;
-    import gfx.core.log : warning;
 
     const r = node.rect;
     const radius = node.radius;
@@ -902,7 +901,7 @@ size_t buildVertices(V)(immutable(FGRectNode) node, V[] verts)
     if (radius > 0) {
         immutable rd = min(hm, radius);
         if (rd != radius) {
-            warning(dgtRenderTag, "specified radius for rect is too big");
+            dgtRenderLog.warning("specified radius for rect is too big");
         }
 
         // top left corner

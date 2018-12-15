@@ -15,7 +15,6 @@ import dgt.ui.layout;
 
 import gfx.core.typecons : Option, some;
 
-import gfx.core.log;
 import std.typecons : Rebindable, rebindable;
 
 class Button : Label

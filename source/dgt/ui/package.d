@@ -1,6 +1,6 @@
 module dgt.ui;
 
-import dgt : dgtTag, dgtLayoutTag, dgtStyleTag;
+import dgt : dgtLog, dgtLayoutLog, dgtStyleLog;
 import dgt.gfx.color;
 import dgt.gfx.geometry;
 import dgt.css.om : Stylesheet;
@@ -15,7 +15,6 @@ import dgt.ui.view : View;
 
 import gfx.core.typecons : option, Option, none;
 
-import gfx.core.log;
 import std.typecons : rebindable, Rebindable;
 
 /// The UserInterface class represent the top level of the GUI tree.
@@ -113,11 +112,10 @@ final class UserInterface : StyleElement {
         import dgt.css.cascade : cssCascade;
         import dgt.css.parse : parseCSS;
         import dgt.css.style : Origin;
-        import gfx.core.log : trace;
 
         if (!_size.area) return;
 
-        trace(dgtStyleTag, "Starting style pass");
+        dgtStyleLog.trace("Starting style pass");
 
         if (!_dgtCSS) {
             _dgtCSS = parseCSS(cast(string)import("dgt.css"), null, Origin.dgt);
@@ -129,12 +127,10 @@ final class UserInterface : StyleElement {
 
     void layoutPass ()
     {
-        import gfx.core.log : trace;
-
         if (!_root) return;
         if (!_size.area) return;
 
-        trace(dgtLayoutTag, "Starting layout pass");
+        dgtLayoutLog.trace("Starting layout pass");
 
         import dgt.ui.layout : MeasureSpec;
         auto fs = cast(FSize) _size;
@@ -342,13 +338,13 @@ final class UserInterface : StyleElement {
                 const pos = cast(FVec2)ev.point;
 
                 if (!_mouseViews.length) {
-                    errorf(dgtTag, "mouse down without prior move");
+                    dgtLog.errorf("mouse down without prior move");
                     _root.viewsAtPos(pos, _mouseViews);
                 }
                 _dragChain = _mouseViews;
 
                 if (!_mouseViews.length) {
-                    error(dgtTag, "No View under mouse?");
+                    dgtLog.error("No View under mouse?");
                     return;
                 }
 
@@ -384,7 +380,7 @@ final class UserInterface : StyleElement {
                 _tempViews.length = 0;
 
                 if (!_mouseViews.length) {
-                    error(dgtTag, "No View under mouse?");
+                    dgtLog.error("No View under mouse?");
                     return;
                 }
 
@@ -435,9 +431,9 @@ final class UserInterface : StyleElement {
                 }
                 else {
                     // should not happen
-                    warning(dgtTag, "mouse up without drag?");
+                    dgtLog.warning("mouse up without drag?");
                     if (!_mouseViews.length) {
-                        error(dgtTag, "No View under mouse?");
+                        dgtLog.error("No View under mouse?");
                         return;
                     }
                     auto upEv = scoped!MouseEvent(
@@ -458,7 +454,7 @@ final class UserInterface : StyleElement {
                 const pos = cast(FPoint)ev.point;
 
                 if (_mouseViews.length) {
-                    errorf(dgtTag, "Enter window while having already nodes under mouse??");
+                    dgtLog.errorf("Enter window while having already nodes under mouse??");
                     _mouseViews.length = 0;
                 }
                 assert(!_tempViews.length);

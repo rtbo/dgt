@@ -1,10 +1,9 @@
 /// Rendering cache module
 module dgt.render.cache;
 
-import dgt.render : dgtRenderTag;
+import dgt.render : dgtRenderLog;
 import dgt.render.framegraph : CacheCookie;
 
-import gfx.core.log;
 import gfx.core.rc : Disposable;
 
 class RenderCache : Disposable
@@ -20,10 +19,10 @@ class RenderCache : Disposable
     void cache(in CacheCookie cookie, AtomicRefCounted resource) {
         auto rcp = cookie in _cache;
         if (rcp && (*rcp) is resource) {
-            warning(dgtRenderTag, "RenderCache: Resource already cached.");
+            dgtRenderLog.warning("RenderCache: Resource already cached.");
         }
         else if (rcp && (*rcp) !is resource) {
-            warning(dgtRenderTag, "RenderCache : Overriding a resource.");
+            dgtRenderLog.warning("RenderCache : Overriding a resource.");
             rcp.release();
             resource.retain();
             (*rcp) = resource;
