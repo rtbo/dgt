@@ -347,9 +347,11 @@ class Atlas : AtomicRefCounted
             buildImage();
         }
 
-        import std.format : format;
-        static int num = 1;
-        _image.saveToFile(format("atlas%s.png", num++));
+        static if (false) {
+            import std.format : format;
+            static int num = 1;
+            _image.saveToFile(format("atlas%s.png", num++));
+        }
 
         services.stageDataToImage(
             cmd, _imgAlloc.image, ImageAspect.color, ImageLayout.undefined, _image.data
