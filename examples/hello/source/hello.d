@@ -3,8 +3,8 @@ module hello;
 import core.time : dur;
 
 import dgt.application;
-import dgt.core.color : Color;
 import dgt.core.enums : Alignment;
+import dgt.gfx.color : Color;
 import dgt.gfx.geometry;
 import dgt.gfx.image;
 import dgt.platform;

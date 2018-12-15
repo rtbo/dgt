@@ -1,7 +1,7 @@
 module dgt.style.support;
 
-import dgt.core.color;
 import dgt.css.style;
+import dgt.gfx.color;
 import dgt.style;
 import dgt.ui.view;
 

@@ -1,7 +1,7 @@
 module dgt.style.color;
 
-import dgt.core.color;
 import dgt.css.token : Token;
+import dgt.gfx.color;
 import std.range : ElementType, isInputRange;
 
 /// Attempts to parse a color from the given tokens.

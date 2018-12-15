@@ -1,7 +1,7 @@
 /// Color module.
 /// Provide a common construct to describe colors, and utility to
 /// build from/convert to various forms
-module dgt.core.color;
+module dgt.gfx.color;
 
 import gfx.math.vec : FVec3;
 

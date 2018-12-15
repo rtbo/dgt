@@ -211,7 +211,7 @@ private class CheckBoxIndicator : View
 
     override immutable(FGNode) frame(FrameContext fc)
     {
-        import dgt.core.color : Color;
+        import dgt.gfx.color : Color;
         import dgt.gfx.paint : ColorPaint;
         import gfx.core.typecons : none;
         import std.typecons : Rebindable;

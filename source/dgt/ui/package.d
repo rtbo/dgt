@@ -1,8 +1,8 @@
 module dgt.ui;
 
 import dgt : dgtTag, dgtLayoutTag, dgtStyleTag;
+import dgt.gfx.color;
 import dgt.gfx.geometry;
-import dgt.core.color;
 import dgt.css.om : Stylesheet;
 import dgt.css.style;
 import dgt.gfx.paint;

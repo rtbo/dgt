@@ -1,7 +1,7 @@
 /// Vector graphics - Command buffer module
 module dgt.vg.cmdbuf;
 
-import dgt.core.color : Color;
+import dgt.gfx.color : Color;
 import dgt.gfx.geometry : FMargins, FRect, FPoint, IRect;
 import dgt.gfx.image : Image, ImageFormat, RImage;
 import dgt.gfx.paint : Paint, RPaint;

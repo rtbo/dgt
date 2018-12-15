@@ -9,7 +9,7 @@ import std.range;
 immutable(Paint) parsePaint(Tokens)(ref Tokens tokens)
 if (isInputRange!Tokens && is(ElementType!Tokens == Token))
 {
-    import dgt.core.color : Color;
+    import dgt.gfx.color : Color;
     import dgt.style.color : parseColor;
 
     tokens.popSpaces();
@@ -42,7 +42,7 @@ immutable(Paint) parsePaint(string css)
 ///
 unittest
 {
-    import dgt.core.color : Color;
+    import dgt.gfx.color : Color;
     import gfx.math.approx : approxUlp;
 
     alias Direction = LinearGradientPaint.Direction;

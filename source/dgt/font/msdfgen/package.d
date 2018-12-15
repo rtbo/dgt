@@ -232,7 +232,7 @@ body {
                 return res;
             }
 
-            import dgt.core.color : Color;
+            import dgt.gfx.color : Color;
             const rgb = Color(mapChannel(msd.r), mapChannel(msd.g), mapChannel(msd.b));
             line.setArgb(x, rgb.argb);
         }

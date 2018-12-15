@@ -19,7 +19,7 @@ enum PaintType
 /// A gradient stop.
 struct GradientStop
 {
-    import dgt.core.color : Color;
+    import dgt.gfx.color : Color;
 
     /// linear position of the stop in the range [0-1].
     float position;
@@ -61,7 +61,7 @@ alias RColorPaint = Rebindable!(immutable(ColorPaint));
 /// ditto
 immutable class ColorPaint : Paint
 {
-    import dgt.core.color : Color;
+    import dgt.gfx.color : Color;
 
     /// Prebuilt common colors
     static immutable ColorPaint black;

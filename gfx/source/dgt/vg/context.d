@@ -1,6 +1,6 @@
 module dgt.vg.context;
 
-import dgt.core.color : Color;
+import dgt.gfx.color : Color;
 import dgt.gfx.image : Image;
 import dgt.gfx.paint : Paint;
 import dgt.vg.path : Path;

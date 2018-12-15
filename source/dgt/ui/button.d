@@ -1,9 +1,9 @@
 /// Button UI module
 module dgt.ui.button;
 
-import dgt.core.color;
 import dgt.core.signal;
 import dgt.css.style;
+import dgt.gfx.color;
 import dgt.gfx.geometry;
 import dgt.gfx.paint;
 import dgt.render.framegraph;

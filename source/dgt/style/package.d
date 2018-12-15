@@ -2,8 +2,8 @@
 module dgt.style;
 
 import dgt : dgtStyleTag;
-import dgt.core.color;
 import dgt.font.style;
+import dgt.gfx.color;
 import dgt.gfx.paint;
 import dgt.css.style;
 import dgt.css.token;

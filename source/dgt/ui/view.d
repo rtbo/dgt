@@ -846,7 +846,7 @@ class View : StyleElement, TreeNode!View
     }
 
     version(dgtActivateWireframe) {
-        import dgt.core.color : Color;
+        import dgt.gfx.color : Color;
         /// the wireframe color to use if version(dgtActivateWireframe) is applied.
         static Color wireframeColor = Color.black;
     }
@@ -860,9 +860,9 @@ class View : StyleElement, TreeNode!View
 
 
         version(dgtActivateWireframe) {
-            import dgt.core.color : Color;
-            import dgt.core.paint : ColorPaint;
-            import gfx.foundation.typecons : some;
+            import dgt.gfx.color : Color;
+            import dgt.gfx.paint : ColorPaint;
+            import gfx.core.typecons : some;
 
             const r = rect;
             const wr = FRect(r.left-0.5, r.top-0.5, r.width+1, r.height+1);

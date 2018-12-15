@@ -1,7 +1,7 @@
 /// Text node module
 module dgt.ui.text;
 
-import dgt.core.color;
+import dgt.gfx.color;
 import dgt.css.style;
 import dgt.font.style;
 import dgt.gfx.geometry;

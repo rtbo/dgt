@@ -9,7 +9,7 @@ package(dgt.vg) __gshared VgBackend cairoBackend = null;
 private:
 
 import dgt.bindings.cairo;
-import dgt.core.color : Color;
+import dgt.gfx.color : Color;
 import dgt.core.container : GrowableStack;
 import dgt.gfx.geometry : FRect;
 import dgt.gfx.image : Image, ImageFormat;
