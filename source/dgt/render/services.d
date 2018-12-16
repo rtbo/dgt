@@ -3,10 +3,10 @@
 module dgt.render.services;
 
 import gfx.core.rc : AtomicRefCounted;
-import gfx.core.typecons : Trans;
 import gfx.graal.buffer : Buffer;
 import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
+import gfx.graal.types : Trans;
 import gfx.memalloc : BufferAlloc;
 
 /// Number of frames command buffers execution can extend
@@ -136,10 +136,10 @@ final class RenderServices : AtomicRefCounted
     void stageDataToBuffer(CommandBuffer cmd, BufferAlloc buffer, size_t offset, const(void)[] data)
     {
         import gfx.core.rc : rc;
-        import gfx.core.typecons : trans;
         import gfx.graal.buffer : BufferUsage;
         import gfx.graal.cmd : CopyRegion;
         import gfx.graal.memory : MemProps;
+        import gfx.graal.types : trans;
         import gfx.memalloc : AllocOptions, MemoryUsage;
 
         if (buffer.mem.props & MemProps.hostVisible) {
@@ -285,8 +285,8 @@ void setImageLayout(CommandBuffer cmd, Image img, in ImageSubresourceRange range
                     in PipelineStage srcStageMask=PipelineStage.allCommands,
                     in PipelineStage dstStageMask=PipelineStage.allCommands)
 {
-    import gfx.core.typecons : trans;
     import gfx.graal.cmd : ImageMemoryBarrier, queueFamilyIgnored;
+    import gfx.graal.types : trans;
 
     Trans!ImageLayout layout = trans(oldLayout, newLayout);
     auto barrier = ImageMemoryBarrier(

@@ -20,11 +20,11 @@ class RectRenderer : FGNodeRenderer
     import dgt.render.renderer : RenderContext;
     import dgt.render.services : RenderServices;
     import gfx.core.rc : Rc;
-    import gfx.core.typecons : Interval;
     import gfx.decl.engine : DeclarativeEngine;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : DescriptorPool, Pipeline;
+    import gfx.graal.types : Interval;
     import gfx.math : FMat4;
     import gfx.memalloc : Allocator, BufferAlloc;
 
@@ -60,8 +60,8 @@ class RectRenderer : FGNodeRenderer
 
     override void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd)
     {
-        import gfx.core.typecons : interval;
         import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.types : interval;
         import gfx.memalloc : AllocOptions, MemoryUsage;
         import std.array : join;
         import std.range : only;
@@ -149,8 +149,8 @@ private:
 
 struct IndexBuffer
 {
-    import gfx.core.typecons : Interval;
     import gfx.graal.buffer : Buffer;
+    import gfx.graal.types : Interval;
 
     Buffer buf;
     Interval!size_t sharp;
@@ -564,9 +564,9 @@ final class RectImgRenderer : RectRendererBase
 
     override void prepare (RenderServices services, DeclarativeEngine declEng, IndexBuffer indexBuf)
     {
-        import gfx.core.typecons : trans;
         import gfx.graal.image : SamplerInfo;
         import gfx.graal.pipeline : BlendFactor, BlendOp, BlendState, ColorBlendAttachment, PipelineInfo;
+        import gfx.graal.types : trans;
 
         super.prepare(services, declEng, indexBuf);
 
