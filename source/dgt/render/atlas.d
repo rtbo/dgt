@@ -1,7 +1,7 @@
 /// module that produce atlases of packed images.
 module dgt.render.atlas;
 
-import gfx.core.rc : IAtomicRefCounted;
+import gfx.core.rc : AtomicRefCounted;
 
 struct AtlasSizeRange
 {
@@ -126,19 +126,17 @@ class AtlasNode
 }
 
 
-class Atlas : IAtomicRefCounted
+class Atlas : AtomicRefCounted
 {
     import dgt.gfx.geometry : ISize;
     import dgt.gfx.image : Image, ImageFormat;
     import dgt.render.binpack : BinPack, BinPackFactory;
     import dgt.render.services : RenderServices;
-    import gfx.core.rc : atomicRcCode, Rc;
+    import gfx.core.rc : Rc;
     import gfx.graal.cmd : CommandBuffer;
     import gfx.graal.format : Format;
     import gfx.graal.image : ImageView, Swizzle;
     import gfx.memalloc : ImageAlloc;
-
-    mixin(atomicRcCode);
 
     /// Define the invalidation state of the atlas image
     private enum Invalidation {

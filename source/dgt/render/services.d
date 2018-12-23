@@ -2,7 +2,7 @@
 /// Set of utilities to help rendering
 module dgt.render.services;
 
-import gfx.core.rc : IAtomicRefCounted;
+import gfx.core.rc : AtomicRefCounted, IAtomicRefCounted;
 import gfx.graal.buffer : Buffer;
 import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
@@ -18,15 +18,12 @@ private enum frameCmdOverlap = 2;
 ///       a predefined number of frames.
 ///     - a staging buffer service for optimal images.
 ///     - a RAII command buffer service
-final class RenderServices : IAtomicRefCounted
+final class RenderServices : AtomicRefCounted
 {
-    import gfx.core.rc : atomicRcCode;
     import gfx.graal.cmd : CommandPool;
     import gfx.graal.device : Device;
     import gfx.graal.queue : Queue;
     import gfx.memalloc : Allocator;
-
-    mixin(atomicRcCode);
 
     private Device _device;
     private Queue _queue;
@@ -306,14 +303,12 @@ void setImageLayout(CommandBuffer cmd, Image img, in ImageSubresourceRange range
 /// a circular way with a predefined size.
 /// Helpful when descriptor sets must be updated every frame to avoid
 /// updating a descriptor set that is in use in a command buffer.
-class CircularDescriptorPool : IAtomicRefCounted
+class CircularDescriptorPool : AtomicRefCounted
 {
-    import gfx.core.rc : atomicRcCode, Rc;
+    import gfx.core.rc : Rc;
     import gfx.graal.device : Device;
     import gfx.graal.pipeline : DescriptorPool, DescriptorPoolSize,
                                 DescriptorSet, DescriptorSetLayout;
-
-    mixin(atomicRcCode);
 
     private Rc!DescriptorPool pool;
     private uint numFrames = frameCmdOverlap;

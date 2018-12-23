@@ -6,15 +6,12 @@ import dgt.font.typeface;
 import gfx.core.rc;
 
 /// system font library
-class FontLibrary : IAtomicRefCounted {
-
-    mixin(atomicRcCode);
-
-    static FontLibrary get() {
+abstract class FontLibrary : AtomicRefCounted
+{
+    static FontLibrary get()
+    {
         return _instance;
     }
-
-    override abstract void dispose();
 
     abstract shared(Typeface) getById(in FontId fontId);
 
@@ -46,11 +43,8 @@ class FontLibrary : IAtomicRefCounted {
 }
 
 /// a collection of font style for a given family
-abstract class FamilyStyleSet : IAtomicRefCounted {
-    mixin(atomicRcCode);
-
-    abstract void dispose();
-
+abstract class FamilyStyleSet : AtomicRefCounted
+{
     abstract @property size_t styleCount();
 
     abstract FontStyle style(in size_t index);
