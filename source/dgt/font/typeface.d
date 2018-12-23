@@ -17,7 +17,7 @@ alias GlyphId = ushort;
 /// and rendering done, a ScalingContext must be obtained.
 /// Typefaces are obtained from the FontLibrary instance as shared objects.
 /// They must be locked (synchronized) during use.
-abstract class Typeface : AtomicRefCounted {
+abstract class Typeface : IAtomicRefCounted {
     mixin(atomicRcCode);
 
     this() {
@@ -110,7 +110,7 @@ final class Glyph {
 /// A scaling context is the facility that will scale and render glyphs to a
 /// requested size. They generally share some data with the parent typeface
 /// and therefore should be used while the typeface is locked.
-interface ScalingContext : AtomicRefCounted {
+interface ScalingContext : IAtomicRefCounted {
 
     @property float pixelSize();
 

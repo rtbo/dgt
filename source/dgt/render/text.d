@@ -1,7 +1,7 @@
 module dgt.render.text;
 
 import dgt.render.renderer : FGNodeRenderer;
-import gfx.core.rc : AtomicRefCounted, Disposable;
+import gfx.core.rc : IAtomicRefCounted, Disposable;
 
 
 final class TextRenderer : FGNodeRenderer

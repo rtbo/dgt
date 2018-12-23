@@ -8,7 +8,7 @@ import gfx.core.rc : Disposable;
 
 class RenderCache : Disposable
 {
-    import gfx.core.rc : AtomicRefCounted;
+    import gfx.core.rc : IAtomicRefCounted;
 
     override void dispose() {
         import gfx.core.rc : releaseAA;
@@ -16,7 +16,7 @@ class RenderCache : Disposable
     }
 
     /// Add a resource identified by cookie in the cache
-    void cache(in CacheCookie cookie, AtomicRefCounted resource) {
+    void cache(in CacheCookie cookie, IAtomicRefCounted resource) {
         auto rcp = cookie in _cache;
         if (rcp && (*rcp) is resource) {
             dgtRenderLog.warning("RenderCache: Resource already cached.");
@@ -33,7 +33,7 @@ class RenderCache : Disposable
     }
 
     /// Retrieve the resource identified by cookie.
-    AtomicRefCounted resource(in CacheCookie cookie) {
+    IAtomicRefCounted resource(in CacheCookie cookie) {
         auto rcp = cookie in _cache;
         if (rcp) return *rcp;
         else return null;
@@ -48,5 +48,5 @@ class RenderCache : Disposable
         }
     }
 
-    private AtomicRefCounted[CacheCookie] _cache;
+    private IAtomicRefCounted[CacheCookie] _cache;
 }

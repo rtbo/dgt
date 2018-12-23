@@ -6,7 +6,7 @@ import dgt.font.typeface;
 import gfx.core.rc;
 
 /// system font library
-class FontLibrary : AtomicRefCounted {
+class FontLibrary : IAtomicRefCounted {
 
     mixin(atomicRcCode);
 
@@ -46,7 +46,7 @@ class FontLibrary : AtomicRefCounted {
 }
 
 /// a collection of font style for a given family
-abstract class FamilyStyleSet : AtomicRefCounted {
+abstract class FamilyStyleSet : IAtomicRefCounted {
     mixin(atomicRcCode);
 
     abstract void dispose();

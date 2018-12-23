@@ -2,7 +2,7 @@
 /// Set of utilities to help rendering
 module dgt.render.services;
 
-import gfx.core.rc : AtomicRefCounted;
+import gfx.core.rc : IAtomicRefCounted;
 import gfx.graal.buffer : Buffer;
 import gfx.graal.cmd : Access, CommandBuffer, PipelineStage;
 import gfx.graal.image : Image, ImageAspect, ImageLayout, ImageSubresourceRange;
@@ -18,7 +18,7 @@ private enum frameCmdOverlap = 2;
 ///       a predefined number of frames.
 ///     - a staging buffer service for optimal images.
 ///     - a RAII command buffer service
-final class RenderServices : AtomicRefCounted
+final class RenderServices : IAtomicRefCounted
 {
     import gfx.core.rc : atomicRcCode;
     import gfx.graal.cmd : CommandPool;
@@ -208,7 +208,7 @@ final class RenderServices : AtomicRefCounted
     /// Collect and retain obj into a garbage pool until it is eventually released
     /// a predefined number of frames later.
     /// Used mainly when you want to dispose a resource you just sent into a command buffer.
-    void gc (AtomicRefCounted obj)
+    void gc (IAtomicRefCounted obj)
     {
         import gfx.core.rc : retainObj;
 
@@ -306,7 +306,7 @@ void setImageLayout(CommandBuffer cmd, Image img, in ImageSubresourceRange range
 /// a circular way with a predefined size.
 /// Helpful when descriptor sets must be updated every frame to avoid
 /// updating a descriptor set that is in use in a command buffer.
-class CircularDescriptorPool : AtomicRefCounted
+class CircularDescriptorPool : IAtomicRefCounted
 {
     import gfx.core.rc : atomicRcCode, Rc;
     import gfx.graal.device : Device;
@@ -425,13 +425,13 @@ struct AutoCmdBuf
 
 class Garbage
 {
-    import gfx.core.rc : AtomicRefCounted;
+    import gfx.core.rc : IAtomicRefCounted;
 
     size_t frameNum;
-    AtomicRefCounted obj;
+    IAtomicRefCounted obj;
     Garbage next;
 
-    this (size_t frameNum, AtomicRefCounted obj)
+    this (size_t frameNum, IAtomicRefCounted obj)
     {
         this.frameNum = frameNum;
         this.obj = obj;

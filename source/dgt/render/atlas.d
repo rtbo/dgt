@@ -1,7 +1,7 @@
 /// module that produce atlases of packed images.
 module dgt.render.atlas;
 
-import gfx.core.rc : AtomicRefCounted;
+import gfx.core.rc : IAtomicRefCounted;
 
 struct AtlasSizeRange
 {
@@ -126,7 +126,7 @@ class AtlasNode
 }
 
 
-class Atlas : AtomicRefCounted
+class Atlas : IAtomicRefCounted
 {
     import dgt.gfx.geometry : ISize;
     import dgt.gfx.image : Image, ImageFormat;

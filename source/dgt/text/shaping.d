@@ -12,7 +12,7 @@ struct GlyphInfo
     FVec2 offset;
 }
 
-interface TextShapingContext : AtomicRefCounted
+interface TextShapingContext : IAtomicRefCounted
 {
     immutable(GlyphInfo)[] shapeText(in string text);
 }
