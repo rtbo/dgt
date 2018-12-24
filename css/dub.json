@@ -11,6 +11,6 @@
 
     "dependencies":	{
         "dgt:core": { "path": "../core" },
-        "gfx:core": { "path": "../gfx-d" }
+        "gfx:core": "~>0.1.1"
     }
 }

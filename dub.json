@@ -37,14 +37,14 @@
         "dgt:css":      "*",
         "dgt:gfx":      "*",
 
-        "gfx":          { "path": "gfx-d" },
-        "gfx:decl":     { "path": "gfx-d" },
-        "gfx:memalloc": { "path": "gfx-d" },
-        "gfx:math":     { "path": "gfx-d" },
-        "gfx:gl3":      { "path": "gfx-d" },
-        "gfx:vulkan":   { "path": "gfx-d" },
+        "gfx":          "~>0.1.1",
+        "gfx:decl":     "~>0.1.1",
+        "gfx:memalloc": "~>0.1.1",
+        "gfx:math":     "~>0.1.1",
+        "gfx:gl3":      "~>0.1.1",
+        "gfx:vulkan":   "~>0.1.1",
 
-        "freetype-d":       "~>0.0.2"
+        "freetype-d":   "~>0.0.2"
     },
 
     "configurations": [

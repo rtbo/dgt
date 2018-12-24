@@ -10,8 +10,8 @@
     "buildRequirements": [ "disallowDeprecations" ],
 
     "dependencies":	{
-        "gfx:core": { "path": "../gfx-d" },
-        "gfx:math": { "path": "../gfx-d" }
+        "gfx:core": "~>0.1.1",
+        "gfx:math": "~>0.1.1"
     }
 
 }

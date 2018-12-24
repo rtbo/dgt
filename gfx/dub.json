@@ -12,7 +12,8 @@
     "dependencies":	{
         "dgt:core":    { "path": "../core" },
         "dgt:cairo":   { "path": "../bindings/cairo" },
-        "gfx:core":    { "path": "../gfx-d" },
+
+        "gfx:core":    "~>0.1.1",
 
         "png-d":       "~>0.0.2",
         "turbojpeg-d": "~>0.0.2"
