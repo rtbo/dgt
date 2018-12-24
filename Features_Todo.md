@@ -1,4 +1,4 @@
-support API:
+## support API:
  - [ ] text subpixel (might require to ship freetype binaries)
  - [X] font fallback
  - [X] windows font support (GDI, freetype and harfbuzz)
@@ -12,7 +12,7 @@ support API:
  - [ ] typecons
  - [X] resources
 
-style support:
+## style support:
  - [X] css cascade
  - [X] background
  - [X] linear-gradient
@@ -23,18 +23,18 @@ style support:
  - [ ] var()
  - [ ] paint()
 
-render API/impl:
+## render API/impl:
  - [X] rounded rect
  - [ ] circle/ellipse
  - [ ] z-position (z-buffer or sorting?)
- - [ ] vg painting (start with cairo into image/texture)
- - [ ] vg path (resume the Path class in deprecated branch)
+ - [X] vg painting (with cairo into images only at the moment)
+ - [X] vg path
  - [ ] vg buffering (send vg commands to the render thread to execute cairo there)
  - [ ] ~~shader paint assembly~~
  - [ ] releasing resources
  - [ ] custom geometry rendering?
 
-views:
+## views:
  - [X] image view
  - [X] label
  - [X] button
@@ -45,13 +45,13 @@ views:
  - [ ] table
  - [ ] tree
 
-layouts:
+## layouts:
  - [X] linear
  - [X] margins
  - [ ] form
  - [ ] grid
 
-platform support:
+## platform support:
  - [X] win32 platform support
  - [X] xcb/xlib platform support
  - [ ] client side decorations
