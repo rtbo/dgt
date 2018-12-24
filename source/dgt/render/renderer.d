@@ -172,9 +172,11 @@ class RendererBase : Renderer
     import gfx.graal.renderpass :   RenderPass;
     import gfx.graal.sync :         Fence;
     import gfx.math.mat :           FMat4;
+    import gfx.math.proj :          ProjConfig;
     import gfx.memalloc :           Allocator, BufferAlloc;
 
     private Rc!Instance instance;
+    private ProjConfig projConfig;
     private PhysicalDevice physicalDevice;
     private Rc!Device device;
     private uint graphicsQueueInd;
@@ -205,6 +207,7 @@ class RendererBase : Renderer
     this(Instance instance)
     {
         this.instance = instance;
+        this.projConfig = instance.apiProps.projConfig;
         this.cache = new RenderCache;
     }
 
@@ -436,7 +439,7 @@ class RendererBase : Renderer
 
             if (frame.root) {
                 import gfx.math.proj : ortho;
-                const viewProj = ortho(vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
+                const viewProj = ortho(projConfig, vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
                 auto ctx = scoped!RenderContext(cache, viewProj);
                 renderNode(frame.root, ctx, FMat4.identity, cmd);
                 foreach (r; chain(dgtRenderers, userRenderers))
