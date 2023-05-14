@@ -10,7 +10,7 @@
 
   "dependencies":	{
 		"dgt:bindings": {
-			"path": ".."
+			"path": "../.."
 		},
 		"freetype-d": "~>0.0.2"
   }

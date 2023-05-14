@@ -142,7 +142,7 @@ class FcFontLibrary : FontLibrary
         }
 
         if (!style.isNull) {
-            addFontStyleToFcPattern(style, pattern);
+            addFontStyleToFcPattern(style.get, pattern);
         }
 
         if (charSet) {

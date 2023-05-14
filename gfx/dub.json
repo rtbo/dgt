@@ -10,12 +10,12 @@
     "buildRequirements": [ "disallowDeprecations" ],
 
     "dependencies":	{
-        "dgt:core":    { "path": "../core" },
-        "dgt:cairo":   { "path": "../bindings/cairo" },
+        "dgt:core":    { "path": ".." },
+        "dgt:cairo":   { "path": ".." },
 
-        "gfx:core":    "~>0.1.1",
+        "gfx:core":    "~>0.2.1",
 
-        "png-d":       "~>0.0.2",
-        "turbojpeg-d": "~>0.0.2"
+        "png-d":       "0.0.1",
+        "turbojpeg-d": "0.0.1"
     }
 }

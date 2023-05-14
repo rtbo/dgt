@@ -7,7 +7,7 @@ struct AtlasSizeRange
 {
     import dgt.gfx.geometry : ISize;
 
-    /// A delegate that define the step taken to extent current towards max.
+    /// A delegate that define the step taken to extend current towards max.
     /// It is called with current and must return the new value for current.
     alias Stepper = ISize delegate (in ISize sz);
 
@@ -79,7 +79,7 @@ struct AtlasSizeRange
 
 class AtlasNode
 {
-    import dgt.gfx.geometry : IRect;
+    import dgt.gfx.geometry : FVec2, IRect;
     import dgt.gfx.image : Image;
     import std.typecons : Rebindable;
 
@@ -90,6 +90,8 @@ class AtlasNode
     private AtlasNode prev;
     private AtlasNode next;
     private bool written;
+
+    public FVec2 orig;
 
     private this (Atlas atlas, immutable(Image) image, in IRect rect)
     {

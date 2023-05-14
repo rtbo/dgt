@@ -29,37 +29,37 @@ struct Dash
 
 struct PenBuilder
 {
-    ref PenBuilder width(in float width)
+    ref PenBuilder width(in float width) return
     {
         _width = width;
         return this;
     }
 
-    ref PenBuilder cap(in LineCap cap)
+    ref PenBuilder cap(in LineCap cap) return
     {
         _cap = cap;
         return this;
     }
 
-    ref PenBuilder join(in LineJoin join)
+    ref PenBuilder join(in LineJoin join) return
     {
         _join = join;
         return this;
     }
 
-    ref PenBuilder dash(in Dash dash)
+    ref PenBuilder dash(in Dash dash) return
     {
         _dash = dash;
         return this;
     }
 
-    ref PenBuilder paint(immutable(Paint) paint)
+    ref PenBuilder paint(immutable(Paint) paint) return
     {
         _paint = paint;
         return this;
     }
 
-    ref PenBuilder color(Color color)
+    ref PenBuilder color(Color color) return
     {
         _paint = new immutable ColorPaint(color);
         return this;

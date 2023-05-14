@@ -5,7 +5,7 @@ import core.sys.windows.wingdi;
 import dgt.platform : PlatformWindow;
 import dgt.platform.win32 : dgtW32Log;
 import dgt.screen : Screen;
-import gfx.bindings.core;
+import dgt.bindings;
 import gfx.bindings.opengl.gl : Gl, GL_TRUE;
 import gfx.bindings.opengl.wgl;
 import gfx.gl3.context : GlAttribs, GlContext, GlProfile, glVersions;
@@ -109,7 +109,7 @@ private class Win32GlContext : GlContext
         const chosen = ChoosePixelFormat(dc, &pfd);
         SetPixelFormat(dc, chosen, &pfd);
 
-        import gfx.bindings.core : loadSharedSym;
+        import dgt.bindings : loadSharedSym;
         auto lib = loadGlLib();
         PFN_wglGetProcAddress getProcAddress = cast(PFN_wglGetProcAddress)enforce(
             loadSharedSym(lib, "wglGetProcAddress"), "could not load wglGetProcAddress"
@@ -265,7 +265,7 @@ int[] getCtxAttribs(in GlAttribs attribs)
 
 private SharedLib loadGlLib()
 {
-    import gfx.bindings.core : openSharedLib;
+    import dgt.bindings : openSharedLib;
 
     immutable glLibNames = [ "opengl32.dll" ];
 

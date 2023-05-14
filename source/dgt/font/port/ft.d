@@ -74,7 +74,7 @@ class FtTypeface : Typeface
         if (_coverage.isNull) {
             _coverage = buildCoverage();
         }
-        return _coverage;
+        return _coverage.get;
     }
 
     override ScalingContext getScalingContext(in float pixelSize) {
@@ -241,7 +241,7 @@ final class FtScalingContext : ScalingContext
     override GlyphMetrics glyphMetrics(in GlyphId glyphId) {
         Glyph* glp = glyphId in _glyphs;
         if (glp && !glp._metrics.isNull) {
-            return glp._metrics;
+            return glp._metrics.get;
         }
 
         ensureSize();

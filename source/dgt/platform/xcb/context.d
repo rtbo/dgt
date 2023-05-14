@@ -7,7 +7,7 @@ package:
 import dgt.platform : PlatformWindow;
 import dgt.platform.xcb : dgtXcbLog, g_display;
 import dgt.screen : Screen;
-import gfx.bindings.core : SharedLib;
+import dgt.bindings : SharedLib;
 import gfx.gl3.context : GlAttribs, GlContext, glVersions;
 import X11.Xlib : XDisplay = Display, XErrorEvent;
 
@@ -26,10 +26,10 @@ private:
 /// GlX backed OpenGL context
 class XcbGlContext : GlContext
 {
-    import gfx.bindings.core : SharedSym;
     import gfx.bindings.opengl.gl : Gl;
     import gfx.bindings.opengl.glx : Glx, GLXContext, GLXFBConfig;
     import gfx.core.rc : atomicRcCode, Disposable;
+    import dgt.bindings : SharedSym;
 
     mixin(atomicRcCode);
 
@@ -49,10 +49,10 @@ class XcbGlContext : GlContext
     /// It internally creates a dummy window
     this (size_t window, int mainScreenNum, GlAttribs attribs, GLXContext sharedCtx)
     {
-        import gfx.bindings.core : openSharedLib, loadSharedSym, SharedLib;
-        import gfx.bindings.opengl : splitExtString;
+        import dgt.bindings : openSharedLib, loadSharedSym, SharedLib;
         import gfx.bindings.opengl.gl : GL_EXTENSIONS;
         import gfx.bindings.opengl.glx : PFN_glXGetProcAddressARB;
+        import gfx.bindings.opengl.util : splitExtString;
         import std.algorithm : canFind;
         import std.exception : enforce;
         import X11.Xlib : XSetErrorHandler, XSync;
@@ -112,7 +112,7 @@ class XcbGlContext : GlContext
     }
 
     override void dispose() {
-        import gfx.bindings.core : closeSharedLib;
+        import dgt.bindings : closeSharedLib;
 
         _glx.DestroyContext(g_display, _ctx);
         dgtXcbLog.trace("destroyed GL/GLX context");
@@ -216,7 +216,7 @@ class XcbGlContext : GlContext
 
 private SharedLib loadGlLib()
 {
-    import gfx.bindings.core : openSharedLib;
+    import dgt.bindings : openSharedLib;
 
     immutable glLibNames = ["libGL.so.1", "libGL.so"];
 

@@ -51,11 +51,9 @@ class RectRenderer : FGNodeRenderer
         services.unload();
     }
 
-    override FGType type() const
+    override FGType[] types() const
     {
-        import dgt.render.framegraph : FGRenderType, FGTypeCat;
-
-        return FGType(FGTypeCat.render, FGRenderType.rect);
+        return [ FGRectNode.fgType ];
     }
 
     override void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd)
@@ -394,19 +392,22 @@ final class RectColRenderer : RectRendererBase
 
     void updateDescriptorSet()
     {
-        import gfx.graal.pipeline : BufferRange,
-                                    UniformBufferDynamicDescWrites,
+        import gfx.graal.pipeline : BufferDescriptor,
+                                    DescriptorType,
+                                    DescriptorWrite,
                                     WriteDescriptorSet;
 
         this.ds.prepareUpdate();
         auto ds = this.ds.get;
 
         WriteDescriptorSet[2] wds;
-        wds[0] = WriteDescriptorSet(ds, 0, 0, new UniformBufferDynamicDescWrites(
-            [ BufferRange(uniformBuf.buffer, 0, MVP.sizeof) ]
+        wds[0] = WriteDescriptorSet(ds, 0, 0, DescriptorWrite.make(
+            DescriptorType.uniformBufferDynamic,
+            BufferDescriptor(uniformBuf.buffer, 0, MVP.sizeof)
         ));
-        wds[1] = WriteDescriptorSet(ds, 1, 0, new UniformBufferDynamicDescWrites(
-            [ BufferRange(uniformBuf.buffer, localsBufStart, ColRectLocals.sizeof) ]
+        wds[1] = WriteDescriptorSet(ds, 1, 0, DescriptorWrite.make(
+            DescriptorType.uniformBufferDynamic,
+            BufferDescriptor(uniformBuf.buffer, localsBufStart, ColRectLocals.sizeof)
         ));
         device.updateDescriptorSets(wds[], []);
     }
@@ -683,9 +684,9 @@ final class RectImgRenderer : RectRendererBase
     void updateDescriptorSets(in bool updateUnif, in bool updateAtlas)
     {
         import gfx.graal.image : ImageLayout;
-        import gfx.graal.pipeline : BufferRange, CombinedImageSampler,
-                                    CombinedImageSamplerDescWrites,
-                                    UniformBufferDynamicDescWrites,
+        import gfx.graal.pipeline : BufferDescriptor,
+                                    DescriptorType,
+                                    DescriptorWrite,
                                     WriteDescriptorSet;
 
         assert(dss.length == atlases.length);
@@ -698,28 +699,35 @@ final class RectImgRenderer : RectRendererBase
 
         writes.reserve(reserve);
 
+        if (updateUnif || updateAtlas) {
+            foreach (ref ds; dss) {
+                ds.prepareUpdate();
+            }
+        }
+
         if (updateUnif)
         {
             localsBufStart = mvpCursor;
             foreach (ref ds; dss) {
-                ds.prepareUpdate();
                 writes ~= [
-                    WriteDescriptorSet(ds.get, 0, 0, new UniformBufferDynamicDescWrites([
-                        BufferRange(uniformBuf.buffer, 0, MVP.sizeof),
-                    ])),
-                    WriteDescriptorSet(ds.get, 1, 0, new UniformBufferDynamicDescWrites([
-                        BufferRange(uniformBuf.buffer, localsBufStart, ImgRectLocals.sizeof),
-                    ])),
+                    WriteDescriptorSet(ds.get, 0, 0, DescriptorWrite.make(
+                        DescriptorType.uniformBufferDynamic,
+                        BufferDescriptor(uniformBuf.buffer, 0, MVP.sizeof)
+                    )),
+                    WriteDescriptorSet(ds.get, 1, 0, DescriptorWrite.make(
+                        DescriptorType.uniformBufferDynamic,
+                        BufferDescriptor(uniformBuf.buffer, localsBufStart, ImgRectLocals.sizeof)
+                    )),
                 ];
             }
         }
         if (updateAtlas)
         {
             foreach (i, ref ds; dss) {
-                if (!updateUnif) ds.prepareUpdate();
-                writes ~= WriteDescriptorSet(ds.get, 2, 0, new CombinedImageSamplerDescWrites([
-                    CombinedImageSampler(sampler, atlases[i].imgView, ImageLayout.shaderReadOnlyOptimal)
-                ]));
+                writes ~= WriteDescriptorSet(ds.get, 2, 0, DescriptorWrite.make(
+                    DescriptorType.combinedImageSampler,
+                    atlases[i].imgView.descriptorWithSampler(ImageLayout.shaderReadOnlyOptimal, sampler)
+                ));
             }
         }
 

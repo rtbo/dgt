@@ -2,7 +2,7 @@ module dgt.render.renderer;
 
 import dgt.render : dgtRenderLog;
 import dgt.render.framegraph;
-import gfx.core.rc : Disposable;
+import gfx.core.rc : AtomicRefCounted, Disposable;
 import gfx.gl3.context : GlContext;
 import gfx.graal : Instance, Backend;
 
@@ -46,39 +46,24 @@ Renderer createVulkanRenderer(string appName, uint[3] appVersion)
     import dgt.application : Application;
     import gfx.vulkan : createVulkanInstance, lunarGValidationLayers, vulkanInit,
                         vulkanInstanceExtensions, vulkanInstanceLayers,
-                        VulkanVersion;
+                        VulkanCreateInfo, VulkanVersion;
     import std.algorithm : canFind, filter, map;
     import std.array : array;
 
     vulkanInit();
 
     // TODO: make this feasible without Application and Platform
-    const necessaryExtensions = Application.platform.necessaryVulkanExtensions;
 
+    VulkanCreateInfo vci;
+    vci.appName = appName;
+    vci.appVersion = VulkanVersion(appVersion[0], appVersion[1], appVersion[2]);
+    vci.mandatoryExtensions = Application.platform.necessaryVulkanExtensions;
     debug {
-        const wantedLayers = lunarGValidationLayers;
-        const wantedExts = [ "VK_KHR_debug_report", "VK_EXT_debug_report" ];
-    }
-    else {
-        const string[] wantedLayers = [];
-        const string[] wantedExts = [];
+        vci.optionalLayers = lunarGValidationLayers;
+        vci.optionalExtensions = [ "VK_KHR_debug_report", "VK_EXT_debug_report" ];
     }
 
-    const requestedLayers = vulkanInstanceLayers
-            .map!(l => l.layerName)
-            .filter!(l => wantedLayers.canFind(l))
-            .array();
-    const requestedExtensions = vulkanInstanceExtensions
-            .map!(e => e.extensionName)
-            .filter!(e => wantedExts.canFind(e))
-            .array()
-            ~ necessaryExtensions;
-
-    const vv = VulkanVersion(appVersion[0], appVersion[1], appVersion[2]);
-
-    return new VulkanRenderer(createVulkanInstance(
-        requestedLayers, requestedExtensions, appName, vv
-    ));
+    return new VulkanRenderer(createVulkanInstance(vci));
 }
 
 /// Creates an OpenGL backed renderer
@@ -126,7 +111,7 @@ class RenderContext
 }
 
 /// Renderer for a type of node
-interface FGNodeRenderer : Disposable
+abstract class FGNodeRenderer : AtomicRefCounted
 {
     import dgt.render.framegraph : FGType;
     import dgt.render.services : RenderServices;
@@ -137,18 +122,20 @@ interface FGNodeRenderer : Disposable
     import gfx.memalloc : Allocator;
     import gfx.math : FMat4;
 
-    FGType type() const;
+    /// The node types that can be renderered by this renderer.
+    /// There can only be one renderer per type of node.
+    abstract FGType[] types() const;
 
     /// called once during preparation step
-    void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd);
+    abstract void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd);
     /// called during prerender step for each node that fits type
-    void prerender(immutable(FGNode) node);
+    abstract void prerender(immutable(FGNode) node);
     /// called once per frame to finalize the prerender step
-    void prerenderEnd(CommandBuffer cmd);
+    abstract void prerenderEnd(CommandBuffer cmd);
     /// perform actual rendering
-    void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd);
+    abstract void render(immutable(FGNode) node, RenderContext ctx, in FMat4 model, CommandBuffer cmd);
     /// called once per frame after rendering all nodes
-    void postrender();
+    abstract void postrender();
 }
 
 
@@ -164,7 +151,7 @@ class RendererBase : Renderer
     import gfx.core.rc :            Rc;
     import gfx.decl.engine :        DeclarativeEngine;
     import gfx.graal :              Instance;
-    import gfx.graal.cmd :          CommandBuffer, CommandPool;
+    import gfx.graal.cmd :          CommandBuffer, CommandPool, PrimaryCommandBuffer;
     import gfx.graal.device :       Device, PhysicalDevice;
     import gfx.graal.pipeline :     DescriptorPool;
     import gfx.graal.presentation : Surface;
@@ -172,11 +159,11 @@ class RendererBase : Renderer
     import gfx.graal.renderpass :   RenderPass;
     import gfx.graal.sync :         Fence;
     import gfx.math.mat :           FMat4;
-    import gfx.math.proj :          ProjConfig;
+    import gfx.math.proj :          NDC;
     import gfx.memalloc :           Allocator, BufferAlloc;
 
     private Rc!Instance instance;
-    private ProjConfig projConfig;
+    private NDC ndc;
     private PhysicalDevice physicalDevice;
     private Rc!Device device;
     private uint graphicsQueueInd;
@@ -191,7 +178,7 @@ class RendererBase : Renderer
     private Rc!CommandPool prerenderPool;
     private Rc!CommandPool graphicsPool;
     private Rc!CommandPool presentPool;
-    private CommandBuffer[] prerenderCmds;
+    private PrimaryCommandBuffer[] prerenderCmds;
     private Fence[] prerenderFences;
     private size_t prerenderCmdInd;
 
@@ -207,7 +194,7 @@ class RendererBase : Renderer
     this(Instance instance)
     {
         this.instance = instance;
-        this.projConfig = instance.apiProps.projConfig;
+        this.ndc = instance.apiProps.ndc;
         this.cache = new RenderCache;
     }
 
@@ -248,18 +235,21 @@ class RendererBase : Renderer
     override void finalize(size_t windowHandle)
     {
         import gfx.core.rc : disposeObj, disposeArr, releaseArr;
+        import std.algorithm : map;
+        import std.array : array;
+
         dgtRenderLog.trace("finalizing renderer");
 
         device.waitIdle();
 
-        disposeArr(dgtRenderers);
-        disposeArr(userRenderers);
+        releaseArr(dgtRenderers);
+        releaseArr(userRenderers);
         descPool.unload();
         disposeObj(cache);
         disposeObj(declEng);
         disposeArr(windows);
         renderPass.unload();
-        if (prerenderCmds.length) prerenderPool.free(prerenderCmds);
+        if (prerenderCmds.length) prerenderPool.free(prerenderCmds.map!(c => cast(CommandBuffer)c).array);
         releaseArr(prerenderFences);
         prerenderPool.unload();
         graphicsPool.unload();
@@ -289,6 +279,7 @@ class RendererBase : Renderer
     void prerender(immutable(FGFrame)[] frames)
     {
         import gfx.graal.buffer : BufferUsage;
+        import gfx.graal.cmd : CommandBufferUsage;
         import gfx.graal.queue : Submission;
         import gfx.memalloc : AllocOptions, MemoryUsage;
         import dgt.render.framegraph : breadthFirst, FGNode, FGTypeCat;
@@ -322,7 +313,7 @@ class RendererBase : Renderer
             import std.algorithm : map;
             import std.array : array;
             import std.range : iota;
-            prerenderCmds = prerenderPool.allocate(numPrerenderCmds);
+            prerenderCmds = prerenderPool.allocatePrimary(numPrerenderCmds);
             prerenderFences = iota(numPrerenderCmds).map!(i => device.createFence(Yes.signaled)).array();
             retainArr(prerenderFences);
             prerenderCmdInd = 0;
@@ -333,7 +324,8 @@ class RendererBase : Renderer
         f.wait();
         f.reset();
 
-        prerenderCmd.begin(No.persistent);
+        prerenderCmd.begin(CommandBufferUsage.oneTimeSubmit);
+
 
         foreach (r; chain(dgtRenderers, userRenderers))
             r.prerenderEnd(prerenderCmd);
@@ -348,7 +340,7 @@ class RendererBase : Renderer
     {
         import dgt.core.future;
         import dgt.gfx.geometry : FRect;
-        import gfx.graal.cmd : ClearColorValues, ClearValues, PipelineStage;
+        import gfx.graal.cmd : ClearColorValues, ClearValues, CommandBufferUsage, PipelineStage;
         import gfx.graal.error : OutOfDateException;
         import gfx.graal.queue : PresentRequest, Submission, StageWait;
         import gfx.graal.sync : Semaphore;
@@ -426,7 +418,7 @@ class RendererBase : Renderer
                     .map!(c => ClearValues.color(c.r, c.g, c.b, c.a))
                     .array();
 
-            cmd.begin(No.persistent);
+            cmd.begin(CommandBufferUsage.oneTimeSubmit);
 
             cmd.setViewport(0, [ Viewport(0f, 0f, vpf.width, vpf.height) ]);
             cmd.setScissor(0, [ Rect(0, 0, vp.width, vp.height) ]);
@@ -439,7 +431,7 @@ class RendererBase : Renderer
 
             if (frame.root) {
                 import gfx.math.proj : ortho;
-                const viewProj = ortho(projConfig, vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
+                const viewProj = ortho(ndc, vpf.left, vpf.right, vpf.bottom, vpf.top, 1, -1);
                 auto ctx = scoped!RenderContext(cache, viewProj);
                 renderNode(frame.root, ctx, FMat4.identity, cmd);
                 foreach (r; chain(dgtRenderers, userRenderers))
@@ -576,7 +568,9 @@ class RendererBase : Renderer
     void prepareRenderers()
     {
         import dgt.render.framegraph : FGRenderType;
+        import gfx.core.rc : retainObj;
         import gfx.graal.pipeline : DescriptorPoolSize, DescriptorType;
+        import std.format : format;
         import std.range : chain;
         import std.typecons : scoped;
 
@@ -585,7 +579,17 @@ class RendererBase : Renderer
         dgtRenderers = new FGNodeRenderer[FGRenderType.max + 1];
 
         void addRenderer(FGNodeRenderer nr) {
-            dgtRenderers[nr.type.index] = nr;
+            foreach (t; nr.types) {
+                const ind = t.index;
+                if (dgtRenderers.length <= ind) {
+                    throw new Exception(format("invalid render type: %s", t));
+                }
+                if (dgtRenderers[ind]) {
+                    throw new Exception(format(
+                        "Renderer already registered for node type %s", t));
+                }
+                dgtRenderers[ind] = retainObj(nr);
+            }
         }
         addRenderer(new RectRenderer);
         addRenderer(new TextRenderer);
@@ -685,7 +689,7 @@ struct SwapchainProps
 final class WindowContext : Disposable
 {
     import gfx.core.rc :            Rc;
-    import gfx.graal.cmd :          CommandBuffer, CommandPool;
+    import gfx.graal.cmd :          CommandBuffer, CommandPool, PrimaryCommandBuffer;
     import gfx.graal.device :       Device;
     import gfx.graal.image :        ImageAspect, ImageBase,
                                     ImageSubresourceRange, ImageType, ImageView,
@@ -725,7 +729,7 @@ final class WindowContext : Disposable
     }
     private PerImage[] images;
     private Fence[] fences;
-    private CommandBuffer[] cmdBufs;
+    private PrimaryCommandBuffer[] cmdBufs;
 
     this (size_t windowHandle, Surface surface, Device device,
             RenderPass renderPass, CommandPool cmdPool, SwapchainProps scProps)
@@ -745,6 +749,8 @@ final class WindowContext : Disposable
     override void dispose()
     {
         import gfx.core.rc : releaseArr, releaseObj;
+        import std.algorithm : map;
+        import std.array : array;
 
         assert(fences.length == images.length);
         foreach (i, ref img; images) {
@@ -757,7 +763,7 @@ final class WindowContext : Disposable
         releaseObj(imageAvailableSem);
         releaseObj(renderingFinishSem);
         releaseArr(fences);
-        if (cmdBufs.length) pool.free(cmdBufs);
+        if (cmdBufs.length) pool.free(cmdBufs.map!(c => cast(CommandBuffer)c).array);
         pool.unload();
         renderPass.unload();
         surface.unload();
@@ -830,8 +836,8 @@ final class WindowContext : Disposable
             releaseArr(fences);
             fences = iota(imgs.length).map!(i => device.createFence(Yes.signaled)).array();
             retainArr(fences);
-            if (cmdBufs.length) pool.free(cmdBufs);
-            cmdBufs = pool.allocate(imgs.length);
+            if (cmdBufs.length) pool.free(cmdBufs.map!(c => cast(CommandBuffer)c).array);
+            cmdBufs = pool.allocatePrimary(imgs.length);
         }
 
         foreach (ref img; imgs) {

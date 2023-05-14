@@ -96,7 +96,7 @@ struct PathBuilder
         return _lastPoint;
     }
 
-    ref PathBuilder moveTo(in FVec2 point)
+    ref PathBuilder moveTo(in FVec2 point) return
     {
         _lastMoveTo = _data.length;
         _segments ~= PathSeg.moveTo;
@@ -106,13 +106,13 @@ struct PathBuilder
         return this;
     }
 
-    ref PathBuilder moveToRel(in FVec2 vec)
+    ref PathBuilder moveToRel(in FVec2 vec) return
     {
         enforce(hasLastPoint);
         return moveTo(_lastPoint + vec);
     }
 
-    ref PathBuilder lineTo(in FVec2 point)
+    ref PathBuilder lineTo(in FVec2 point) return
     {
         _segments ~= PathSeg.lineTo;
         _data ~= point;
@@ -121,37 +121,37 @@ struct PathBuilder
         return this;
     }
 
-    ref PathBuilder lineToRel(in FVec2 vec)
+    ref PathBuilder lineToRel(in FVec2 vec) return
     {
         enforce(hasLastPoint);
         return lineTo(_lastPoint + vec);
     }
 
-    ref PathBuilder horLineTo(in float xPoint)
+    ref PathBuilder horLineTo(in float xPoint) return
     {
         enforce(hasLastPoint);
         return lineTo(FVec2(xPoint, _lastPoint.y));
     }
 
-    ref PathBuilder horLineToRel(in float xVec)
+    ref PathBuilder horLineToRel(in float xVec) return
     {
         enforce(hasLastPoint);
         return lineTo(FVec2(_lastPoint.x + xVec, _lastPoint.y));
     }
 
-    ref PathBuilder verLineTo(in float yPoint)
+    ref PathBuilder verLineTo(in float yPoint) return
     {
         enforce(hasLastPoint);
         return lineTo(FVec2(_lastPoint[0], yPoint));
     }
 
-    ref PathBuilder verLineToRel(in float yVec)
+    ref PathBuilder verLineToRel(in float yVec) return
     {
         enforce(hasLastPoint);
         return lineTo(FVec2(_lastPoint.x, _lastPoint.y + yVec));
     }
 
-    ref PathBuilder quadTo(in FVec2 control, in FVec2 point)
+    ref PathBuilder quadTo(in FVec2 control, in FVec2 point) return
     {
         _segments ~= PathSeg.quadTo;
         _data ~= [ control, point ];
@@ -160,7 +160,7 @@ struct PathBuilder
         return this;
     }
 
-    ref PathBuilder cubicTo(in FVec2 control1, in FVec2 control2, in FVec2 point)
+    ref PathBuilder cubicTo(in FVec2 control1, in FVec2 control2, in FVec2 point) return
     {
         _segments ~= PathSeg.cubicTo;
         _data ~= [ control1, control2, point ];
@@ -169,46 +169,46 @@ struct PathBuilder
         return this;
     }
 
-    ref PathBuilder smoothQuadTo(FVec2 point)
+    ref PathBuilder smoothQuadTo(FVec2 point) return
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
         return quadTo( 2 * _lastPoint - _lastControl, point );
     }
 
-    ref PathBuilder smoothCubicTo(in FVec2 control2, in FVec2 point)
+    ref PathBuilder smoothCubicTo(in FVec2 control2, in FVec2 point) return
     {
         enforce(hasLastControl);
         enforce(hasLastPoint);
         return cubicTo( 2 * _lastPoint - _lastControl, control2, point );
     }
 
-    ref PathBuilder shortCcwArcTo(float rh, float rv, float rot, in FVec2 point)
+    ref PathBuilder shortCcwArcTo(float rh, float rv, float rot, in FVec2 point) return
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    ref PathBuilder shortCwArcTo(float rh, float rv, float rot, in FVec2 point)
+    ref PathBuilder shortCwArcTo(float rh, float rv, float rot, in FVec2 point) return
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    ref PathBuilder largeCcwArcTo(float rh, float rv, float rot, in FVec2 point)
+    ref PathBuilder largeCcwArcTo(float rh, float rv, float rot, in FVec2 point) return
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
-    void largeCwArcTo(float rh, float rv, float rot, in FVec2 point)
+    void largeCwArcTo(float rh, float rv, float rot, in FVec2 point) return
     {
         // TODO: implement with quad or cubic
         assert(false, "unimplemented");
     }
 
     /// Throws: Exception if no moveTo can be found before this call.
-    ref PathBuilder close()
+    ref PathBuilder close() return
     {
         import std.exception : enforce;
 
@@ -221,7 +221,7 @@ struct PathBuilder
         return this;
     }
 
-    ref PathBuilder bounds(in FRect bounds)
+    ref PathBuilder bounds(in FRect bounds) return
     {
         _bounds = bounds;
         _boundsSet = true;

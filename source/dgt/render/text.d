@@ -6,7 +6,7 @@ import dgt.render.renderer : FGNodeRenderer;
 final class TextRenderer : FGNodeRenderer
 {
     import dgt.render.atlas :       Atlas, AtlasNode;
-    import dgt.render.framegraph :  FGNode, FGType;
+    import dgt.render.framegraph :  FGNode, FGTextNode, FGType;
     import dgt.render.renderer :    RenderContext;
     import dgt.render.services :    CircularDescriptorPool, CircularDescriptorSet,
                                     RenderServices;
@@ -83,11 +83,9 @@ final class TextRenderer : FGNodeRenderer
         device.unload();
     }
 
-    override FGType type() const
+    override FGType[] types() const
     {
-        import dgt.render.framegraph : FGRenderType, FGTypeCat;
-
-        return FGType(FGTypeCat.render, FGRenderType.text);
+        return [ FGTextNode.fgType ];
     }
 
     override void prepare(RenderServices services, DeclarativeEngine declEng, CommandBuffer cmd)
@@ -121,7 +119,6 @@ final class TextRenderer : FGNodeRenderer
 
     override void prerender(immutable(FGNode) node)
     {
-        import dgt.render.framegraph : FGTextNode;
         import dgt.render.defs : P2T2Vertex;
 
         immutable tn = cast(immutable(FGTextNode))node;
@@ -271,7 +268,6 @@ final class TextRenderer : FGNodeRenderer
     {
         import dgt.gfx.geometry : FRect, FSize;
         import dgt.render.defs : P2T2Vertex;
-        import dgt.render.framegraph : FGTextNode;
         import gfx.graal.buffer : IndexType;
         import gfx.graal.cmd : PipelineBindPoint, VertexBinding;
         import gfx.graal.pipeline : DescriptorSet;

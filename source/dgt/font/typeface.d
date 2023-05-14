@@ -85,7 +85,8 @@ final class Glyph {
     @property GlyphMetrics metrics() {
         // scalers are responsible to ensure metrics is set before
         // exposing any glyph out
-        return _metrics;
+        assert(!_metrics.isNull);
+        return _metrics.get;
     }
 
     @property bool isWhitespace() {

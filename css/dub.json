@@ -10,7 +10,7 @@
     "buildRequirements": [ "disallowDeprecations" ],
 
     "dependencies":	{
-        "dgt:core": { "path": "../core" },
-        "gfx:core": "~>0.1.1"
+        "dgt:core": { "path": ".." },
+        "gfx:core": "~>0.2.1"
     }
 }

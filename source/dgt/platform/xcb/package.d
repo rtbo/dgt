@@ -224,9 +224,9 @@ class XcbPlatform : Platform
 
     override @property string[] necessaryVulkanExtensions()
     {
-        import gfx.vulkan.wsi : surfaceExtension, xcbSurfaceExtension;
+        import gfx.vulkan.wsi : surfaceInstanceExtension, xcbSurfaceInstanceExtension;
         return [
-            surfaceExtension, xcbSurfaceExtension
+            surfaceInstanceExtension, xcbSurfaceInstanceExtension
         ];
     }
 

@@ -22,8 +22,9 @@ int deviceScore(PhysicalDevice dev,  Surface surface, out uint graphicsQueue, ou
     Aspect graphicsAspect;
     Aspect presentAspect;
 
-    foreach (uint i, qf; dev.queueFamilies)
+    foreach (ii, qf; dev.queueFamilies)
     {
+        const uint i = cast(uint)ii;
         int qs=1;
         const graphics = qf.cap & QueueCap.graphics;
         const present = dev.supportsSurface(i, surface);

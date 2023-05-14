@@ -37,12 +37,12 @@
         "dgt:css":      "*",
         "dgt:gfx":      "*",
 
-        "gfx":          "~>0.1.1",
-        "gfx:decl":     "~>0.1.1",
-        "gfx:memalloc": "~>0.1.1",
-        "gfx:math":     "~>0.1.1",
-        "gfx:gl3":      "~>0.1.1",
-        "gfx:vulkan":   "~>0.1.1",
+        "gfx":          "~>0.2.1",
+        "gfx:decl":     "~>0.2.1",
+        "gfx:memalloc": "~>0.2.1",
+        "gfx:math":     "~>0.2.1",
+        "gfx:gl3":      "~>0.2.1",
+        "gfx:vulkan":   "~>0.2.1",
 
         "freetype-d":   "~>0.0.2"
     },

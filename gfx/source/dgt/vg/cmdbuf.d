@@ -76,19 +76,19 @@ struct CmdBufBuilder
         return CmdBufBuilder(_cmds.dup);
     }
 
-    ref CmdBufBuilder save()
+    ref CmdBufBuilder save() return
     {
         _cmds ~= Cmd(CmdType.save);
         return this;
     }
 
-    ref CmdBufBuilder restore()
+    ref CmdBufBuilder restore() return
     {
         _cmds ~= Cmd(CmdType.restore);
         return this;
     }
 
-    ref CmdBufBuilder transform(in FMat2x3 transform)
+    ref CmdBufBuilder transform(in FMat2x3 transform) return
     {
         CmdData data = void;
         data.transform = transform;
@@ -96,7 +96,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder mulTransform(in FMat2x3 transform)
+    ref CmdBufBuilder mulTransform(in FMat2x3 transform) return
     {
         CmdData data = void;
         data.transform = transform;
@@ -104,7 +104,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder clip(immutable(Path) path)
+    ref CmdBufBuilder clip(immutable(Path) path) return
     {
         CmdData data = void;
         data.clipPath = path;
@@ -112,7 +112,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder mask(immutable(Image) image, immutable(Paint) paint)
+    ref CmdBufBuilder mask(immutable(Image) image, immutable(Paint) paint) return
     in (image && (image.format == ImageFormat.a1 || image.format == ImageFormat.a8))
     {
         CmdData data = void;
@@ -122,7 +122,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder drawImg(immutable(Image) image)
+    ref CmdBufBuilder drawImg(immutable(Image) image) return
     {
         CmdData data = void;
         data.drawImg = image;
@@ -130,7 +130,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder stroke(immutable(Path) path, immutable(Pen) pen=null)
+    ref CmdBufBuilder stroke(immutable(Path) path, immutable(Pen) pen=null) return
     {
         CmdData data = void;
         data.stroke.path = path;
@@ -139,7 +139,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder fill(immutable(Path) path, immutable(Brush) brush=null)
+    ref CmdBufBuilder fill(immutable(Path) path, immutable(Brush) brush=null) return
     {
         CmdData data = void;
         data.fill.path = path;
@@ -148,7 +148,7 @@ struct CmdBufBuilder
         return this;
     }
 
-    ref CmdBufBuilder bounds(in FRect bounds)
+    ref CmdBufBuilder bounds(in FRect bounds) return
     {
         _bounds = bounds;
         _boundsSet = true;

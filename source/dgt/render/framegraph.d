@@ -90,6 +90,10 @@ enum FGRenderType
     rect,
     /// Renders text
     text,
+    /// Renders an image
+    image,
+    /// Renders vector graphics operations
+    vg,
 }
 
 /// describes the type of a node
@@ -140,7 +144,37 @@ abstract class FGNode
     }
 }
 
-final class FGGroupNode : FGNode
+/// Node whose type.cat will always be FGTypeCat.meta
+abstract class FGMetaNode : FGNode
+{
+    immutable this(in FGType type)
+    {
+        assert(type.cat == FGTypeCat.meta);
+        super(type);
+    }
+
+    @property FGMetaType metaType() const
+    {
+        return cast(FGMetaType)(type.id & fgTypeIndexMask);
+    }
+}
+
+/// Node whose type.cat will always be FGTypeCat.render
+abstract class FGRenderNode : FGNode
+{
+    immutable this(in FGType type)
+    {
+        assert(type.cat == FGTypeCat.render);
+        super(type);
+    }
+
+    @property FGRenderType renderType() const
+    {
+        return cast(FGRenderType)(type.id & fgTypeIndexMask);
+    }
+}
+
+final class FGGroupNode : FGMetaNode
 {
     static immutable FGType fgType = FGType(FGTypeCat.meta, FGMetaType.group);
 
@@ -157,7 +191,7 @@ final class FGGroupNode : FGNode
     }
 }
 
-final class FGTransformNode : FGNode
+final class FGTransformNode : FGMetaNode
 {
     static immutable FGType fgType = FGType(FGTypeCat.meta, FGMetaType.transform);
 
@@ -180,7 +214,7 @@ struct RectBorder {
     float width;
 }
 
-final class FGRectNode : FGNode
+final class FGRectNode : FGRenderNode
 {
     static immutable FGType fgType = FGType(FGTypeCat.render, FGRenderType.rect);
 
@@ -218,7 +252,7 @@ final class FGRectNode : FGNode
     }
 }
 
-final class FGTextNode : FGNode
+final class FGTextNode : FGRenderNode
 {
     static immutable FGType fgType = FGType(FGTypeCat.render, FGRenderType.text);
 
@@ -234,10 +268,42 @@ final class FGTextNode : FGNode
     }
 }
 
+final class FGImageNode : FGRenderNode
+{
+    static immutable FGType fgType = FGType(FGTypeCat.render, FGRenderType.image);
+
+    FVec2 orig;
+    immutable(Image) image;
+    CacheCookie cookie;
+
+    immutable this(in FVec2 orig, immutable(Image) image, CacheCookie cookie) {
+        super(fgType);
+        this.orig = orig;
+        this.image = image;
+        this.cookie = cookie;
+    }
+}
+
+final class FGVgNode : FGRenderNode
+{
+    import dgt.vg.cmdbuf : CmdBuf;
+
+    static immutable FGType fgType = FGType(FGTypeCat.render, FGRenderType.vg);
+
+    immutable(CmdBuf) cmdBuf;
+    CacheCookie cookie;
+
+    immutable this(immutable(CmdBuf) cmdBuf, CacheCookie cookie) {
+        super(fgType);
+        this.cmdBuf = cmdBuf;
+        this.cookie = cookie;
+    }
+}
+
 /// Cookie to be used as a key in a cache.
 struct CacheCookie
 {
-    immutable size_t payload;
+    size_t payload;
 
     size_t toHash() const @safe pure nothrow {
         return payload;

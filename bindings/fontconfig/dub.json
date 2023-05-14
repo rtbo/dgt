@@ -10,7 +10,7 @@
 
   "dependencies":	{
 		"dgt:bindings": {
-			"path": ".."
+			"path": "../.."
 		}
   }
 }
